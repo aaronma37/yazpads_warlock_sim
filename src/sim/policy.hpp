@@ -50,18 +50,54 @@ inline const char* pet_choice_to_string(PetChoice p) {
 }
 
 enum class RotationChoice : uint8_t {
-    AUTO = 0,               // Automatically pick best spell based on spec (Incinerate for Fire, SB for Shadow)
-    SHADOW_BOLT_PRIMARY,    // Shadow Bolt filler
-    INCINERATE_FIRE,        // Incinerate filler
-    DEEP_AFFLICTION         // DoT prioritization + Drain Hope + Drains
+    AUTO = 0,               // Automatically pick best rotation based on active talents
+    SHADOW_DESTRO,          // Shadow Destro: Immolate + Conflagrate (Shadow & Flame +10% Shadow) + Shadowburn + SB filler
+    FIRE_DESTRO,            // Fire Destro: Immolate (+25% Incinerate dmg) + Conflagrate + Shadowburn (10% Fire buff) + Incinerate filler
+    DEEP_AFFLICTION,        // Deep Affliction: Agony + Corruption + Drain Hope (20s CD) + Nightfall procs + SB filler
+    SM_RUIN,                // SM / Ruin: Corruption (Nightfall + Pandemic) + Shadowburn + Shadow Bolt filler
+    DEMONOLOGY_EXECUTE,     // Demo Execute: Curse + Corruption + Decimation Soul Fire (<35% HP execute) + SB filler
+    PURE_SHADOW_BOLT,       // Pure Shadow Bolt: Curse + SB spam only (0 DoTs, classic 16 debuff limit)
+    AFFLICTION_HYBRID_DOTS, // Multi-DoT Hybrid: Agony + Corruption + Immolate + Drain Hope + SB filler
+
+    // Backward compatibility aliases
+    SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
+    INCINERATE_FIRE = FIRE_DESTRO
 };
 
 inline const char* rotation_choice_to_string(RotationChoice r) {
     switch (r) {
-        case RotationChoice::SHADOW_BOLT_PRIMARY: return "Shadow Bolt Primary";
-        case RotationChoice::INCINERATE_FIRE: return "Incinerate (Fire Destro)";
-        case RotationChoice::DEEP_AFFLICTION: return "Deep Affliction (Drain Hope)";
+        case RotationChoice::AUTO: return "Auto (Talent Adaptive)";
+        case RotationChoice::SHADOW_DESTRO: return "Shadow Destro (Conflagrate + Shadow & Flame)";
+        case RotationChoice::FIRE_DESTRO: return "Fire Destro (Incinerate + Conflagrate)";
+        case RotationChoice::DEEP_AFFLICTION: return "Deep Affliction (Drain Hope + Multi-DoT)";
+        case RotationChoice::SM_RUIN: return "SM / Ruin (Corruption + SB Spam)";
+        case RotationChoice::DEMONOLOGY_EXECUTE: return "Demo Execute (Decimation Soul Fire + SB)";
+        case RotationChoice::PURE_SHADOW_BOLT: return "Pure Shadow Bolt (No DoTs / Classic Limit)";
+        case RotationChoice::AFFLICTION_HYBRID_DOTS: return "Multi-DoT Hybrid (Agony + Corr + Immo)";
         default: return "Auto (Talent Adaptive)";
+    }
+}
+
+inline const char* rotation_choice_description(RotationChoice r) {
+    switch (r) {
+        case RotationChoice::AUTO:
+            return "Analyzes active talent points and automatically selects the highest-synergy rotation.";
+        case RotationChoice::SHADOW_DESTRO:
+            return "Maintains Immolate for Conflagrate to trigger Shadow & Flame (+10% Shadow damage for 20s), casting Shadowburn and Shadow Bolt.";
+        case RotationChoice::FIRE_DESTRO:
+            return "Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, weaves Shadowburn for +10% Fire buff, and spams Incinerate.";
+        case RotationChoice::DEEP_AFFLICTION:
+            return "Maintains Curse of Agony/Doom and Corruption for Nightfall procs and Pandemic crits, channels Drain Hope on 20s CD for +10% DoT amplification.";
+        case RotationChoice::SM_RUIN:
+            return "Maintains Corruption for Nightfall instant Shadow Bolts and Pandemic crits, casts Shadowburn on cooldown, and spams Shadow Bolt.";
+        case RotationChoice::DEMONOLOGY_EXECUTE:
+            return "Maintains Curse/Corruption with Shadow Bolt filler until boss reaches <35% HP, then spams rapid Decimation Soul Fires.";
+        case RotationChoice::PURE_SHADOW_BOLT:
+            return "Maintains Curse of Shadows and strictly spams Shadow Bolt without placing any DoTs (ideal for Classic 16 debuff limit).";
+        case RotationChoice::AFFLICTION_HYBRID_DOTS:
+            return "Maintains Curse of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Drain Hope and Shadow Bolt.";
+        default:
+            return "";
     }
 }
 

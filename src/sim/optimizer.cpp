@@ -37,7 +37,7 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             sim.policy.pet = PetChoice::SUCCUBUS;
         } else if (candidates[i].sac_succubus) {
             sim.policy.maintain_immolate = true;
-            sim.policy.rotation = RotationChoice::INCINERATE_FIRE;
+            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
             sim.policy.pet = PetChoice::NONE;
         } else if (candidates[i].sac_imp) {
             sim.policy.pet = PetChoice::NONE;
@@ -158,6 +158,13 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
 
     std::vector<PolicyCandidate> candidates;
 
+    // Rotation Presets comparison
+    for (uint8_t r = 0; r <= 7; ++r) {
+        PolicyConfig p = base_sim.policy;
+        p.rotation = static_cast<RotationChoice>(r);
+        candidates.push_back({"Rotation: " + std::string(rotation_choice_to_string(p.rotation)), p});
+    }
+
     // Grid search over Life Tap threshold: 10%, 20%, 30%, 40%, 50%
     for (double tap_pct : {10.0, 20.0, 30.0, 40.0, 50.0}) {
         PolicyConfig p = base_sim.policy;
@@ -173,8 +180,18 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
     }
     {
         PolicyConfig p = base_sim.policy;
+        p.curse = CurseChoice::CURSE_OF_ELEMENTS;
+        candidates.push_back({"Curse: Curse of the Elements (+10% Fire)", p});
+    }
+    {
+        PolicyConfig p = base_sim.policy;
         p.curse = CurseChoice::CURSE_OF_AGONY;
         candidates.push_back({"Curse: Curse of Agony (Solo DPS)", p});
+    }
+    {
+        PolicyConfig p = base_sim.policy;
+        p.curse = CurseChoice::CURSE_OF_DOOM;
+        candidates.push_back({"Curse: Curse of Doom (60s Burst)", p});
     }
     {
         PolicyConfig p = base_sim.policy;
@@ -430,7 +447,7 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
         sim.buffs.sacrifice_imp = splits[i].sac_imp;
         if (splits[i].sac_succubus) {
             sim.policy.maintain_immolate = true;
-            sim.policy.rotation = RotationChoice::INCINERATE_FIRE;
+            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
             sim.policy.pet = PetChoice::NONE;
         } else if (splits[i].sac_imp && sim.talents.demo.demonic_pact > 0) {
             sim.policy.pet = PetChoice::SUCCUBUS;
@@ -830,7 +847,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         auto b_fire = base_sim.buffs;
         b_fire.sacrifice_succubus = true;
         auto p_fire = base_sim.policy;
-        p_fire.rotation = RotationChoice::INCINERATE_FIRE;
+        p_fire.rotation = RotationChoice::FIRE_DESTRO;
         p_fire.maintain_immolate = true;
         p_fire.pet = PetChoice::NONE;
         candidates.push_back({"[Talents] Fire Destro: Incinerate + Sac Succubus (0/11/40)", Talents::create_forever_fire_destro(), p_fire, b_fire});
@@ -838,7 +855,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         auto b_shadow = base_sim.buffs;
         b_shadow.sacrifice_imp = true;
         auto p_shadow = base_sim.policy;
-        p_shadow.rotation = RotationChoice::SHADOW_BOLT_PRIMARY;
+        p_shadow.rotation = RotationChoice::SHADOW_DESTRO;
         p_shadow.pet = PetChoice::NONE;
         candidates.push_back({"[Talents] Shadow Destro: Conflag + Shadow&Flame (0/21/30)", Talents::create_forever_shadow_destro(), p_shadow, b_shadow});
     }

@@ -407,7 +407,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 6. Decimation Execute Soul Fire (<35% HP)
-        if (execute_phase && talents.demo.decimation > 0 && policy.use_decimation_soul_fire && now >= soul_fire_cd_ready) {
+        bool allow_decimation = (policy.rotation != RotationChoice::PURE_SHADOW_BOLT) &&
+                                (policy.use_decimation_soul_fire || policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE || policy.rotation == RotationChoice::AUTO);
+        if (execute_phase && talents.demo.decimation > 0 && allow_decimation && now >= soul_fire_cd_ready) {
             double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
             if (player_mana >= sf_mana) {
                 // Base cast time 4.0s; Bane reduces by 0.4s/pt; Decimation reduces by 20%/pt; modified by Haste
@@ -424,7 +426,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 7. Drain Hope (Affliction Capstone Channel)
-        if (talents.aff.drain_hope > 0 && policy.channel_drain_hope && now >= drain_hope_cd_ready) {
+        bool allow_drain_hope = (policy.channel_drain_hope || policy.rotation == RotationChoice::DEEP_AFFLICTION || 
+                                 policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS || policy.rotation == RotationChoice::AUTO) &&
+                                (policy.rotation != RotationChoice::PURE_SHADOW_BOLT && policy.rotation != RotationChoice::FIRE_DESTRO);
+        if (talents.aff.drain_hope > 0 && allow_drain_hope && now >= drain_hope_cd_ready) {
             double dh_mana = 240.0;
             if (player_mana >= dh_mana) {
                 player_mana -= dh_mana;
@@ -449,7 +454,25 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 8. Corruption maintenance
-        if (policy.corruption == DotPolicy::ALWAYS && !dot_corruption.active) {
+        bool want_corruption = false;
+        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
+            want_corruption = false;
+        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
+            want_corruption = (policy.corruption == DotPolicy::ALWAYS);
+        } else if (policy.rotation == RotationChoice::SM_RUIN || 
+                   policy.rotation == RotationChoice::DEEP_AFFLICTION || 
+                   policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS || 
+                   policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE ||
+                   policy.rotation == RotationChoice::SHADOW_DESTRO) {
+            want_corruption = (policy.corruption != DotPolicy::NEVER);
+        } else {
+            // AUTO
+            want_corruption = (policy.corruption == DotPolicy::ALWAYS) || 
+                              (talents.aff.nightfall > 0) || 
+                              (talents.aff.improved_corruption > 0 && talents.destro.incinerate == 0);
+        }
+
+        if (want_corruption && !dot_corruption.active) {
             double mana_cost = 290.0;
             if (player_mana >= mana_cost) {
                 double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
@@ -481,11 +504,25 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        // 9. Immolate maintenance (if Fire Destro or enabled)
-        bool want_immolate = policy.maintain_immolate || 
-                             policy.rotation == RotationChoice::INCINERATE_FIRE || 
-                             (policy.rotation == RotationChoice::AUTO && talents.destro.incinerate > 0) ||
-                             talents.destro.conflagrate > 0;
+        // 9. Immolate maintenance (if Fire Destro, Conflagrate Shadow & Flame buff, or Hybrid DoT)
+        bool want_immolate = false;
+        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
+            want_immolate = false;
+        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
+            want_immolate = true; // Essential for +25% Incinerate damage & Conflagrate
+        } else if (policy.rotation == RotationChoice::SHADOW_DESTRO) {
+            want_immolate = (talents.destro.conflagrate > 0); // Maintains Immolate so Conflag gives +10% Shadow buff
+        } else if (policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS) {
+            want_immolate = true; // Multi-DoT hybrid
+        } else if (policy.rotation == RotationChoice::SM_RUIN || policy.rotation == RotationChoice::DEEP_AFFLICTION || policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE) {
+            want_immolate = policy.maintain_immolate;
+        } else {
+            // AUTO
+            want_immolate = policy.maintain_immolate || 
+                            (talents.destro.incinerate > 0) || 
+                            (talents.destro.conflagrate > 0 && talents.destro.shadow_and_flame > 0);
+        }
+
         if (want_immolate && !dot_immolate.active) {
             double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
             if (player_mana >= mana_cost) {
@@ -502,7 +539,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 10. Conflagrate (if Immolate is active and talented)
-        if (talents.destro.conflagrate > 0 && policy.use_conflagrate && dot_immolate.active && now >= conflagrate_cd_ready) {
+        bool want_conflagrate = policy.use_conflagrate && (policy.rotation != RotationChoice::PURE_SHADOW_BOLT);
+        if (talents.destro.conflagrate > 0 && want_conflagrate && dot_immolate.active && now >= conflagrate_cd_ready) {
             double mana_cost = 265.0 * (1.0 - 0.03 * talents.destro.cataclysm);
             if (player_mana >= mana_cost) {
                 player_mana -= mana_cost;
@@ -559,9 +597,18 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 11. Shadowburn
-        bool want_shadowburn = (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN) ||
-                               (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire && 
-                                (policy.rotation == RotationChoice::INCINERATE_FIRE || (policy.rotation == RotationChoice::AUTO && talents.destro.incinerate > 0)));
+        bool want_shadowburn = false;
+        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
+            want_shadowburn = (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
+        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
+            // Weave Shadowburn to maintain +10% Fire buff from Shadow & Flame (20s duration)
+            want_shadowburn = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || 
+                              (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
+        } else {
+            want_shadowburn = (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN) ||
+                              (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY && execute_phase);
+        }
+
         if (talents.destro.shadowburn > 0 && want_shadowburn && now >= shadowburn_cd_ready) {
             double mana_cost = 365.0 * (1.0 - 0.03 * talents.destro.cataclysm);
             if (player_mana >= mana_cost) {
@@ -609,7 +656,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 12. Primary filler: Incinerate or Shadow Bolt
-        bool use_incinerate_filler = (policy.rotation == RotationChoice::INCINERATE_FIRE) ||
+        bool use_incinerate_filler = (policy.rotation == RotationChoice::FIRE_DESTRO) ||
                                      (policy.rotation == RotationChoice::AUTO && talents.destro.incinerate > 0);
 
         if (use_incinerate_filler && talents.destro.incinerate > 0) {
@@ -940,8 +987,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double dmg = 52.0 + (0.166667 * sp);
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
 
-                    // Pandemic (Afflic Row 3 Col 4): allows periodic spells to critically strike
-                    if (talents.aff.pandemic > 0 && rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                    // Baseline DoT Crit + Pandemic bonus (Affliction)
+                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                         dmg *= pand_crit_mult;
                     }
@@ -975,8 +1022,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                         dmg *= get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
-                        // Pandemic DoT crit
-                        if (talents.aff.pandemic > 0 && rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        // Baseline DoT Crit + Pandemic bonus (Affliction)
+                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                             dmg *= pand_crit_mult;
                         }
@@ -1022,8 +1069,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                         double dmg = base_tick * ramp * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
-                        // Pandemic DoT crit
-                        if (talents.aff.pandemic > 0 && rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        // Baseline DoT Crit + Pandemic bonus (Affliction)
+                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                             dmg *= pand_crit_mult;
                         }
@@ -1047,6 +1094,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dmg = (485.0 / 5.0) + (0.65 / 5.0) * sp;
                         }
                         dmg *= get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * stats.all_damage_multiplier;
+
+                        // Baseline DoT Crit + Ruin bonus (Destruction)
+                        if (rng.chance(calculate_crit_chance(School::FIRE, stats))) {
+                            dmg *= destro_crit_mult;
+                        }
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_immolate += dmg;

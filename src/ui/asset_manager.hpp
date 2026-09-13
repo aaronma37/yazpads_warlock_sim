@@ -115,7 +115,7 @@ public:
 
         // Create a 40x40 dark purple fallback slot texture
         Image img = GenImageColor(40, 40, Color{ 35, 20, 50, 255 });
-        ImageDrawRectangleLines(&img, Rectangle{ 0, 0, 40, 40 }, 1, Color{ 100, 60, 140, 255 });
+        ImageDrawRectangleLines(&img, 0, 0, 40, 40, Color{ 100, 60, 140, 255 });
         fallback_texture_ = LoadTextureFromImage(img);
         UnloadImage(img);
 

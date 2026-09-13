@@ -102,7 +102,7 @@ public:
                             sim.buffs.sacrifice_succubus = true;
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.maintain_immolate = true;
-                            sim.policy.rotation = RotationChoice::INCINERATE_FIRE;
+                            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                             sim.policy.pet = PetChoice::NONE;
                         }
                         if (ImGui::MenuItem("Forever Demonic Pact + Ruin (2/31/18 - Sac Imp + Succubus)")) {

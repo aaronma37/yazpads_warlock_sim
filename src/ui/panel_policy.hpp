@@ -12,6 +12,27 @@ inline void render_panel_policy_controls(PolicyConfig& policy) {
     ImGui::TextColored(ImVec4(0.8f, 0.7f, 1.0f, 1.0f), "Combat Policy & Spell Priorities:");
     ImGui::Separator();
 
+    // 0. Rotation Choice / Strategy
+    ImGui::Text("Active Spell Rotation Preset:");
+    int rot_idx = static_cast<int>(policy.rotation);
+    const char* rot_names[] = {
+        "Auto (Talent Adaptive)",
+        "Shadow Destro (Conflagrate + Shadow & Flame)",
+        "Fire Destro (Incinerate + Conflagrate)",
+        "Deep Affliction (Drain Hope + Multi-DoT)",
+        "SM / Ruin (Corruption + SB Spam)",
+        "Demo Execute (Decimation Soul Fire + SB)",
+        "Pure Shadow Bolt (No DoTs / Classic Limit)",
+        "Multi-DoT Hybrid (Agony + Corr + Immo)"
+    };
+    if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {
+        policy.rotation = static_cast<RotationChoice>(rot_idx);
+    }
+    ImGui::TextDisabled("%s", rotation_choice_description(policy.rotation));
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
     // 1. Curse Priority
     ImGui::Text("Curse Assignment:");
     int curse_idx = static_cast<int>(policy.curse);

@@ -64,7 +64,7 @@ int run_headless(int argc, char* argv[]) {
                 sim.buffs.sacrifice_succubus = true;
                 sim.buffs.sacrifice_imp = false;
                 sim.policy.maintain_immolate = true;
-                sim.policy.rotation = RotationChoice::INCINERATE_FIRE;
+                sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                 sim.policy.pet = PetChoice::NONE;
             } else if (spec == "demonic_pact" || spec == "demo_pact" || spec == "pact" || spec == "demo") {
                 sim.talents = Talents::create_forever_demonic_pact();

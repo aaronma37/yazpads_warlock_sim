@@ -13,7 +13,7 @@ endif()
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/implot
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/rlImGui
@@ -43,10 +43,13 @@ add_executable(warlock_sim
 )
 
 target_link_libraries(warlock_sim PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/lib/libraylib.a
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
+    GL
     m
     pthread
     dl
+    rt
+    X11
 )
 
 set_target_properties(warlock_sim PROPERTIES
