@@ -55,3 +55,33 @@ target_link_libraries(warlock_sim PRIVATE
 set_target_properties(warlock_sim PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
 )
+
+# Test Suite
+enable_testing()
+
+set(TEST_SOURCES
+    tests/main_tests.cpp
+    tests/test_races.cpp
+    tests/test_talents.cpp
+    tests/test_gear.cpp
+    tests/test_buffs.cpp
+    tests/test_rotations.cpp
+    tests/test_mechanics.cpp
+)
+
+add_executable(sim_tests
+    ${TEST_SOURCES}
+    ${SIM_SOURCES}
+)
+
+target_link_libraries(sim_tests PRIVATE
+    pthread
+    m
+)
+
+set_target_properties(sim_tests PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+)
+
+add_test(NAME AllUnitTests COMMAND sim_tests)
+
