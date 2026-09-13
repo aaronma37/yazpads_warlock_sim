@@ -1,0 +1,547 @@
+#pragma once
+#include <cstdint>
+#include <string>
+#include <vector>
+#include <array>
+#include <algorithm>
+
+namespace warlock {
+
+struct TalentNodeDef {
+    const char* id;
+    const char* name;
+    int row;
+    int col;
+    int max_points;
+    const char* icon;
+    const char* req;
+    const char* desc[5];
+};
+
+struct AfflictionTalents {
+    int improved_life_tap = 0; // max: 2, R1C1
+    int suppression = 0; // max: 5, R1C2
+    int improved_corruption = 0; // max: 5, R1C3
+    int malediction = 0; // max: 5, R2C1
+    int soul_harvesting = 0; // max: 2, R2C2
+    int improved_drains = 0; // max: 3, R2C3
+    int improved_bane_of_agony = 0; // max: 2, R3C1
+    int fel_concentration = 0; // max: 3, R3C2
+    int amplify_curse = 0; // max: 1, R3C3
+    int pandemic = 0; // max: 3, R3C4
+    int malevolence = 0; // max: 5, R4C1
+    int nightfall = 0; // max: 2, R4C2
+    int curse_of_exhaustion = 0; // max: 1, R4C3
+    int siphon_life = 0; // max: 1, R5C2
+    int soul_siphon = 0; // max: 3, R5C3
+    int shadow_mastery = 0; // max: 5, R6C3
+    int drain_hope = 0; // max: 1, R7C2
+
+    int total_points() const {
+        return improved_life_tap + 
+               suppression + 
+               improved_corruption + 
+               malediction + 
+               soul_harvesting + 
+               improved_drains + 
+               improved_bane_of_agony + 
+               fel_concentration + 
+               amplify_curse + 
+               pandemic + 
+               malevolence + 
+               nightfall + 
+               curse_of_exhaustion + 
+               siphon_life + 
+               soul_siphon + 
+               shadow_mastery + 
+               drain_hope;
+    }
+
+    int& get_points_by_index(size_t idx) {
+        switch (idx) {
+            case 0: return improved_life_tap;
+            case 1: return suppression;
+            case 2: return improved_corruption;
+            case 3: return malediction;
+            case 4: return soul_harvesting;
+            case 5: return improved_drains;
+            case 6: return improved_bane_of_agony;
+            case 7: return fel_concentration;
+            case 8: return amplify_curse;
+            case 9: return pandemic;
+            case 10: return malevolence;
+            case 11: return nightfall;
+            case 12: return curse_of_exhaustion;
+            case 13: return siphon_life;
+            case 14: return soul_siphon;
+            case 15: return shadow_mastery;
+            case 16: return drain_hope;
+            default: return improved_life_tap;
+        }
+    }
+
+    int get_points_by_index(size_t idx) const {
+        switch (idx) {
+            case 0: return improved_life_tap;
+            case 1: return suppression;
+            case 2: return improved_corruption;
+            case 3: return malediction;
+            case 4: return soul_harvesting;
+            case 5: return improved_drains;
+            case 6: return improved_bane_of_agony;
+            case 7: return fel_concentration;
+            case 8: return amplify_curse;
+            case 9: return pandemic;
+            case 10: return malevolence;
+            case 11: return nightfall;
+            case 12: return curse_of_exhaustion;
+            case 13: return siphon_life;
+            case 14: return soul_siphon;
+            case 15: return shadow_mastery;
+            case 16: return drain_hope;
+            default: return 0;
+        }
+    }
+};
+
+struct DemonologyTalents {
+    int improved_health_funnel = 0; // max: 2, R1C1
+    int improved_imp = 0; // max: 3, R1C2
+    int demonic_embrace = 0; // max: 5, R1C3
+    int unholy_power = 0; // max: 5, R1C4
+    int demonic_aegis = 0; // max: 2, R2C1
+    int improved_voidwalker = 0; // max: 3, R2C2
+    int fel_vitality = 0; // max: 3, R2C3
+    int demonic_energies = 0; // max: 2, R2C4
+    int improved_sayaad = 0; // max: 3, R3C1
+    int demonic_sacrifice = 0; // max: 1, R3C2
+    int master_summoner = 0; // max: 2, R3C3
+    int decimation = 0; // max: 2, R4C1
+    int fel_domination = 0; // max: 1, R4C3
+    int demonic_brand = 0; // max: 3, R4C4
+    int improved_felhunter = 0; // max: 3, R5C1
+    int soul_link = 0; // max: 1, R5C2
+    int demonic_knowledge = 0; // max: 3, R5C3
+    int master_demonologist = 0; // max: 5, R6C3
+    int demonic_pact = 0; // max: 1, R7C2
+
+    int total_points() const {
+        return improved_health_funnel + 
+               improved_imp + 
+               demonic_embrace + 
+               unholy_power + 
+               demonic_aegis + 
+               improved_voidwalker + 
+               fel_vitality + 
+               demonic_energies + 
+               improved_sayaad + 
+               demonic_sacrifice + 
+               master_summoner + 
+               decimation + 
+               fel_domination + 
+               demonic_brand + 
+               improved_felhunter + 
+               soul_link + 
+               demonic_knowledge + 
+               master_demonologist + 
+               demonic_pact;
+    }
+
+    int& get_points_by_index(size_t idx) {
+        switch (idx) {
+            case 0: return improved_health_funnel;
+            case 1: return improved_imp;
+            case 2: return demonic_embrace;
+            case 3: return unholy_power;
+            case 4: return demonic_aegis;
+            case 5: return improved_voidwalker;
+            case 6: return fel_vitality;
+            case 7: return demonic_energies;
+            case 8: return improved_sayaad;
+            case 9: return demonic_sacrifice;
+            case 10: return master_summoner;
+            case 11: return decimation;
+            case 12: return fel_domination;
+            case 13: return demonic_brand;
+            case 14: return improved_felhunter;
+            case 15: return soul_link;
+            case 16: return demonic_knowledge;
+            case 17: return master_demonologist;
+            case 18: return demonic_pact;
+            default: return improved_health_funnel;
+        }
+    }
+
+    int get_points_by_index(size_t idx) const {
+        switch (idx) {
+            case 0: return improved_health_funnel;
+            case 1: return improved_imp;
+            case 2: return demonic_embrace;
+            case 3: return unholy_power;
+            case 4: return demonic_aegis;
+            case 5: return improved_voidwalker;
+            case 6: return fel_vitality;
+            case 7: return demonic_energies;
+            case 8: return improved_sayaad;
+            case 9: return demonic_sacrifice;
+            case 10: return master_summoner;
+            case 11: return decimation;
+            case 12: return fel_domination;
+            case 13: return demonic_brand;
+            case 14: return improved_felhunter;
+            case 15: return soul_link;
+            case 16: return demonic_knowledge;
+            case 17: return master_demonologist;
+            case 18: return demonic_pact;
+            default: return 0;
+        }
+    }
+};
+
+struct DestructionTalents {
+    int destructive_reach = 0; // max: 2, R1C1
+    int improved_shadow_bolt = 0; // max: 5, R1C2
+    int bane = 0; // max: 5, R1C3
+    int molten_skin = 0; // max: 5, R2C1
+    int cataclysm = 0; // max: 3, R2C2
+    int aftermath = 0; // max: 5, R2C3
+    int ruin = 0; // max: 5, R3C2
+    int shadowburn = 0; // max: 1, R3C3
+    int intensity = 0; // max: 3, R4C1
+    int agonizing_flames = 0; // max: 3, R4C2
+    int conflagrate = 0; // max: 1, R4C3
+    int pyroclasm = 0; // max: 2, R5C1
+    int bane_of_havoc = 0; // max: 1, R5C2
+    int fire_and_brimstone = 0; // max: 3, R5C3
+    int shadow_and_flame = 0; // max: 5, R6C3
+    int incinerate = 0; // max: 1, R7C2
+
+    int total_points() const {
+        return destructive_reach + 
+               improved_shadow_bolt + 
+               bane + 
+               molten_skin + 
+               cataclysm + 
+               aftermath + 
+               ruin + 
+               shadowburn + 
+               intensity + 
+               agonizing_flames + 
+               conflagrate + 
+               pyroclasm + 
+               bane_of_havoc + 
+               fire_and_brimstone + 
+               shadow_and_flame + 
+               incinerate;
+    }
+
+    int& get_points_by_index(size_t idx) {
+        switch (idx) {
+            case 0: return destructive_reach;
+            case 1: return improved_shadow_bolt;
+            case 2: return bane;
+            case 3: return molten_skin;
+            case 4: return cataclysm;
+            case 5: return aftermath;
+            case 6: return ruin;
+            case 7: return shadowburn;
+            case 8: return intensity;
+            case 9: return agonizing_flames;
+            case 10: return conflagrate;
+            case 11: return pyroclasm;
+            case 12: return bane_of_havoc;
+            case 13: return fire_and_brimstone;
+            case 14: return shadow_and_flame;
+            case 15: return incinerate;
+            default: return destructive_reach;
+        }
+    }
+
+    int get_points_by_index(size_t idx) const {
+        switch (idx) {
+            case 0: return destructive_reach;
+            case 1: return improved_shadow_bolt;
+            case 2: return bane;
+            case 3: return molten_skin;
+            case 4: return cataclysm;
+            case 5: return aftermath;
+            case 6: return ruin;
+            case 7: return shadowburn;
+            case 8: return intensity;
+            case 9: return agonizing_flames;
+            case 10: return conflagrate;
+            case 11: return pyroclasm;
+            case 12: return bane_of_havoc;
+            case 13: return fire_and_brimstone;
+            case 14: return shadow_and_flame;
+            case 15: return incinerate;
+            default: return 0;
+        }
+    }
+};
+
+inline const std::array<TalentNodeDef, 17> FOREVER_AFFLICTION_NODES = {{
+    {"improved_life_tap", "Improved Life Tap", 1, 1, 2, "spell_shadow_burningspirit.png", nullptr, {"Increases the amount of Mana awarded by your Life Tap spell by 10%.", "Increases the amount of Mana awarded by your Life Tap spell by 20%.", nullptr, nullptr, nullptr}},
+    {"suppression", "Suppression", 1, 2, 5, "spell_shadow_unsummonbuilding.png", nullptr, {"Increases your chance to hit with all spells and attacks by 1% and reduces all threat you generate by 4%.", "Increases your chance to hit with all spells and attacks by 2% and reduces all threat you generate by 8%.", "Increases your chance to hit with all spells and attacks by 3% and reduces all threat you generate by 12%.", "Increases your chance to hit with all spells and attacks by 4% and reduces all threat you generate by 16%.", "Increases your chance to hit with all spells and attacks by 5% and reduces all threat you generate by 20%."}},
+    {"improved_corruption", "Improved Corruption", 1, 3, 5, "spell_shadow_abominationexplosion.png", nullptr, {"Reduces the casting time of your Corruption spell by 0.4 sec and increases the damage it deals by 2%.", "Reduces the casting time of your Corruption spell by 0.8 sec and increases the damage it deals by 4%.", "Reduces the casting time of your Corruption spell by 1.2 sec and increases the damage it deals by 6%.", "Reduces the casting time of your Corruption spell by 1.6 sec and increases the damage it deals by 8%.", "Reduces the casting time of your Corruption spell by 2 sec and increases the damage it deals by 10%."}},
+    {"malediction", "Malediction", 2, 1, 5, "spell_shadow_curseofachimonde.png", nullptr, {"Increases all periodic damage done by your Warlock spells by 1%.", "Increases all periodic damage done by your Warlock spells by 2%.", "Increases all periodic damage done by your Warlock spells by 3%.", "Increases all periodic damage done by your Warlock spells by 4%.", "Increases all periodic damage done by your Warlock spells by 5%."}},
+    {"soul_harvesting", "Soul Harvesting", 2, 2, 2, "spell_shadow_soulgem.png", nullptr, {"You gain Soul Harvest for 10 sec if a victim is killed while afflicted with your Drain Soul. Soul Harvest allows your Mana to regenerate at 50% of normal speed while you are casting spells, and grants a 50% increase to your Mana regeneration.", "You gain Soul Harvest for 10 sec if a victim is killed while afflicted with your Drain Soul. Soul Harvest allows your Mana to regenerate at 100% of normal speed while you are casting spells, and grants a 100% increase to your Mana regeneration.", nullptr, nullptr, nullptr}},
+    {"improved_drains", "Improved Drains", 2, 3, 3, "spell_shadow_lifedrain02.png", nullptr, {"Increases the damage done or health drained by your Drain Life and Drain Soul spells by 2% per each of your other Affliction effects active on the target, up to a maximum increase of 6%. When your Drain Soul damages targets below 20% health, this bonus is tripled. Additionally, your Drain Life range is extended by 3 yards.", "Increases the damage done or health drained by your Drain Life and Drain Soul spells by 4% per each of your other Affliction effects active on the target, up to a maximum increase of 12%. When your Drain Soul damages targets below 20% health, this bonus is tripled. Additionally, your Drain Life range is extended by 6 yards.", "Increases the damage done or health drained by your Drain Life and Drain Soul spells by 6% per each of your other Affliction effects active on the target, up to a maximum increase of 18%. When your Drain Soul damages targets below 20% health, this bonus is tripled. Additionally, your Drain Life range is extended by 9 yards.", nullptr, nullptr}},
+    {"improved_bane_of_agony", "Improved Bane of Agony", 3, 1, 2, "spell_shadow_curseofsargeras.png", nullptr, {"Increases the damage done by your Bane of Agony by 5%.", "Increases the damage done by your Bane of Agony by 10%.", nullptr, nullptr, nullptr}},
+    {"fel_concentration", "Fel Concentration", 3, 2, 3, "spell_shadow_fingerofdeath.png", nullptr, {"Gives you a 23% chance to avoid interruption caused by damage while channeling or casting your Drain Life, Drain Mana, or Drain Soul spells.", "Gives you a 46% chance to avoid interruption caused by damage while channeling or casting your Drain Life, Drain Mana, or Drain Soul spells.", "Gives you a 70% chance to avoid interruption caused by damage while channeling or casting your Drain Life, Drain Mana, or Drain Soul spells.", nullptr, nullptr}},
+    {"amplify_curse", "Amplify Curse", 3, 3, 1, "spell_shadow_contagion.png", nullptr, {"Increases the effect of your next Curse of Weakness or Bane of Agony by 50%, or your next Curse of Exhaustion by 20%. Lasts 30 sec.", nullptr, nullptr, nullptr, nullptr}},
+    {"pandemic", "Pandemic", 3, 4, 3, "spell_shadow_unstableaffliction_2.png", nullptr, {"Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Drain Hope spells by 33%.", "Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Drain Hope spells by 66%.", "Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Drain Hope spells by 100%.", nullptr, nullptr}},
+    {"malevolence", "Malevolence", 4, 1, 5, "spell_shadow_deathpact.png", nullptr, {"Increases the critical effect chance of your Shadow spells by 1%.", "Increases the critical effect chance of your Shadow spells by 2%.", "Increases the critical effect chance of your Shadow spells by 3%.", "Increases the critical effect chance of your Shadow spells by 4%.", "Increases the critical effect chance of your Shadow spells by 5%."}},
+    {"nightfall", "Nightfall", 4, 2, 2, "spell_shadow_twilight.png", nullptr, {"Gives your Corruption, Drain Soul, and Drain Life spells a 2% chance to cause you to enter a Shadow Trance after damaging the opponent. The Shadow Trance reduces the casting time of your next Shadow Bolt spell by 100%.", "Gives your Corruption, Drain Soul, and Drain Life spells a 4% chance to cause you to enter a Shadow Trance after damaging the opponent. The Shadow Trance reduces the casting time of your next Shadow Bolt spell by 100%.", nullptr, nullptr, nullptr}},
+    {"curse_of_exhaustion", "Curse of Exhaustion", 4, 3, 1, "spell_shadow_grimward.png", "Amplify Curse", {"Reduces the target's movement speed by 30% for 12 sec. Only one Curse per Warlock can be active on any one target.", nullptr, nullptr, nullptr, nullptr}},
+    {"siphon_life", "Siphon Life", 5, 2, 1, "spell_shadow_requiem.png", nullptr, {"Transfers 15 health from the target to the caster every 3 sec.  Lasts 30 sec.", nullptr, nullptr, nullptr, nullptr}},
+    {"soul_siphon", "Soul Siphon", 5, 3, 3, "spell_shadow_soulleech_3.png", nullptr, {"Increases the rate at which your Drain Life and Drain Soul deal damage by 17%, but reduces your healing from Drain Life by 10%.", "Increases the rate at which your Drain Life and Drain Soul deal damage by 34%, but reduces your healing from Drain Life by 20%.", "Increases the rate at which your Drain Life and Drain Soul deal damage by 50%, but reduces your healing from Drain Life by 30%.", nullptr, nullptr}},
+    {"shadow_mastery", "Shadow Mastery", 6, 3, 5, "spell_shadow_shadetruesight.png", nullptr, {"Increases the damage dealt or life drained by your Shadow spells by 1%.", "Increases the damage dealt or life drained by your Shadow spells by 2%.", "Increases the damage dealt or life drained by your Shadow spells by 3%.", "Increases the damage dealt or life drained by your Shadow spells by 4%.", "Increases the damage dealt or life drained by your Shadow spells by 5%."}},
+    {"drain_hope", "Drain Hope", 7, 2, 1, "spell_shadow_haunting.png", "Siphon Life", {"Drains all hope from the target, dealing 52 Shadow damage every 1 sec and increasing all other Shadow damage over time you deal to that target by 10%. Lasts 6 sec.", nullptr, nullptr, nullptr, nullptr}},
+}};
+
+inline const std::array<TalentNodeDef, 19> FOREVER_DEMONOLOGY_NODES = {{
+    {"improved_health_funnel", "Improved Health Funnel", 1, 1, 2, "spell_shadow_lifedrain.png", nullptr, {"Increases the amount of health transferred by your Health Funnel spell by 20%, reduces its health cost by 15%, and reduces all threat your Health Funnel generates by 50%. Allows Health Funnel to be used regardless of your demon's health.", "Increases the amount of health transferred by your Health Funnel spell by 40%, reduces its health cost by 30%, and reduces all threat your Health Funnel generates by 100%. Allows Health Funnel to be used regardless of your demon's health.", nullptr, nullptr, nullptr}},
+    {"improved_imp", "Improved Imp", 1, 2, 3, "spell_shadow_summonimp.png", nullptr, {"Increases the damage of your Imp's Firebolt spell by 10% and the effect of its Fire Shield spell by 10%.", "Increases the damage of your Imp's Firebolt spell by 20% and the effect of its Fire Shield spell by 20%.", "Increases the damage of your Imp's Firebolt spell by 30% and the effect of its Fire Shield spell by 30%.", nullptr, nullptr}},
+    {"demonic_embrace", "Demonic Embrace", 1, 3, 5, "spell_shadow_metamorphosis.png", nullptr, {"Increases your total Stamina by 3%.", "Increases your total Stamina by 6%.", "Increases your total Stamina by 9%.", "Increases your total Stamina by 12%.", "Increases your total Stamina by 15%."}},
+    {"unholy_power", "Unholy Power", 1, 4, 5, "spell_shadow_shadowworddominate.png", nullptr, {"Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by 2%.", "Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by 4%.", "Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by 6%.", "Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by 8%.", "Increases all damage done by your Imp, Voidwalker, Succubus, Incubus, and Felhunter pets by 10%."}},
+    {"demonic_aegis", "Demonic Aegis", 2, 1, 2, "spell_shadow_ragingscream.png", nullptr, {"Increases the effectiveness of your Demon Skin and Demon Armor spells by 15%.", "Increases the effectiveness of your Demon Skin and Demon Armor spells by 30%.", nullptr, nullptr, nullptr}},
+    {"improved_voidwalker", "Improved Voidwalker", 2, 2, 3, "spell_shadow_summonvoidwalker.png", nullptr, {"Increases the effectiveness of your Voidwalker's Torment, Consume Shadows, Sacrifice and Suffering spells by 10%.", "Increases the effectiveness of your Voidwalker's Torment, Consume Shadows, Sacrifice and Suffering spells by 20%.", "Increases the effectiveness of your Voidwalker's Torment, Consume Shadows, Sacrifice and Suffering spells by 30%.", nullptr, nullptr}},
+    {"fel_vitality", "Fel Vitality", 2, 3, 3, "spell_shadow_demonicfortitude.png", nullptr, {"Increases the maximum health and Mana of your Imp, Voidwalker, Succubus, Incubus, and Felhunter by 5%, and increases your maximum Mana by 5%.", "Increases the maximum health and Mana of your Imp, Voidwalker, Succubus, Incubus, and Felhunter by 10%, and increases your maximum Mana by 10%.", "Increases the maximum health and Mana of your Imp, Voidwalker, Succubus, Incubus, and Felhunter by 15%, and increases your maximum Mana by 15%.", nullptr, nullptr}},
+    {"demonic_energies", "Demonic Energies", 2, 4, 2, "spell_shadow_demonicempathy.png", nullptr, {"You heal your pet for 8% of all spell damage you deal. When you gain Mana from Life Tap, your summoned demon gains 50% of the Mana you gain.", "You heal your pet for 8% of all spell damage you deal. When you gain Mana from Life Tap, your summoned demon gains 100% of the Mana you gain.", nullptr, nullptr, nullptr}},
+    {"improved_sayaad", "Improved Sayaad", 3, 1, 3, "ability_warlock_randomizesuccubusincubus.png", nullptr, {"Increases the effect of your Succubus' and Incubus' Lash of Pain and Soothing Kiss spells by 10%, and increases the duration of your Succubus' and Incubus' Seduction and Lesser Invisibility spells by 10%.", "Increases the effect of your Succubus' and Incubus' Lash of Pain and Soothing Kiss spells by 20%, and increases the duration of your Succubus' and Incubus' Seduction and Lesser Invisibility spells by 20%.", "Increases the effect of your Succubus' and Incubus' Lash of Pain and Soothing Kiss spells by 30%, and increases the duration of your Succubus' and Incubus' Seduction and Lesser Invisibility spells by 30%.", nullptr, nullptr}},
+    {"demonic_sacrifice", "Demonic Sacrifice", 3, 2, 1, "spell_shadow_psychicscream.png", nullptr, {"When activated, sacrifices your summoned Demon to enhance the opposing aspect of your power, granting you an effect that lasts 2 hrs. The effect is canceled if any Demon is summoned. Imp: Increases your Shadow damage by 15%. Voidwalker: Restores 2% of your total Mana every 4 sec. Succubus/Incubus: Increases your Fire damage by 15%. Felhunter: Restores 3% of your total Health every 4 sec.", nullptr, nullptr, nullptr, nullptr}},
+    {"master_summoner", "Master Summoner", 3, 3, 2, "spell_shadow_impphaseshift.png", nullptr, {"Reduces the casting time of your Imp, Voidwalker, Succubus, Incubus, and Felhunter Summoning spells by 2 sec and the Mana cost by 20%.", "Reduces the casting time of your Imp, Voidwalker, Succubus, Incubus, and Felhunter Summoning spells by 4 sec and the Mana cost by 40%.", nullptr, nullptr, nullptr}},
+    {"decimation", "Decimation", 4, 1, 2, "spell_fire_fireball02.png", nullptr, {"Reduces the cooldown of your Soul Fire spell by 45%. When you cast Shadow Bolt or Searing Pain on an enemy below 35% health, they deal 3% increased damage, and for the next 10 sec your Soul Fire spell has its cast time reduced by 20% and costs no Soul Shards.", "Reduces the cooldown of your Soul Fire spell by 90%. When you cast Shadow Bolt or Searing Pain on an enemy below 35% health, they deal 6% increased damage, and for the next 10 sec your Soul Fire spell has its cast time reduced by 40% and costs no Soul Shards.", nullptr, nullptr, nullptr}},
+    {"fel_domination", "Fel Domination", 4, 3, 1, "spell_nature_removecurse.png", "Master Summoner", {"Your next Imp, Voidwalker, Succubus, Incubus, or Felhunter Summon spell has its casting time reduced by 5.5 sec and its Mana cost reduced by 50%.", nullptr, nullptr, nullptr, nullptr}},
+    {"demonic_brand", "Demonic Brand", 4, 4, 3, "spell_shadow_demonbreath.png", nullptr, {"Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 34% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 26 to 28 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 50% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet.", nullptr, nullptr}},
+    {"improved_felhunter", "Improved Felhunter", 5, 1, 3, "spell_shadow_summonfelhunter.png", nullptr, {"Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 10%, and reduces the cooldown of its Spell Lock by 2 sec.", "Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 20%, and reduces the cooldown of its Spell Lock by 4 sec.", "Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 30%, and reduces the cooldown of its Spell Lock by 6 sec.", nullptr, nullptr}},
+    {"soul_link", "Soul Link", 5, 2, 1, "spell_shadow_gathershadows.png", "Demonic Sacrifice", {"When active, 30% of all damage taken by the caster is taken by your Imp, Voidwalker, Succubus, Incubus, or Felhunter Demon instead. In addition, both the Demon and the master will inflict 3% more damage. Lasts as long as the Demon is active.", nullptr, nullptr, nullptr, nullptr}},
+    {"demonic_knowledge", "Demonic Knowledge", 5, 3, 3, "spell_shadow_improvedvampiricembrace.png", nullptr, {"Increases your spell damage and healing by up to 33% of your level while you have a summoned Demon pet active.", "Increases your spell damage and healing by up to 66% of your level while you have a summoned Demon pet active.", "Increases your spell damage and healing by up to 100% of your level while you have a summoned Demon pet active.", nullptr, nullptr}},
+    {"master_demonologist", "Master Demonologist", 6, 3, 5, "spell_shadow_shadowpact.png", nullptr, {"Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by 2%. Voidwalker - Reduces Physical damage taken by 2%. Succubus/Incubus - Increases Shadow damage done by 2%. Felhunter - Reduces Magic damage taken by 2%.", "Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by 4%. Voidwalker - Reduces Physical damage taken by 4%. Succubus/Incubus - Increases Shadow damage done by 4%. Felhunter - Reduces Magic damage taken by 4%.", "Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by 6%. Voidwalker - Reduces Physical damage taken by 6%. Succubus/Incubus - Increases Shadow damage done by 6%. Felhunter - Reduces Magic damage taken by 6%.", "Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by 8%. Voidwalker - Reduces Physical damage taken by 8%. Succubus/Incubus - Increases Shadow damage done by 8%. Felhunter - Reduces Magic damage taken by 8%.", "Grants both the Warlock and the summoned demon an effect as long as that demon is active. Imp - Increases Fire damage done by 10%. Voidwalker - Reduces Physical damage taken by 10%. Succubus/Incubus - Increases Shadow damage done by 10%. Felhunter - Reduces Magic damage taken by 10%."}},
+    {"demonic_pact", "Demonic Pact", 7, 2, 1, "spell_shadow_demonicpact.png", "Soul Link", {"Your Demonic Sacrifice effect is no longer cancelled by summoning a different Demon pet. Resummoning the sacrificed pet will still cancel the effect.", nullptr, nullptr, nullptr, nullptr}},
+}};
+
+inline const std::array<TalentNodeDef, 16> FOREVER_DESTRUCTION_NODES = {{
+    {"destructive_reach", "Destructive Reach", 1, 1, 2, "spell_shadow_corpseexplode.png", nullptr, {"Increases the range of your damaging spells by 10%.", "Increases the range of your damaging spells by 20%.", nullptr, nullptr, nullptr}},
+    {"improved_shadow_bolt", "Improved Shadow Bolt", 1, 2, 5, "spell_shadow_shadowbolt.png", nullptr, {"Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by 4% for 12 sec.", "Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by 8% for 12 sec.", "Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by 12% for 12 sec.", "Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by 16% for 12 sec.", "Your Shadow Bolt critical strikes increase Shadow damage taken by the target from your attacks by 20% for 12 sec."}},
+    {"bane", "Bane", 1, 3, 5, "spell_shadow_deathpact.png", nullptr, {"Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.1 sec and your Soul Fire spell by 0.4 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.2 sec and your Soul Fire spell by 0.8 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.3 sec and your Soul Fire spell by 1.2 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.4 sec and your Soul Fire spell by 1.6 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.5 sec and your Soul Fire spell by 2 sec."}},
+    {"molten_skin", "Molten Skin", 2, 1, 5, "ability_mage_moltenarmor.png", nullptr, {"Reduces all damage taken by 2%.", "Reduces all damage taken by 4%.", "Reduces all damage taken by 6%.", "Reduces all damage taken by 8%.", "Reduces all damage taken by 10%."}},
+    {"cataclysm", "Cataclysm", 2, 2, 3, "spell_fire_windsofwoe.png", nullptr, {"Reduces the Mana cost of your Destruction spells by 3%.", "Reduces the Mana cost of your Destruction spells by 6%.", "Reduces the Mana cost of your Destruction spells by 9%.", nullptr, nullptr}},
+    {"aftermath", "Aftermath", 2, 3, 5, "spell_fire_fire.png", nullptr, {"Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 20% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 40% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 60% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 80% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 100% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec."}},
+    {"ruin", "Ruin", 3, 2, 5, "spell_shadow_shadowwordpain.png", nullptr, {"Increases the critical strike damage bonus of your Destruction spells by 20%.", "Increases the critical strike damage bonus of your Destruction spells by 40%.", "Increases the critical strike damage bonus of your Destruction spells by 60%.", "Increases the critical strike damage bonus of your Destruction spells by 80%.", "Increases the critical strike damage bonus of your Destruction spells by 100%."}},
+    {"shadowburn", "Shadowburn", 3, 3, 1, "spell_shadow_scourgebuild.png", nullptr, {"Instantly blasts the target for 102 to 111 Shadow damage. If a non-trivial target dies within 8 sec of being hit with Shadowburn, the caster gains a Soul Shard.", nullptr, nullptr, nullptr, nullptr}},
+    {"intensity", "Intensity", 4, 1, 3, "spell_fire_lavaspawn.png", nullptr, {"Gives you a 23% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", "Gives you a 46% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", "Gives you a 70% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", nullptr, nullptr}},
+    {"agonizing_flames", "Agonizing Flames", 4, 2, 3, "spell_fire_immolation.png", nullptr, {"Increases the critical strike chance of your Searing Pain spell by 3% and the damage done by all your Destruction spells by 3%.", "Increases the critical strike chance of your Searing Pain spell by 6% and the damage done by all your Destruction spells by 6%.", "Increases the critical strike chance of your Searing Pain spell by 9% and the damage done by all your Destruction spells by 9%.", nullptr, nullptr}},
+    {"conflagrate", "Conflagrate", 4, 3, 1, "spell_fire_fireball.png", "Shadowburn", {"Ignites a target that is already afflicted by your Immolate spell, dealing 109 to 132 Fire damage and consuming your Immolate effect.", nullptr, nullptr, nullptr, nullptr}},
+    {"pyroclasm", "Pyroclasm", 5, 1, 2, "spell_fire_volcano.png", "Intensity", {"Gives your Soul Fire spell a 13% chance to Stun the target for 3 sec, and your Rain of Fire and Hellfire spells a 13% chance over their duration to Stun targets they damage for 3 sec.", "Gives your Soul Fire spell a 26% chance to Stun the target for 3 sec, and your Rain of Fire and Hellfire spells a 26% chance over their duration to Stun targets they damage for 3 sec.", nullptr, nullptr, nullptr}},
+    {"bane_of_havoc", "Bane of Havoc", 5, 2, 1, "ability_warlock_baneofhavoc.png", nullptr, {"Afflicts the target for 5 min, causing 15% of all damage done by the Warlock to other targets to also be dealt to the cursed target. Bane of Havoc is limited to 1 target, and only one Bane per Warlock can be active on any one target.", nullptr, nullptr, nullptr, nullptr}},
+    {"fire_and_brimstone", "Fire and Brimstone", 5, 3, 3, "ability_warlock_fireandbrimstone.png", "Conflagrate", {"Increases the critical strike chance of your Conflagrate spell by 8%.", "Increases the critical strike chance of your Conflagrate spell by 16%.", "Increases the critical strike chance of your Conflagrate spell by 24%.", nullptr, nullptr}},
+    {"shadow_and_flame", "Shadow and Flame", 6, 3, 5, "spell_shadow_shadowandflame.png", nullptr, {"Hitting an enemy with Conflagrate increases all Shadow damage you deal by 2% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by 2% for 20 sec. In addition, Conflagrate has a 20% chance not to consume Immolate, and Shadowburn has a 20% chance to instantly refund a Soul Shard.", "Hitting an enemy with Conflagrate increases all Shadow damage you deal by 4% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by 4% for 20 sec. In addition, Conflagrate has a 40% chance not to consume Immolate, and Shadowburn has a 40% chance to instantly refund a Soul Shard.", "Hitting an enemy with Conflagrate increases all Shadow damage you deal by 6% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by 6% for 20 sec. In addition, Conflagrate has a 60% chance not to consume Immolate, and Shadowburn has a 60% chance to instantly refund a Soul Shard.", "Hitting an enemy with Conflagrate increases all Shadow damage you deal by 8% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by 8% for 20 sec. In addition, Conflagrate has a 80% chance not to consume Immolate, and Shadowburn has a 80% chance to instantly refund a Soul Shard.", "Hitting an enemy with Conflagrate increases all Shadow damage you deal by 10% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by 10% for 20 sec. In addition, Conflagrate has a 100% chance not to consume Immolate, and Shadowburn has a 100% chance to instantly refund a Soul Shard."}},
+    {"incinerate", "Incinerate", 7, 2, 1, "spell_fire_burnout.png", "Bane of Havoc", {"Deals 125 to 140 Fire damage to your target and an additional 25% damage if the target is afflicted by Immolate.", nullptr, nullptr, nullptr, nullptr}},
+}};
+
+struct Talents {
+    AfflictionTalents aff;
+    DemonologyTalents demo;
+    DestructionTalents destro;
+
+    int total_points() const {
+        return aff.total_points() + demo.total_points() + destro.total_points();
+    }
+
+    bool is_valid() const {
+        return total_points() <= 51;
+    }
+
+    // =========================================================================
+    // WoW Classic Forever Presets
+    // =========================================================================
+
+    // 1. Forever Shadow Destro (Sac Imp + Shadow & Flame Conflag Buff) (0/21/30)
+    static Talents create_forever_shadow_destro() {
+        Talents t;
+        // Demonology: 21 points
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.improved_imp = 3;
+        t.demo.unholy_power = 5;
+        t.demo.master_summoner = 2;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1; // Sac Imp -> +15% Shadow!
+
+        // Destruction: 30 points
+        t.destro.improved_shadow_bolt = 5; // 20% Shadow vuln for 12s on crit
+        t.destro.bane = 5;                 // -0.5s SB cast time
+        t.destro.cataclysm = 3;            // -9% mana cost
+        t.destro.ruin = 5;                 // +100% crit damage bonus (2.0x total)
+        t.destro.shadowburn = 1;           // instant shadow finisher
+        t.destro.agonizing_flames = 3;     // +9% all Destruction spell damage!
+        t.destro.conflagrate = 1;          // Conflagrate on cooldown
+        t.destro.destructive_reach = 2;    // +20% range
+        t.destro.shadow_and_flame = 5;     // Conflag gives +10% Shadow for 20s & 100% chance not to consume Immolate!
+        return t;
+    }
+
+    // 2. Forever Fire Destro (Incinerate + Conflagrate + Aftermath) (0/11/40)
+    static Talents create_forever_fire_destro() {
+        Talents t;
+        // Demonology: 11 points (Sac Succubus -> +15% Fire!)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.improved_sayaad = 2;
+        t.demo.demonic_sacrifice = 1; // Sac Succubus -> +15% Fire!
+
+        // Destruction: 40 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
+        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
+        t.destro.cataclysm = 3;
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.destructive_reach = 2;
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
+    // 3. Forever Demonic Pact + Ruin (Sac Imp + Active Succubus + Ruin + Agonizing Flames) (2/31/18)
+    static Talents create_forever_demonic_pact() {
+        Talents t;
+        // Affliction: 2 points
+        t.aff.suppression = 2;             // +4% spell hit
+
+        // Demonology: 31 points (Capstone: Demonic Pact!)
+        t.demo.demonic_embrace = 5;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.improved_sayaad = 3;
+        t.demo.demonic_sacrifice = 1;      // Sac Imp for +15% Shadow!
+        t.demo.decimation = 2;             // Soul Fire execute below 35% HP
+        t.demo.soul_link = 1;              // +3% all damage
+        t.demo.demonic_knowledge = 3;      // +60 Spell Power while pet is out!
+        t.demo.master_demonologist = 5;    // +10% Shadow damage from Succubus!
+        t.demo.demonic_pact = 1;           // KEEP Demonic Sacrifice WHILE SUMMONING SUCCUBUS!
+
+        // Destruction: 18 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        t.destro.ruin = 5;                 // +100% spell crit bonus!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage!
+        return t;
+    }
+
+    // 4. Forever Deep Affliction (Drain Hope + Pandemic + Malevolence) (41/0/10)
+    static Talents create_forever_deep_affliction() {
+        Talents t;
+        // Affliction: 41 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;             // +5% spell hit, -20% threat
+        t.aff.improved_corruption = 5;     // Instant, +10% damage
+        t.aff.malediction = 5;             // +5% periodic damage
+        t.aff.improved_bane_of_agony = 2;  // +10% Agony damage
+        t.aff.pandemic = 3;                // +100% DoT crit damage bonus!
+        t.aff.malevolence = 5;             // +5% Shadow spell crit
+        t.aff.nightfall = 2;               // 4% Shadow Trance on Corruption ticks
+        t.aff.siphon_life = 1;
+        t.aff.soul_siphon = 3;             // +50% faster drain ticks
+        t.aff.shadow_mastery = 5;          // +5% Shadow damage
+        t.aff.drain_hope = 1;              // +10% Shadow DoT amplification!
+        t.aff.amplify_curse = 1;
+        t.aff.curse_of_exhaustion = 1;
+
+        // Destruction: 10 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        return t;
+    }
+
+    // 5a. Forever SM/Ruin Full Shadow Mastery (32/0/19 - 5/5 SM)
+    static Talents create_forever_sm_ruin_pure() {
+        Talents t;
+        // Affliction: 32 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 5;
+        t.aff.malediction = 5;
+        t.aff.pandemic = 3;
+        t.aff.malevolence = 5;
+        t.aff.nightfall = 2;
+        t.aff.shadow_mastery = 5; // Full 5/5 Shadow Mastery
+
+        // Destruction: 19 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        t.destro.ruin = 5;
+        t.destro.shadowburn = 1;
+        return t;
+    }
+
+    // 5. Forever SM/Ruin Optimal (29/0/22 - 2/5 Shadow Mastery, 3/3 Agonizing Flames)
+    static Talents create_forever_sm_ruin() {
+        Talents t;
+        // Affliction: 29 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 5;
+        t.aff.malediction = 5;
+        t.aff.pandemic = 3;
+        t.aff.malevolence = 5;
+        t.aff.nightfall = 2;
+        t.aff.shadow_mastery = 2;             // 2/5 SM (+2% Shadow dmg)
+
+        // Destruction: 22 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        t.destro.ruin = 5;
+        t.destro.shadowburn = 1;
+        t.destro.agonizing_flames = 3;         // 3/3 Agonizing Flames (+9% Destro spell dmg!)
+        return t;
+    }
+
+    // 5b. Forever SM/Ruin Max Flames alias
+    static Talents create_forever_sm_ruin_max_flames() {
+        return create_forever_sm_ruin();
+    }
+
+    // 6. Forever MD / Ruin (0/31/20 - 5/5 Master Demo + 5/5 Ruin)
+    static Talents create_forever_md_ruin() {
+        Talents t;
+        // Demonology: 31 points
+        t.demo.demonic_embrace = 5;
+        t.demo.improved_imp = 3;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.improved_sayaad = 3;
+        t.demo.master_summoner = 2;
+        t.demo.decimation = 2;
+        t.demo.soul_link = 1;
+        t.demo.demonic_knowledge = 3;
+        t.demo.master_demonologist = 5;
+
+        // Destruction: 20 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        t.destro.ruin = 5;
+        t.destro.shadowburn = 1;
+        t.destro.destructive_reach = 1;
+        return t;
+    }
+
+    // Classic compatibility aliases
+    static Talents create_ds_ruin() { return create_forever_shadow_destro(); }
+    static Talents create_sm_ruin() { return create_forever_sm_ruin_max_flames(); }
+    static Talents create_fire_destro() { return create_forever_fire_destro(); }
+    static Talents create_md_ruin() { return create_forever_md_ruin(); }
+};
+
+} // namespace warlock
