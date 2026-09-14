@@ -39,6 +39,11 @@ struct SimResult {
     double dps = 0.0;
 
     int total_casts = 0;
+    int total_damage_events = 0;
+    int total_damage_crits = 0;
+    int crits = 0;
+    int direct_spell_casts = 0;
+    int direct_spell_crits = 0;
     int shadow_bolt_casts = 0;
     int shadow_bolt_hits = 0;
     int shadow_bolt_crits = 0;
@@ -58,15 +63,22 @@ struct SimResult {
     // Damage breakdown by spell
     double dmg_shadow_bolt = 0.0;
     double dmg_corruption = 0.0;
-    double dmg_curse = 0.0;
+    double dmg_curse = 0.0; // Total curse damage
+    double dmg_agony = 0.0;
+    double dmg_doom = 0.0;
+    double dmg_siphon_life = 0.0;
     double dmg_immolate = 0.0;
     double dmg_shadowburn = 0.0;
     double dmg_conflagrate = 0.0;
     double dmg_incinerate = 0.0;
     double dmg_soul_fire = 0.0;
     double dmg_drain_hope = 0.0;
+    double dmg_drain_life = 0.0;
+    double dmg_drain_soul = 0.0;
     double dmg_searing_pain = 0.0;
-    double dmg_pet = 0.0;
+    double dmg_pet = 0.0; // Total pet damage
+    double dmg_pet_imp = 0.0;
+    double dmg_pet_succubus = 0.0;
 
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;
@@ -74,7 +86,7 @@ struct SimResult {
 
 class WarlockSimulator {
 public:
-    Race race = Race::UNDEAD;
+    Race race = Race::GNOME;
     BaseAttributes base_attrs;
     GearLoadout gear;
     Talents talents;
@@ -84,7 +96,7 @@ public:
     TargetConfig target_config;
 
     // Stat input mode: false = use equipped gear loadout; true = use direct numeric raw_stats
-    bool use_raw_stats = false;
+    bool use_raw_stats = true;
     Stats raw_stats;
 
     double fight_duration = 120.0;

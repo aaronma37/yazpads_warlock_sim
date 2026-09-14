@@ -45,14 +45,22 @@ struct BatchSimResult {
     // Damage Breakdown
     double pct_shadow_bolt = 0.0;
     double pct_corruption = 0.0;
-    double pct_curse = 0.0;
+    double pct_curse = 0.0; // Total Curse / Bane
+    double pct_agony = 0.0;
+    double pct_doom = 0.0;
+    double pct_siphon_life = 0.0;
     double pct_immolate = 0.0;
     double pct_shadowburn = 0.0;
     double pct_conflagrate = 0.0;
     double pct_incinerate = 0.0;
+    double pct_searing_pain = 0.0;
     double pct_soul_fire = 0.0;
     double pct_drain_hope = 0.0;
-    double pct_pet = 0.0;
+    double pct_drain_life = 0.0;
+    double pct_drain_soul = 0.0;
+    double pct_pet = 0.0; // Total Pet
+    double pct_pet_imp = 0.0;
+    double pct_pet_succubus = 0.0;
     double mean_pet_dps = 0.0;
 
     // Distribution Histogram (40 bins)

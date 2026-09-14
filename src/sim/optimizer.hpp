@@ -11,6 +11,7 @@ struct CandidateResult {
     int rank = 0;
     std::string name;
     std::string category; // "Talents", "Gear", "Policy", "Snapshotting"
+    Race race = Race::GNOME;
     double mean_dps = 0.0;
     double std_dev_dps = 0.0;
     double min_dps = 0.0;
@@ -36,14 +37,16 @@ public:
     static std::vector<CandidateResult> optimize_talents(
         const WarlockSimulator& base_sim,
         int iterations_per_candidate = 2000,
-        std::function<void(float progress, const std::string& current_name)> callback = nullptr
+        std::function<void(float progress, const std::string& current_name)> callback = nullptr,
+        bool compare_all_races = false
     );
 
     // Dynamic combinatorial brute-force exploration across talent configurations
     static std::vector<CandidateResult> explore_combinatorial_talents(
         const WarlockSimulator& base_sim,
         int iterations_per_candidate = 1500,
-        std::function<void(float progress, const std::string& current_name)> callback = nullptr
+        std::function<void(float progress, const std::string& current_name)> callback = nullptr,
+        bool compare_all_races = false
     );
 
     // Compares gear loadouts & trinkets

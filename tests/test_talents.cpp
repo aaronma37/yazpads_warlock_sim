@@ -20,10 +20,22 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     Talents t4 = Talents::create_forever_deep_affliction();
     CHECK_EQ(t4.total_points(), 51);
     CHECK(t4.is_valid());
+    CHECK_EQ(t4.aff.nightfall, 0);
+    CHECK_EQ(t4.aff.improved_drains, 3);
+    CHECK_EQ(t4.aff.improved_bane_of_agony, 0);
+    CHECK_EQ(t4.demo.demonic_sacrifice, 1);
+    CHECK_EQ(t4.destro.total_points(), 0);
 
     Talents t5 = Talents::create_forever_sm_ruin();
     CHECK_EQ(t5.total_points(), 51);
     CHECK(t5.is_valid());
+
+    Talents t6 = Talents::create_forever_nf_ds_ruin();
+    CHECK_EQ(t6.total_points(), 51);
+    CHECK(t6.is_valid());
+    CHECK_EQ(t6.aff.nightfall, 2);
+    CHECK_EQ(t6.demo.demonic_sacrifice, 1);
+    CHECK_EQ(t6.destro.ruin, 5);
 }
 
 TEST_CASE(Talents, SuppressionHitBonus) {
@@ -78,3 +90,30 @@ TEST_CASE(Talents, ShadowMasteryBonus) {
     double bonus = 1.0 + t.aff.shadow_mastery * 0.01;
     CHECK_NEAR(bonus, 1.05, 0.001); // +5% in Forever
 }
+
+TEST_CASE(Talents, DemonicBrandBonus) {
+    Talents t;
+    t.demo.demonic_brand = 3;
+    CHECK_EQ(t.demo.demonic_brand, 3);
+    double min_brand = t.demo.demonic_brand * 13.0;
+    double max_brand = t.demo.demonic_brand * 14.0;
+    CHECK_NEAR(min_brand, 39.0, 0.001);
+    CHECK_NEAR(max_brand, 42.0, 0.001);
+}
+
+TEST_CASE(Talents, DecimationExecuteScaling) {
+    Talents t;
+    t.demo.decimation = 2;
+    double exec_dmg_bonus = 1.0 + t.demo.decimation * 0.03;
+    CHECK_NEAR(exec_dmg_bonus, 1.06, 0.001); // +6%
+    double sf_cast_reduc = 1.0 - t.demo.decimation * 0.20;
+    CHECK_NEAR(sf_cast_reduc, 0.60, 0.001); // -40%
+}
+
+TEST_CASE(Talents, FelVitalityManaBonus) {
+    Talents t;
+    t.demo.fel_vitality = 3;
+    double mana_mult = 1.0 + t.demo.fel_vitality * 0.05;
+    CHECK_NEAR(mana_mult, 1.15, 0.001); // +15%
+}
+

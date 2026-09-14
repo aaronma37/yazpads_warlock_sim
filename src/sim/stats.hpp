@@ -143,7 +143,7 @@ struct TargetConfig {
     // Active debuffs on target
     bool curse_of_shadows = false;   // -75 Shadow/Arcane res, +10% Shadow/Arcane dmg
     bool curse_of_elements = false;  // -75 Fire/Frost res, +10% Fire/Frost dmg
-    bool shadow_weaving = true;      // 5 stacks: +15% Shadow damage from Shadow Priest
+    bool shadow_weaving = false;     // 5 stacks: +15% Shadow damage from Shadow Priest (Personal only in Forever)
     bool stormstrike = false;
     bool nightfall_axe_proc = false; // Spell damage +15%
     bool is_beast = false;           // Troll racial +5% Beast Slaying bonus

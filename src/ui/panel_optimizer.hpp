@@ -1,6 +1,7 @@
 #pragma once
 #include "imgui.h"
 #include "asset_manager.hpp"
+#include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
 #include <vector>
 #include <string>
@@ -13,25 +14,30 @@ inline void render_panel_optimizer(
     std::vector<CandidateResult>& optimizer_results,
     bool& is_optimizing,
     float& opt_progress,
-    std::string& current_opt_target
+    std::string& current_opt_target,
+    bool* request_switch_to_preset = nullptr
 ) {
-    ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "Multi-Threaded Optimization Engine:");
-    ImGui::TextWrapped("Spawns hundreds of thousands of parallel DES simulations across all CPU threads to brute-force the optimal talents, gear, and combat policy.");
+    ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "⚡ Combinatorial Optimization & Brute-Force Exploration:");
+    ImGui::TextWrapped("Spawns hundreds of thousands of parallel DES simulations across all CPU threads to explore, compare, and rank candidate builds.");
     ImGui::Separator();
 
     static int iters_per_candidate = 3000;
+    static bool compare_all_races = false;
+    ImGui::SetNextItemWidth(200);
     ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
+    ImGui::SameLine(340);
+    ImGui::Checkbox("Compare specs across all races (Undead, Orc, Troll, Human, Gnome)", &compare_all_races);
 
     ImGui::Spacing();
     if (is_optimizing) ImGui::BeginDisabled();
 
-    if (ImGui::Button("Optimize Standard Specs", ImVec2(210, 28))) {
+    if (ImGui::Button("Explore Standard Specs", ImVec2(210, 28))) {
         is_optimizing = true;
         opt_progress = 0.0f;
         optimizer_results = Optimizer::optimize_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
             opt_progress = p;
             current_opt_target = name;
-        });
+        }, compare_all_races);
         is_optimizing = false;
         opt_progress = 1.0f;
     }
@@ -42,12 +48,12 @@ inline void render_panel_optimizer(
         optimizer_results = Optimizer::explore_combinatorial_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
             opt_progress = p;
             current_opt_target = name;
-        });
+        }, compare_all_races);
         is_optimizing = false;
         opt_progress = 1.0f;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Optimize Phase Gear", ImVec2(210, 28))) {
+    if (ImGui::Button("Explore Phase Gear Sets", ImVec2(210, 28))) {
         is_optimizing = true;
         opt_progress = 0.0f;
         optimizer_results = Optimizer::optimize_gear(sim, iters_per_candidate, [&](float p, const std::string& name) {
@@ -59,7 +65,7 @@ inline void render_panel_optimizer(
     }
 
     ImGui::Spacing();
-    if (ImGui::Button("Optimize Consumables", ImVec2(210, 28))) {
+    if (ImGui::Button("Explore Consumables", ImVec2(210, 28))) {
         is_optimizing = true;
         opt_progress = 0.0f;
         optimizer_results = Optimizer::compare_consumable_tiers(sim, iters_per_candidate, [&](float p, const std::string& name) {
@@ -81,7 +87,7 @@ inline void render_panel_optimizer(
         opt_progress = 1.0f;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Optimize Rotation Policy", ImVec2(210, 28))) {
+    if (ImGui::Button("Explore Rotation Policy", ImVec2(210, 28))) {
         is_optimizing = true;
         opt_progress = 0.0f;
         optimizer_results = Optimizer::optimize_policy(sim, iters_per_candidate, [&](float p, const std::string& name) {
@@ -113,53 +119,63 @@ inline void render_panel_optimizer(
     if (is_optimizing) ImGui::EndDisabled();
 
     if (is_optimizing) {
-        ImGui::Text("Simulating: %s...", current_opt_target.c_str());
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Simulating: %s...", current_opt_target.c_str());
         ImGui::ProgressBar(opt_progress, ImVec2(-1, 8));
     }
 
     ImGui::Separator();
 
+    auto apply_candidate_config = [&](const CandidateResult& r) {
+        sim.race = r.race;
+        sim.base_attrs = get_base_attributes_for_race(sim.race);
+        if (r.category == "Talents" || r.category == "Combinatorial Talents") {
+            sim.talents = r.talents;
+            sim.buffs = r.buffs;
+            sim.policy.pet = r.policy.pet;
+            sim.policy.rotation = r.policy.rotation;
+
+        } else if (r.category == "Gear") {
+            sim.gear = r.gear;
+            sim.use_raw_stats = false;
+        } else if (r.category == "Consumables") {
+            sim.buffs = r.buffs;
+        } else if (r.category == "Stat Values (EP)") {
+            sim.use_raw_stats = true;
+            sim.raw_stats = r.raw_stats;
+        } else if (r.category == "Policy") {
+            sim.policy = r.policy;
+        } else {
+            sim.talents = r.talents;
+            sim.gear = r.gear;
+            sim.buffs = r.buffs;
+            sim.policy = r.policy;
+            sim.mechanics = r.mechanics;
+            sim.use_raw_stats = r.use_raw_stats;
+            sim.raw_stats = r.raw_stats;
+        }
+        if (request_switch_to_preset) {
+            *request_switch_to_preset = true;
+        }
+    };
+
     if (!optimizer_results.empty()) {
         const auto& best = optimizer_results[0];
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "WINNING OPTIMAL CONFIGURATION: %s", best.name.c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[%.1f Mean DPS]", best.mean_dps);
-
-        ImGui::SameLine(500);
-        if (ImGui::Button("Apply Best Config To Current Setup")) {
-            if (best.category == "Talents" || best.category == "Combinatorial Talents") {
-                sim.talents = best.talents;
-                sim.buffs = best.buffs;
-                sim.policy.pet = best.policy.pet;
-            } else if (best.category == "Gear") {
-                sim.gear = best.gear;
-                sim.use_raw_stats = false;
-            } else if (best.category == "Consumables") {
-                sim.buffs = best.buffs;
-            } else if (best.category == "Stat Values (EP)") {
-                sim.use_raw_stats = true;
-                sim.raw_stats = best.raw_stats;
-            } else if (best.category == "Policy") {
-                sim.policy = best.policy;
-            }
-        }
-
-        ImGui::Separator();
-
         static int selected_candidate_idx = 0;
         if (selected_candidate_idx >= static_cast<int>(optimizer_results.size())) {
             selected_candidate_idx = 0;
         }
 
         // Leaderboard table
-        ImGui::Text("Candidate Ranking Leaderboard (Click a candidate row or 'Inspect' to view damage breakdown & rotation):");
-        if (ImGui::BeginTable("OptLeaderboardTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Spec Leaderboard (Click any row to inspect details below):");
+        if (ImGui::BeginTable("OptLeaderboardTable", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
-            ImGui::TableSetupColumn("Candidate Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Spec Name", ImGuiTableColumnFlags_WidthFixed, 200);
+            ImGui::TableSetupColumn("Race", ImGuiTableColumnFlags_WidthFixed, 65);
+            ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 90);
             ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("Delta vs BiS", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 130);
             ImGui::TableHeadersRow();
 
             for (size_t i = 0; i < optimizer_results.size(); ++i) {
@@ -169,7 +185,7 @@ inline void render_panel_optimizer(
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 if (r.rank == 1) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "#1 [BEST]");
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "#1");
                 } else {
                     ImGui::Text("#%d", r.rank);
                 }
@@ -180,6 +196,32 @@ inline void render_panel_optimizer(
                     selected_candidate_idx = static_cast<int>(i);
                 }
                 ImGui::PopID();
+
+                ImGui::TableNextColumn();
+                ImVec4 race_col = (r.race == Race::HUMAN || r.race == Race::GNOME) ? ImVec4(0.4f, 0.75f, 1.0f, 1.0f) : ImVec4(1.0f, 0.45f, 0.45f, 1.0f);
+                ImGui::TextColored(race_col, "%s", race_to_string(r.race));
+
+                ImGui::TableNextColumn();
+                std::vector<PriorityRule> rules = r.policy.get_priority_rules(r.talents, r.race);
+                for (size_t k = 0; k < rules.size(); ++k) {
+                    const auto& rule = rules[k];
+                    Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(rule.spell_id));
+                    ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(18, 18));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", rule.name.c_str());
+                        if (!rule.condition_summary.empty()) {
+                            ImGui::TextDisabled("%s", rule.condition_summary.c_str());
+                        }
+                        if (!rule.trigger_condition.empty()) {
+                            ImGui::TextWrapped("%s", rule.trigger_condition.c_str());
+                        }
+                        ImGui::EndTooltip();
+                    }
+                    if (k + 1 < rules.size()) {
+                        ImGui::SameLine(0, 3);
+                    }
+                }
 
                 ImGui::TableNextColumn();
                 ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.1f", r.mean_dps);
@@ -194,31 +236,6 @@ inline void render_panel_optimizer(
                 } else {
                     ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%.1f DPS", delta);
                 }
-
-                ImGui::TableNextColumn();
-                ImGui::PushID(static_cast<int>(i + 10000));
-                if (ImGui::SmallButton("Inspect")) {
-                    selected_candidate_idx = static_cast<int>(i);
-                }
-                ImGui::SameLine();
-                if (ImGui::SmallButton("Apply")) {
-                    if (r.category == "Talents" || r.category == "Combinatorial Talents") {
-                        sim.talents = r.talents;
-                        sim.buffs = r.buffs;
-                        sim.policy.pet = r.policy.pet;
-                    } else if (r.category == "Gear") {
-                        sim.gear = r.gear;
-                        sim.use_raw_stats = false;
-                    } else if (r.category == "Consumables") {
-                        sim.buffs = r.buffs;
-                    } else if (r.category == "Stat Values (EP)") {
-                        sim.use_raw_stats = true;
-                        sim.raw_stats = r.raw_stats;
-                    } else if (r.category == "Policy") {
-                        sim.policy = r.policy;
-                    }
-                }
-                ImGui::PopID();
             }
 
             ImGui::EndTable();
@@ -235,7 +252,13 @@ inline void render_panel_optimizer(
                 sel.mean_dps, sel.batch.p50_dps > 0 ? sel.batch.p50_dps : sel.mean_dps,
                 sel.batch.p5_dps, sel.batch.p95_dps);
 
+            ImGui::Spacing();
+            std::vector<PriorityRule> candidate_rules = sel.policy.get_priority_rules(sel.talents, sim.race);
+            render_priority_chain_subpane(candidate_rules);
+            ImGui::Spacing();
+
             ImGui::Columns(2, "CandidateDetailCols", true);
+
 
             // Left Column: Damage Breakdown & Performance
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Damage Breakdown (%% of Total Damage):");
@@ -243,8 +266,8 @@ inline void render_panel_optimizer(
 
             auto draw_dmg_bar = [](const char* name, double pct, const ImVec4& col) {
                 if (pct > 0.05) {
-                    ImGui::Text("%-14s: %5.1f%%", name, pct);
-                    ImGui::SameLine(180);
+                    ImGui::Text("%-14s:", name);
+                    ImGui::SameLine(130);
                     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, col);
                     char buf[32];
                     snprintf(buf, sizeof(buf), "%.1f%%", pct);
@@ -255,14 +278,27 @@ inline void render_panel_optimizer(
 
             draw_dmg_bar("Shadow Bolt", b.pct_shadow_bolt, ImVec4(0.5f, 0.3f, 0.9f, 1.0f));
             draw_dmg_bar("Incinerate", b.pct_incinerate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f));
+            draw_dmg_bar("Searing Pain", b.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.1f, 1.0f));
             draw_dmg_bar("Conflagrate", b.pct_conflagrate, ImVec4(1.0f, 0.6f, 0.1f, 1.0f));
             draw_dmg_bar("Shadowburn", b.pct_shadowburn, ImVec4(0.7f, 0.2f, 0.8f, 1.0f));
             draw_dmg_bar("Corruption", b.pct_corruption, ImVec4(0.3f, 0.7f, 0.9f, 1.0f));
             draw_dmg_bar("Immolate", b.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
-            draw_dmg_bar("Curse / Bane", b.pct_curse, ImVec4(0.6f, 0.6f, 0.8f, 1.0f));
+            if (b.pct_agony > 0.05) draw_dmg_bar("Bane of Agony", b.pct_agony, ImVec4(0.6f, 0.6f, 0.8f, 1.0f));
+            if (b.pct_doom > 0.05) draw_dmg_bar("Curse of Doom", b.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f));
+            if (b.pct_siphon_life > 0.05) draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f));
             draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f));
             draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f));
-            if (b.pct_pet > 0.05) {
+            draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f));
+            draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f));
+            if (b.pct_pet_imp > 0.05) {
+                char pet_name[64];
+                snprintf(pet_name, sizeof(pet_name), "Imp (%.1f DPS)", b.mean_pet_dps);
+                draw_dmg_bar(pet_name, b.pct_pet_imp, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
+            } else if (b.pct_pet_succubus > 0.05) {
+                char pet_name[64];
+                snprintf(pet_name, sizeof(pet_name), "Succubus (%.1f DPS)", b.mean_pet_dps);
+                draw_dmg_bar(pet_name, b.pct_pet_succubus, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
+            } else if (b.pct_pet > 0.05) {
                 char pet_name[64];
                 snprintf(pet_name, sizeof(pet_name), "Pet (%.1f DPS)", b.mean_pet_dps);
                 draw_dmg_bar(pet_name, b.pct_pet, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
@@ -382,8 +418,12 @@ inline void render_panel_optimizer(
 
                     ImGui::TableNextColumn();
                     std::string role_desc;
-                    if (st.id == SpellID::CURSE_OF_SHADOWS || st.id == SpellID::CURSE_OF_ELEMENTS || st.id == SpellID::CURSE_OF_DOOM) {
-                        role_desc = "Opener Debuff (Maintained on boss)";
+                    if (st.id == SpellID::CURSE_OF_AGONY) {
+                        role_desc = "DoT (Bane of Agony; maintained every 24s)";
+                    } else if (st.id == SpellID::CURSE_OF_DOOM) {
+                        role_desc = "Curse (Cast on 60s cooldown)";
+                    } else if (st.id == SpellID::CURSE_OF_SHADOWS || st.id == SpellID::CURSE_OF_ELEMENTS) {
+                        role_desc = "Raid Debuff";
                     } else if (st.id == SpellID::CORRUPTION) {
                         role_desc = "DoT (Maintained every 18s; Nightfall)";
                     } else if (st.id == SpellID::IMMOLATE) {
@@ -429,23 +469,11 @@ inline void render_panel_optimizer(
 
             ImGui::Spacing();
             ImGui::Separator();
-            if (ImGui::Button("Apply This Exact Setup To Simulator", ImVec2(280, 26))) {
-                if (sel.category == "Talents" || sel.category == "Combinatorial Talents") {
-                    sim.talents = sel.talents;
-                    sim.buffs = sel.buffs;
-                    sim.policy.pet = sel.policy.pet;
-                } else if (sel.category == "Gear") {
-                    sim.gear = sel.gear;
-                    sim.use_raw_stats = false;
-                } else if (sel.category == "Consumables") {
-                    sim.buffs = sel.buffs;
-                } else if (sel.category == "Stat Values (EP)") {
-                    sim.use_raw_stats = true;
-                    sim.raw_stats = sel.raw_stats;
-                } else if (sel.category == "Policy") {
-                    sim.policy = sel.policy;
-                }
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.65f, 1.0f));
+            if (ImGui::Button("▶ Load Configuration into Preset Simulation", ImVec2(320, 28))) {
+                apply_candidate_config(sel);
             }
+            ImGui::PopStyleColor();
 
             ImGui::Columns(1);
         }

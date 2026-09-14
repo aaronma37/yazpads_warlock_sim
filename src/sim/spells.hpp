@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <ostream>
 
 namespace warlock {
 
@@ -19,13 +20,19 @@ enum class SpellID : uint8_t {
     INCINERATE,
     SOUL_FIRE,
     DRAIN_HOPE,
+    DRAIN_LIFE,
+    DRAIN_SOUL,
+    SIPHON_LIFE,
     LIFE_TAP,
     DEATH_COIL,
     PET_FIREBOLT,
     PET_LASH_OF_PAIN,
     POTION_MANA,
     DEMONIC_RUNE,
-    TRINKET_USE
+    TRINKET_USE,
+    RACIAL_EUREKA,
+    RACIAL_BLOOD_FURY,
+    RACIAL_BERSERKING
 };
 
 enum class School : uint8_t {
@@ -251,6 +258,36 @@ public:
         s.dot_coeff_per_tick = 0.166;
         return s;
     }
+    static inline SpellDefinition drain_life_rank6() {
+        SpellDefinition s;
+        s.id = SpellID::DRAIN_LIFE;
+        s.name = "Drain Life";
+        s.school = School::SHADOW;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 300.0;
+        s.is_channeled = true;
+        s.dot_duration = 5.0;
+        s.dot_tick_interval = 1.0;
+        s.num_ticks = 5;
+        s.dot_base_dmg_per_tick = 71.0; // 355 base across 5 sec
+        s.dot_coeff_per_tick = 0.10;   // 50% total SP coefficient
+        return s;
+    }
+    static inline SpellDefinition drain_soul_rank4() {
+        SpellDefinition s;
+        s.id = SpellID::DRAIN_SOUL;
+        s.name = "Drain Soul";
+        s.school = School::SHADOW;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 290.0;
+        s.is_channeled = true;
+        s.dot_duration = 15.0;
+        s.dot_tick_interval = 3.0;
+        s.num_ticks = 5;
+        s.dot_base_dmg_per_tick = 91.0; // 455 base across 15 sec (5 ticks of 91)
+        s.dot_coeff_per_tick = 0.20;   // 100% total SP coefficient (20% per tick)
+        return s;
+    }
 };
 
 inline const char* spell_id_to_name(SpellID id) {
@@ -259,7 +296,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::CORRUPTION: return "Corruption";
         case SpellID::CURSE_OF_SHADOWS: return "Curse of Shadows";
         case SpellID::CURSE_OF_ELEMENTS: return "Curse of the Elements";
-        case SpellID::CURSE_OF_AGONY: return "Curse of Agony";
+        case SpellID::CURSE_OF_AGONY: return "Bane of Agony";
         case SpellID::CURSE_OF_DOOM: return "Curse of Doom";
         case SpellID::IMMOLATE: return "Immolate";
         case SpellID::SEARING_PAIN: return "Searing Pain";
@@ -268,9 +305,15 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::INCINERATE: return "Incinerate";
         case SpellID::SOUL_FIRE: return "Soul Fire";
         case SpellID::DRAIN_HOPE: return "Drain Hope";
+        case SpellID::DRAIN_LIFE: return "Drain Life";
+        case SpellID::DRAIN_SOUL: return "Drain Soul";
+        case SpellID::SIPHON_LIFE: return "Siphon Life";
         case SpellID::LIFE_TAP: return "Life Tap";
         case SpellID::PET_FIREBOLT: return "Firebolt (Pet)";
         case SpellID::PET_LASH_OF_PAIN: return "Lash of Pain (Pet)";
+        case SpellID::RACIAL_EUREKA: return "Eureka!";
+        case SpellID::RACIAL_BLOOD_FURY: return "Blood Fury";
+        case SpellID::RACIAL_BERSERKING: return "Berserking";
         default: return "Spell";
     }
 }
@@ -290,11 +333,21 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::INCINERATE: return "spell_fire_burnout.png";
         case SpellID::SOUL_FIRE: return "spell_fire_fireball02.png";
         case SpellID::DRAIN_HOPE: return "spell_shadow_haunting.png";
+        case SpellID::DRAIN_LIFE: return "spell_shadow_lifedrain02.png";
+        case SpellID::DRAIN_SOUL: return "spell_shadow_soulgem.png";
+        case SpellID::SIPHON_LIFE: return "spell_shadow_requiem.png";
         case SpellID::LIFE_TAP: return "spell_shadow_burningspirit.png";
         case SpellID::PET_FIREBOLT: return "spell_fire_firebolt.png";
         case SpellID::PET_LASH_OF_PAIN: return "spell_shadow_curse.png";
+        case SpellID::RACIAL_EUREKA: return "spell_nature_astralrecalgroup.png";
+        case SpellID::RACIAL_BLOOD_FURY: return "racial_orc_berserkerstrength.png";
+        case SpellID::RACIAL_BERSERKING: return "racial_troll_berserk.png";
         default: return "spell_shadow_shadowbolt.png";
     }
+}
+
+inline std::ostream& operator<<(std::ostream& os, SpellID id) {
+    return os << spell_id_to_name(id);
 }
 
 } // namespace warlock

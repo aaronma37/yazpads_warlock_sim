@@ -10,10 +10,14 @@
 #include "panel_sim_control.hpp"
 #include "panel_talents.hpp"
 #include "panel_mechanics.hpp"
+#include "panel_buffs.hpp"
 #include "panel_policy.hpp"
 #include "panel_results.hpp"
 #include "panel_comparison.hpp"
 #include "panel_optimizer.hpp"
+#include "panel_spellbook.hpp"
+#include "panel_mechanics_tab.hpp"
+#include "panel_known_issues.hpp"
 
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
@@ -42,8 +46,10 @@ public:
     float opt_progress = 0.0f;
     std::string opt_task_name;
 
+    bool request_switch_to_preset = false;
+
     std::string character_name = "Grimmortis";
-    int selected_model_idx = 0; // 0 = Undead, 1 = Orc
+    int selected_model_idx = 4; // 4 = Gnome (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
 
     WarlockSimApp() {
         thread_count = static_cast<int>(std::thread::hardware_concurrency());
@@ -87,42 +93,67 @@ public:
 
                 // Top Menu Bar
                 if (ImGui::BeginMenuBar()) {
-                    ImGui::TextColored(ImVec4(0.85f, 0.55f, 1.0f, 1.0f), "⚔ WOW FOREVER WARLOCK DES SIMULATOR");
+                    ImGui::TextColored(ImVec4(0.85f, 0.55f, 1.0f, 1.0f), "WOW FOREVER WARLOCK DES SIMULATOR");
                     ImGui::Separator();
 
                     if (ImGui::BeginMenu("Build Presets")) {
-                        if (ImGui::MenuItem("Forever Shadow Destro (0/21/30)")) {
-                            sim.talents = Talents::create_forever_shadow_destro();
+                        if (ImGui::MenuItem("5/11/35 DS/AF (sac-imp)")) {
+                            sim.talents = Talents::create_forever_ds_af();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.pet = PetChoice::NONE;
+                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
-                        if (ImGui::MenuItem("Forever Fire Destro (0/11/40 - Incinerate)")) {
-                            sim.talents = Talents::create_forever_fire_destro();
+                        if (ImGui::MenuItem("5/11/35 DS/Incinerate (sac-succubus)")) {
+                            sim.talents = Talents::create_forever_ds_incinerate();
                             sim.buffs.sacrifice_succubus = true;
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.maintain_immolate = true;
                             sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                             sim.policy.pet = PetChoice::NONE;
                         }
-                        if (ImGui::MenuItem("Forever Demonic Pact + Ruin (2/31/18 - Sac Imp + Succubus)")) {
-                            sim.talents = Talents::create_forever_demonic_pact();
+                        if (ImGui::MenuItem("5/11/35 DS/Searing Pain (sac-succubus)")) {
+                            sim.talents = Talents::create_forever_ds_searing_pain();
+                            sim.buffs.sacrifice_succubus = true;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+                            sim.policy.pet = PetChoice::NONE;
+                        }
+                        if (ImGui::MenuItem("2/31/18 DP/AF Shadow (sac-imp + succubus)")) {
+                            sim.talents = Talents::create_forever_dp_af_shadow();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.pet = PetChoice::SUCCUBUS;
+                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
-                        if (ImGui::MenuItem("Forever Deep Affliction (41/0/10 - Drain Hope)")) {
+                        if (ImGui::MenuItem("0/31/20 DP/AF Fire (sac-succubus + imp)")) {
+                            sim.talents = Talents::create_forever_dp_af_fire();
+                            sim.buffs.sacrifice_succubus = true;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.rotation = RotationChoice::DP_RUIN_FIRE;
+                        }
+                        if (ImGui::MenuItem("40/11/0 Deep Affliction (DS Imp / Drain Hope)")) {
                             sim.talents = Talents::create_forever_deep_affliction();
                             sim.buffs.sacrifice_succubus = false;
-                            sim.buffs.sacrifice_imp = false;
+                            sim.buffs.sacrifice_imp = true;
                             sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
-                            sim.policy.pet = PetChoice::SUCCUBUS;
+                            sim.policy.pet = PetChoice::NONE;
                         }
-                        if (ImGui::MenuItem("Forever SM / Ruin (29/0/22 - 3/3 Flames)")) {
-                            sim.talents = Talents::create_forever_sm_ruin();
+                        if (ImGui::MenuItem("32/0/19 SM/AF (3/3 Flames)")) {
+                            sim.talents = Talents::create_forever_sm_af();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.pet = PetChoice::SUCCUBUS;
+                            sim.policy.rotation = RotationChoice::SM_RUIN;
+                        }
+                        if (ImGui::MenuItem("19/11/21 NF/DS/Ruin (sac-imp)")) {
+                            sim.talents = Talents::create_forever_nf_ds_ruin();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = true;
+                            sim.policy.pet = PetChoice::NONE;
+                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
                         ImGui::Separator();
                         if (ImGui::MenuItem("Phase 6 BiS (Naxxramas)")) {
@@ -154,7 +185,7 @@ public:
 
                 // Compute player combat stats from gear (or raw manual stats) and buffs
                 Stats player_stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
-                sim.buffs.apply_to_stats(player_stats, sim.base_attrs, true); // true = WoW Forever mechanics
+                sim.buffs.apply_to_stats(player_stats, sim.base_attrs, true, sim.mechanics.personal_shadow_weaving); // true = WoW Forever mechanics
 
                 // Gnome Expansive Mind (+5% Mana)
                 if (sim.race == Race::GNOME) {
@@ -191,69 +222,144 @@ public:
                     player_stats.spell_crit_percent += 1.0;
                 }
 
-                // Two-Pane Fixed Layout:
-                // Left: Character Armory & Sheet (450px wide)
-                // Right: Unified Dashboard & Tabs (Remaining width)
-                const float armory_width = 450.0f;
+                // If candidate configuration was applied from combinatorial sim, refresh baseline
+                if (request_switch_to_preset) {
+                    last_result = ParallelSimRunner::run_batch(sim, 5000, thread_count);
+                }
+
                 const float full_height = ImGui::GetContentRegionAvail().y;
 
-                // --- LEFT PANE: CHARACTER ARMORY ---
-                ImGui::BeginChild("ArmoryLeftPane", ImVec2(armory_width, full_height), true);
-                render_armory_panel(sim, player_stats, sim.base_attrs, character_name, selected_model_idx);
-                ImGui::EndChild();
+                // =========================================================================
+                // TOP-LEVEL HIERARCHICAL TABS
+                // =========================================================================
+                if (ImGui::BeginTabBar("TopLayerTabs", ImGuiTabBarFlags_None)) {
 
-                ImGui::SameLine();
+                    // -----------------------------------------------------------------
+                    // 1. PRESET SIMULATION (Inspector, Talents, Gear, Buffs, APL, Sim)
+                    // -----------------------------------------------------------------
+                    ImGuiTabItemFlags preset_flags = 0;
+                    if (request_switch_to_preset) {
+                        preset_flags |= ImGuiTabItemFlags_SetSelected;
+                    }
 
-                // --- RIGHT PANE: MAIN TOOLING TABS ---
-                ImGui::BeginChild("DashboardRightPane", ImVec2(0, full_height), true);
+                    if (ImGui::BeginTabItem("  PRESET SIMULATION  ", nullptr, preset_flags)) {
+                        if (request_switch_to_preset) {
+                            request_switch_to_preset = false;
+                        }
 
-                if (ImGui::BeginTabBar("UnifiedDashboardTabs", ImGuiTabBarFlags_None)) {
+                        if (ImGui::BeginTabBar("PresetSubTabs", ImGuiTabBarFlags_None)) {
 
-                    // Tab 1: Simulation & Results
-                    if (ImGui::BeginTabItem("  ⚔ Combat Simulation & Charts  ")) {
-                        ImGui::Spacing();
-                        render_panel_sim_control(sim, iterations, thread_count, last_result, is_sim_running, sim_progress);
-                        ImGui::Separator();
-                        render_panel_results(last_result);
+                            // -------------------------------------------------------------
+                            // SUBTAB 1: BUILD CONFIGURATION (Gear, Talents, Buffs, Rotation)
+                            // -------------------------------------------------------------
+                            if (ImGui::BeginTabItem("  Build Configuration  ")) {
+                                const float pane1_w = 320.0f; // Gear & Direct Stats
+                                const float pane2_w = 830.0f; // Talents Tree (51 Points - All 3 Trees Visible)
+                                const float pane_height = full_height - 40.0f;
+
+                                // Pane 1: Gear & Direct Stats
+                                ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
+                                render_armory_panel(sim, player_stats, sim.base_attrs, character_name, selected_model_idx);
+                                ImGui::EndChild();
+
+                                ImGui::SameLine();
+
+                                // Pane 2: Talent Tree (51 Points)
+                                ImGui::BeginChild("PresetPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
+                                render_panel_talents(sim);
+                                ImGui::EndChild();
+
+                                ImGui::SameLine();
+
+                                // Pane 3: Consumables, Buffs, Rotation Policy & Mechanics
+                                ImGui::BeginChild("PresetPane_BuffsPolicy", ImVec2(0, pane_height), true);
+                                render_panel_buffs(sim.buffs);
+                                ImGui::Spacing();
+                                ImGui::Separator();
+                                render_panel_policy(sim);
+                                ImGui::Spacing();
+                                ImGui::Separator();
+                                render_panel_mechanics(sim.mechanics);
+                                ImGui::EndChild();
+
+                                ImGui::EndTabItem();
+                            }
+
+                            // -------------------------------------------------------------
+                            // SUBTAB 2: COMBAT SIMULATION & RESULTS (Controls, Histograms, Logs)
+                            // -------------------------------------------------------------
+                            if (ImGui::BeginTabItem("  Combat Simulation & Results  ")) {
+                                ImGui::Spacing();
+                                render_panel_sim_control(sim, iterations, thread_count, last_result, is_sim_running, sim_progress);
+                                ImGui::Separator();
+                                render_panel_results(last_result);
+                                ImGui::EndTabItem();
+                            }
+
+                            ImGui::EndTabBar();
+                        }
+
                         ImGui::EndTabItem();
                     }
 
-                    // Tab 2: Talent Tree
-                    if (ImGui::BeginTabItem("  🌲 Talent Tree (51 Points)  ")) {
-                        ImGui::Spacing();
-                        render_panel_talents(sim.talents);
+                    // -----------------------------------------------------------------
+                    // 2. COMBINATORIAL SIMULATION (Brute-Force Optimizer & Comparison)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  COMBINATORIAL SIMULATION  ")) {
+                        if (ImGui::BeginTabBar("CombinatorialSubTabs", ImGuiTabBarFlags_None)) {
+
+                            // Subtab 1: Optimizer & Leaderboard
+                            if (ImGui::BeginTabItem("  Brute-Force Optimizer & Leaderboard  ")) {
+                                ImGui::Spacing();
+                                render_panel_optimizer(sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset);
+                                ImGui::EndTabItem();
+                            }
+
+                            // Subtab 2: Theorycrafting Comparison
+                            if (ImGui::BeginTabItem("  Side-by-Side Comparison  ")) {
+                                ImGui::Spacing();
+                                render_panel_comparison(sim, comparison_results, is_comparing, compare_progress, compare_task_name);
+                                ImGui::EndTabItem();
+                            }
+
+                            ImGui::EndTabBar();
+                        }
+
                         ImGui::EndTabItem();
                     }
 
-                    // Tab 3: Multi-Threaded Optimizer & Comparison
-                    if (ImGui::BeginTabItem("  ⚡ Brute-Force Optimizer & Leaderboard  ")) {
+                    // -----------------------------------------------------------------
+                    // 3. SPELLBOOK (Spell Database, Ranks, Base Stats, Coefficients)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  SPELLBOOK  ")) {
                         ImGui::Spacing();
-                        render_panel_optimizer(sim, optimizer_results, is_optimizing, opt_progress, opt_task_name);
-                        ImGui::Separator();
-                        render_panel_comparison(sim, comparison_results, is_comparing, compare_progress, compare_task_name);
+                        render_panel_spellbook();
                         ImGui::EndTabItem();
                     }
 
-                    // Tab 4: Mechanics Toggles & Rotation Policy
-                    if (ImGui::BeginTabItem("  ⚙ Mechanics Toggles & Rotation Policy  ")) {
+                    // -----------------------------------------------------------------
+                    // 4. MECHANICS & CUSTOM RULES (ISB, DoT Crits, SW, DP, Vanilla Differences)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  MECHANICS  ")) {
                         ImGui::Spacing();
-                        ImGui::Columns(2, "MechanicsAndPolicyCols", true);
+                        render_panel_mechanics_tab();
+                        ImGui::EndTabItem();
+                    }
 
-                        render_panel_mechanics(sim.mechanics);
-                        ImGui::NextColumn();
-
-                        render_panel_policy(sim);
-                        ImGui::Columns(1);
-
+                    // -----------------------------------------------------------------
+                    // 5. KNOWN ISSUES & ROADMAP (Proc Gear Backlog, Downranking, Scope)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  KNOWN ISSUES  ")) {
+                        ImGui::Spacing();
+                        render_panel_known_issues();
                         ImGui::EndTabItem();
                     }
 
                     ImGui::EndTabBar();
                 }
 
-                ImGui::EndChild();
+                ImGui::End();
             }
-            ImGui::End();
             ImGui::PopStyleVar(3);
 
             rlImGuiEnd();

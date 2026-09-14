@@ -6,62 +6,81 @@ namespace warlock {
 std::vector<CandidateResult> Optimizer::optimize_talents(
     const WarlockSimulator& base_sim,
     int iterations_per_candidate,
-    std::function<void(float progress, const std::string& current_name)> callback
+    std::function<void(float progress, const std::string& current_name)> callback,
+    bool compare_all_races
 ) {
     struct Candidate {
         std::string name;
         Talents talents;
+        RotationChoice rotation;
+        PetChoice pet;
         bool sac_succubus;
         bool sac_imp;
     };
 
     std::vector<Candidate> candidates = {
-        {"Forever Shadow Destro (0/21/30 - Sac Imp)", Talents::create_forever_shadow_destro(), false, true},
-        {"Forever Fire Destro (0/11/40 - Incinerate/Sac Succ)", Talents::create_forever_fire_destro(), true, false},
-        {"Forever Demonic Pact + Ruin (2/31/18 - Sac Imp + Succubus)", Talents::create_forever_demonic_pact(), false, true},
-        {"Forever Deep Affliction (41/0/10 - Drain Hope)", Talents::create_forever_deep_affliction(), false, false},
-        {"Forever SM / Ruin (29/0/22 - 3/3 Flames)", Talents::create_forever_sm_ruin(), false, false}
+        {"5/11/35 DS/AF (sac-imp)", Talents::create_forever_ds_af(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
+        {"5/11/35 Fire Destro (sac-succubus)", Talents::create_forever_fire_destro(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"0/17/34 Fire Destro+Decimation (sac-succubus)", Talents::create_forever_fire_destro_decimation(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"5/11/35 DS/Searing Pain (sac-succubus)", Talents::create_forever_ds_searing_pain(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", Talents::create_forever_dp_af_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::SUCCUBUS, false, true},
+        {"0/31/20 DP/AF Fire (sac-succubus + imp)", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
+        {"40/11/0 Deep Affliction (DS Imp / Drain Hope)", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
+        {"32/0/19 SM/AF (3/3 Flames)", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::SUCCUBUS, false, false},
+        {"19/11/21 NF/DS/Ruin (sac-imp)", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
     };
 
+    std::vector<Race> races_to_test = compare_all_races
+        ? std::vector<Race>{Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME}
+        : std::vector<Race>{base_sim.race};
+
     std::vector<CandidateResult> results;
-    int total = static_cast<int>(candidates.size());
+    int total = static_cast<int>(candidates.size() * races_to_test.size());
+    int current_idx = 0;
 
-    for (int i = 0; i < total; ++i) {
-        if (callback) callback(static_cast<float>(i) / total, candidates[i].name);
+    for (const auto& cand : candidates) {
+        for (Race r : races_to_test) {
+            std::string run_name = cand.name;
+            if (compare_all_races) {
+                run_name += std::string(" [") + race_to_string(r) + "]";
+            }
+            if (callback) callback(static_cast<float>(current_idx++) / total, run_name);
 
-        WarlockSimulator sim = base_sim;
-        sim.talents = candidates[i].talents;
-        sim.buffs.sacrifice_succubus = candidates[i].sac_succubus;
-        sim.buffs.sacrifice_imp = candidates[i].sac_imp;
-        if (candidates[i].talents.demo.demonic_pact > 0) {
-            sim.policy.pet = PetChoice::SUCCUBUS;
-        } else if (candidates[i].sac_succubus) {
-            sim.policy.maintain_immolate = true;
-            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
-            sim.policy.pet = PetChoice::NONE;
-        } else if (candidates[i].sac_imp) {
-            sim.policy.pet = PetChoice::NONE;
-        } else {
-            sim.policy.pet = PetChoice::SUCCUBUS;
+            WarlockSimulator sim = base_sim;
+            sim.race = r;
+            sim.base_attrs = get_base_attributes_for_race(r);
+            sim.talents = cand.talents;
+            sim.buffs.sacrifice_succubus = cand.sac_succubus;
+            sim.buffs.sacrifice_imp = cand.sac_imp;
+            sim.policy.pet = cand.pet;
+            sim.policy.rotation = cand.rotation;
+            if (cand.rotation == RotationChoice::FIRE_DESTRO || cand.rotation == RotationChoice::DP_RUIN_FIRE) {
+                sim.policy.maintain_immolate = true;
+            }
+
+            BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
+
+            CandidateResult res;
+            res.name = cand.name;
+            if (compare_all_races) {
+                res.name += std::string(" (") + race_to_string(r) + ")";
+            }
+            res.race = r;
+            res.category = "Talents";
+            res.mean_dps = batch.mean_dps;
+            res.std_dev_dps = batch.std_dev_dps;
+            res.min_dps = batch.min_dps;
+            res.max_dps = batch.max_dps;
+            res.isb_uptime = batch.mean_isb_uptime;
+            res.talents = sim.talents;
+            res.gear = sim.gear;
+            res.buffs = sim.buffs;
+            res.policy = sim.policy;
+            res.mechanics = sim.mechanics;
+            res.batch = batch;
+
+            results.push_back(res);
         }
-
-        BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
-
-        CandidateResult res;
-        res.name = candidates[i].name;
-        res.category = "Talents";
-        res.mean_dps = batch.mean_dps;
-        res.std_dev_dps = batch.std_dev_dps;
-        res.min_dps = batch.min_dps;
-        res.max_dps = batch.max_dps;
-        res.isb_uptime = batch.mean_isb_uptime;
-        res.talents = sim.talents;
-        res.buffs = sim.buffs;
-        res.policy = sim.policy;
-        res.mechanics = sim.mechanics;
-        res.batch = batch;
-
-        results.push_back(res);
     }
 
     // Sort descending by Mean DPS
@@ -120,6 +139,7 @@ std::vector<CandidateResult> Optimizer::optimize_gear(
         CandidateResult res;
         res.name = candidates[i].name;
         res.category = "Gear";
+        res.race = sim.race;
         res.mean_dps = batch.mean_dps;
         res.std_dev_dps = batch.std_dev_dps;
         res.min_dps = batch.min_dps;
@@ -127,6 +147,7 @@ std::vector<CandidateResult> Optimizer::optimize_gear(
         res.isb_uptime = batch.mean_isb_uptime;
         res.talents = sim.talents;
         res.gear = sim.gear;
+        res.buffs = sim.buffs;
         res.policy = sim.policy;
         res.mechanics = sim.mechanics;
         res.batch = batch;
@@ -172,21 +193,11 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
         candidates.push_back({"Life Tap @ < " + std::to_string(static_cast<int>(tap_pct)) + "% Mana", p});
     }
 
-    // Curse comparisons
+    // Curse / Bane comparisons
     {
         PolicyConfig p = base_sim.policy;
-        p.curse = CurseChoice::CURSE_OF_SHADOWS;
-        candidates.push_back({"Curse: Curse of Shadows (+10% Shadow)", p});
-    }
-    {
-        PolicyConfig p = base_sim.policy;
-        p.curse = CurseChoice::CURSE_OF_ELEMENTS;
-        candidates.push_back({"Curse: Curse of the Elements (+10% Fire)", p});
-    }
-    {
-        PolicyConfig p = base_sim.policy;
-        p.curse = CurseChoice::CURSE_OF_AGONY;
-        candidates.push_back({"Curse: Curse of Agony (Solo DPS)", p});
+        p.curse = CurseChoice::BANE_OF_AGONY;
+        candidates.push_back({"Bane: Bane of Agony (Solo/Affliction DPS)", p});
     }
     {
         PolicyConfig p = base_sim.policy;
@@ -196,7 +207,7 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
     {
         PolicyConfig p = base_sim.policy;
         p.curse = CurseChoice::NONE;
-        candidates.push_back({"Curse: None (Raid Assigns Other)", p});
+        candidates.push_back({"Bane/Curse: None", p});
     }
 
     // Corruption comparisons
@@ -232,6 +243,7 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
         CandidateResult res;
         res.name = candidates[i].name;
         res.category = "Policy";
+        res.race = sim.race;
         res.mean_dps = batch.mean_dps;
         res.std_dev_dps = batch.std_dev_dps;
         res.min_dps = batch.min_dps;
@@ -265,16 +277,16 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
 ) {
     std::vector<CandidateResult> results;
 
-    // Test with Snapshotting ON vs OFF for SM/Ruin (DoT heavy)
+    // Test with Snapshotting ON vs OFF for SM/AF (DoT heavy)
     {
-        if (callback) callback(0.0f, "SM/Ruin - Snapshotting ON (Classic)");
+        if (callback) callback(0.0f, "SM/AF - Snapshotting ON (Classic)");
         WarlockSimulator sim_on = base_sim;
-        sim_on.talents = Talents::create_sm_ruin();
+        sim_on.talents = Talents::create_sm_af();
         sim_on.mechanics.snapshot_dots = true;
         BatchSimResult b_on = ParallelSimRunner::run_batch(sim_on, iterations_per_candidate);
 
         CandidateResult res_on;
-        res_on.name = "SM/Ruin [Snapshotting ON (Classic)]";
+        res_on.name = "SM/AF [Snapshotting ON (Classic)]";
         res_on.category = "Snapshotting";
         res_on.mean_dps = b_on.mean_dps;
         res_on.std_dev_dps = b_on.std_dev_dps;
@@ -287,14 +299,14 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
         res_on.mechanics = sim_on.mechanics;
         results.push_back(res_on);
 
-        if (callback) callback(0.25f, "SM/Ruin - Snapshotting OFF (Dynamic/Modern)");
+        if (callback) callback(0.25f, "SM/AF - Snapshotting OFF (Dynamic/Modern)");
         WarlockSimulator sim_off = base_sim;
-        sim_off.talents = Talents::create_sm_ruin();
+        sim_off.talents = Talents::create_sm_af();
         sim_off.mechanics.snapshot_dots = false;
         BatchSimResult b_off = ParallelSimRunner::run_batch(sim_off, iterations_per_candidate);
 
         CandidateResult res_off;
-        res_off.name = "SM/Ruin [Snapshotting OFF (Dynamic/Modern)]";
+        res_off.name = "SM/AF [Snapshotting OFF (Dynamic/Modern)]";
         res_off.category = "Snapshotting";
         res_off.mean_dps = b_off.mean_dps;
         res_off.std_dev_dps = b_off.std_dev_dps;
@@ -368,7 +380,8 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
 std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
     const WarlockSimulator& base_sim,
     int iterations_per_candidate,
-    std::function<void(float progress, const std::string& current_name)> callback
+    std::function<void(float progress, const std::string& current_name)> callback,
+    bool compare_all_races
 ) {
     // Generate diverse valid 51-point distributions across Affliction / Demonology / Destruction
     struct TalentPointSplit {
@@ -381,18 +394,19 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
     };
 
     std::vector<TalentPointSplit> splits = {
-        {"Forever Shadow Destro (0/21/30)", 0, 21, 30, false, true},
-        {"Forever Shadow Destro Cataclysm (0/18/33)", 0, 18, 33, false, true},
-        {"Forever Fire Destro (0/11/40)", 0, 11, 40, true, false},
-        {"Forever Demonic Pact + Ruin (2/31/18)", 2, 31, 18, false, true},
-        {"Forever Deep Affliction (41/0/10)", 41, 0, 10, false, false},
-        {"Forever SM / Ruin (29/0/22)", 29, 0, 22, false, false},
-        {"Forever Aff/Destro Conflagrate (20/0/31)", 20, 0, 31, false, false},
-        {"Forever Decimation Execute (0/31/20)", 0, 31, 20, false, false},
-        {"Forever Triple Tree (11/20/20)", 11, 20, 20, false, false}
+        {"5/11/35 DS/AF (sac-imp)", 5, 11, 35, false, true},
+        {"19/11/21 NF/DS/Ruin (sac-imp)", 19, 11, 21, false, true},
+        {"5/11/35 Fire Destro (sac-succubus)", 5, 11, 35, true, false},
+        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", 2, 31, 18, false, true},
+        {"0/31/20 DP/AF Fire (sac-succubus + imp)", 0, 31, 20, true, false},
+        {"40/11/0 Deep Affliction (DS Imp / Drain Hope)", 40, 11, 0, false, true},
+        {"32/0/19 SM/AF (3/3 Flames)", 32, 0, 19, false, false},
+        {"20/0/31 Aff/Destro Conflagrate", 20, 0, 31, false, false},
+        {"0/31/20 Decimation Execute", 0, 31, 20, false, false},
+        {"11/20/20 Triple Tree", 11, 20, 20, false, false}
     };
 
-    auto build_talents_from_split = [](int A, int D, int X) {
+    auto build_talents_from_split = [](int A, int D, int X, bool is_fire) {
         Talents t;
         // Affliction allocation
         int rem_a = A;
@@ -421,7 +435,11 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
 
         // Destruction allocation
         int rem_x = X;
-        t.destro.improved_shadow_bolt = std::min(5, rem_x); rem_x -= t.destro.improved_shadow_bolt;
+        if (!is_fire) {
+            t.destro.improved_shadow_bolt = std::min(5, rem_x); rem_x -= t.destro.improved_shadow_bolt;
+        } else {
+            t.destro.destructive_reach = std::min(2, rem_x); rem_x -= t.destro.destructive_reach;
+        }
         t.destro.bane = std::min(5, rem_x); rem_x -= t.destro.bane;
         t.destro.cataclysm = std::min(3, rem_x); rem_x -= t.destro.cataclysm;
         t.destro.aftermath = std::min(5, rem_x); rem_x -= t.destro.aftermath;
@@ -429,51 +447,88 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
         if (rem_x >= 1) { t.destro.shadowburn = 1; rem_x -= 1; }
         t.destro.agonizing_flames = std::min(3, rem_x); rem_x -= t.destro.agonizing_flames;
         if (rem_x >= 1) { t.destro.conflagrate = 1; rem_x -= 1; }
+        if (rem_x >= 1) { t.destro.bane_of_havoc = 1; rem_x -= 1; }
         t.destro.fire_and_brimstone = std::min(3, rem_x); rem_x -= t.destro.fire_and_brimstone;
         t.destro.shadow_and_flame = std::min(5, rem_x); rem_x -= t.destro.shadow_and_flame;
         if (rem_x >= 1) { t.destro.incinerate = 1; rem_x -= 1; }
+        if (rem_x > 0 && is_fire && t.destro.improved_shadow_bolt == 0) {
+            t.destro.improved_shadow_bolt = std::min(5, rem_x); rem_x -= t.destro.improved_shadow_bolt;
+        }
         return t;
     };
 
+    std::vector<Race> races_to_test = compare_all_races
+        ? std::vector<Race>{Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME}
+        : std::vector<Race>{base_sim.race};
+
     std::vector<CandidateResult> results;
-    int total = static_cast<int>(splits.size());
+    int total = static_cast<int>(splits.size() * races_to_test.size());
+    int current_idx = 0;
 
-    for (int i = 0; i < total; ++i) {
-        if (callback) callback(static_cast<float>(i) / total, splits[i].name);
+    for (const auto& split : splits) {
+        for (Race r : races_to_test) {
+            std::string run_name = split.name;
+            if (compare_all_races) {
+                run_name += std::string(" [") + race_to_string(r) + "]";
+            }
+            if (callback) callback(static_cast<float>(current_idx++) / total, run_name);
 
-        WarlockSimulator sim = base_sim;
-        sim.talents = build_talents_from_split(splits[i].aff, splits[i].demo, splits[i].destro);
-        sim.buffs.sacrifice_succubus = splits[i].sac_succubus;
-        sim.buffs.sacrifice_imp = splits[i].sac_imp;
-        if (splits[i].sac_succubus) {
-            sim.policy.maintain_immolate = true;
-            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
-            sim.policy.pet = PetChoice::NONE;
-        } else if (splits[i].sac_imp && sim.talents.demo.demonic_pact > 0) {
-            sim.policy.pet = PetChoice::SUCCUBUS;
-        } else if (splits[i].sac_imp) {
-            sim.policy.pet = PetChoice::NONE;
-        } else {
-            sim.policy.pet = PetChoice::SUCCUBUS;
+            WarlockSimulator sim = base_sim;
+            sim.race = r;
+            sim.base_attrs = get_base_attributes_for_race(r);
+            sim.talents = build_talents_from_split(split.aff, split.demo, split.destro, split.sac_succubus);
+            sim.buffs.sacrifice_succubus = split.sac_succubus;
+            sim.buffs.sacrifice_imp = split.sac_imp;
+            if (split.sac_succubus && sim.talents.demo.demonic_pact > 0) {
+                sim.policy.maintain_immolate = true;
+                sim.policy.rotation = RotationChoice::DP_RUIN_FIRE;
+                sim.policy.pet = PetChoice::IMP;
+            } else if (split.sac_succubus) {
+                sim.policy.maintain_immolate = true;
+                sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+                sim.policy.pet = PetChoice::NONE;
+            } else if (split.sac_imp && sim.talents.demo.demonic_pact > 0) {
+                sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+                sim.policy.pet = PetChoice::SUCCUBUS;
+            } else if (split.sac_imp) {
+                sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+                sim.policy.pet = PetChoice::NONE;
+            } else if (split.aff >= 40) {
+                sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
+                sim.policy.pet = PetChoice::SUCCUBUS;
+            } else if (split.aff >= 25 && split.destro >= 20) {
+                sim.policy.rotation = RotationChoice::SM_RUIN;
+                sim.policy.pet = PetChoice::SUCCUBUS;
+            } else if (split.demo >= 30) {
+                sim.policy.rotation = RotationChoice::DEMONOLOGY_EXECUTE;
+                sim.policy.pet = PetChoice::SUCCUBUS;
+            } else {
+                sim.policy.rotation = RotationChoice::AFFLICTION_HYBRID_DOTS;
+                sim.policy.pet = PetChoice::SUCCUBUS;
+            }
+
+            BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
+
+            CandidateResult res;
+            res.name = split.name;
+            if (compare_all_races) {
+                res.name += std::string(" (") + race_to_string(r) + ")";
+            }
+            res.race = r;
+            res.category = "Combinatorial Talents";
+            res.mean_dps = batch.mean_dps;
+            res.std_dev_dps = batch.std_dev_dps;
+            res.min_dps = batch.min_dps;
+            res.max_dps = batch.max_dps;
+            res.isb_uptime = batch.mean_isb_uptime;
+            res.talents = sim.talents;
+            res.gear = sim.gear;
+            res.buffs = sim.buffs;
+            res.policy = sim.policy;
+            res.mechanics = sim.mechanics;
+            res.batch = batch;
+            results.push_back(res);
         }
-
-        BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
-
-        CandidateResult res;
-        res.name = splits[i].name;
-        res.category = "Combinatorial Talents";
-        res.mean_dps = batch.mean_dps;
-        res.std_dev_dps = batch.std_dev_dps;
-        res.min_dps = batch.min_dps;
-        res.max_dps = batch.max_dps;
-        res.isb_uptime = batch.mean_isb_uptime;
-        res.talents = sim.talents;
-        res.gear = sim.gear;
-        res.buffs = sim.buffs;
-        res.policy = sim.policy;
-        res.mechanics = sim.mechanics;
-        res.batch = batch;
-        results.push_back(res);
     }
 
     std::sort(results.begin(), results.end(), [](const CandidateResult& a, const CandidateResult& b) {
@@ -553,6 +608,7 @@ std::vector<CandidateResult> Optimizer::compare_consumable_tiers(
         CandidateResult res;
         res.name = tiers[i].name;
         res.category = "Consumables";
+        res.race = sim.race;
         res.mean_dps = batch.mean_dps;
         res.std_dev_dps = batch.std_dev_dps;
         res.min_dps = batch.min_dps;
@@ -668,6 +724,7 @@ std::vector<CandidateResult> Optimizer::compare_stat_values(
         CandidateResult res;
         res.name = tests[i].name;
         res.category = "Stat Values (EP)";
+        res.race = sim.race;
         res.mean_dps = batch.mean_dps;
         res.std_dev_dps = batch.std_dev_dps;
         res.min_dps = batch.min_dps;
@@ -752,16 +809,16 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
     // D. Curse / Bane choices
     {
         auto p_agony = base_sim.policy;
-        p_agony.curse = CurseChoice::CURSE_OF_AGONY;
-        candidates.push_back({"[APL] Curse: Bane of Agony (Pandemic Crits)", base_sim.talents, p_agony, base_sim.buffs});
+        p_agony.curse = CurseChoice::BANE_OF_AGONY;
+        candidates.push_back({"[APL] Bane: Bane of Agony (Pandemic Crits)", base_sim.talents, p_agony, base_sim.buffs});
 
         auto p_doom = base_sim.policy;
         p_doom.curse = CurseChoice::CURSE_OF_DOOM;
         candidates.push_back({"[APL] Curse: Curse of Doom (1-min Burst)", base_sim.talents, p_doom, base_sim.buffs});
 
-        auto p_cos = base_sim.policy;
-        p_cos.curse = CurseChoice::CURSE_OF_SHADOWS;
-        candidates.push_back({"[APL] Curse: Curse of Shadows (-75 Resist, +10% Dmg)", base_sim.talents, p_cos, base_sim.buffs});
+        auto p_none = base_sim.policy;
+        p_none.curse = CurseChoice::NONE;
+        candidates.push_back({"[APL] Bane/Curse: None", base_sim.talents, p_none, base_sim.buffs});
     }
 
     // E. Decimation Soul Fire Execute (<35% HP)
@@ -811,16 +868,16 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
     }
 
     // 3. Targeted Talent Perturbations
-    // Check if Affliction/Destruction hybrid (e.g. SM/Ruin style)
+    // Check if Affliction/Destruction hybrid (e.g. SM/AF style)
     if (base_sim.talents.aff.total_points() >= 25 && base_sim.talents.destro.ruin > 0) {
-        candidates.push_back({"[Talents] SM/Ruin: 2/5 SM + 3/3 Agonizing Flames (29/0/22)", Talents::create_forever_sm_ruin_max_flames(), base_sim.policy, base_sim.buffs});
-        candidates.push_back({"[Talents] SM/Ruin: 3/5 SM + 2/3 Agonizing Flames (30/0/21)", Talents::create_forever_sm_ruin(), base_sim.policy, base_sim.buffs});
-        candidates.push_back({"[Talents] SM/Ruin: 5/5 SM + 0/3 Agonizing Flames (32/0/19)", Talents::create_forever_sm_ruin_pure(), base_sim.policy, base_sim.buffs});
+        candidates.push_back({"[Talents] SM/AF: 2/5 SM + 3/3 Agonizing Flames (29/0/22)", Talents::create_forever_sm_ruin_max_flames(), base_sim.policy, base_sim.buffs});
+        candidates.push_back({"[Talents] SM/AF: 3/5 SM + 2/3 Agonizing Flames (30/0/21)", Talents::create_forever_sm_ruin(), base_sim.policy, base_sim.buffs});
+        candidates.push_back({"[Talents] SM/AF: 5/5 SM + 0/3 Agonizing Flames (32/0/19)", Talents::create_forever_sm_ruin_pure(), base_sim.policy, base_sim.buffs});
         
         Talents t_reach = Talents::create_forever_sm_ruin_max_flames();
         t_reach.destro.cataclysm = 1;
         t_reach.destro.destructive_reach = 2;
-        candidates.push_back({"[Talents] SM/Ruin: +20% Destructive Reach (Shift from Cata)", t_reach, base_sim.policy, base_sim.buffs});
+        candidates.push_back({"[Talents] SM/AF: +20% Destructive Reach (Shift from Cata)", t_reach, base_sim.policy, base_sim.buffs});
     }
 
     // Check if Demonology build (Demonic Pact vs MD Ruin vs DS Ruin)
@@ -829,7 +886,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         b_dp.sacrifice_imp = true;
         auto p_dp = base_sim.policy;
         p_dp.pet = PetChoice::SUCCUBUS;
-        candidates.push_back({"[Talents] Demonic Pact + Ruin (2/31/18 - Sac Imp + Succubus)", Talents::create_forever_demonic_pact(), p_dp, b_dp});
+        candidates.push_back({"[Talents] DP/AF Shadow (2/31/18 - Sac Imp + Succubus)", Talents::create_forever_dp_af_shadow(), p_dp, b_dp});
 
         auto b_md = base_sim.buffs;
         b_md.sacrifice_imp = false;
@@ -839,7 +896,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         b_ds.sacrifice_imp = true;
         auto p_ds = base_sim.policy;
         p_ds.pet = PetChoice::NONE;
-        candidates.push_back({"[Talents] DS / Ruin (0/21/30 - Sac Imp + Ruin + Shadow&Flame)", Talents::create_forever_shadow_destro(), p_ds, b_ds});
+        candidates.push_back({"[Talents] DS/AF (5/11/35 - Sac Imp + Ruin)", Talents::create_forever_ds_af(), p_ds, b_ds});
     }
 
     // Check if Destruction / Fire build
@@ -850,14 +907,14 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         p_fire.rotation = RotationChoice::FIRE_DESTRO;
         p_fire.maintain_immolate = true;
         p_fire.pet = PetChoice::NONE;
-        candidates.push_back({"[Talents] Fire Destro: Incinerate + Sac Succubus (0/11/40)", Talents::create_forever_fire_destro(), p_fire, b_fire});
+        candidates.push_back({"[Talents] Fire Destro: Incinerate + Sac Succubus (5/11/35)", Talents::create_forever_fire_destro(), p_fire, b_fire});
 
         auto b_shadow = base_sim.buffs;
         b_shadow.sacrifice_imp = true;
         auto p_shadow = base_sim.policy;
         p_shadow.rotation = RotationChoice::SHADOW_DESTRO;
         p_shadow.pet = PetChoice::NONE;
-        candidates.push_back({"[Talents] Shadow Destro: Conflag + Shadow&Flame (0/21/30)", Talents::create_forever_shadow_destro(), p_shadow, b_shadow});
+        candidates.push_back({"[Talents] DS/AF: Conflag Weave + Ruin (5/11/35)", Talents::create_forever_ds_af(), p_shadow, b_shadow});
     }
 
     std::vector<CandidateResult> results;
@@ -876,6 +933,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         CandidateResult res;
         res.name = candidates[i].name;
         res.category = "Perturbations";
+        res.race = sim.race;
         res.mean_dps = batch.mean_dps;
         res.std_dev_dps = batch.std_dev_dps;
         res.min_dps = batch.min_dps;

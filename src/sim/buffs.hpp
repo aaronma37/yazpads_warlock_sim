@@ -20,17 +20,17 @@ struct BuffConfig {
     bool use_mana_potions = true;       // Major Mana Potion (~1800 mana, 120s cd)
     bool use_demonic_runes = true;      // Demonic / Dark Rune (~1200 mana, 120s cd)
 
-    // World Buffs
-    bool rallying_cry = true;           // Dragonslayer: +10% Spell Crit
-    bool songflower = true;             // +5% Spell Crit, +15 All Attributes
-    bool spirit_of_zandalar = true;     // +10% All Attributes
-    bool warchiefs_blessing = true;     // +300 HP, +10 MP5 (Horde) or extra regen
-    bool sayges_fortune = true;         // Darkmoon Faire: +10% Damage Dealt
+    // World Buffs (Default Off)
+    bool rallying_cry = false;          // Dragonslayer: +10% Spell Crit
+    bool songflower = false;            // +5% Spell Crit, +15 All Attributes
+    bool spirit_of_zandalar = false;    // +10% All Attributes
+    bool warchiefs_blessing = false;    // +300 HP, +10 MP5
+    bool sayges_fortune = false;        // Darkmoon Faire: +10% Damage Dealt
 
     // Target Debuffs
     bool curse_of_shadows = true;       // +10% Shadow/Arcane damage, -75 Shadow Resistance
-    bool curse_of_elements = false;     // +10% Fire/Frost damage, -75 Fire Resistance
-    bool shadow_weaving = true;         // Priest: 5 stacks = +15% Shadow damage
+    bool curse_of_elements = true;      // +10% Fire/Frost damage, -75 Fire Resistance
+    bool shadow_weaving = false;        // Priest: 5 stacks = +15% Shadow damage (Default: OFF - Personal only in Forever)
     bool nightfall_axe = false;         // Spell vulnerability: +15% spell damage
 
     // Demonic Sacrifice Buffs
@@ -40,7 +40,7 @@ struct BuffConfig {
     bool sacrifice_imp = true;          
 
     // Applies static stat and multiplier contributions
-    void apply_to_stats(Stats& stats, const BaseAttributes& base, bool wow_forever = true) const {
+    void apply_to_stats(Stats& stats, const BaseAttributes& base, bool wow_forever = true, bool personal_shadow_weaving = true) const {
         // Base attributes modification
         double stat_multiplier = 1.0;
         if (blessing_of_kings) stat_multiplier *= 1.10;
@@ -91,7 +91,7 @@ struct BuffConfig {
         if (sayges_fortune) stats.all_damage_multiplier *= 1.10;
         if (curse_of_shadows) stats.shadow_multiplier *= 1.10;
         if (curse_of_elements) stats.fire_multiplier *= 1.10;
-        if (shadow_weaving) stats.shadow_multiplier *= 1.15;
+        if (shadow_weaving && !personal_shadow_weaving) stats.shadow_multiplier *= 1.15;
         if (nightfall_axe) stats.all_damage_multiplier *= 1.15;
 
         if (wow_forever) {

@@ -179,13 +179,13 @@ inline void render_tree_column(
     ImGui::Separator();
 
     // 3. Grid Positioning Parameters
-    const float icon_sz = 38.0f;
-    const float cell_w = 48.0f;
-    const float col_spacing = 18.0f;
+    const float icon_sz = 34.0f;
+    const float cell_w = 42.0f;
+    const float col_spacing = 12.0f;
     const float total_grid_w = 4.0f * cell_w + 3.0f * col_spacing;
-    const float start_x = std::max(6.0f, (col_w - total_grid_w) * 0.5f);
-    const float grid_start_y = 44.0f;
-    const float row_height = 76.0f;
+    const float start_x = std::max(4.0f, (col_w - total_grid_w) * 0.5f);
+    const float grid_start_y = 38.0f;
+    const float row_height = 68.0f;
 
     std::array<ImVec2, N> node_centers;
     std::array<bool, N> node_rendered;
@@ -353,18 +353,18 @@ inline void render_tree_column(
 }
 
 // Master Panel: Render All 3 Talent Trees Side by Side on the Same Pane
-inline void render_panel_talents(Talents& talents) {
-    ImGui::TextColored(ImVec4(0.8f, 0.6f, 1.0f, 1.0f), "WOW FOREVER TALENT CALCULATOR & ALLOCATOR (51 POINTS)");
+inline void render_panel_talents(WarlockSimulator& sim) {
+    ImGui::TextColored(ImVec4(0.8f, 0.6f, 1.0f, 1.0f), "Talents");
     ImGui::Separator();
 
     // Summary Header
-    int total_pts = talents.total_points();
+    int total_pts = sim.talents.total_points();
     ImVec4 pt_color = (total_pts <= 51) ? ImVec4(0.4f, 0.95f, 0.4f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
 
     ImGui::Text("Active Build: ");
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(0.7f, 0.5f, 1.0f, 1.0f), "[%d / %d / %d]",
-        talents.aff.total_points(), talents.demo.total_points(), talents.destro.total_points());
+        sim.talents.aff.total_points(), sim.talents.demo.total_points(), sim.talents.destro.total_points());
     ImGui::SameLine();
     ImGui::Text("  Points: ");
     ImGui::SameLine();
@@ -377,32 +377,75 @@ inline void render_panel_talents(Talents& talents) {
     // Presets Row
     ImGui::Text("Presets:");
     ImGui::SameLine();
-    if (ImGui::Button("Shadow Destro (0/21/30)")) {
-        talents = Talents::create_forever_shadow_destro();
+    if (ImGui::SmallButton("DS/AF")) {
+        sim.talents = Talents::create_forever_ds_af();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = true;
+        sim.policy.pet = PetChoice::NONE;
+        sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Fire Destro (0/11/40)")) {
-        talents = Talents::create_forever_fire_destro();
+    if (ImGui::SmallButton("DS/Incinerate")) {
+        sim.talents = Talents::create_forever_ds_incinerate();
+        sim.buffs.sacrifice_succubus = true;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.maintain_immolate = true;
+        sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+        sim.policy.pet = PetChoice::NONE;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Demonic Pact + Ruin (2/31/18)")) {
-        talents = Talents::create_forever_demonic_pact();
+    if (ImGui::SmallButton("DS/Searing Pain")) {
+        sim.talents = Talents::create_forever_ds_searing_pain();
+        sim.buffs.sacrifice_succubus = true;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.maintain_immolate = true;
+        sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+        sim.policy.pet = PetChoice::NONE;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Deep Affliction (41/0/10)")) {
-        talents = Talents::create_forever_deep_affliction();
+    if (ImGui::SmallButton("DP/AF Shadow")) {
+        sim.talents = Talents::create_forever_dp_af_shadow();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = true;
+        sim.policy.pet = PetChoice::SUCCUBUS;
+        sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     }
     ImGui::SameLine();
-    if (ImGui::Button("SM / Ruin (32/0/19 - 5/5 SM)")) {
-        talents = Talents::create_forever_sm_ruin_pure();
+    if (ImGui::SmallButton("DP/AF Fire")) {
+        sim.talents = Talents::create_forever_dp_af_fire();
+        sim.buffs.sacrifice_succubus = true;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.pet = PetChoice::IMP;
+        sim.policy.rotation = RotationChoice::DP_RUIN_FIRE;
     }
     ImGui::SameLine();
-    if (ImGui::Button("SM / Ruin (29/0/22 - 3/3 Flames)")) {
-        talents = Talents::create_forever_sm_ruin();
+    if (ImGui::SmallButton("Deep Affliction")) {
+        sim.talents = Talents::create_forever_deep_affliction();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = true;
+        sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
+        sim.policy.pet = PetChoice::NONE;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Reset All")) {
-        talents = Talents();
+    if (ImGui::SmallButton("Fire Destro+Decim")) {
+        sim.talents = Talents::create_forever_fire_destro_decimation();
+        sim.buffs.sacrifice_succubus = true;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.maintain_immolate = true;
+        sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+        sim.policy.pet = PetChoice::NONE;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("NF/DS/Ruin")) {
+        sim.talents = Talents::create_forever_nf_ds_ruin();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = true;
+        sim.policy.pet = PetChoice::NONE;
+        sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Reset All")) {
+        sim.talents = Talents();
     }
 
     ImGui::Separator();
@@ -410,12 +453,12 @@ inline void render_panel_talents(Talents& talents) {
 
     // Calculate dimensions for the 3 side-by-side trees
     float avail_w = ImGui::GetContentRegionAvail().x;
-    float col_spacing = 10.0f;
+    float col_spacing = 8.0f;
     float col_w = (avail_w - 2.0f * col_spacing) / 3.0f;
-    if (col_w < 310.0f) col_w = 310.0f;
+    if (col_w < 250.0f) col_w = 250.0f;
 
     float avail_h = ImGui::GetContentRegionAvail().y;
-    float col_h = std::max(590.0f, avail_h - 8.0f);
+    float col_h = std::max(530.0f, avail_h - 8.0f);
 
     // --- Column 1: Affliction Tree ---
     render_tree_column(
@@ -423,10 +466,10 @@ inline void render_panel_talents(Talents& talents) {
         "affliction_bg.png",
         ImVec4(0.45f, 0.75f, 1.0f, 1.0f),
         FOREVER_AFFLICTION_NODES,
-        [&](size_t i) { return talents.aff.get_points_by_index(i); },
-        [&](size_t i) -> int& { return talents.aff.get_points_by_index(i); },
-        [&]() { talents.aff = AfflictionTalents(); },
-        talents.aff.total_points(),
+        [&](size_t i) { return sim.talents.aff.get_points_by_index(i); },
+        [&](size_t i) -> int& { return sim.talents.aff.get_points_by_index(i); },
+        [&]() { sim.talents.aff = AfflictionTalents(); },
+        sim.talents.aff.total_points(),
         total_pts,
         col_w,
         col_h
@@ -440,10 +483,10 @@ inline void render_panel_talents(Talents& talents) {
         "demonology_bg.png",
         ImVec4(0.95f, 0.45f, 0.85f, 1.0f),
         FOREVER_DEMONOLOGY_NODES,
-        [&](size_t i) { return talents.demo.get_points_by_index(i); },
-        [&](size_t i) -> int& { return talents.demo.get_points_by_index(i); },
-        [&]() { talents.demo = DemonologyTalents(); },
-        talents.demo.total_points(),
+        [&](size_t i) { return sim.talents.demo.get_points_by_index(i); },
+        [&](size_t i) -> int& { return sim.talents.demo.get_points_by_index(i); },
+        [&]() { sim.talents.demo = DemonologyTalents(); },
+        sim.talents.demo.total_points(),
         total_pts,
         col_w,
         col_h
@@ -457,14 +500,21 @@ inline void render_panel_talents(Talents& talents) {
         "destruction_bg.png",
         ImVec4(1.0f, 0.60f, 0.20f, 1.0f),
         FOREVER_DESTRUCTION_NODES,
-        [&](size_t i) { return talents.destro.get_points_by_index(i); },
-        [&](size_t i) -> int& { return talents.destro.get_points_by_index(i); },
-        [&]() { talents.destro = DestructionTalents(); },
-        talents.destro.total_points(),
+        [&](size_t i) { return sim.talents.destro.get_points_by_index(i); },
+        [&](size_t i) -> int& { return sim.talents.destro.get_points_by_index(i); },
+        [&]() { sim.talents.destro = DestructionTalents(); },
+        sim.talents.destro.total_points(),
         total_pts,
         col_w,
         col_h
     );
+}
+
+inline void render_panel_talents(Talents& talents) {
+    WarlockSimulator temp_sim;
+    temp_sim.talents = talents;
+    render_panel_talents(temp_sim);
+    talents = temp_sim.talents;
 }
 
 } // namespace warlock

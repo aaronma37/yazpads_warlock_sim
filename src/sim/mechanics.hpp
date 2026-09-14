@@ -18,20 +18,25 @@ struct MechanicsConfig {
     double batch_window_ms = 400.0;
 
     // 3. Raid Debuff Limit
-    // Classic vanilla: 8 slots early on, 16 slots in 1.12.
-    // Set to 0 for unlimited debuff slots.
-    int debuff_limit = 16;
-    bool enforce_debuff_slots = true;
+    // 0 = Infinite / Unlimited debuff slots (Default in Forever / Modern).
+    // 16 = 1.12 Classic 16-slot debuff limit.
+    int debuff_limit = 0;
+    bool enforce_debuff_slots = false; // Default: Infinite Debuff Slots
 
-    // 4. Resistance & Partial Resists
+    // 4. Personal Shadow Weaving
+    // True: Shadow Weaving debuff (+15% Shadow) is personal to the Shadow Priest that applied it (Warlocks do NOT benefit).
+    // False: Raid-wide shared Shadow Weaving (Classic WoW 1.12).
+    bool personal_shadow_weaving = true; // Default: Personal Only (Warlocks do not benefit)
+
+    // 5. Resistance & Partial Resists
     // True: Uses Classic 4-roll partial resist table (0%, 25%, 50%, 75%, 100% resist).
     // False: Binary resist only (miss or full hit).
     bool partial_resists_enabled = true;
 
-    // 5. Improved Shadow Bolt (ISB) consumption rules
-    // isb_has_charges: True = 4 charges consumed by attacks (Classic WoW 1.12).
-    //                  False = 12-second timed window without charges (WoW Forever).
-    bool isb_has_charges = false;
+    // 6. Improved Shadow Bolt (ISB)
+    // In WoW Forever: ISB is a pure 12-second debuff window (chargeless).
+    // In Classic 1.12: 4 charges consumed by damaging shadow attacks.
+    bool isb_has_charges = false; // Default: 12-second timed window (chargeless)
     bool isb_all_shadow_sources = false;
 
     // 6. Spell Hit Cap & Base Hit
@@ -58,6 +63,21 @@ struct MechanicsConfig {
     // 10. Global Cooldown (GCD)
     double base_gcd = 1.5;
     bool haste_affects_gcd = false; // In classic, haste does not affect 1.5s GCD floor; toggleable for modern.
+
+    // 11. Pet Stat Scaling & Mana Modeling
+    // True: Pets inherit master's Spell Power (57% SP inheritance to pet spell damage and attack power).
+    // False: Static base damage (Classic 1.12).
+    bool pet_scaling = true; // Default: ON (WoW Forever)
+    double pet_sp_ratio = 0.57; // 57% SP inheritance
+
+    // Pet Mana Management
+    // When enabled, Imp and Succubus track mana pools, cast costs, and regen.
+    bool pet_mana_management = true;
+    double imp_base_mana = 1150.0;
+    double succubus_base_mana = 1450.0;
+    double imp_firebolt_cost = 115.0;     // Rank 7 Firebolt
+    double succubus_lop_cost = 160.0;     // Rank 6 Lash of Pain
+    double pet_base_mp5 = 45.0;           // Base passive pet regen per 5s
 };
 
 } // namespace warlock

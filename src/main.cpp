@@ -223,27 +223,26 @@ int run_headless(int argc, char* argv[]) {
               << "ISB Uptime:     " << batch.mean_isb_uptime << "%\n"
               << "Crit Rate:      " << batch.crit_percent << "%\n"
               << "Miss Rate:      " << batch.miss_percent << "%\n"
-              << "Avg Life Taps:  " << batch.mean_life_taps << "\n\n"
-              << "Damage Breakdown:\n"
-              << "  Shadow Bolt:  " << batch.pct_shadow_bolt << "%\n"
-              << "  Corruption:   " << batch.pct_corruption << "%\n"
-              << "  Curse:        " << batch.pct_curse << "%\n"
-              << "  Immolate:     " << batch.pct_immolate << "%\n"
-              << "  Shadowburn:   " << batch.pct_shadowburn << "%\n";
-    if (batch.pct_conflagrate > 0.001) {
-        std::cout << "  Conflagrate:  " << batch.pct_conflagrate << "%\n";
-    }
-    if (batch.pct_incinerate > 0.001) {
-        std::cout << "  Incinerate:   " << batch.pct_incinerate << "%\n";
-    }
-    if (batch.pct_soul_fire > 0.001) {
-        std::cout << "  Soul Fire:    " << batch.pct_soul_fire << "%\n";
-    }
-    if (batch.pct_drain_hope > 0.001) {
-        std::cout << "  Drain Hope:   " << batch.pct_drain_hope << "%\n";
-    }
-    if (batch.pct_pet > 0.001) {
-        std::cout << "  Demon (Pet):  " << batch.pct_pet << "% (" << batch.mean_pet_dps << " DPS)\n";
+              << "Avg Life Taps:  " << batch.mean_life_taps << "\n\n";
+    std::cout << "Damage Breakdown:\n";
+    if (batch.pct_shadow_bolt > 0.001) std::cout << "  Shadow Bolt:   " << batch.pct_shadow_bolt << "%\n";
+    if (batch.pct_corruption > 0.001)  std::cout << "  Corruption:    " << batch.pct_corruption << "%\n";
+    if (batch.pct_agony > 0.001)       std::cout << "  Bane of Agony: " << batch.pct_agony << "%\n";
+    if (batch.pct_doom > 0.001)        std::cout << "  Curse of Doom: " << batch.pct_doom << "%\n";
+    if (batch.pct_siphon_life > 0.001) std::cout << "  Siphon Life:   " << batch.pct_siphon_life << "%\n";
+    if (batch.pct_immolate > 0.001)    std::cout << "  Immolate:      " << batch.pct_immolate << "%\n";
+    if (batch.pct_shadowburn > 0.001)  std::cout << "  Shadowburn:    " << batch.pct_shadowburn << "%\n";
+    if (batch.pct_conflagrate > 0.001) std::cout << "  Conflagrate:   " << batch.pct_conflagrate << "%\n";
+    if (batch.pct_incinerate > 0.001)  std::cout << "  Incinerate:    " << batch.pct_incinerate << "%\n";
+    if (batch.pct_searing_pain > 0.001)std::cout << "  Searing Pain:  " << batch.pct_searing_pain << "%\n";
+    if (batch.pct_soul_fire > 0.001)   std::cout << "  Soul Fire:     " << batch.pct_soul_fire << "%\n";
+    if (batch.pct_drain_hope > 0.001)  std::cout << "  Drain Hope:    " << batch.pct_drain_hope << "%\n";
+    if (batch.pct_pet_imp > 0.001) {
+        std::cout << "  Imp (Firebolt):" << batch.pct_pet_imp << "% (" << batch.mean_pet_dps << " DPS)\n";
+    } else if (batch.pct_pet_succubus > 0.001) {
+        std::cout << "  Succubus:      " << batch.pct_pet_succubus << "% (" << batch.mean_pet_dps << " DPS)\n";
+    } else if (batch.pct_pet > 0.001) {
+        std::cout << "  Demon (Pet):   " << batch.pct_pet << "% (" << batch.mean_pet_dps << " DPS)\n";
     }
 
     if (!json_output.empty()) {

@@ -314,7 +314,7 @@ inline const std::array<TalentNodeDef, 19> FOREVER_DEMONOLOGY_NODES = {{
     {"master_summoner", "Master Summoner", 3, 3, 2, "spell_shadow_impphaseshift.png", nullptr, {"Reduces the casting time of your Imp, Voidwalker, Succubus, Incubus, and Felhunter Summoning spells by 2 sec and the Mana cost by 20%.", "Reduces the casting time of your Imp, Voidwalker, Succubus, Incubus, and Felhunter Summoning spells by 4 sec and the Mana cost by 40%.", nullptr, nullptr, nullptr}},
     {"decimation", "Decimation", 4, 1, 2, "spell_fire_fireball02.png", nullptr, {"Reduces the cooldown of your Soul Fire spell by 45%. When you cast Shadow Bolt or Searing Pain on an enemy below 35% health, they deal 3% increased damage, and for the next 10 sec your Soul Fire spell has its cast time reduced by 20% and costs no Soul Shards.", "Reduces the cooldown of your Soul Fire spell by 90%. When you cast Shadow Bolt or Searing Pain on an enemy below 35% health, they deal 6% increased damage, and for the next 10 sec your Soul Fire spell has its cast time reduced by 40% and costs no Soul Shards.", nullptr, nullptr, nullptr}},
     {"fel_domination", "Fel Domination", 4, 3, 1, "spell_nature_removecurse.png", "Master Summoner", {"Your next Imp, Voidwalker, Succubus, Incubus, or Felhunter Summon spell has its casting time reduced by 5.5 sec and its Mana cost reduced by 50%.", nullptr, nullptr, nullptr, nullptr}},
-    {"demonic_brand", "Demonic Brand", 4, 4, 3, "spell_shadow_demonbreath.png", nullptr, {"Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 34% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 26 to 28 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 50% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet.", nullptr, nullptr}},
+    {"demonic_brand", "Demonic Brand", 4, 4, 3, "spell_shadow_demonbreath.png", nullptr, {"Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 13 to 14 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 34% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 26 to 28 Fire or Shadow damage based on the pet.", "Your Searing Pain generates 50% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet.", nullptr, nullptr}},
     {"improved_felhunter", "Improved Felhunter", 5, 1, 3, "spell_shadow_summonfelhunter.png", nullptr, {"Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 10%, and reduces the cooldown of its Spell Lock by 2 sec.", "Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 20%, and reduces the cooldown of its Spell Lock by 4 sec.", "Increases the Attack Power reduction of your Felhunter's Tainted Blood, the healing of its Devour Magic, and the detection level of its Paranoia by 30%, and reduces the cooldown of its Spell Lock by 6 sec.", nullptr, nullptr}},
     {"soul_link", "Soul Link", 5, 2, 1, "spell_shadow_gathershadows.png", "Demonic Sacrifice", {"When active, 30% of all damage taken by the caster is taken by your Imp, Voidwalker, Succubus, Incubus, or Felhunter Demon instead. In addition, both the Demon and the master will inflict 3% more damage. Lasts as long as the Demon is active.", nullptr, nullptr, nullptr, nullptr}},
     {"demonic_knowledge", "Demonic Knowledge", 5, 3, 3, "spell_shadow_improvedvampiricembrace.png", nullptr, {"Increases your spell damage and healing by up to 33% of your level while you have a summoned Demon pet active.", "Increases your spell damage and healing by up to 66% of your level while you have a summoned Demon pet active.", "Increases your spell damage and healing by up to 100% of your level while you have a summoned Demon pet active.", nullptr, nullptr}},
@@ -355,61 +355,151 @@ struct Talents {
     }
 
     // =========================================================================
-    // WoW Classic Forever Presets
+    // Build Presets
     // =========================================================================
 
-    // 1. Forever Shadow Destro (Sac Imp + Shadow & Flame Conflag Buff) (0/21/30)
+    // 1. 5/11/35 DS/AF (sac-imp)
     static Talents create_forever_shadow_destro() {
         Talents t;
-        // Demonology: 21 points
+        // Affliction: 5 points
+        t.aff.suppression = 5;             // 5/5 (+5% hit in Forever, -20% threat)
+
+        // Demonology: 11 points (Sac Imp -> +15% Shadow!)
         t.demo.demonic_embrace = 5;
         t.demo.fel_vitality = 3;
-        t.demo.improved_imp = 3;
-        t.demo.unholy_power = 5;
-        t.demo.master_summoner = 2;
         t.demo.demonic_aegis = 2;
-        t.demo.demonic_sacrifice = 1; // Sac Imp -> +15% Shadow!
+        t.demo.demonic_sacrifice = 1;      // Sac Imp -> +15% Shadow!
 
-        // Destruction: 30 points
-        t.destro.improved_shadow_bolt = 5; // 20% Shadow vuln for 12s on crit
+        // Destruction: 35 points
+        t.destro.destructive_reach = 2;
+        t.destro.improved_shadow_bolt = 5; // 20% Shadow vuln on crit
         t.destro.bane = 5;                 // -0.5s SB cast time
         t.destro.cataclysm = 3;            // -9% mana cost
+        t.destro.aftermath = 2;
         t.destro.ruin = 5;                 // +100% crit damage bonus (2.0x total)
         t.destro.shadowburn = 1;           // instant shadow finisher
         t.destro.agonizing_flames = 3;     // +9% all Destruction spell damage!
-        t.destro.conflagrate = 1;          // Conflagrate on cooldown
-        t.destro.destructive_reach = 2;    // +20% range
-        t.destro.shadow_and_flame = 5;     // Conflag gives +10% Shadow for 20s & 100% chance not to consume Immolate!
+        t.destro.conflagrate = 1;
+        t.destro.fire_and_brimstone = 3;
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Conflag buffs Shadow by 10%!
         return t;
     }
 
-    // 2. Forever Fire Destro (Incinerate + Conflagrate + Aftermath) (0/11/40)
-    static Talents create_forever_fire_destro() {
+    // 1b. 19/11/21 NF/DS/Ruin (sac-imp)
+    static Talents create_forever_nf_ds_ruin() {
         Talents t;
+        // Affliction: 19 points (Nightfall 2/2)
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;             // 5/5 (+5% spell hit, -20% threat)
+        t.aff.improved_corruption = 5;     // 5/5 Instant Corruption (+10% dmg)
+        t.aff.malediction = 5;             // 5/5 (+5% periodic damage)
+        t.aff.nightfall = 2;               // 2/2 Shadow Trance on Corruption ticks
+
+        // Demonology: 11 points (Demonic Sacrifice -> Sac Imp for +15% Shadow!)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;      // Sac Imp -> +15% Shadow!
+
+        // Destruction: 21 points (Ruin 5/5 + Agonizing Flames 3/3)
+        t.destro.improved_shadow_bolt = 5; // 20% Shadow vuln on crit
+        t.destro.bane = 5;                 // -0.5s SB cast time
+        t.destro.cataclysm = 2;            // -6% mana cost
+        t.destro.ruin = 5;                 // +100% crit damage bonus (2.0x total)
+        t.destro.shadowburn = 1;           // instant shadow finisher
+        t.destro.agonizing_flames = 3;     // +9% all Destruction spell damage!
+        return t;
+    }
+
+    // 2. 5/11/35 DS/Incinerate (sac-succubus)
+    static Talents create_forever_ds_incinerate() {
+        Talents t;
+        // Affliction: 5 points
+        t.aff.suppression = 5;             // +5% spell hit, -20% threat
+
         // Demonology: 11 points (Sac Succubus -> +15% Fire!)
         t.demo.demonic_embrace = 5;
         t.demo.fel_vitality = 3;
-        t.demo.improved_sayaad = 2;
-        t.demo.demonic_sacrifice = 1; // Sac Succubus -> +15% Fire!
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
 
-        // Destruction: 40 points
-        t.destro.improved_shadow_bolt = 5;
+        // Destruction: 35 points
+        t.destro.destructive_reach = 2;
         t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
-        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
         t.destro.cataclysm = 3;
+        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
         t.destro.agonizing_flames = 3;     // +9% Destruction damage
         t.destro.conflagrate = 1;
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
         t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
         t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
-        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
-        t.destro.destructive_reach = 2;
         t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
         return t;
     }
 
-    // 3. Forever Demonic Pact + Ruin (Sac Imp + Active Succubus + Ruin + Agonizing Flames) (2/31/18)
+    // Compatibility alias
+    static Talents create_forever_fire_destro() {
+        return create_forever_ds_incinerate();
+    }
+
+    // 2b. 5/11/35 DS/Searing Pain (sac-succubus)
+    static Talents create_forever_ds_searing_pain() {
+        Talents t;
+        // Affliction: 5 points
+        t.aff.suppression = 5;             // +5% spell hit, -20% threat
+
+        // Demonology: 11 points (Sac Succubus -> +15% Fire!)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
+
+        // Destruction: 35 points
+        t.destro.destructive_reach = 4;
+        t.destro.bane = 5;                 // -0.5s Immolate / -2.0s Soul Fire
+        t.destro.cataclysm = 3;
+        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage, +9% Searing Pain crit!
+        t.destro.conflagrate = 1;
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        return t;
+    }
+
+    // 2c. 0/17/34 Fire Destro + Decimation (sac-succubus)
+    static Talents create_forever_fire_destro_decimation() {
+        Talents t;
+        // Demonology: 17 points (Demonic Sacrifice + 2/2 Decimation)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
+        t.demo.decimation = 2;             // Soul Fire execute <35% HP (+6% Searing Pain/SB, -40% SF cast time, 6s CD)
+        t.demo.master_summoner = 2;
+        t.demo.improved_imp = 2;
+
+        // Destruction: 34 points
+        t.destro.destructive_reach = 1;
+        t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
+        t.destro.cataclysm = 3;
+        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
+
+    // 3. 2/31/18 DP/AF Shadow (sac-imp + succubus)
     static Talents create_forever_demonic_pact() {
         Talents t;
         // Affliction: 2 points
@@ -420,9 +510,9 @@ struct Talents {
         t.demo.unholy_power = 5;
         t.demo.fel_vitality = 3;
         t.demo.demonic_aegis = 2;
+        t.demo.demonic_energies = 2;       // 2/2 Demonic Energies (Life Tap shares mana with pet + pet heal)
         t.demo.improved_sayaad = 3;
         t.demo.demonic_sacrifice = 1;      // Sac Imp for +15% Shadow!
-        t.demo.decimation = 2;             // Soul Fire execute below 35% HP
         t.demo.soul_link = 1;              // +3% all damage
         t.demo.demonic_knowledge = 3;      // +60 Spell Power while pet is out!
         t.demo.master_demonologist = 5;    // +10% Shadow damage from Succubus!
@@ -436,18 +526,46 @@ struct Talents {
         return t;
     }
 
-    // 4. Forever Deep Affliction (Drain Hope + Pandemic + Malevolence) (41/0/10)
+    // 3b. 0/31/20 DP/AF Fire (sac-succubus + imp)
+    static Talents create_forever_demonic_pact_fire() {
+        Talents t;
+        // Affliction: 0 points
+
+        // Demonology: 31 points (Capstone: Demonic Pact!)
+        t.demo.demonic_embrace = 2;        // 2/5 Demonic Embrace
+        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
+        t.demo.unholy_power = 5;           // 5/5 Unholy Power (+10% pet damage)
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_energies = 2;       // 2/2 Demonic Energies (Life Tap shares mana with pet + pet heal)
+        t.demo.demonic_sacrifice = 1;      // Sac Succubus for +15% Fire!
+        t.demo.demonic_brand = 3;          // 3/3 Demonic Brand
+        t.demo.soul_link = 1;              // +3% all damage
+        t.demo.demonic_knowledge = 3;      // +60 Spell Power while pet is out!
+        t.demo.master_demonologist = 5;    // +10% Fire damage from active Imp!
+        t.demo.demonic_pact = 1;           // KEEP Demonic Sacrifice WHILE SUMMONING IMP!
+
+        // Destruction: 20 points
+        t.destro.aftermath = 2;            // +20% initial Immolate damage
+        t.destro.bane = 5;                 // -0.5s Immolate / -2.0s Soul Fire
+        t.destro.cataclysm = 3;
+        t.destro.ruin = 5;                 // +100% spell crit bonus!
+        t.destro.shadowburn = 1;           // Instant finisher
+        t.destro.conflagrate = 1;          // Conflagrate
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage!
+        return t;
+    }
+
+    // 4. 40/11/0 Deep Affliction (DS Imp / Drain Hope)
     static Talents create_forever_deep_affliction() {
         Talents t;
-        // Affliction: 41 points
+        // Affliction: 40 points
         t.aff.improved_life_tap = 2;
         t.aff.suppression = 5;             // +5% spell hit, -20% threat
         t.aff.improved_corruption = 5;     // Instant, +10% damage
+        t.aff.improved_drains = 3;         // +18% Drain damage (tripled <20% HP)
         t.aff.malediction = 5;             // +5% periodic damage
-        t.aff.improved_bane_of_agony = 2;  // +10% Agony damage
         t.aff.pandemic = 3;                // +100% DoT crit damage bonus!
         t.aff.malevolence = 5;             // +5% Shadow spell crit
-        t.aff.nightfall = 2;               // 4% Shadow Trance on Corruption ticks
         t.aff.siphon_life = 1;
         t.aff.soul_siphon = 3;             // +50% faster drain ticks
         t.aff.shadow_mastery = 5;          // +5% Shadow damage
@@ -455,14 +573,18 @@ struct Talents {
         t.aff.amplify_curse = 1;
         t.aff.curse_of_exhaustion = 1;
 
-        // Destruction: 10 points
-        t.destro.improved_shadow_bolt = 5;
-        t.destro.bane = 5;
+        // Demonology: 11 points (Demonic Sacrifice Imp -> +15% Shadow damage!)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;
+
+        // Destruction: 0 points
         return t;
     }
 
-    // 5a. Forever SM/Ruin Full Shadow Mastery (32/0/19 - 5/5 SM)
-    static Talents create_forever_sm_ruin_pure() {
+    // 5. Forever SM/AF (32/0/19 - 5/5 Shadow Mastery, 3/3 Agonizing Flames)
+    static Talents create_forever_sm_ruin() {
         Talents t;
         // Affliction: 32 points
         t.aff.improved_life_tap = 2;
@@ -472,41 +594,23 @@ struct Talents {
         t.aff.pandemic = 3;
         t.aff.malevolence = 5;
         t.aff.nightfall = 2;
-        t.aff.shadow_mastery = 5; // Full 5/5 Shadow Mastery
+        t.aff.shadow_mastery = 5;             // 5/5 SM (+5% Shadow dmg)
 
         // Destruction: 19 points
         t.destro.improved_shadow_bolt = 5;
         t.destro.bane = 5;
-        t.destro.cataclysm = 3;
-        t.destro.ruin = 5;
-        t.destro.shadowburn = 1;
-        return t;
-    }
-
-    // 5. Forever SM/Ruin Optimal (29/0/22 - 2/5 Shadow Mastery, 3/3 Agonizing Flames)
-    static Talents create_forever_sm_ruin() {
-        Talents t;
-        // Affliction: 29 points
-        t.aff.improved_life_tap = 2;
-        t.aff.suppression = 5;
-        t.aff.improved_corruption = 5;
-        t.aff.malediction = 5;
-        t.aff.pandemic = 3;
-        t.aff.malevolence = 5;
-        t.aff.nightfall = 2;
-        t.aff.shadow_mastery = 2;             // 2/5 SM (+2% Shadow dmg)
-
-        // Destruction: 22 points
-        t.destro.improved_shadow_bolt = 5;
-        t.destro.bane = 5;
-        t.destro.cataclysm = 3;
         t.destro.ruin = 5;
         t.destro.shadowburn = 1;
         t.destro.agonizing_flames = 3;         // 3/3 Agonizing Flames (+9% Destro spell dmg!)
         return t;
     }
 
-    // 5b. Forever SM/Ruin Max Flames alias
+    // 5a. Forever SM/AF alias
+    static Talents create_forever_sm_ruin_pure() {
+        return create_forever_sm_ruin();
+    }
+
+    // 5b. Forever SM/AF Max Flames alias
     static Talents create_forever_sm_ruin_max_flames() {
         return create_forever_sm_ruin();
     }
@@ -537,11 +641,24 @@ struct Talents {
         return t;
     }
 
-    // Classic compatibility aliases
+    // Compatibility aliases and standard methods
+    static Talents create_forever_ds_af() { return create_forever_shadow_destro(); }
+    static Talents create_forever_dp_af_shadow() { return create_forever_demonic_pact(); }
+    static Talents create_forever_dp_af_fire() { return create_forever_demonic_pact_fire(); }
+    static Talents create_forever_sm_af() { return create_forever_sm_ruin_max_flames(); }
     static Talents create_ds_ruin() { return create_forever_shadow_destro(); }
+    static Talents create_ds_af() { return create_forever_shadow_destro(); }
     static Talents create_sm_ruin() { return create_forever_sm_ruin_max_flames(); }
-    static Talents create_fire_destro() { return create_forever_fire_destro(); }
+    static Talents create_sm_af() { return create_forever_sm_ruin_max_flames(); }
+    static Talents create_dp_af() { return create_forever_demonic_pact(); }
+    static Talents create_fire_destro() { return create_forever_ds_incinerate(); }
+    static Talents create_ds_incinerate() { return create_forever_ds_incinerate(); }
+    static Talents create_ds_searing_pain() { return create_forever_ds_searing_pain(); }
     static Talents create_md_ruin() { return create_forever_md_ruin(); }
+    static Talents create_forever_nf_ds() { return create_forever_nf_ds_ruin(); }
+    static Talents create_nf_ds_ruin() { return create_forever_nf_ds_ruin(); }
+    static Talents create_nf_ds() { return create_forever_nf_ds_ruin(); }
+    static Talents create_fire_destro_decimation() { return create_forever_fire_destro_decimation(); }
 };
 
 } // namespace warlock

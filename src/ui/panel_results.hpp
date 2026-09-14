@@ -120,11 +120,29 @@ inline void render_panel_results(const BatchSimResult& batch) {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1.0f), "%.1f%%", batch.pct_corruption);
 
-            ImGui::Text("Curse: ");
-            ImGui::SameLine(180);
-            ImGui::ProgressBar(static_cast<float>(batch.pct_curse * 0.01), ImVec2(240, 0), "");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "%.1f%%", batch.pct_curse);
+            if (batch.pct_agony > 0.001) {
+                ImGui::Text("Bane of Agony: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_agony * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "%.1f%%", batch.pct_agony);
+            }
+
+            if (batch.pct_doom > 0.001) {
+                ImGui::Text("Curse of Doom: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_doom * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "%.1f%%", batch.pct_doom);
+            }
+
+            if (batch.pct_siphon_life > 0.001) {
+                ImGui::Text("Siphon Life: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_siphon_life * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.6f, 1.0f), "%.1f%%", batch.pct_siphon_life);
+            }
 
             ImGui::Text("Immolate: ");
             ImGui::SameLine(180);
@@ -154,6 +172,14 @@ inline void render_panel_results(const BatchSimResult& batch) {
                 ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%.1f%%", batch.pct_incinerate);
             }
 
+            if (batch.pct_searing_pain > 0.001) {
+                ImGui::Text("Searing Pain: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_searing_pain * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "%.1f%%", batch.pct_searing_pain);
+            }
+
             if (batch.pct_soul_fire > 0.001) {
                 ImGui::Text("Soul Fire: ");
                 ImGui::SameLine(180);
@@ -170,12 +196,40 @@ inline void render_panel_results(const BatchSimResult& batch) {
                 ImGui::TextColored(ImVec4(0.6f, 0.3f, 0.9f, 1.0f), "%.1f%%", batch.pct_drain_hope);
             }
 
-            if (batch.pct_pet > 0.001) {
+            if (batch.pct_drain_life > 0.001) {
+                ImGui::Text("Drain Life: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_drain_life * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.5f, 1.0f), "%.1f%%", batch.pct_drain_life);
+            }
+
+            if (batch.pct_drain_soul > 0.001) {
+                ImGui::Text("Drain Soul: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_drain_soul * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.5f, 0.4f, 0.9f, 1.0f), "%.1f%%", batch.pct_drain_soul);
+            }
+
+            if (batch.pct_pet_imp > 0.001) {
+                ImGui::Text("Imp (Firebolt): ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_imp * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet_imp, batch.mean_pet_dps);
+            } else if (batch.pct_pet_succubus > 0.001) {
+                ImGui::Text("Succubus (Lash/Melee): ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_succubus * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet_succubus, batch.mean_pet_dps);
+            } else if (batch.pct_pet > 0.001) {
                 ImGui::Text("Demon (Pet): ");
                 ImGui::SameLine(180);
                 ImGui::ProgressBar(static_cast<float>(batch.pct_pet * 0.01), ImVec2(240, 0), "");
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f Pet DPS)", batch.pct_pet, batch.mean_pet_dps);
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet, batch.mean_pet_dps);
             }
 
             ImGui::Spacing();

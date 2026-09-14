@@ -1,0 +1,63 @@
+#pragma once
+#include "imgui.h"
+#include "asset_manager.hpp"
+#include "src/sim/buffs.hpp"
+#include "src/sim/warlock_sim.hpp"
+
+namespace warlock {
+
+inline void render_panel_buffs(BuffConfig& buffs) {
+    // 1. Consumables (Default Collapsed)
+    if (ImGui::CollapsingHeader("Consumables & Elixirs", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Flask of Supreme Power (+150 Spell Power)", &buffs.flask_of_supreme_power);
+        ImGui::Checkbox("Greater Arcane Elixir (+35 Spell Power)", &buffs.greater_arcane_elixir);
+        ImGui::Checkbox("Elixir of Shadow Power (+40 Shadow Power)", &buffs.elixir_of_shadow_power);
+        ImGui::Checkbox("Brilliant Wizard Oil (+36 Spell Power, +1% Crit)", &buffs.brilliant_wizard_oil);
+        ImGui::Checkbox("Use Major Mana Potions (~1800 Mana)", &buffs.use_mana_potions);
+        ImGui::Checkbox("Use Demonic / Dark Runes (~1200 Mana)", &buffs.use_demonic_runes);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 2. Raid Buffs (Default Collapsed)
+    if (ImGui::CollapsingHeader("Raid Buffs", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Arcane Intellect (+31 Intellect)", &buffs.arcane_intellect);
+        ImGui::Checkbox("Blessing of Kings (+10% All Attributes)", &buffs.blessing_of_kings);
+        ImGui::Checkbox("Blessing of Wisdom (+30 MP5)", &buffs.blessing_of_wisdom);
+        ImGui::Checkbox("Mark of the Wild (+12 All Attributes)", &buffs.mark_of_the_wild);
+        ImGui::Checkbox("Judgement of Wisdom (50% Chance for 59 Mana on Hit)", &buffs.judgement_of_wisdom);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 3. World Buffs (Default Collapsed, Off by Default)
+    if (ImGui::CollapsingHeader("World Buffs (Default Off)", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Rallying Cry of the Dragonslayer (+10% Spell Crit)", &buffs.rallying_cry);
+        ImGui::Checkbox("Songflower Serenade (+5% Spell Crit, +15 All Stats)", &buffs.songflower);
+        ImGui::Checkbox("Spirit of Zandalar (+10% All Attributes)", &buffs.spirit_of_zandalar);
+        ImGui::Checkbox("Warchief's Blessing (+300 HP, +10 MP5)", &buffs.warchiefs_blessing);
+        ImGui::Checkbox("Sayge's Fortune (DMF +10% Damage Dealt)", &buffs.sayges_fortune);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 4. Target Raid Debuffs (Default Collapsed)
+    if (ImGui::CollapsingHeader("Target Raid Debuffs", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Curse of Shadows (-75 Res, +10% Shadow/Arcane Dmg)", &buffs.curse_of_shadows);
+        ImGui::Checkbox("Curse of the Elements (-75 Res, +10% Fire/Frost Dmg)", &buffs.curse_of_elements);
+        ImGui::Checkbox("Shadow Weaving 5 Stacks (+15% Shadow Dmg)", &buffs.shadow_weaving);
+        ImGui::Checkbox("Nightfall 2H Axe Proc (+15% Spell Damage Taken)", &buffs.nightfall_axe);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 5. Demonic Sacrifice Modifiers (Default Collapsed)
+    if (ImGui::CollapsingHeader("Demonic Sacrifice Modifiers", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Sacrifice Imp (+15% Shadow Damage in Forever)", &buffs.sacrifice_imp);
+        ImGui::Checkbox("Sacrifice Succubus (+15% Fire Damage in Forever)", &buffs.sacrifice_succubus);
+        ImGui::Unindent(8.0f);
+    }
+}
+
+} // namespace warlock

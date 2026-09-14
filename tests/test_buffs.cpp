@@ -103,3 +103,25 @@ TEST_CASE(Buffs, DemonicSacrificeMultipliers) {
     buffs.apply_to_stats(stats_succ, base, true);
     CHECK_NEAR(stats_succ.fire_multiplier, 1.15, 0.001);
 }
+
+TEST_CASE(Buffs, PersonalShadowWeavingMechanic) {
+    BuffConfig buffs;
+    buffs.curse_of_shadows = false;
+    buffs.curse_of_elements = false;
+    buffs.sacrifice_imp = false;
+    buffs.sacrifice_succubus = false;
+    buffs.shadow_weaving = true;
+    BaseAttributes base;
+
+    // When personal_shadow_weaving is true (default in WoW Forever), warlock does not gain the 1.15x shadow multiplier
+    Stats stats_personal;
+    buffs.apply_to_stats(stats_personal, base, true, true);
+    CHECK_NEAR(stats_personal.shadow_multiplier, 1.00, 0.001);
+
+    // When personal_shadow_weaving is false (shared debuff mode), warlock gains the 1.15x shadow multiplier
+    Stats stats_shared;
+    buffs.apply_to_stats(stats_shared, base, true, false);
+    CHECK_NEAR(stats_shared.shadow_multiplier, 1.15, 0.001);
+}
+
+

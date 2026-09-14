@@ -29,6 +29,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_isb_uptime = 0.0;
         int sum_shadow_bolts = 0;
         int sum_crits = 0;
+        int sum_direct_casts = 0;
+        int sum_direct_crits = 0;
+        int sum_damage_events = 0;
+        int sum_damage_crits = 0;
         int sum_misses = 0;
         int sum_casts = 0;
         int sum_life_taps = 0;
@@ -37,13 +41,21 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_sb = 0.0;
         double sum_dmg_corr = 0.0;
         double sum_dmg_curse = 0.0;
+        double sum_dmg_agony = 0.0;
+        double sum_dmg_doom = 0.0;
+        double sum_dmg_siphon_life = 0.0;
         double sum_dmg_imm = 0.0;
         double sum_dmg_sb_urn = 0.0;
         double sum_dmg_conflag = 0.0;
         double sum_dmg_incin = 0.0;
+        double sum_dmg_sp = 0.0;
         double sum_dmg_sf = 0.0;
         double sum_dmg_dh = 0.0;
+        double sum_dmg_dl = 0.0;
+        double sum_dmg_ds = 0.0;
         double sum_dmg_pet = 0.0;
+        double sum_dmg_pet_imp = 0.0;
+        double sum_dmg_pet_succubus = 0.0;
         double sum_dmg_total = 0.0;
     };
 
@@ -76,6 +88,10 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_isb_uptime += res.isb_uptime_percent;
                 out.sum_shadow_bolts += res.shadow_bolt_casts;
                 out.sum_crits += res.shadow_bolt_crits;
+                out.sum_direct_casts += res.direct_spell_casts;
+                out.sum_direct_crits += res.direct_spell_crits;
+                out.sum_damage_events += res.total_damage_events;
+                out.sum_damage_crits += res.total_damage_crits;
                 out.sum_misses += res.misses;
                 out.sum_casts += res.total_casts;
                 out.sum_life_taps += res.life_taps;
@@ -83,14 +99,22 @@ BatchSimResult ParallelSimRunner::run_batch(
 
                 out.sum_dmg_sb += res.dmg_shadow_bolt;
                 out.sum_dmg_corr += res.dmg_corruption;
-                out.sum_dmg_curse += res.dmg_curse;
+                out.sum_dmg_curse += (res.dmg_curse + res.dmg_siphon_life);
+                out.sum_dmg_agony += res.dmg_agony;
+                out.sum_dmg_doom += res.dmg_doom;
+                out.sum_dmg_siphon_life += res.dmg_siphon_life;
                 out.sum_dmg_imm += res.dmg_immolate;
                 out.sum_dmg_sb_urn += res.dmg_shadowburn;
                 out.sum_dmg_conflag += res.dmg_conflagrate;
                 out.sum_dmg_incin += res.dmg_incinerate;
+                out.sum_dmg_sp += res.dmg_searing_pain;
                 out.sum_dmg_sf += res.dmg_soul_fire;
                 out.sum_dmg_dh += res.dmg_drain_hope;
+                out.sum_dmg_dl += res.dmg_drain_life;
+                out.sum_dmg_ds += res.dmg_drain_soul;
                 out.sum_dmg_pet += res.dmg_pet;
+                out.sum_dmg_pet_imp += res.dmg_pet_imp;
+                out.sum_dmg_pet_succubus += res.dmg_pet_succubus;
                 out.sum_dmg_total += res.total_damage;
 
                 int done = ++completed_iterations;
@@ -122,6 +146,10 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_isb_uptime = 0.0;
     int total_sb = 0;
     int total_crits = 0;
+    int total_direct_casts = 0;
+    int total_direct_crits = 0;
+    int total_damage_events = 0;
+    int total_damage_crits = 0;
     int total_misses = 0;
     int total_casts = 0;
     int total_life_taps = 0;
@@ -130,13 +158,21 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_dmg_sb = 0.0;
     double total_dmg_corr = 0.0;
     double total_dmg_curse = 0.0;
+    double total_dmg_agony = 0.0;
+    double total_dmg_doom = 0.0;
+    double total_dmg_siphon_life = 0.0;
     double total_dmg_imm = 0.0;
     double total_dmg_sb_urn = 0.0;
     double total_dmg_conflag = 0.0;
     double total_dmg_incin = 0.0;
+    double total_dmg_sp = 0.0;
     double total_dmg_sf = 0.0;
     double total_dmg_dh = 0.0;
+    double total_dmg_dl = 0.0;
+    double total_dmg_ds = 0.0;
     double total_dmg_pet = 0.0;
+    double total_dmg_pet_imp = 0.0;
+    double total_dmg_pet_succubus = 0.0;
     double total_dmg_all = 0.0;
 
     for (const auto& out : thread_outputs) {
@@ -146,6 +182,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         total_isb_uptime += out.sum_isb_uptime;
         total_sb += out.sum_shadow_bolts;
         total_crits += out.sum_crits;
+        total_direct_casts += out.sum_direct_casts;
+        total_direct_crits += out.sum_direct_crits;
+        total_damage_events += out.sum_damage_events;
+        total_damage_crits += out.sum_damage_crits;
         total_misses += out.sum_misses;
         total_casts += out.sum_casts;
         total_life_taps += out.sum_life_taps;
@@ -154,21 +194,29 @@ BatchSimResult ParallelSimRunner::run_batch(
         total_dmg_sb += out.sum_dmg_sb;
         total_dmg_corr += out.sum_dmg_corr;
         total_dmg_curse += out.sum_dmg_curse;
+        total_dmg_agony += out.sum_dmg_agony;
+        total_dmg_doom += out.sum_dmg_doom;
+        total_dmg_siphon_life += out.sum_dmg_siphon_life;
         total_dmg_imm += out.sum_dmg_imm;
         total_dmg_sb_urn += out.sum_dmg_sb_urn;
         total_dmg_conflag += out.sum_dmg_conflag;
         total_dmg_incin += out.sum_dmg_incin;
+        total_dmg_sp += out.sum_dmg_sp;
         total_dmg_sf += out.sum_dmg_sf;
         total_dmg_dh += out.sum_dmg_dh;
+        total_dmg_dl += out.sum_dmg_dl;
+        total_dmg_ds += out.sum_dmg_ds;
         total_dmg_pet += out.sum_dmg_pet;
+        total_dmg_pet_imp += out.sum_dmg_pet_imp;
+        total_dmg_pet_succubus += out.sum_dmg_pet_succubus;
         total_dmg_all += out.sum_dmg_total;
     }
 
     std::sort(all_dps.begin(), all_dps.end());
 
     batch.mean_dps = total_dps / iterations;
-    batch.min_dps = all_dps.front();
-    batch.max_dps = all_dps.back();
+    batch.min_dps = *std::min_element(all_dps.begin(), all_dps.end());
+    batch.max_dps = *std::max_element(all_dps.begin(), all_dps.end());
 
     double variance = (total_dps_sq / iterations) - (batch.mean_dps * batch.mean_dps);
     batch.std_dev_dps = (variance > 0.0) ? std::sqrt(variance) : 0.0;
@@ -188,8 +236,8 @@ BatchSimResult ParallelSimRunner::run_batch(
 
     batch.mean_isb_uptime = total_isb_uptime / iterations;
     batch.mean_shadow_bolts = static_cast<double>(total_sb) / iterations;
-    batch.mean_crits = static_cast<double>(total_crits) / iterations;
-    batch.crit_percent = (total_sb > 0) ? (static_cast<double>(total_crits) / total_sb) * 100.0 : 0.0;
+    batch.mean_crits = static_cast<double>(total_damage_crits) / iterations;
+    batch.crit_percent = (total_damage_events > 0) ? (static_cast<double>(total_damage_crits) / total_damage_events) * 100.0 : 0.0;
     batch.miss_percent = (total_casts > 0) ? (static_cast<double>(total_misses) / total_casts) * 100.0 : 0.0;
     batch.mean_life_taps = static_cast<double>(total_life_taps) / iterations;
     batch.mean_mana_spent = total_mana_spent / iterations;
@@ -199,13 +247,21 @@ BatchSimResult ParallelSimRunner::run_batch(
         batch.pct_shadow_bolt = (total_dmg_sb / total_dmg_all) * 100.0;
         batch.pct_corruption = (total_dmg_corr / total_dmg_all) * 100.0;
         batch.pct_curse = (total_dmg_curse / total_dmg_all) * 100.0;
+        batch.pct_agony = (total_dmg_agony / total_dmg_all) * 100.0;
+        batch.pct_doom = (total_dmg_doom / total_dmg_all) * 100.0;
+        batch.pct_siphon_life = (total_dmg_siphon_life / total_dmg_all) * 100.0;
         batch.pct_immolate = (total_dmg_imm / total_dmg_all) * 100.0;
         batch.pct_shadowburn = (total_dmg_sb_urn / total_dmg_all) * 100.0;
         batch.pct_conflagrate = (total_dmg_conflag / total_dmg_all) * 100.0;
         batch.pct_incinerate = (total_dmg_incin / total_dmg_all) * 100.0;
+        batch.pct_searing_pain = (total_dmg_sp / total_dmg_all) * 100.0;
         batch.pct_soul_fire = (total_dmg_sf / total_dmg_all) * 100.0;
         batch.pct_drain_hope = (total_dmg_dh / total_dmg_all) * 100.0;
+        batch.pct_drain_life = (total_dmg_dl / total_dmg_all) * 100.0;
+        batch.pct_drain_soul = (total_dmg_ds / total_dmg_all) * 100.0;
         batch.pct_pet = (total_dmg_pet / total_dmg_all) * 100.0;
+        batch.pct_pet_imp = (total_dmg_pet_imp / total_dmg_all) * 100.0;
+        batch.pct_pet_succubus = (total_dmg_pet_succubus / total_dmg_all) * 100.0;
     }
 
     // Build 40-bin Histogram

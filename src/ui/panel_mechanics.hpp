@@ -5,72 +5,82 @@
 namespace warlock {
 
 inline void render_panel_mechanics(MechanicsConfig& mechanics) {
-    ImGui::TextColored(ImVec4(0.8f, 0.6f, 1.0f, 1.0f), "Modular Game Rules Engine:");
-    ImGui::TextWrapped("Customize core mechanics to simulate pure 1.12 Classic WoW or experiment with new game versions & alternate rulesets.");
-    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Game Mechanics", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
 
-    // 1. Snapshotting toggle
-    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "DoT Snapshotting Mechanics:");
-    ImGui::Checkbox("Enable DoT Snapshotting (Classic WoW)", &mechanics.snapshot_dots);
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When ON (Classic): DoTs snapshot spell power and %% damage modifiers at cast time.\nWhen OFF (Modern): DoTs dynamically recalculate damage on every single tick.");
-    }
-    if (mechanics.snapshot_dots) {
-        ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "  -> Snapshotting active: Spell power buffs persist for full DoT duration.");
-    } else {
-        ImGui::TextColored(ImVec4(0.9f, 0.5f, 0.4f, 1.0f), "  -> Dynamic ticks active: Ticks scale dynamically with temporary buffs.");
-    }
+        // 1. Raid Debuff Slots
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Raid Debuff Slot Limit:");
+        bool infinite_debuffs = (mechanics.debuff_limit == 0);
+        if (ImGui::Checkbox("Infinite Debuff Slots (Unlimited - Default)", &infinite_debuffs)) {
+            mechanics.debuff_limit = infinite_debuffs ? 0 : 16;
+            mechanics.enforce_debuff_slots = !infinite_debuffs;
+        }
+        if (!infinite_debuffs) {
+            ImGui::SameLine();
+            ImGui::RadioButton("16 Slots", &mechanics.debuff_limit, 16);
+            ImGui::SameLine();
+            ImGui::RadioButton("8 Slots", &mechanics.debuff_limit, 8);
+        }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Separator();
 
-    // 2. Spell Batching
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Network & Spell Batching:");
-    ImGui::Checkbox("Simulate Spell Batching", &mechanics.spell_batching);
-    if (mechanics.spell_batching) {
-        ImGui::SliderFloat("Batch Window (ms)", (float*)&mechanics.batch_window_ms, 10.0f, 400.0f, "%.0f ms");
-    }
+        // 2. Personal Shadow Weaving
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Shadow Weaving (Shadow Priest):");
+        ImGui::Checkbox("Personal-Only Shadow Weaving (Warlocks do not benefit)", &mechanics.personal_shadow_weaving);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON (Updated): Shadow Weaving only amplifies the Shadow Priest who applied it.\nWhen OFF (Classic): All raid shadow damage gains +15%% from Shadow Weaving.");
+        }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Separator();
 
-    // 3. Raid Debuff Slots
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Raid Debuff Slot Limit:");
-    ImGui::RadioButton("16 Debuff Slots (Patch 1.12)", &mechanics.debuff_limit, 16);
-    ImGui::SameLine();
-    ImGui::RadioButton("8 Slots (Early Vanilla)", &mechanics.debuff_limit, 8);
-    ImGui::SameLine();
-    ImGui::RadioButton("Unlimited Slots (Modern)", &mechanics.debuff_limit, 0);
+        // 3. DoT Snapshotting
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "DoT Scaling Mechanics:");
+        ImGui::Checkbox("Enable DoT Snapshotting (Classic WoW)", &mechanics.snapshot_dots);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON (Classic): DoTs snapshot spell power at cast time.\nWhen OFF (Modern / Forever): DoTs dynamically scale on each tick.");
+        }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Separator();
 
-    // 4. Resistance & Partial Resists
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Spell Resistance Mechanics:");
-    ImGui::Checkbox("Enable Partial Resists (Classic 4-Roll Table)", &mechanics.partial_resists_enabled);
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When ON: Boss 24 innate resistance yields 0%%, 25%%, 50%%, 75%% partial resist rolls.\nWhen OFF: Pure binary hit/miss.");
-    }
+        // 4. Resistance & Partial Resists
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Spell Resistance Mechanics:");
+        ImGui::Checkbox("Enable Partial Resists (Classic 4-Roll Table)", &mechanics.partial_resists_enabled);
 
-    ImGui::Spacing();
-    ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Separator();
 
-    // 5. Improved Shadow Bolt consumption
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Improved Shadow Bolt (ISB) Charges:");
-    ImGui::Checkbox("All Shadow Damage Consumes ISB (Wands, SW:P, etc.)", &mechanics.isb_all_shadow_sources);
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("When ON: Any shadow damage from any source consumes an ISB stack.\nWhen OFF: Only primary Warlock direct shadow damage spells consume stacks.");
-    }
+        // 5. Improved Shadow Bolt
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Improved Shadow Bolt (ISB):");
+        ImGui::TextDisabled("ISB operates as a 12-second debuff window on critical strikes.");
 
-    ImGui::Spacing();
-    ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Separator();
 
-    // 6. Projectile Travel Time
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Missile Physics & Travel Time:");
-    ImGui::Checkbox("Simulate Projectile Travel Time", &mechanics.projectile_travel_time);
-    if (mechanics.projectile_travel_time) {
-        ImGui::SliderFloat("Boss Distance (yards)", (float*)&mechanics.default_boss_distance_yards, 10.0f, 40.0f, "%.0f yd");
-        ImGui::SliderFloat("Missile Speed (yd/s)", (float*)&mechanics.projectile_speed_yards_per_sec, 15.0f, 40.0f, "%.1f yd/s");
+        // 6. Pet Stat Scaling & Mana Management
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Pet Stat Inheritance & Mana Management:");
+        ImGui::Checkbox("Enable Pet Spell Power / AP Scaling (Forever)", &mechanics.pet_scaling);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON (Forever): Summoned pets inherit 57%% of master's Spell Power to their spells and Attack Power.\nWhen OFF (Classic 1.12): Pets deal flat base ability damage.");
+        }
+        ImGui::Checkbox("Enable Pet Mana Tracking & Spell Costs", &mechanics.pet_mana_management);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON: Imp (1,150 base mana) and Succubus (1,450 base mana) consume mana on casts and regen mana passively (MP5), via raid buffs (Blessing of Wisdom, Judgement of Wisdom), and Demonic Energies talent.\nWhen OFF: Pets have infinite mana.");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        // 7. Projectile Travel Time
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Missile Physics & Travel Time:");
+        ImGui::Checkbox("Simulate Projectile Travel Time", &mechanics.projectile_travel_time);
+        if (mechanics.projectile_travel_time) {
+            ImGui::SliderFloat("Boss Distance (yd)", (float*)&mechanics.default_boss_distance_yards, 10.0f, 40.0f, "%.0f yd");
+        }
+
+        ImGui::Unindent(8.0f);
     }
 }
 

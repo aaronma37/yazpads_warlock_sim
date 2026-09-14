@@ -89,8 +89,8 @@ TEST_CASE(Mechanics, TargetISBApplicationAndCharges) {
 TEST_CASE(Mechanics, NightfallProcSimulation) {
     FastRNG rng(12345);
     WarlockSimulator sim;
-    sim.talents = Talents::create_forever_deep_affliction();
-    sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
+    sim.talents = Talents::create_forever_nf_ds_ruin();
+    sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     sim.fight_duration = 180.0; // 3 minute fight with continuous Corruption ticks
     sim.record_timeline = true;
 
@@ -98,3 +98,27 @@ TEST_CASE(Mechanics, NightfallProcSimulation) {
     // Nightfall procs should happen regularly across 3 minutes of Corruption
     CHECK(res.nightfall_procs > 0);
 }
+
+TEST_CASE(Mechanics, PetStatScalingToggle) {
+    MechanicsConfig mech;
+    CHECK(mech.pet_scaling);
+    CHECK_NEAR(mech.pet_sp_ratio, 0.57, 0.001);
+}
+
+TEST_CASE(Mechanics, PersonalShadowWeavingDefault) {
+    MechanicsConfig mech;
+    BuffConfig buffs;
+    CHECK(mech.personal_shadow_weaving);
+    CHECK(!buffs.shadow_weaving); // OFF by default
+}
+
+TEST_CASE(Mechanics, PetManaManagement) {
+    MechanicsConfig mech;
+    CHECK(mech.pet_mana_management);
+    CHECK_NEAR(mech.imp_base_mana, 1150.0, 0.01);
+    CHECK_NEAR(mech.succubus_base_mana, 1450.0, 0.01);
+    CHECK_NEAR(mech.imp_firebolt_cost, 115.0, 0.01);
+    CHECK_NEAR(mech.succubus_lop_cost, 160.0, 0.01);
+    CHECK_NEAR(mech.pet_base_mp5, 45.0, 0.01);
+}
+

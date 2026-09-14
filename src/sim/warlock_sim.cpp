@@ -5,10 +5,14 @@
 namespace warlock {
 
 WarlockSimulator::WarlockSimulator() {
-    race = Race::UNDEAD;
+    race = Race::GNOME;
     base_attrs = get_base_attributes_for_race(race);
-    gear = GearLoadout::create_phase3_bis();
+    gear = GearLoadout::create_preraid_bis();
     talents = Talents::create_forever_shadow_destro();
+    use_raw_stats = true;
+    raw_stats = gear.calculate_stats();
+    raw_stats.spell_power += raw_stats.shadow_power;
+    raw_stats.shadow_power = 0.0;
 }
 
 double WarlockSimulator::calculate_hit_chance(School school) const {
@@ -94,11 +98,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
     // Compute base stats from gear & buffs (or raw manual stats)
     Stats stats = use_raw_stats ? raw_stats : gear.calculate_stats();
-    buffs.apply_to_stats(stats, base_attrs, true); // true = WoW Forever mechanics
+    buffs.apply_to_stats(stats, base_attrs, true, mechanics.personal_shadow_weaving); // true = WoW Forever mechanics
 
     // Gnome Expansive Mind (+5% Mana)
     if (race == Race::GNOME) {
         stats.max_mana *= 1.05;
+    }
+
+    // Fel Vitality (+5% Max Mana per point)
+    if (talents.demo.fel_vitality > 0) {
+        stats.max_mana *= (1.0 + talents.demo.fel_vitality * 0.05);
     }
 
     // Active Pet Determination:
@@ -195,20 +204,31 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     double shadow_and_flame_shadow_expire = 0.0; // Conflagrate grants +10% Shadow for 20s
     double shadow_and_flame_fire_expire = 0.0;   // Shadowburn grants +10% Fire for 20s
     double drain_hope_channel_end = 0.0;         // +10% Shadow DoT damage during channel
+    int demonic_brand_charges = 0;               // Pet attacks consuming Demonic Brand
+    double demonic_brand_expire = 0.0;
 
     // Target state
     TargetConfig target = target_config;
-    if (buffs.curse_of_shadows || policy.curse == CurseChoice::CURSE_OF_SHADOWS) {
+    if (buffs.curse_of_shadows) {
         target.current_shadow_resistance = std::max(0.0, target.base_shadow_resistance - 75.0);
         target.curse_of_shadows = true;
     }
-    if (buffs.curse_of_elements || policy.curse == CurseChoice::CURSE_OF_ELEMENTS) {
+    if (buffs.curse_of_elements) {
         target.current_fire_resistance = std::max(0.0, target.base_fire_resistance - 75.0);
         target.curse_of_elements = true;
     }
-    if (buffs.shadow_weaving) {
+    if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) {
         target.shadow_weaving = true;
     }
+
+    // Pet Mana tracking
+    double pet_max_mana = 0.0;
+    if (active_pet == PetChoice::IMP) {
+        pet_max_mana = mechanics.imp_base_mana * (1.0 + 0.05 * talents.demo.fel_vitality);
+    } else if (active_pet == PetChoice::SUCCUBUS) {
+        pet_max_mana = mechanics.succubus_base_mana * (1.0 + 0.05 * talents.demo.fel_vitality);
+    }
+    double pet_mana = pet_max_mana;
 
     // Active DoTs tracking
     struct ActiveDot {
@@ -222,6 +242,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     ActiveDot dot_corruption;
     ActiveDot dot_agony;
     ActiveDot dot_immolate;
+    ActiveDot dot_siphon_life;
 
     // Setup FastEventQueue
     FastEventQueue<256> queue;
@@ -253,13 +274,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         return mult;
     };
 
-    // Decision maker
+    // Decision maker using Rule-Based Action Priority List (APL)
+    std::vector<PriorityRule> priority_rules = policy.get_priority_rules(talents, race);
+    RotationChoice eff_rotation = policy.rotation;
+
     auto decide_next_action = [&](double now) {
         if (is_casting || now < gcd_ready_time) return;
 
         bool execute_phase = (now / fight_duration) >= 0.65; // Target <35% HP
 
-        // 1. Cooldown checks: Mana Potions & Demonic Runes
+        // 1. Off-GCD Cooldown checks: Mana Potions & Demonic Runes
         if (buffs.use_mana_potions && now >= potion_cd_ready && (stats.max_mana - player_mana) >= 1800.0) {
             double mana_gain = rng.range(1400.0, 2200.0);
             player_mana = std::min(stats.max_mana, player_mana + mana_gain);
@@ -274,7 +298,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             rune_cd_ready = now + 120.0;
         }
 
-        // 2. Trinket on-use
+        // 2. Off-GCD Trinket on-use
         if (policy.use_trinkets_on_cooldown && now >= trinket_cd_ready) {
             const Item& t1 = gear.get(Slot::TRINKET1);
             const Item& t2 = gear.get(Slot::TRINKET2);
@@ -292,416 +316,539 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         // 2b. Racial active cooldowns
         if (now >= racial_cd_ready) {
             if (race == Race::ORC) {
-                // Blood Fury: +10% SP for 15s (2 min CD)
                 racial_expire_time = now + 15.0;
                 racial_cd_ready = now + 120.0;
+                if (record_timeline) {
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, "Racial Cooldown"});
+                }
             } else if (race == Race::TROLL) {
-                // Berserking: +10% cast speed for 10s (3 min CD)
                 racial_expire_time = now + 10.0;
                 racial_cd_ready = now + 180.0;
+                if (record_timeline) {
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_BERSERKING, 0.0, false, false, 0.0, "Racial Cooldown"});
+                }
             } else if (race == Race::GNOME) {
-                // Eureka!: +10% damage on next 3 casts (2 min CD)
                 eureka_charges = 3;
                 racial_cd_ready = now + 120.0;
-            }
-        }
-
-        // 3. Life Tap check
-        double mana_pct = (player_mana / stats.max_mana) * 100.0;
-        if (mana_pct <= policy.life_tap_threshold_pct && player_health > 800.0) {
-            double base_tap = 580.0;
-            double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
-            player_mana = std::min(stats.max_mana, player_mana + extra_mana);
-            player_health -= base_tap;
-            result.life_taps++;
-            result.mana_gained += extra_mana;
-            gcd_ready_time = now + mechanics.base_gcd;
-            queue.push(gcd_ready_time, EventType::GCD_READY);
-
-            if (record_timeline) {
-                result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
-                result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
-            }
-            return;
-        }
-
-        // 4. Curse maintenance
-        if (policy.curse == CurseChoice::CURSE_OF_SHADOWS && !target.curse_of_shadows) {
-            double mana_cost = 175.0;
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-                target.curse_of_shadows = true;
-                target.current_shadow_resistance = std::max(0.0, target.base_shadow_resistance - 75.0);
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
                 if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::CURSE_OF_SHADOWS, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Debuff" : "Curse Refresh"});
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_EUREKA, 0.0, false, false, 0.0, "Racial Ability (+10% 3 casts)"});
                 }
-                return;
-            }
-        } else if (policy.curse == CurseChoice::CURSE_OF_ELEMENTS && !target.curse_of_elements) {
-            double mana_cost = 175.0;
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-                target.curse_of_elements = true;
-                target.current_fire_resistance = std::max(0.0, target.base_fire_resistance - 75.0);
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::CURSE_OF_ELEMENTS, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Debuff" : "Curse Refresh"});
-                }
-                return;
-            }
-        } else if (policy.curse == CurseChoice::CURSE_OF_AGONY && !dot_agony.active) {
-            double mana_cost = 215.0;
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-
-                if (rng.chance(calculate_hit_chance(School::SHADOW))) {
-                    dot_agony.active = true;
-                    dot_agony.expire_time = now + 24.0;
-                    dot_agony.ticks_remaining = 12;
-                    dot_agony.tick_interval = 2.0;
-                    double sp = get_current_sp(School::SHADOW, now);
-                    dot_agony.tick_damage = (1044.0 / 12.0) + (sp / 12.0);
-                    dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult;
-                    queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
-                } else {
-                    result.misses++;
-                }
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::CURSE_OF_AGONY, 0.0, false, false, 0.0, (now < 1.0) ? "Opener DoT" : "Curse DoT"});
-                }
-                return;
             }
         }
 
-        // 5. Shadow Trance / Nightfall instant Shadow Bolt
-        if (shadow_trance_active && policy.cast_nightfall_procs) {
-            shadow_trance_active = false;
-            double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-                result.shadow_bolt_casts++;
+        // 3. Sequential Rule-Based Priority Evaluation
+        for (const auto& rule : priority_rules) {
+            if (!rule.enabled) continue;
 
-                double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                queue.push(now + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+            switch (rule.action) {
+                case PriorityAction::RACIAL_EUREKA:
+                case PriorityAction::RACIAL_BLOOD_FURY:
+                case PriorityAction::RACIAL_BERSERKING:
+                    // Handled above in off-GCD check
+                    break;
 
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, 0.0, "Nightfall Instant"});
-                }
-                return;
-            }
-        }
+                case PriorityAction::LIFE_TAP: {
+                    double mana_pct = (player_mana / stats.max_mana) * 100.0;
+                    if (mana_pct <= policy.life_tap_threshold_pct && player_health > 800.0) {
+                        double base_tap = 580.0;
+                        double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+                        player_mana = std::min(stats.max_mana, player_mana + extra_mana);
+                        player_health -= base_tap;
+                        result.life_taps++;
+                        result.mana_gained += extra_mana;
 
-        // 6. Decimation Execute Soul Fire (<35% HP)
-        bool allow_decimation = (policy.rotation != RotationChoice::PURE_SHADOW_BOLT) &&
-                                (policy.use_decimation_soul_fire || policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE || policy.rotation == RotationChoice::AUTO);
-        if (execute_phase && talents.demo.decimation > 0 && allow_decimation && now >= soul_fire_cd_ready) {
-            double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= sf_mana) {
-                // Base cast time 4.0s; Bane reduces by 0.4s/pt; Decimation reduces by 20%/pt; modified by Haste
-                double cast_time = std::max(0.5, (4.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
-                is_casting = true;
-                current_casting_spell = SpellID::SOUL_FIRE;
-                cast_finish_time = now + cast_time;
-                queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SOUL_FIRE));
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::SOUL_FIRE, 0.0, false, false, cast_time, "Decimation Execute"});
-                }
-                return;
-            }
-        }
+                        // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
+                        if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
+                            double pet_gain = extra_mana * (0.50 * talents.demo.demonic_energies);
+                            pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
+                        }
 
-        // 7. Drain Hope (Affliction Capstone Channel)
-        bool allow_drain_hope = (policy.channel_drain_hope || policy.rotation == RotationChoice::DEEP_AFFLICTION || 
-                                 policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS || policy.rotation == RotationChoice::AUTO) &&
-                                (policy.rotation != RotationChoice::PURE_SHADOW_BOLT && policy.rotation != RotationChoice::FIRE_DESTRO);
-        if (talents.aff.drain_hope > 0 && allow_drain_hope && now >= drain_hope_cd_ready) {
-            double dh_mana = 240.0;
-            if (player_mana >= dh_mana) {
-                player_mana -= dh_mana;
-                result.mana_spent += dh_mana;
-                result.total_casts++;
-                drain_hope_cd_ready = now + 20.0;
-                drain_hope_channel_end = now + 6.0;
+                        gcd_ready_time = now + mechanics.base_gcd;
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
 
-                // Lock GCD during 6s channel
-                gcd_ready_time = now + 6.0;
-
-                // Push 6 channel ticks
-                for (int i = 1; i <= 6; ++i) {
-                    queue.push(now + i * 1.0, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
-                }
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, 6.0, "Channel DoT"});
-                }
-                return;
-            }
-        }
-
-        // 8. Corruption maintenance
-        bool want_corruption = false;
-        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
-            want_corruption = false;
-        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
-            want_corruption = (policy.corruption == DotPolicy::ALWAYS);
-        } else if (policy.rotation == RotationChoice::SM_RUIN || 
-                   policy.rotation == RotationChoice::DEEP_AFFLICTION || 
-                   policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS || 
-                   policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE ||
-                   policy.rotation == RotationChoice::SHADOW_DESTRO) {
-            want_corruption = (policy.corruption != DotPolicy::NEVER);
-        } else {
-            // AUTO
-            want_corruption = (policy.corruption == DotPolicy::ALWAYS) || 
-                              (talents.aff.nightfall > 0) || 
-                              (talents.aff.improved_corruption > 0 && talents.destro.incinerate == 0);
-        }
-
-        if (want_corruption && !dot_corruption.active) {
-            double mana_cost = 290.0;
-            if (player_mana >= mana_cost) {
-                double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
-                if (cast_time == 0.0) {
-                    player_mana -= mana_cost;
-                    result.mana_spent += mana_cost;
-                    result.total_casts++;
-
-                    if (rng.chance(calculate_hit_chance(School::SHADOW))) {
-                        dot_corruption.active = true;
-                        dot_corruption.expire_time = now + 18.0;
-                        dot_corruption.ticks_remaining = 6;
-                        dot_corruption.tick_interval = 3.0;
-                        double sp = get_current_sp(School::SHADOW, now);
-                        dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
-                        // Improved Corruption +2%/pt; Malediction +1%/pt
-                        dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
-                        queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
-                    } else {
-                        result.misses++;
+                        if (record_timeline) {
+                            result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
+                            result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
+                        }
+                        return;
                     }
-                    gcd_ready_time = now + mechanics.base_gcd;
-                    queue.push(gcd_ready_time, EventType::GCD_READY);
-                    if (record_timeline) {
-                        result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, 0.0, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
+                    break;
+                }
+
+                case PriorityAction::CURSE_OF_AGONY: {
+                    if (!dot_agony.active) {
+                        double mana_cost = 215.0;
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
+
+                            if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                dot_agony.active = true;
+                                dot_agony.expire_time = now + 24.0;
+                                dot_agony.ticks_remaining = 12;
+                                dot_agony.tick_interval = 2.0;
+                                double sp = get_current_sp(School::SHADOW, now);
+                                dot_agony.tick_damage = (1044.0 / 12.0) + (sp / 12.0);
+                                dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult;
+                                queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
+                            } else {
+                                result.misses++;
+                            }
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::CURSE_OF_AGONY, 0.0, false, false, 0.0, (now < 1.0) ? "Opener DoT" : "Curse DoT"});
+                            }
+                            return;
+                        }
                     }
-                    return;
+                    break;
                 }
-            }
-        }
 
-        // 9. Immolate maintenance (if Fire Destro, Conflagrate Shadow & Flame buff, or Hybrid DoT)
-        bool want_immolate = false;
-        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
-            want_immolate = false;
-        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
-            want_immolate = true; // Essential for +25% Incinerate damage & Conflagrate
-        } else if (policy.rotation == RotationChoice::SHADOW_DESTRO) {
-            want_immolate = (talents.destro.conflagrate > 0); // Maintains Immolate so Conflag gives +10% Shadow buff
-        } else if (policy.rotation == RotationChoice::AFFLICTION_HYBRID_DOTS) {
-            want_immolate = true; // Multi-DoT hybrid
-        } else if (policy.rotation == RotationChoice::SM_RUIN || policy.rotation == RotationChoice::DEEP_AFFLICTION || policy.rotation == RotationChoice::DEMONOLOGY_EXECUTE) {
-            want_immolate = policy.maintain_immolate;
-        } else {
-            // AUTO
-            want_immolate = policy.maintain_immolate || 
-                            (talents.destro.incinerate > 0) || 
-                            (talents.destro.conflagrate > 0 && talents.destro.shadow_and_flame > 0);
-        }
-
-        if (want_immolate && !dot_immolate.active) {
-            double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= mana_cost) {
-                double cast_time = std::max(1.0, (2.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 1.5s with 5/5 Bane
-                is_casting = true;
-                current_casting_spell = SpellID::IMMOLATE;
-                cast_finish_time = now + cast_time;
-                queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::IMMOLATE));
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::IMMOLATE, 0.0, false, false, cast_time, (now < 5.0) ? "Opener DoT" : "DoT Refresh"});
-                }
-                return;
-            }
-        }
-
-        // 10. Conflagrate (if Immolate is active and talented)
-        bool want_conflagrate = policy.use_conflagrate && (policy.rotation != RotationChoice::PURE_SHADOW_BOLT);
-        if (talents.destro.conflagrate > 0 && want_conflagrate && dot_immolate.active && now >= conflagrate_cd_ready) {
-            double mana_cost = 265.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-                conflagrate_cd_ready = now + 10.0;
-
-                // Hit roll
-                bool is_crit = false;
-                double dmg = 0.0;
-                if (rng.chance(calculate_hit_chance(School::FIRE))) {
-                    double sp = get_current_sp(School::FIRE, now);
-                    dmg = rng.range(578.0, 704.0) + (1.5 / 3.5) * sp;
-                    dmg *= get_current_fire_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
-
-                    // Fire and Brimstone (+8% crit chance per point)
-                    double crit_chance = calculate_crit_chance(School::FIRE, stats) + (talents.destro.fire_and_brimstone * 0.08);
-                    is_crit = rng.chance(crit_chance);
-                    if (is_crit) dmg *= destro_crit_mult;
-
-                    dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
-                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    result.dmg_conflagrate += dmg;
-                    result.total_damage += dmg;
-
-                    // Shadow and Flame proc: Conflagrate increases all Shadow damage by 2%/pt for 20s
-                    if (talents.destro.shadow_and_flame > 0) {
-                        shadow_and_flame_shadow_expire = now + 20.0;
+                case PriorityAction::CURSE_OF_DOOM: {
+                    if (!dot_agony.active) {
+                        double mana_cost = 300.0;
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
+                            if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                dot_agony.active = true;
+                                dot_agony.expire_time = now + 60.0;
+                                dot_agony.ticks_remaining = 1;
+                                dot_agony.tick_interval = 60.0;
+                                queue.push(now + 60.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_DOOM));
+                            } else {
+                                result.misses++;
+                            }
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            return;
+                        }
                     }
-                } else {
-                    result.misses++;
+                    break;
                 }
 
-                // Shadow and Flame: 20% chance per point not to consume Immolate (100% at 5/5)
-                bool consume_immolate = true;
-                if (talents.destro.shadow_and_flame > 0) {
-                    if (rng.chance(talents.destro.shadow_and_flame * 0.20)) {
-                        consume_immolate = false;
+                case PriorityAction::NIGHTFALL_SHADOW_BOLT: {
+                    if (shadow_trance_active && policy.cast_nightfall_procs) {
+                        shadow_trance_active = false;
+                        double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
+                            result.shadow_bolt_casts++;
+
+                            double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
+                            queue.push(now + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, 0.0, "Nightfall Instant"});
+                            }
+                            return;
+                        }
                     }
-                }
-                if (consume_immolate) {
-                    dot_immolate.active = false;
-                    dot_immolate.ticks_remaining = 0;
+                    break;
                 }
 
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::CONFLAGRATE, dmg, is_crit, (dmg == 0.0), 0.0, "Burst"});
+                case PriorityAction::DECIMATION_SOUL_FIRE: {
+                    if (execute_phase && talents.demo.decimation > 0 && now >= soul_fire_cd_ready) {
+                        double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= sf_mana) {
+                            double cast_time = std::max(0.5, (4.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
+                            is_casting = true;
+                            current_casting_spell = SpellID::SOUL_FIRE;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SOUL_FIRE));
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SOUL_FIRE, 0.0, false, false, cast_time, "Decimation Execute"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
                 }
-                return;
-            }
-        }
 
-        // 11. Shadowburn
-        bool want_shadowburn = false;
-        if (policy.rotation == RotationChoice::PURE_SHADOW_BOLT) {
-            want_shadowburn = (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
-        } else if (policy.rotation == RotationChoice::FIRE_DESTRO) {
-            // Weave Shadowburn to maintain +10% Fire buff from Shadow & Flame (20s duration)
-            want_shadowburn = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || 
-                              (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
-        } else {
-            want_shadowburn = (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN) ||
-                              (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY && execute_phase);
-        }
+                case PriorityAction::SIPHON_LIFE: {
+                    if (talents.aff.siphon_life > 0 && !dot_siphon_life.active) {
+                        double mana_cost = 150.0;
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
 
-        if (talents.destro.shadowburn > 0 && want_shadowburn && now >= shadowburn_cd_ready) {
-            double mana_cost = 365.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= mana_cost) {
-                player_mana -= mana_cost;
-                result.mana_spent += mana_cost;
-                result.total_casts++;
-                shadowburn_cd_ready = now + 8.0;
+                            if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                dot_siphon_life.active = true;
+                                dot_siphon_life.expire_time = now + 30.0;
+                                dot_siphon_life.ticks_remaining = 10;
+                                dot_siphon_life.tick_interval = 3.0;
+                                double sp = get_current_sp(School::SHADOW, now);
+                                dot_siphon_life.tick_damage = 15.0 + (0.10 * sp);
+                                dot_siphon_life.tick_multiplier = get_current_shadow_multiplier(now) * malediction_mult;
+                                queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
+                            } else {
+                                result.misses++;
+                            }
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SIPHON_LIFE, 0.0, false, false, 0.0, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
 
-                bool crit = false;
-                double dmg = 0.0;
-                if (rng.chance(calculate_hit_chance(School::SHADOW))) {
-                    double sp = get_current_sp(School::SHADOW, now);
-                    dmg = rng.range(450.0, 502.0) + (1.5 / 3.5) * sp;
-                    dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
+                case PriorityAction::DRAIN_HOPE: {
+                    if (talents.aff.drain_hope > 0 && now >= drain_hope_cd_ready) {
+                        double dh_mana = 240.0;
+                        if (player_mana >= dh_mana) {
+                            player_mana -= dh_mana;
+                            result.mana_spent += dh_mana;
+                            result.total_casts++;
+                            drain_hope_cd_ready = now + 20.0;
+                            drain_hope_channel_end = now + 6.0;
 
-                    if (target.consume_isb_charge(now)) {
-                        dmg *= (1.0 + target.isb_bonus);
-                        result.isb_consumed++;
+                            // Soul Siphon talent increases drain tick rate (17/34/50% faster)
+                            double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
+                            double haste = get_haste_mult(now);
+                            double total_channel_time = (6.0 / drain_speed_mult) * haste;
+                            double tick_interval = (1.0 / drain_speed_mult) * haste;
+
+                            gcd_ready_time = now + total_channel_time;
+
+                            for (int i = 1; i <= 6; ++i) {
+                                queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
+                            }
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, total_channel_time, "Channel DoT"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                case PriorityAction::IMMOLATE: {
+                    if (!dot_immolate.active) {
+                        double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= mana_cost) {
+                            double cast_time = std::max(1.0, (2.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 1.5s with 5/5 Bane
+                            is_casting = true;
+                            current_casting_spell = SpellID::IMMOLATE;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::IMMOLATE));
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::IMMOLATE, 0.0, false, false, cast_time, (now < 5.0) ? "Opener DoT" : "DoT Refresh"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                case PriorityAction::CONFLAGRATE: {
+                    if (talents.destro.conflagrate > 0 && dot_immolate.active && now >= conflagrate_cd_ready) {
+                        double mana_cost = 265.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
+                            result.direct_spell_casts++;
+                            conflagrate_cd_ready = now + 10.0;
+
+                            bool is_crit = false;
+                            double dmg = 0.0;
+                            if (rng.chance(calculate_hit_chance(School::FIRE))) {
+                                result.total_damage_events++;
+                                double sp = get_current_sp(School::FIRE, now);
+                                dmg = rng.range(578.0, 704.0) + (1.5 / 3.5) * sp;
+                                dmg *= get_current_fire_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
+
+                                double crit_chance = calculate_crit_chance(School::FIRE, stats) + (talents.destro.fire_and_brimstone * 0.08);
+                                is_crit = rng.chance(crit_chance);
+                                if (is_crit) {
+                                    dmg *= destro_crit_mult;
+                                    result.direct_spell_crits++;
+                                    result.total_damage_crits++;
+                                    result.crits++;
+                                }
+
+                                dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
+                                if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                                if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                                result.dmg_conflagrate += dmg;
+                                result.total_damage += dmg;
+
+                                if (talents.destro.shadow_and_flame > 0) {
+                                    shadow_and_flame_shadow_expire = now + 20.0;
+                                }
+                            } else {
+                                result.misses++;
+                            }
+
+                            bool consume_immolate = true;
+                            if (talents.destro.shadow_and_flame > 0) {
+                                if (rng.chance(talents.destro.shadow_and_flame * 0.20)) {
+                                    consume_immolate = false;
+                                }
+                            }
+                            if (consume_immolate) {
+                                dot_immolate.active = false;
+                                dot_immolate.ticks_remaining = 0;
+                            }
+
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::CONFLAGRATE, dmg, is_crit, (dmg == 0.0), 0.0, "Burst"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                case PriorityAction::SHADOWBURN: {
+                    bool sb_cond = true;
+                    if (eff_rotation == RotationChoice::FIRE_DESTRO) {
+                        sb_cond = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
+                    } else if (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY) {
+                        sb_cond = execute_phase;
                     }
 
-                    crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
-                    if (crit) dmg *= destro_crit_mult;
+                    if (talents.destro.shadowburn > 0 && sb_cond && now >= shadowburn_cd_ready) {
+                        double mana_cost = 365.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= mana_cost) {
+                            player_mana -= mana_cost;
+                            result.mana_spent += mana_cost;
+                            result.total_casts++;
+                            result.direct_spell_casts++;
+                            shadowburn_cd_ready = now + 8.0;
 
-                    dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
-                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    result.dmg_shadowburn += dmg;
-                    result.total_damage += dmg;
+                            bool crit = false;
+                            double dmg = 0.0;
+                            if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                result.total_damage_events++;
+                                double sp = get_current_sp(School::SHADOW, now);
+                                dmg = rng.range(450.0, 502.0) + (1.5 / 3.5) * sp;
+                                dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
 
-                    // Shadow and Flame proc: Shadowburn increases all Fire damage by 2%/pt for 20s
-                    if (talents.destro.shadow_and_flame > 0) {
-                        shadow_and_flame_fire_expire = now + 20.0;
+                                if (target.consume_isb_charge(now)) {
+                                    dmg *= (1.0 + target.isb_bonus);
+                                    result.isb_consumed++;
+                                }
+
+                                crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                                if (crit) {
+                                    dmg *= destro_crit_mult;
+                                    result.direct_spell_crits++;
+                                    result.total_damage_crits++;
+                                    result.crits++;
+                                }
+
+                                dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                                if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                                if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                                result.dmg_shadowburn += dmg;
+                                result.total_damage += dmg;
+
+                                if (talents.destro.shadow_and_flame > 0) {
+                                    shadow_and_flame_fire_expire = now + 20.0;
+                                }
+                            } else {
+                                result.misses++;
+                            }
+
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SHADOWBURN, dmg, crit, (dmg == 0.0), 0.0, "Burst Cooldown"});
+                            }
+                            return;
+                        }
                     }
-                } else {
-                    result.misses++;
+                    break;
                 }
 
-                gcd_ready_time = now + mechanics.base_gcd;
-                queue.push(gcd_ready_time, EventType::GCD_READY);
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::SHADOWBURN, dmg, crit, (dmg == 0.0), 0.0, "Burst Cooldown"});
+                case PriorityAction::CORRUPTION: {
+                    if (!dot_corruption.active) {
+                        double mana_cost = 290.0;
+                        if (player_mana >= mana_cost) {
+                            double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
+                            if (cast_time == 0.0) {
+                                player_mana -= mana_cost;
+                                result.mana_spent += mana_cost;
+                                result.total_casts++;
+
+                                if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                    dot_corruption.active = true;
+                                    dot_corruption.expire_time = now + 18.0;
+                                    dot_corruption.ticks_remaining = 6;
+                                    dot_corruption.tick_interval = 3.0;
+                                    double sp = get_current_sp(School::SHADOW, now);
+                                    dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
+                                    dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                                    queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
+                                } else {
+                                    result.misses++;
+                                }
+                                gcd_ready_time = now + mechanics.base_gcd;
+                                queue.push(gcd_ready_time, EventType::GCD_READY);
+                                if (record_timeline) {
+                                    result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, 0.0, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
+                                }
+                                return;
+                            } else {
+                                is_casting = true;
+                                current_casting_spell = SpellID::CORRUPTION;
+                                cast_finish_time = now + cast_time;
+                                queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::CORRUPTION));
+                                if (record_timeline) {
+                                    result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, cast_time, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    break;
                 }
-                return;
+
+
+                case PriorityAction::SEARING_PAIN_FILLER: {
+                    double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    if (player_mana >= sp_mana) {
+                        double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
+                        is_casting = true;
+                        current_casting_spell = SpellID::SEARING_PAIN;
+                        cast_finish_time = now + cast_time;
+                        queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                        if (record_timeline) {
+                            result.cast_sequence.push_back({now, SpellID::SEARING_PAIN, 0.0, false, false, cast_time, "Primary Fire Filler"});
+                        }
+                        return;
+                    }
+                    break;
+                }
+
+                case PriorityAction::INCINERATE_FILLER: {
+                    if (talents.destro.incinerate > 0) {
+                        double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= inc_mana) {
+                            double cast_time = std::max(1.0, (2.5 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.0s with 5/5 Bane
+                            is_casting = true;
+                            current_casting_spell = SpellID::INCINERATE;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::INCINERATE));
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::INCINERATE, 0.0, false, false, cast_time, "Primary Filler"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                case PriorityAction::DRAIN_LIFE_FILLER: {
+                    double dl_mana = 300.0;
+                    if (player_mana >= dl_mana) {
+                        player_mana -= dl_mana;
+                        result.mana_spent += dl_mana;
+                        result.total_casts++;
+
+                        // Soul Siphon talent increases drain tick rate (17/34/50% faster)
+                        double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
+                        double haste = get_haste_mult(now);
+                        double total_channel_time = (5.0 / drain_speed_mult) * haste;
+                        double tick_interval = (1.0 / drain_speed_mult) * haste;
+
+                        gcd_ready_time = now + total_channel_time;
+
+                        for (int i = 1; i <= 5; ++i) {
+                            queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_LIFE));
+                        }
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
+                        if (record_timeline) {
+                            result.cast_sequence.push_back({now, SpellID::DRAIN_LIFE, 0.0, false, false, total_channel_time, "Drain Life (Filler)"});
+                        }
+                        return;
+                    }
+                    break;
+                }
+
+                case PriorityAction::DRAIN_SOUL_FILLER: {
+                    double ds_mana = 290.0;
+                    if (player_mana >= ds_mana) {
+                        player_mana -= ds_mana;
+                        result.mana_spent += ds_mana;
+                        result.total_casts++;
+
+                        // Soul Siphon talent increases drain tick rate (17/34/50% faster)
+                        double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
+                        double haste = get_haste_mult(now);
+                        double total_channel_time = (15.0 / drain_speed_mult) * haste;
+                        double tick_interval = (3.0 / drain_speed_mult) * haste;
+
+                        gcd_ready_time = now + total_channel_time;
+
+                        for (int i = 1; i <= 5; ++i) {
+                            queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_SOUL));
+                        }
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
+                        if (record_timeline) {
+                            result.cast_sequence.push_back({now, SpellID::DRAIN_SOUL, 0.0, false, false, total_channel_time, "Drain Soul (Filler)"});
+                        }
+                        return;
+                    }
+                    break;
+                }
+
+                case PriorityAction::SHADOW_BOLT_FILLER: {
+                    double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    if (player_mana >= sb_mana) {
+                        double cast_time = std::max(1.0, (3.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.5s with 5/5 Bane
+                        is_casting = true;
+                        current_casting_spell = SpellID::SHADOW_BOLT;
+                        cast_finish_time = now + cast_time;
+                        queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                        if (record_timeline) {
+                            result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, "Primary Filler"});
+                        }
+                        return;
+                    }
+                    break;
+                }
             }
         }
 
-        // 12. Primary filler: Incinerate or Shadow Bolt
-        bool use_incinerate_filler = (policy.rotation == RotationChoice::FIRE_DESTRO) ||
-                                     (policy.rotation == RotationChoice::AUTO && talents.destro.incinerate > 0);
+        // Emergency Resource Fallback: Life Tap when out of mana for filler
+        double base_tap = 580.0;
+        double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+        player_mana = std::min(stats.max_mana, player_mana + extra_mana);
+        player_health -= base_tap;
+        result.life_taps++;
+        result.mana_gained += extra_mana;
 
-        if (use_incinerate_filler && talents.destro.incinerate > 0) {
-            double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-            if (player_mana >= inc_mana) {
-                double cast_time = std::max(1.0, (2.5 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.0s with 5/5 Bane
-                is_casting = true;
-                current_casting_spell = SpellID::INCINERATE;
-                cast_finish_time = now + cast_time;
-                queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::INCINERATE));
-                if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::INCINERATE, 0.0, false, false, cast_time, "Primary Filler"});
-                }
-                return;
-            }
+        // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
+        if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
+            double pet_gain = extra_mana * (0.50 * talents.demo.demonic_energies);
+            pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
         }
 
-        // Default Shadow Bolt filler
-        double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
-        if (player_mana >= sb_mana) {
-            double cast_time = std::max(1.0, (3.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.5s with 5/5 Bane
-            is_casting = true;
-            current_casting_spell = SpellID::SHADOW_BOLT;
-            cast_finish_time = now + cast_time;
-            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
-            if (record_timeline) {
-                result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, "Primary Filler"});
-            }
-        } else {
-            // Need mana: Life Tap!
-            double base_tap = 580.0;
-            double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
-            player_mana = std::min(stats.max_mana, player_mana + extra_mana);
-            player_health -= base_tap;
-            result.life_taps++;
-            result.mana_gained += extra_mana;
-            gcd_ready_time = now + mechanics.base_gcd;
-            queue.push(gcd_ready_time, EventType::GCD_READY);
+        gcd_ready_time = now + mechanics.base_gcd;
+        queue.push(gcd_ready_time, EventType::GCD_READY);
 
-            if (record_timeline) {
-                result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
-                result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
-            }
+        if (record_timeline) {
+            result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
+            result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
         }
     };
+
 
     // Trigger initial action at t = 0
     decide_next_action(0.0);
@@ -723,6 +870,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::SHADOW_BOLT)) {
                     result.shadow_bolt_casts++;
+                    result.direct_spell_casts++;
                     double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
@@ -730,7 +878,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
                     gcd_ready_time = current_time;
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
+                    result.direct_spell_casts++;
+                    double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    player_mana -= sp_mana;
+                    result.mana_spent += sp_mana;
+
+                    double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
+                    result.direct_spell_casts++;
                     double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= inc_mana;
                     result.mana_spent += inc_mana;
@@ -739,6 +897,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::INCINERATE));
                     gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
+                    result.direct_spell_casts++;
                     double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sf_mana;
                     result.mana_spent += sf_mana;
@@ -751,15 +910,22 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double imm_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= imm_mana;
                     result.mana_spent += imm_mana;
+                    result.direct_spell_casts++;
 
                     if (rng.chance(calculate_hit_chance(School::FIRE))) {
+                        result.total_damage_events++;
                         double sp = get_current_sp(School::FIRE, current_time);
                         // Aftermath (Destro Row 2 Col 3): +10% initial Immolate damage per point (+50% at 5/5)
                         double aftermath_mult = 1.0 + talents.destro.aftermath * 0.10;
                         double dmg = (rng.range(258.0, 306.0) * aftermath_mult) + 0.20 * sp;
                         dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
                         bool crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
-                        if (crit) dmg *= destro_crit_mult;
+                        if (crit) {
+                            dmg *= destro_crit_mult;
+                            result.direct_spell_crits++;
+                            result.total_damage_crits++;
+                            result.crits++;
+                        }
                         dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
                         if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
@@ -784,7 +950,26 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.misses++;
                     }
                     gcd_ready_time = current_time;
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
+                    double corr_mana = 290.0;
+                    player_mana -= corr_mana;
+                    result.mana_spent += corr_mana;
+
+                    if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                        dot_corruption.active = true;
+                        dot_corruption.expire_time = current_time + 18.0;
+                        dot_corruption.ticks_remaining = 6;
+                        dot_corruption.tick_interval = 3.0;
+                        double sp = get_current_sp(School::SHADOW, current_time);
+                        dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
+                        dot_corruption.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
+                    } else {
+                        result.misses++;
+                    }
+                    gcd_ready_time = current_time;
                 }
+
 
                 decide_next_action(current_time);
                 break;
@@ -807,6 +992,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     result.shadow_bolt_hits++;
+                    result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double base_dmg = rng.range(482.0, 538.0);
                     double dmg = base_dmg + (3.0 / 3.5) * sp;
@@ -829,6 +1015,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                     if (is_crit) {
                         result.shadow_bolt_crits++;
+                        result.direct_spell_crits++;
+                        result.total_damage_crits++;
+                        result.crits++;
                         dmg *= destro_crit_mult;
                         // Improved Shadow Bolt talent: Apply 12s buff (charges if Classic, unlimited if Forever)
                         if (talents.destro.improved_shadow_bolt > 0) {
@@ -884,6 +1073,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         break;
                     }
 
+                    result.total_damage_events++;
                     double sp = get_current_sp(School::FIRE, current_time);
                     double base_dmg = rng.range(445.0, 515.0);
                     double dmg = base_dmg + (2.5 / 3.5) * sp;
@@ -896,7 +1086,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
 
                     bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
-                    if (is_crit) dmg *= destro_crit_mult;
+                    if (is_crit) {
+                        dmg *= destro_crit_mult;
+                        result.direct_spell_crits++;
+                        result.total_damage_crits++;
+                        result.crits++;
+                    }
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
@@ -926,6 +1121,78 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
                         }
                     }
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
+                    if (!rng.chance(calculate_hit_chance(School::FIRE))) {
+                        result.misses++;
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, 0.0, SpellID::SEARING_PAIN, false, true, player_mana, target.isb_charges});
+                            for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
+                                if (it->spell_id == SpellID::SEARING_PAIN && it->damage == 0.0 && !it->is_miss) {
+                                    it->is_miss = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    }
+
+                    result.total_damage_events++;
+                    double sp = get_current_sp(School::FIRE, current_time);
+                    double base_dmg = rng.range(204.0, 240.0);
+                    double dmg = base_dmg + (1.5 / 3.5) * sp;
+
+                    // Decimation bonus: +3% per point on Searing Pain when boss <35% HP
+                    bool execute_phase = (current_time / fight_duration) >= 0.65;
+                    if (execute_phase && talents.demo.decimation > 0) {
+                        dmg *= (1.0 + talents.demo.decimation * 0.03);
+                    }
+
+                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+
+                    // Agonizing Flames: +3%/pt crit chance on Searing Pain
+                    double crit_chance = calculate_crit_chance(School::FIRE, stats) + (talents.destro.agonizing_flames * 0.03);
+                    bool is_crit = rng.chance(crit_chance);
+                    if (is_crit) {
+                        dmg *= destro_crit_mult;
+                        result.direct_spell_crits++;
+                        result.total_damage_crits++;
+                        result.crits++;
+                    }
+
+                    dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
+
+                    // Demonic Brand: Brands the target for 10s (pet's next 2 attacks deal bonus damage)
+                    if (talents.demo.demonic_brand > 0) {
+                        demonic_brand_charges = 2;
+                        demonic_brand_expire = current_time + 10.0;
+                    }
+
+                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                    if (race == Race::UNDEAD && rng.chance(0.15)) {
+                        double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
+                        result.total_damage += grave_dmg;
+                        player_health = std::min(stats.max_health, player_health + grave_dmg);
+                    }
+
+                    if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
+                        player_mana = std::min(stats.max_mana, player_mana + 59.0);
+                        result.mana_gained += 59.0;
+                    }
+
+                    result.dmg_searing_pain += dmg;
+                    result.total_damage += dmg;
+
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, dmg, SpellID::SEARING_PAIN, is_crit, false, player_mana, target.isb_charges});
+                        for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
+                            if (it->spell_id == SpellID::SEARING_PAIN && it->damage == 0.0 && !it->is_miss) {
+                                it->damage = dmg;
+                                it->is_crit = is_crit;
+                                break;
+                            }
+                        }
+                    }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     if (!rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.misses++;
@@ -941,13 +1208,19 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         break;
                     }
 
+                    result.total_damage_events++;
                     double sp = get_current_sp(School::FIRE, current_time);
                     double base_dmg = rng.range(715.0, 895.0);
                     double dmg = base_dmg + 1.0 * sp;
                     dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
 
                     bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
-                    if (is_crit) dmg *= destro_crit_mult;
+                    if (is_crit) {
+                        dmg *= destro_crit_mult;
+                        result.direct_spell_crits++;
+                        result.total_damage_crits++;
+                        result.crits++;
+                    }
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
@@ -983,17 +1256,20 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
             case EventType::CHANNEL_TICK: {
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_HOPE)) {
+                    result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 52.0 + (0.166667 * sp);
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
                     if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        result.total_damage_crits++;
+                        result.crits++;
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                         dmg *= pand_crit_mult;
                     }
 
-                    if (target.consume_isb_charge(current_time)) {
+                    if ((!mechanics.isb_has_charges || mechanics.isb_all_shadow_sources) && target.consume_isb_charge(current_time)) {
                         dmg *= (1.0 + target.isb_bonus);
                         result.isb_consumed++;
                     }
@@ -1002,6 +1278,107 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_drain_hope += dmg;
                     result.total_damage += dmg;
+
+                    // Nightfall proc check on Drain Hope ticks (2% per pt = 4% at 2/2)
+                    if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
+                        double p = talents.aff.nightfall * 0.02;
+                        if (rng.chance(p)) {
+                            shadow_trance_active = true;
+                            shadow_trance_expire = current_time + 10.0;
+                            result.nightfall_procs++;
+                            queue.push(shadow_trance_expire, EventType::BUFF_EXPIRE, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                        }
+                    }
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_LIFE)) {
+                    result.total_damage_events++;
+                    double sp = get_current_sp(School::SHADOW, current_time);
+                    double dmg = 71.0 + (0.10 * sp);
+
+                    // Improved Drains talent (+2%/4%/6% per active Affliction effect on target)
+                    int aff_count = (dot_corruption.active ? 1 : 0) + (dot_agony.active ? 1 : 0) + (dot_siphon_life.active ? 1 : 0);
+                    double imp_drains_mult = 1.0 + (talents.aff.improved_drains * 0.02 * aff_count);
+                    dmg *= imp_drains_mult;
+
+                    // Drain Hope amplification (+10% to other Shadow DoTs/drains)
+                    double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+
+                    // Baseline DoT Crit + Pandemic bonus (Affliction)
+                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        result.total_damage_crits++;
+                        result.crits++;
+                        double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
+                        dmg *= pand_crit_mult;
+                    }
+
+                    if ((!mechanics.isb_has_charges || mechanics.isb_all_shadow_sources) && target.consume_isb_charge(current_time)) {
+                        dmg *= (1.0 + target.isb_bonus);
+                        result.isb_consumed++;
+                    }
+
+                    dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                    result.dmg_drain_life += dmg;
+                    result.total_damage += dmg;
+
+                    // Health restored from Drain Life (Soul Siphon reduces healing by 10/20/30%)
+                    double heal = dmg * (1.0 - talents.aff.soul_siphon * 0.10);
+                    player_health = std::min(stats.max_health, player_health + heal);
+
+                    // Nightfall proc check on Drain Life ticks (2% per pt = 4% at 2/2)
+                    if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
+                        double p = talents.aff.nightfall * 0.02;
+                        if (rng.chance(p)) {
+                            shadow_trance_active = true;
+                            shadow_trance_expire = current_time + 10.0;
+                            result.nightfall_procs++;
+                            queue.push(shadow_trance_expire, EventType::BUFF_EXPIRE, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                        }
+                    }
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_SOUL)) {
+                    result.total_damage_events++;
+                    double sp = get_current_sp(School::SHADOW, current_time);
+                    double dmg = 91.0 + (0.20 * sp);
+
+                    // Improved Drains talent (+2%/4%/6% per active Affliction effect on target, tripled below 20% HP)
+                    int aff_count = (dot_corruption.active ? 1 : 0) + (dot_agony.active ? 1 : 0) + (dot_siphon_life.active ? 1 : 0);
+                    bool execute_20 = (current_time / fight_duration) >= 0.80; // Target <20% HP
+                    double imp_drain_bonus_pct = talents.aff.improved_drains * 0.02 * (execute_20 ? 3.0 : 1.0);
+                    double imp_drains_mult = 1.0 + (imp_drain_bonus_pct * aff_count);
+                    dmg *= imp_drains_mult;
+
+                    // Drain Hope amplification (+10% to other Shadow DoTs/drains)
+                    double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+
+                    // Baseline DoT Crit + Pandemic bonus (Affliction)
+                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        result.total_damage_crits++;
+                        result.crits++;
+                        double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
+                        dmg *= pand_crit_mult;
+                    }
+
+                    if ((!mechanics.isb_has_charges || mechanics.isb_all_shadow_sources) && target.consume_isb_charge(current_time)) {
+                        dmg *= (1.0 + target.isb_bonus);
+                        result.isb_consumed++;
+                    }
+
+                    dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                    result.dmg_drain_soul += dmg;
+                    result.total_damage += dmg;
+
+                    // Nightfall proc check on Drain Soul ticks (2% per pt = 4% at 2/2)
+                    if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
+                        double p = talents.aff.nightfall * 0.02;
+                        if (rng.chance(p)) {
+                            shadow_trance_active = true;
+                            shadow_trance_expire = current_time + 10.0;
+                            result.nightfall_procs++;
+                            queue.push(shadow_trance_expire, EventType::BUFF_EXPIRE, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                        }
+                    }
                 }
                 break;
             }
@@ -1010,6 +1387,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
                     if (dot_corruption.active && dot_corruption.ticks_remaining > 0) {
                         dot_corruption.ticks_remaining--;
+                        result.total_damage_events++;
                         double dmg = dot_corruption.tick_damage;
 
                         // Dynamic DoT scaling (No snapshotting in Forever)
@@ -1024,6 +1402,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                            result.total_damage_crits++;
+                            result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                             dmg *= pand_crit_mult;
                         }
@@ -1057,6 +1437,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_AGONY)) {
                     if (dot_agony.active && dot_agony.ticks_remaining > 0) {
                         dot_agony.ticks_remaining--;
+                        result.total_damage_events++;
                         int tick_index = 12 - dot_agony.ticks_remaining;
                         double ramp = (tick_index <= 4) ? 0.50 : (tick_index <= 8 ? 1.0 : 1.50);
 
@@ -1071,11 +1452,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                            result.total_damage_crits++;
+                            result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                             dmg *= pand_crit_mult;
                         }
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                        result.dmg_agony += dmg;
                         result.dmg_curse += dmg;
                         result.total_damage += dmg;
 
@@ -1085,9 +1469,41 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dot_agony.active = false;
                         }
                     }
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SIPHON_LIFE)) {
+                    if (dot_siphon_life.active && dot_siphon_life.ticks_remaining > 0) {
+                        dot_siphon_life.ticks_remaining--;
+                        result.total_damage_events++;
+                        double dmg = dot_siphon_life.tick_damage;
+                        if (!mechanics.snapshot_dots) {
+                            double sp = get_current_sp(School::SHADOW, current_time);
+                            dmg = 15.0 + (0.10 * sp);
+                        }
+                        double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
+                        dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+
+                        // Baseline DoT Crit + Pandemic bonus (Affliction)
+                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                            result.total_damage_crits++;
+                            result.crits++;
+                            double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
+                            dmg *= pand_crit_mult;
+                        }
+
+                        if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                        result.dmg_siphon_life += dmg;
+                        result.total_damage += dmg;
+                        player_health = std::min(stats.max_health, player_health + dmg);
+
+                        if (dot_siphon_life.ticks_remaining > 0) {
+                            queue.push(current_time + dot_siphon_life.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
+                        } else {
+                            dot_siphon_life.active = false;
+                        }
+                    }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
                     if (dot_immolate.active && dot_immolate.ticks_remaining > 0) {
                         dot_immolate.ticks_remaining--;
+                        result.total_damage_events++;
                         double dmg = dot_immolate.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::FIRE, current_time);
@@ -1097,6 +1513,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         // Baseline DoT Crit + Ruin bonus (Destruction)
                         if (rng.chance(calculate_crit_chance(School::FIRE, stats))) {
+                            result.total_damage_crits++;
+                            result.crits++;
                             dmg *= destro_crit_mult;
                         }
 
@@ -1110,6 +1528,22 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dot_immolate.active = false;
                         }
                     }
+                } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_DOOM)) {
+                    result.total_damage_events++;
+                    double sp = get_current_sp(School::SHADOW, current_time);
+                    double dmg = 3200.0 + 2.0 * sp;
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
+                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        result.total_damage_crits++;
+                        result.crits++;
+                        double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
+                        dmg *= pand_crit_mult;
+                    }
+                    if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                    result.dmg_doom += dmg;
+                    result.dmg_curse += dmg;
+                    result.total_damage += dmg;
+                    dot_agony.active = false;
                 }
                 break;
             }
@@ -1133,6 +1567,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     player_mana = std::min(stats.max_mana, player_mana + stats.mp5);
                     result.mana_gained += stats.mp5;
                 }
+                if (mechanics.pet_mana_management && active_pet != PetChoice::NONE) {
+                    double pet_mp5 = mechanics.pet_base_mp5;
+                    if (buffs.blessing_of_wisdom) pet_mp5 += 30.0;
+                    if (buffs.warchiefs_blessing) pet_mp5 += 10.0;
+                    pet_mana = std::min(pet_max_mana, pet_mana + pet_mp5);
+                }
                 queue.push(current_time + 5.0, EventType::MANA_REGEN_TICK);
                 break;
             }
@@ -1140,7 +1580,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             case EventType::PET_MELEE_SWING: {
                 if (active_pet == PetChoice::SUCCUBUS) {
                     if (rng.chance(0.95)) {
-                        double base_swing = rng.range(145.0, 195.0);
+                        double master_sp = get_current_sp(School::SHADOW, current_time);
+                        double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                        double base_swing = rng.range(145.0, 195.0) + (bonus_ap / 14.0) * 2.0;
+
                         // Unholy Power in Forever: +2% per point (+10% at 5/5)
                         base_swing *= (1.0 + talents.demo.unholy_power * 0.02);
 
@@ -1154,7 +1597,25 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             swing_dmg *= 2.0;
                         }
 
+                        // Judgement of Wisdom proc on pet melee hit (50% chance to restore 59 mana)
+                        if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
+                            pet_mana = std::min(pet_max_mana, pet_mana + 59.0);
+                        }
+
+                        // Demonic Brand proc (Succubus deals bonus Shadow damage)
+                        if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
+                            demonic_brand_charges--;
+                            double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                            brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                            if (race == Race::ORC) brand_dmg *= 1.05;
+                            if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
+                            if (buffs.curse_of_shadows) brand_dmg *= 1.10;
+                            brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                            swing_dmg += brand_dmg;
+                        }
+
                         result.dmg_pet += swing_dmg;
+                        result.dmg_pet_succubus += swing_dmg;
                         result.total_damage += swing_dmg;
                     }
 
@@ -1167,54 +1628,125 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
             case EventType::PET_CAST_FINISH: {
                 if (active_pet == PetChoice::SUCCUBUS) {
-                    // Lash of Pain (Rank 6): 99 - 115 shadow damage
-                    if (rng.chance(0.83)) {
-                        double base_lop = rng.range(99.0, 115.0);
-                        // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
-                        base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
-                        base_lop *= (1.0 + talents.demo.improved_sayaad * 0.10);
+                    double lop_cost = mechanics.succubus_lop_cost;
+                    bool can_cast = !mechanics.pet_mana_management || (pet_mana >= lop_cost);
 
-                        // Orc Command: +5% pet damage
-                        if (race == Race::ORC) base_lop *= 1.05;
-
-                        if (buffs.shadow_weaving) base_lop *= 1.15;
-                        if (buffs.curse_of_shadows || policy.curse == CurseChoice::CURSE_OF_SHADOWS) base_lop *= 1.10;
-
-                        if (rng.chance(0.05)) {
-                            base_lop *= 1.5;
+                    if (can_cast) {
+                        if (mechanics.pet_mana_management) {
+                            pet_mana -= lop_cost;
                         }
 
-                        base_lop *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                        result.dmg_pet += base_lop;
-                        result.total_damage += base_lop;
+                        // Lash of Pain (Rank 6): 99 - 115 shadow damage + pet SP scaling
+                        if (rng.chance(0.83)) {
+                            double master_sp = get_current_sp(School::SHADOW, current_time);
+                            double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                            double base_lop = rng.range(99.0, 115.0) + (1.5 / 3.5) * pet_sp;
+
+                            // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
+                            base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
+                            base_lop *= (1.0 + talents.demo.improved_sayaad * 0.10);
+
+                            // Orc Command: +5% pet damage
+                            if (race == Race::ORC) base_lop *= 1.05;
+
+                            if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
+                            if (buffs.curse_of_shadows) base_lop *= 1.10;
+
+                            if (rng.chance(0.05)) {
+                                base_lop *= 1.5;
+                            }
+
+                            base_lop *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+
+                            // Judgement of Wisdom proc on pet spell hit
+                            if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
+                                pet_mana = std::min(pet_max_mana, pet_mana + 59.0);
+                            }
+
+                            // Demonic Brand proc (Succubus deals bonus Shadow damage)
+                            if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
+                                demonic_brand_charges--;
+                                double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                                if (race == Race::ORC) brand_dmg *= 1.05;
+                                if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
+                                if (buffs.curse_of_shadows) brand_dmg *= 1.10;
+                                brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                                base_lop += brand_dmg;
+                            }
+
+                            result.dmg_pet += base_lop;
+                            result.dmg_pet_succubus += base_lop;
+                            result.total_damage += base_lop;
+                        }
                     }
 
-                    double lop_cd = 9.0;
+                    // Improved Sayaad reduces Lash of Pain cooldown by 1.0s per rank (9s -> 6s at 3/3)
+                    double lop_cd = std::max(3.0, 9.0 - 1.0 * talents.demo.improved_sayaad);
+                    if (!can_cast) {
+                        // If OOM, retry sooner (every 1.5s)
+                        lop_cd = 1.5;
+                    }
                     if (current_time + lop_cd < fight_duration) {
                         queue.push(current_time + lop_cd, EventType::PET_CAST_FINISH);
                     }
                 } else if (active_pet == PetChoice::IMP) {
-                    // Imp Firebolt (Rank 7): 85 - 98 fire damage
-                    if (rng.chance(0.83)) {
-                        double base_fb = rng.range(85.0, 98.0);
-                        base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
-                        base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
+                    double fb_cost = mechanics.imp_firebolt_cost;
+                    bool can_cast = !mechanics.pet_mana_management || (pet_mana >= fb_cost);
 
-                        // Orc Command: +5% pet damage
-                        if (race == Race::ORC) base_fb *= 1.05;
-
-                        if (buffs.curse_of_elements || policy.curse == CurseChoice::CURSE_OF_ELEMENTS) base_fb *= 1.10;
-
-                        if (rng.chance(0.05)) {
-                            base_fb *= 1.5;
+                    if (can_cast) {
+                        if (mechanics.pet_mana_management) {
+                            pet_mana -= fb_cost;
                         }
 
-                        base_fb *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
-                        result.dmg_pet += base_fb;
-                        result.total_damage += base_fb;
+                        // Imp Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling
+                        if (rng.chance(0.83)) {
+                            double master_sp = get_current_sp(School::FIRE, current_time);
+                            double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                            double base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp;
+
+                            base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
+                            base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
+
+                            // Orc Command: +5% pet damage
+                            if (race == Race::ORC) base_fb *= 1.05;
+
+                            if (buffs.curse_of_elements) base_fb *= 1.10;
+
+                            if (rng.chance(0.05)) {
+                                base_fb *= 1.5;
+                            }
+
+                            base_fb *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
+
+                            // Judgement of Wisdom proc on pet spell hit
+                            if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
+                                pet_mana = std::min(pet_max_mana, pet_mana + 59.0);
+                            }
+
+                            // Demonic Brand proc (Imp deals bonus Fire damage)
+                            if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
+                                demonic_brand_charges--;
+                                double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                                if (race == Race::ORC) brand_dmg *= 1.05;
+                                if (buffs.curse_of_elements) brand_dmg *= 1.10;
+                                brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
+                                base_fb += brand_dmg;
+                            }
+
+                            result.dmg_pet += base_fb;
+                            result.dmg_pet_imp += base_fb;
+                            result.total_damage += base_fb;
+                        }
                     }
 
-                    double fb_interval = 1.5;
+                    // Improved Imp reduces Firebolt cast time / interval (1.5s down to 1.0s)
+                    double fb_interval = std::max(0.5, 1.5 - 0.15 * talents.demo.improved_imp);
+                    if (!can_cast) {
+                        // If OOM, retry on 1.0s intervals
+                        fb_interval = 1.0;
+                    }
                     if (current_time + fb_interval < fight_duration) {
                         queue.push(current_time + fb_interval, EventType::PET_CAST_FINISH);
                     }
