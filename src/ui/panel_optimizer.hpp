@@ -177,7 +177,7 @@ inline void render_panel_optimizer(
             }
         }
 
-        int num_cols = show_stat_weights ? 12 : 7;
+        int num_cols = show_stat_weights ? 13 : 8;
 
         // Calculate active base combat stats for the header line
         Stats base_stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
@@ -231,7 +231,8 @@ inline void render_panel_optimizer(
         if (ImGui::BeginTable("OptLeaderboardTable", num_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
             ImGui::TableSetupColumn("Spec Name", ImGuiTableColumnFlags_WidthFixed, 190);
-            ImGui::TableSetupColumn("Race", ImGuiTableColumnFlags_WidthFixed, 65);
+            ImGui::TableSetupColumn("Race", ImGuiTableColumnFlags_WidthFixed, 42);
+            ImGui::TableSetupColumn("Pet / Sac", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Damage Split (S / F / P)", ImGuiTableColumnFlags_WidthFixed, 150);
             ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
@@ -265,8 +266,73 @@ inline void render_panel_optimizer(
                 ImGui::PopID();
 
                 ImGui::TableNextColumn();
-                ImVec4 race_col = (r.race == Race::HUMAN || r.race == Race::GNOME) ? ImVec4(0.4f, 0.75f, 1.0f, 1.0f) : ImVec4(1.0f, 0.45f, 0.45f, 1.0f);
-                ImGui::TextColored(race_col, "%s", race_to_string(r.race));
+                {
+                    Texture2D race_tex = AssetManager::get().get_icon(race_to_icon(r.race));
+                    ImGui::Image((ImTextureID)(uintptr_t)race_tex.id, ImVec2(18, 18));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%s (%s)", race_to_string(r.race), race_faction(r.race));
+                        ImGui::EndTooltip();
+                    }
+                }
+
+                ImGui::TableNextColumn();
+                {
+                    // Active pet after Demonic Sacrifice is applied (mirrors WarlockSimulator:
+                    // without Demonic Pact any sacrifice leaves no active pet; with it, only
+                    // the sacrificed demon itself is gone).
+                    PetChoice active = r.policy.pet;
+                    if (r.buffs.sacrifice_succubus || r.buffs.sacrifice_imp) {
+                        if (r.talents.demo.demonic_pact > 0) {
+                            if (r.buffs.sacrifice_imp && r.policy.pet == PetChoice::IMP) active = PetChoice::NONE;
+                            else if (r.buffs.sacrifice_succubus && r.policy.pet == PetChoice::SUCCUBUS) active = PetChoice::NONE;
+                        } else {
+                            active = PetChoice::NONE;
+                        }
+                    }
+                    bool sac_imp = r.buffs.sacrifice_imp;
+                    bool sac_suc = r.buffs.sacrifice_succubus;
+
+                    auto draw_demon_icon = [&](PetChoice p, const char* tip, const char* sub) {
+                        Texture2D tex = AssetManager::get().get_icon(pet_choice_to_icon(p));
+                        ImGui::Image((ImTextureID)(uintptr_t)tex.id, ImVec2(16, 16));
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            ImGui::Text("%s", tip);
+                            ImGui::TextDisabled("%s", sub);
+                            ImGui::EndTooltip();
+                        }
+                    };
+                    auto draw_empty = [&](const char* tip) {
+                        ImGui::TextDisabled("--");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            ImGui::TextDisabled("%s", tip);
+                            ImGui::EndTooltip();
+                        }
+                    };
+
+                    if (active == PetChoice::NONE && !sac_imp && !sac_suc) {
+                        draw_empty("No pet or sacrifice");
+                    } else {
+                        const char* pet_icon = pet_choice_to_icon(active);
+                        if (pet_icon[0] != '\0') {
+                            draw_demon_icon(active, pet_choice_to_string(active), "Active pet");
+                        } else {
+                            draw_empty("No active pet (sacrificed)");
+                        }
+                        ImGui::SameLine(0, 4);
+                        ImGui::TextDisabled("/");
+                        ImGui::SameLine(0, 4);
+                        if (!sac_imp && !sac_suc) {
+                            draw_empty("No sacrifice (active pet build)");
+                        } else {
+                            if (sac_imp) draw_demon_icon(PetChoice::IMP, "Sacrificed Imp (+15% Shadow damage)", "Sacrificed");
+                            if (sac_imp && sac_suc) ImGui::SameLine(0, 2);
+                            if (sac_suc) draw_demon_icon(PetChoice::SUCCUBUS, "Sacrificed Succubus (+15% Fire damage)", "Sacrificed");
+                        }
+                    }
+                }
 
                 ImGui::TableNextColumn();
                 std::vector<PriorityRule> rules = r.policy.get_priority_rules(r.talents, r.race);
@@ -383,9 +449,9 @@ inline void render_panel_optimizer(
                     ImGui::BeginTooltip();
                     ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Damage Share Breakdown (%s):", r.name.c_str());
                     ImGui::Separator();
-                    ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "■ Shadow Damage: %.1f%%", shadow_pct);
-                    ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.20f, 1.0f), "■ Fire Damage:   %.1f%%", fire_pct);
-                    ImGui::TextColored(ImVec4(0.30f, 0.95f, 0.50f, 1.0f), "■ Pet Damage:    %.1f%%", pet_pct);
+                    ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "■ Shadow Damage: %.1f%% (%.1f DPS)", shadow_pct, shadow_pct * 0.01 * r.mean_dps);
+                    ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.20f, 1.0f), "■ Fire Damage:   %.1f%% (%.1f DPS)", fire_pct, fire_pct * 0.01 * r.mean_dps);
+                    ImGui::TextColored(ImVec4(0.30f, 0.95f, 0.50f, 1.0f), "■ Pet Damage:    %.1f%% (%.1f DPS)", pet_pct, pet_pct * 0.01 * r.mean_dps);
                     ImGui::EndTooltip();
                 }
 
@@ -456,38 +522,47 @@ inline void render_panel_optimizer(
 
 
             // Left Column: Damage Breakdown & Performance
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Damage Breakdown (%% of Total Damage):");
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Damage Breakdown (%% of Total Damage + DPS):");
             const auto& b = sel.batch;
 
-            auto draw_dmg_bar = [](const char* name, double pct, const ImVec4& col) {
+            auto draw_dmg_bar = [&](const char* name, double pct, const ImVec4& col, SpellID id = SpellID::NONE) {
                 if (pct > 0.05) {
                     ImGui::Text("%-14s:", name);
                     ImGui::SameLine(130);
                     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, col);
                     char buf[32];
-                    snprintf(buf, sizeof(buf), "%.1f%%", pct);
+                    snprintf(buf, sizeof(buf), "%.1f%% (%.0f)", pct, pct * 0.01 * sel.mean_dps);
                     ImGui::ProgressBar(static_cast<float>(pct / 100.0), ImVec2(180, 15), buf);
                     ImGui::PopStyleColor();
+                    if (id != SpellID::NONE && ImGui::IsItemHovered()) {
+                        const BatchSpellStats& st = sel.batch.spell_stats[static_cast<size_t>(id)];
+                        ImGui::BeginTooltip();
+                        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", name);
+                        ImGui::Separator();
+                        ImGui::Text("Avg casts: %.1f | Avg hits: %.1f | Avg hit: %.0f", st.mean_casts, st.mean_hits, spell_avg_hit(st));
+                        ImGui::Text("Crit: %.1f%% | Miss: %.1f%%", spell_crit_pct(st), spell_miss_pct(st));
+                        ImGui::EndTooltip();
+                    }
                 }
             };
 
-            draw_dmg_bar("Shadow Bolt", b.pct_shadow_bolt, ImVec4(0.5f, 0.3f, 0.9f, 1.0f));
-            draw_dmg_bar("Incinerate", b.pct_incinerate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f));
-            draw_dmg_bar("Searing Pain", b.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.1f, 1.0f));
-            draw_dmg_bar("Conflagrate", b.pct_conflagrate, ImVec4(1.0f, 0.6f, 0.1f, 1.0f));
-            draw_dmg_bar("Shadowburn", b.pct_shadowburn, ImVec4(0.7f, 0.2f, 0.8f, 1.0f));
-            draw_dmg_bar("Corruption", b.pct_corruption, ImVec4(0.3f, 0.7f, 0.9f, 1.0f));
-            draw_dmg_bar("Immolate", b.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f));
-            if (b.pct_agony > 0.05) draw_dmg_bar("Bane of Agony", b.pct_agony, ImVec4(0.6f, 0.6f, 0.8f, 1.0f));
-            if (b.pct_doom > 0.05) draw_dmg_bar("Curse of Doom", b.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f));
-            if (b.pct_siphon_life > 0.05) draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f));
-            draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f));
-            draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f));
-            draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f));
-            draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f));
-            if (b.pct_pet_firebolt > 0.05) draw_dmg_bar("Imp (Firebolt)", b.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f));
-            if (b.pct_pet_lash_of_pain > 0.05) draw_dmg_bar("Succubus (Lash)", b.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f));
-            if (b.pct_pet_melee > 0.05) draw_dmg_bar("Succubus (Melee)", b.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+            draw_dmg_bar("Shadow Bolt", b.pct_shadow_bolt, ImVec4(0.5f, 0.3f, 0.9f, 1.0f), SpellID::SHADOW_BOLT);
+            draw_dmg_bar("Incinerate", b.pct_incinerate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f), SpellID::INCINERATE);
+            draw_dmg_bar("Searing Pain", b.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.1f, 1.0f), SpellID::SEARING_PAIN);
+            draw_dmg_bar("Conflagrate", b.pct_conflagrate, ImVec4(1.0f, 0.6f, 0.1f, 1.0f), SpellID::CONFLAGRATE);
+            draw_dmg_bar("Shadowburn", b.pct_shadowburn, ImVec4(0.7f, 0.2f, 0.8f, 1.0f), SpellID::SHADOWBURN);
+            draw_dmg_bar("Corruption", b.pct_corruption, ImVec4(0.3f, 0.7f, 0.9f, 1.0f), SpellID::CORRUPTION);
+            draw_dmg_bar("Immolate", b.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::IMMOLATE);
+            if (b.pct_agony > 0.05) draw_dmg_bar("Bane of Agony", b.pct_agony, ImVec4(0.6f, 0.6f, 0.8f, 1.0f), SpellID::CURSE_OF_AGONY);
+            if (b.pct_doom > 0.05) draw_dmg_bar("Curse of Doom", b.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
+            if (b.pct_siphon_life > 0.05) draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
+            draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f), SpellID::SOUL_FIRE);
+            draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f), SpellID::DRAIN_HOPE);
+            draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f), SpellID::DRAIN_LIFE);
+            draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f), SpellID::DRAIN_SOUL);
+            if (b.pct_pet_firebolt > 0.05) draw_dmg_bar("Imp (Firebolt)", b.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::PET_FIREBOLT);
+            if (b.pct_pet_lash_of_pain > 0.05) draw_dmg_bar("Succubus (Lash)", b.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f), SpellID::PET_LASH_OF_PAIN);
+            if (b.pct_pet_melee > 0.05) draw_dmg_bar("Succubus (Melee)", b.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f), SpellID::PET_MELEE);
             if (b.pct_demonic_brand > 0.05) draw_dmg_bar("Demonic Brand", b.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
             if (b.pct_pet > 0.05) {
                 char pet_summary[64];

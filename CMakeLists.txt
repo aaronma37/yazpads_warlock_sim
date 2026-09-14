@@ -62,6 +62,8 @@ enable_testing()
 set(TEST_SOURCES
     tests/main_tests.cpp
     tests/test_races.cpp
+    tests/test_icons.cpp
+    tests/test_spell_stats.cpp
     tests/test_talents.cpp
     tests/test_gear.cpp
     tests/test_buffs.cpp

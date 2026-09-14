@@ -225,5 +225,37 @@ TEST_CASE(Talents, ImprovedCorruptionGcdScaling) {
     CHECK(avg_5 >= avg_4 * 0.98);
 }
 
+TEST_CASE(Talents, ImprovedImpIsDamageOnly) {
+    // Improved Imp tooltip: +10% Firebolt damage per point. It must not change
+    // Firebolt cast frequency. Same seed => identical casts, so 3/3 Firebolt
+    // damage must equal exactly 1.3x the 0/3 damage.
+    auto make_imp_sim = []() {
+        WarlockSimulator sim;
+        sim.race = Race::UNDEAD;
+        sim.talents = Talents();
+        sim.policy.pet = PetChoice::IMP;
+        sim.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+        sim.buffs.sacrifice_imp = false;
+        sim.buffs.sacrifice_succubus = false;
+        sim.mechanics.pet_mana_management = false;
+        sim.use_raw_stats = true;
+        sim.fight_duration = 30.0;
+        return sim;
+    };
+
+    WarlockSimulator sim0 = make_imp_sim();
+    sim0.talents.demo.improved_imp = 0;
+    FastRNG rng0(12345);
+    SimResult res0 = sim0.run_single_simulation(rng0);
+
+    WarlockSimulator sim3 = make_imp_sim();
+    sim3.talents.demo.improved_imp = 3;
+    FastRNG rng3(12345);
+    SimResult res3 = sim3.run_single_simulation(rng3);
+
+    CHECK(res0.dmg_pet_firebolt > 0.0); // sanity: the Imp actually cast
+    CHECK_NEAR(res3.dmg_pet_firebolt, res0.dmg_pet_firebolt * 1.3, 0.5);
+}
+
 
 

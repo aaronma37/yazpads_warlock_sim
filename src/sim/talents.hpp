@@ -425,10 +425,9 @@ struct Talents {
         t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
 
         // Destruction: 31 points
-        t.destro.improved_shadow_bolt = 2; // 2/5 Improved Shadow Bolt
         t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
-        t.destro.cataclysm = 3;
-        t.destro.aftermath = 1;            // 1/5 Aftermath
+        t.destro.cataclysm = 1;
+        t.destro.aftermath = 5;            // 1/5 Aftermath
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
         t.destro.agonizing_flames = 3;     // +9% Destruction damage

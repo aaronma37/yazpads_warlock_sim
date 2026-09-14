@@ -63,6 +63,8 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_pet_fb = 0.0;
         double sum_dmg_demonic_brand = 0.0;
         double sum_dmg_total = 0.0;
+
+        std::array<SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> sum_spell;
     };
 
     std::vector<ThreadOutput> thread_outputs(num_threads);
@@ -127,6 +129,14 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_dmg_demonic_brand += res.dmg_demonic_brand;
                 out.sum_dmg_total += res.total_damage;
 
+                for (size_t s = 0; s < out.sum_spell.size(); ++s) {
+                    out.sum_spell[s].casts += res.spell_stats[s].casts;
+                    out.sum_spell[s].hits += res.spell_stats[s].hits;
+                    out.sum_spell[s].crits += res.spell_stats[s].crits;
+                    out.sum_spell[s].misses += res.spell_stats[s].misses;
+                    out.sum_spell[s].damage += res.spell_stats[s].damage;
+                }
+
                 int done = ++completed_iterations;
                 if (progress_callback && (done % 500 == 0 || done == iterations)) {
                     progress_callback(static_cast<float>(done) / static_cast<float>(iterations));
@@ -189,6 +199,8 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_dmg_demonic_brand = 0.0;
     double total_dmg_all = 0.0;
 
+    std::array<SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> total_spell;
+
     for (const auto& out : thread_outputs) {
         all_dps.insert(all_dps.end(), out.dps_list.begin(), out.dps_list.end());
         total_dps += out.sum_dps;
@@ -228,6 +240,22 @@ BatchSimResult ParallelSimRunner::run_batch(
         total_dmg_pet_fb += out.sum_dmg_pet_fb;
         total_dmg_demonic_brand += out.sum_dmg_demonic_brand;
         total_dmg_all += out.sum_dmg_total;
+
+        for (size_t s = 0; s < total_spell.size(); ++s) {
+            total_spell[s].casts += out.sum_spell[s].casts;
+            total_spell[s].hits += out.sum_spell[s].hits;
+            total_spell[s].crits += out.sum_spell[s].crits;
+            total_spell[s].misses += out.sum_spell[s].misses;
+            total_spell[s].damage += out.sum_spell[s].damage;
+        }
+    }
+
+    for (size_t s = 0; s < total_spell.size(); ++s) {
+        batch.spell_stats[s].mean_casts = static_cast<double>(total_spell[s].casts) / iterations;
+        batch.spell_stats[s].mean_hits = static_cast<double>(total_spell[s].hits) / iterations;
+        batch.spell_stats[s].mean_crits = static_cast<double>(total_spell[s].crits) / iterations;
+        batch.spell_stats[s].mean_misses = static_cast<double>(total_spell[s].misses) / iterations;
+        batch.spell_stats[s].mean_damage = total_spell[s].damage / iterations;
     }
 
     std::sort(all_dps.begin(), all_dps.end());

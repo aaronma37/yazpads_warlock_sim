@@ -33,10 +33,32 @@ struct SpellCastLog {
     std::string tag; // "Opener", "Curse", "DoT", "Execute", "Proc", "Burst", "Filler", "Mana"
 };
 
+// Per-spell combat counters for the damage breakdown views.
+// casts = completed casts / DoT applications / channel casts / pet casts & swings.
+// hits = damaging impacts + ticks (ticks count as hits). damage sums final damage.
+struct SpellCombatStats {
+    int casts = 0;
+    int hits = 0;
+    int crits = 0;
+    int misses = 0;
+    double damage = 0.0;
+};
+
 struct SimResult {
     double duration = 0.0;
     double total_damage = 0.0;
     double dps = 0.0;
+
+    std::array<SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> spell_stats;
+
+    void record_spell_cast(SpellID id) { spell_stats[static_cast<size_t>(id)].casts++; }
+    void record_spell_hit(SpellID id, double dmg, bool crit) {
+        SpellCombatStats& s = spell_stats[static_cast<size_t>(id)];
+        s.hits++;
+        s.damage += dmg;
+        if (crit) s.crits++;
+    }
+    void record_spell_miss(SpellID id) { spell_stats[static_cast<size_t>(id)].misses++; }
 
     int total_casts = 0;
     int total_damage_events = 0;

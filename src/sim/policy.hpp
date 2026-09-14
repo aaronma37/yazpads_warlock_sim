@@ -53,6 +53,16 @@ inline const char* pet_choice_to_string(PetChoice p) {
     }
 }
 
+// Demon summon icon asset used for the spec-rank table pet / sacrifice icon columns.
+// Returns "" when there is no demon to depict (none / sacrificed).
+inline const char* pet_choice_to_icon(PetChoice p) {
+    switch (p) {
+        case PetChoice::SUCCUBUS: return "Spell_Shadow_SummonSuccubus.png";
+        case PetChoice::IMP: return "Spell_Shadow_SummonImp.png";
+        default: return "";
+    }
+}
+
 enum class RotationChoice : uint8_t {
     SHADOW_DESTRO = 0,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
     SHADOW_DESTRO_2,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)

@@ -398,6 +398,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
+                            result.record_spell_cast(SpellID::CURSE_OF_AGONY);
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
@@ -410,6 +411,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
                             } else {
                                 result.misses++;
+                                result.record_spell_miss(SpellID::CURSE_OF_AGONY);
                             }
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
@@ -429,6 +431,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
+                            result.record_spell_cast(SpellID::CURSE_OF_DOOM);
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
                                 dot_agony.expire_time = now + 60.0;
@@ -437,6 +440,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 queue.push(now + 60.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_DOOM));
                             } else {
                                 result.misses++;
+                                result.record_spell_miss(SpellID::CURSE_OF_DOOM);
                             }
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
@@ -455,6 +459,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.shadow_bolt_casts++;
+                            result.record_spell_cast(SpellID::SHADOW_BOLT);
 
                             double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                             queue.push(now + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
@@ -517,6 +522,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
+                            result.record_spell_cast(SpellID::SIPHON_LIFE);
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_siphon_life.active = true;
@@ -529,6 +535,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
                             } else {
                                 result.misses++;
+                                result.record_spell_miss(SpellID::SIPHON_LIFE);
                             }
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
@@ -548,6 +555,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             player_mana -= dh_mana;
                             result.mana_spent += dh_mana;
                             result.total_casts++;
+                            result.record_spell_cast(SpellID::DRAIN_HOPE);
                             drain_hope_cd_ready = now + 20.0;
                             drain_hope_channel_end = now + 6.0;
 
@@ -600,6 +608,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.direct_spell_casts++;
+                            result.record_spell_cast(SpellID::CONFLAGRATE);
                             conflagrate_cd_ready = now + 10.0;
 
                             bool is_crit = false;
@@ -623,6 +632,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                                 result.dmg_conflagrate += dmg;
+                                result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
                                 result.total_damage += dmg;
 
                                 if (talents.destro.shadow_and_flame > 0) {
@@ -630,6 +640,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
                             } else {
                                 result.misses++;
+                                result.record_spell_miss(SpellID::CONFLAGRATE);
                             }
 
                             bool consume_immolate = true;
@@ -669,6 +680,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.direct_spell_casts++;
+                            result.record_spell_cast(SpellID::SHADOWBURN);
                             shadowburn_cd_ready = now + 8.0;
 
                             bool crit = false;
@@ -696,6 +708,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                                 result.dmg_shadowburn += dmg;
+                                result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
                                 result.total_damage += dmg;
 
                                 if (talents.destro.shadow_and_flame > 0) {
@@ -703,6 +716,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
                             } else {
                                 result.misses++;
+                                result.record_spell_miss(SpellID::SHADOWBURN);
                             }
 
                             gcd_ready_time = now + mechanics.base_gcd;
@@ -725,6 +739,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 player_mana -= mana_cost;
                                 result.mana_spent += mana_cost;
                                 result.total_casts++;
+                                result.record_spell_cast(SpellID::CORRUPTION);
 
                                 if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                     dot_corruption.active = true;
@@ -737,6 +752,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                     queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
                                 } else {
                                     result.misses++;
+                                    result.record_spell_miss(SpellID::CORRUPTION);
                                 }
                                 gcd_ready_time = now + mechanics.base_gcd;
                                 queue.push(gcd_ready_time, EventType::GCD_READY);
@@ -806,6 +822,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         player_mana -= dl_mana;
                         result.mana_spent += dl_mana;
                         result.total_casts++;
+                        result.record_spell_cast(SpellID::DRAIN_LIFE);
 
                         // Soul Siphon talent increases drain tick rate (17/34/50% faster)
                         double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
@@ -833,6 +850,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         player_mana -= ds_mana;
                         result.mana_spent += ds_mana;
                         result.total_casts++;
+                        result.record_spell_cast(SpellID::DRAIN_SOUL);
 
                         // Soul Siphon talent increases drain tick rate (17/34/50% faster)
                         double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
@@ -919,6 +937,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::SHADOW_BOLT)) {
                     result.shadow_bolt_casts++;
                     result.direct_spell_casts++;
+                    result.record_spell_cast(SpellID::SHADOW_BOLT);
                     double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
@@ -931,6 +950,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     result.direct_spell_casts++;
+                    result.record_spell_cast(SpellID::SEARING_PAIN);
                     double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sp_mana;
                     result.mana_spent += sp_mana;
@@ -943,6 +963,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN));
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
                     result.direct_spell_casts++;
+                    result.record_spell_cast(SpellID::INCINERATE);
                     double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= inc_mana;
                     result.mana_spent += inc_mana;
@@ -951,6 +972,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::INCINERATE));
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     result.direct_spell_casts++;
+                    result.record_spell_cast(SpellID::SOUL_FIRE);
                     double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sf_mana;
                     result.mana_spent += sf_mana;
@@ -963,6 +985,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     player_mana -= imm_mana;
                     result.mana_spent += imm_mana;
                     result.direct_spell_casts++;
+                    result.record_spell_cast(SpellID::IMMOLATE);
 
                     if (rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.total_damage_events++;
@@ -989,6 +1012,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
 
                         result.dmg_immolate += dmg;
+                        result.record_spell_hit(SpellID::IMMOLATE, dmg, crit);
                         result.total_damage += dmg;
 
                         dot_immolate.active = true;
@@ -1000,11 +1024,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE));
                     } else {
                         result.misses++;
+                        result.record_spell_miss(SpellID::IMMOLATE);
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
                     double corr_mana = 290.0;
                     player_mana -= corr_mana;
                     result.mana_spent += corr_mana;
+                    result.record_spell_cast(SpellID::CORRUPTION);
 
                     if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                         dot_corruption.active = true;
@@ -1017,6 +1043,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
                     } else {
                         result.misses++;
+                        result.record_spell_miss(SpellID::CORRUPTION);
                     }
                 }
 
@@ -1028,6 +1055,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::SHADOW_BOLT)) {
                     if (!rng.chance(calculate_hit_chance(School::SHADOW))) {
                         result.misses++;
+                        result.record_spell_miss(SpellID::SHADOW_BOLT);
                         if (record_timeline) {
                             result.timeline.push_back({current_time, 0.0, SpellID::SHADOW_BOLT, false, true, player_mana, target.isb_charges});
                             for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
@@ -1095,6 +1123,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     result.dmg_shadow_bolt += dmg;
+                    result.record_spell_hit(SpellID::SHADOW_BOLT, dmg, is_crit);
                     result.total_damage += dmg;
 
                     if (record_timeline) {
@@ -1110,6 +1139,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
                     if (!rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.misses++;
+                        result.record_spell_miss(SpellID::INCINERATE);
                         if (record_timeline) {
                             result.timeline.push_back({current_time, 0.0, SpellID::INCINERATE, false, true, player_mana, target.isb_charges});
                             for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
@@ -1158,6 +1188,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     result.dmg_incinerate += dmg;
+                    result.record_spell_hit(SpellID::INCINERATE, dmg, is_crit);
                     result.total_damage += dmg;
 
                     if (record_timeline) {
@@ -1173,6 +1204,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     if (!rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.misses++;
+                        result.record_spell_miss(SpellID::SEARING_PAIN);
                         if (record_timeline) {
                             result.timeline.push_back({current_time, 0.0, SpellID::SEARING_PAIN, false, true, player_mana, target.isb_charges});
                             for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
@@ -1230,6 +1262,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     result.dmg_searing_pain += dmg;
+                    result.record_spell_hit(SpellID::SEARING_PAIN, dmg, is_crit);
                     result.total_damage += dmg;
 
                     if (record_timeline) {
@@ -1245,6 +1278,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     if (!rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.misses++;
+                        result.record_spell_miss(SpellID::SOUL_FIRE);
                         if (record_timeline) {
                             result.timeline.push_back({current_time, 0.0, SpellID::SOUL_FIRE, false, true, player_mana, target.isb_charges});
                             for (auto it = result.cast_sequence.rbegin(); it != result.cast_sequence.rend(); ++it) {
@@ -1287,6 +1321,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     result.dmg_soul_fire += dmg;
+                    result.record_spell_hit(SpellID::SOUL_FIRE, dmg, is_crit);
                     result.total_damage += dmg;
 
                     if (record_timeline) {
@@ -1311,7 +1346,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
-                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                    bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                    if (is_crit) {
                         result.total_damage_crits++;
                         result.crits++;
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1326,6 +1362,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_drain_hope += dmg;
+                    result.record_spell_hit(SpellID::DRAIN_HOPE, dmg, is_crit);
                     result.total_damage += dmg;
 
                     // Nightfall proc check on Drain Hope ticks (2% per pt = 4% at 2/2)
@@ -1353,7 +1390,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
-                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                    bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                    if (is_crit) {
                         result.total_damage_crits++;
                         result.crits++;
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1368,6 +1406,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_drain_life += dmg;
+                    result.record_spell_hit(SpellID::DRAIN_LIFE, dmg, is_crit);
                     result.total_damage += dmg;
 
                     // Health restored from Drain Life (Soul Siphon reduces healing by 10/20/30%)
@@ -1401,7 +1440,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
-                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                    bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                    if (is_crit) {
                         result.total_damage_crits++;
                         result.crits++;
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1416,6 +1456,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_drain_soul += dmg;
+                    result.record_spell_hit(SpellID::DRAIN_SOUL, dmg, is_crit);
                     result.total_damage += dmg;
 
                     // Nightfall proc check on Drain Soul ticks (2% per pt = 4% at 2/2)
@@ -1450,7 +1491,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dmg *= get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
-                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                        if (is_crit) {
                             result.total_damage_crits++;
                             result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1464,6 +1506,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_corruption += dmg;
+                        result.record_spell_hit(SpellID::CORRUPTION, dmg, is_crit);
                         result.total_damage += dmg;
 
                         // Nightfall proc check (2% per point = 4% at 2/2)
@@ -1500,7 +1543,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double dmg = base_tick * ramp * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
-                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                        if (is_crit) {
                             result.total_damage_crits++;
                             result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1510,6 +1554,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_agony += dmg;
                         result.dmg_curse += dmg;
+                        result.record_spell_hit(SpellID::CURSE_OF_AGONY, dmg, is_crit);
                         result.total_damage += dmg;
 
                         if (dot_agony.ticks_remaining > 0) {
@@ -1531,7 +1576,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
-                        if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                        bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                        if (is_crit) {
                             result.total_damage_crits++;
                             result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1540,6 +1586,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_siphon_life += dmg;
+                        result.record_spell_hit(SpellID::SIPHON_LIFE, dmg, is_crit);
                         result.total_damage += dmg;
                         player_health = std::min(stats.max_health, player_health + dmg);
 
@@ -1561,7 +1608,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dmg *= get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * stats.all_damage_multiplier;
 
                         // Baseline DoT Crit + Ruin bonus (Destruction)
-                        if (rng.chance(calculate_crit_chance(School::FIRE, stats))) {
+                        bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
+                        if (is_crit) {
                             result.total_damage_crits++;
                             result.crits++;
                             dmg *= destro_crit_mult;
@@ -1569,6 +1617,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_immolate += dmg;
+                        result.record_spell_hit(SpellID::IMMOLATE, dmg, is_crit);
                         result.total_damage += dmg;
 
                         if (dot_immolate.ticks_remaining > 0) {
@@ -1582,7 +1631,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 3200.0 + 2.0 * sp;
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
-                    if (rng.chance(calculate_crit_chance(School::SHADOW, stats))) {
+                    bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                    if (is_crit) {
                         result.total_damage_crits++;
                         result.crits++;
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
@@ -1591,6 +1641,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_doom += dmg;
                     result.dmg_curse += dmg;
+                    result.record_spell_hit(SpellID::CURSE_OF_DOOM, dmg, is_crit);
                     result.total_damage += dmg;
                     dot_agony.active = false;
                 }
@@ -1628,6 +1679,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
             case EventType::PET_MELEE_SWING: {
                 if (active_pet == PetChoice::SUCCUBUS) {
+                    result.record_spell_cast(SpellID::PET_MELEE);
                     if (rng.chance(0.95)) {
                         double master_sp = get_current_sp(School::SHADOW, current_time);
                         double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_ap_ratio * master_sp) : 0.0;
@@ -1639,7 +1691,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double armor_mult = 0.86;
                         double swing_dmg = base_swing * armor_mult;
 
-                        if (rng.chance(0.05)) {
+                        bool melee_crit = rng.chance(0.05);
+                        if (melee_crit) {
                             swing_dmg *= 2.0;
                         }
 
@@ -1661,9 +1714,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
 
                         result.dmg_pet_melee += swing_dmg;
+                        result.record_spell_hit(SpellID::PET_MELEE, swing_dmg, melee_crit);
                         result.dmg_pet_succubus += (swing_dmg + brand_dmg);
                         result.dmg_pet += (swing_dmg + brand_dmg);
                         result.total_damage += (swing_dmg + brand_dmg);
+                    } else {
+                        result.record_spell_miss(SpellID::PET_MELEE);
                     }
 
                     if (current_time + 2.0 < fight_duration) {
@@ -1682,6 +1738,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (mechanics.pet_mana_management) {
                             pet_mana -= lop_cost;
                         }
+                        result.record_spell_cast(SpellID::PET_LASH_OF_PAIN);
 
                         // Lash of Pain (Rank 6): 99 - 115 shadow damage + pet SP scaling
                         if (rng.chance(0.83)) {
@@ -1696,7 +1753,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
                             if (buffs.curse_of_shadows) base_lop *= 1.10;
 
-                            if (rng.chance(0.05)) {
+                            bool lop_crit = rng.chance(0.05);
+                            if (lop_crit) {
                                 base_lop *= 1.5;
                             }
 
@@ -1720,9 +1778,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             result.dmg_pet_lash_of_pain += base_lop;
+                            result.record_spell_hit(SpellID::PET_LASH_OF_PAIN, base_lop, lop_crit);
                             result.dmg_pet_succubus += (base_lop + brand_dmg);
                             result.dmg_pet += (base_lop + brand_dmg);
                             result.total_damage += (base_lop + brand_dmg);
+                        } else {
+                            result.record_spell_miss(SpellID::PET_LASH_OF_PAIN);
                         }
                     }
 
@@ -1743,6 +1804,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (mechanics.pet_mana_management) {
                             pet_mana -= fb_cost;
                         }
+                        result.record_spell_cast(SpellID::PET_FIREBOLT);
 
                         // Imp Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling
                         if (rng.chance(0.83)) {
@@ -1755,7 +1817,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                             if (buffs.curse_of_elements) base_fb *= 1.10;
 
-                            if (rng.chance(0.05)) {
+                            bool fb_crit = rng.chance(0.05);
+                            if (fb_crit) {
                                 base_fb *= 1.5;
                             }
 
@@ -1778,14 +1841,18 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             result.dmg_pet_firebolt += base_fb;
+                            result.record_spell_hit(SpellID::PET_FIREBOLT, base_fb, fb_crit);
                             result.dmg_pet_imp += (base_fb + brand_dmg);
                             result.dmg_pet += (base_fb + brand_dmg);
                             result.total_damage += (base_fb + brand_dmg);
+                        } else {
+                            result.record_spell_miss(SpellID::PET_FIREBOLT);
                         }
                     }
 
-                    // Improved Imp reduces Firebolt cast time / interval (1.5s down to 1.0s)
-                    double fb_interval = std::max(0.5, 1.5 - 0.15 * talents.demo.improved_imp);
+                    // Imp Firebolt fires on a fixed 1.5s interval. Improved Imp raises
+                    // Firebolt damage only (+10% per point, applied above), never cast frequency.
+                    double fb_interval = 1.5;
                     if (!can_cast) {
                         // If OOM, retry on 1.0s intervals
                         fb_interval = 1.0;

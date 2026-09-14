@@ -27,12 +27,15 @@ enum class SpellID : uint8_t {
     DEATH_COIL,
     PET_FIREBOLT,
     PET_LASH_OF_PAIN,
+    PET_MELEE, // Succubus melee swings (stats key, never cast through the queue)
     POTION_MANA,
     DEMONIC_RUNE,
     TRINKET_USE,
     RACIAL_EUREKA,
     RACIAL_BLOOD_FURY,
-    RACIAL_BERSERKING
+    RACIAL_BERSERKING,
+
+    COUNT // Number of spell ids; must stay last (sizes per-spell stat arrays)
 };
 
 enum class School : uint8_t {
@@ -311,6 +314,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::LIFE_TAP: return "Life Tap";
         case SpellID::PET_FIREBOLT: return "Firebolt (Pet)";
         case SpellID::PET_LASH_OF_PAIN: return "Lash of Pain (Pet)";
+        case SpellID::PET_MELEE: return "Melee (Pet)";
         case SpellID::RACIAL_EUREKA: return "Eureka!";
         case SpellID::RACIAL_BLOOD_FURY: return "Blood Fury";
         case SpellID::RACIAL_BERSERKING: return "Berserking";
@@ -339,6 +343,7 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::LIFE_TAP: return "spell_shadow_burningspirit.png";
         case SpellID::PET_FIREBOLT: return "spell_fire_firebolt.png";
         case SpellID::PET_LASH_OF_PAIN: return "spell_shadow_curse.png";
+        case SpellID::PET_MELEE: return "Ability_MeleeDamage.png";
         case SpellID::RACIAL_EUREKA: return "spell_nature_astralrecalgroup.png";
         case SpellID::RACIAL_BLOOD_FURY: return "racial_orc_berserkerstrength.png";
         case SpellID::RACIAL_BERSERKING: return "racial_troll_berserk.png";

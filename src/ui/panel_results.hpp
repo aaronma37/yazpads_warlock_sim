@@ -105,143 +105,84 @@ inline void render_panel_results(const BatchSimResult& batch) {
 
         // Tab 3: Damage Breakdown
         if (ImGui::BeginTabItem("Damage Breakdown")) {
-            ImGui::Text("Spell Damage Contribution (%% of Total):");
+            ImGui::Text("Spell Damage Contribution (%% of Total + DPS):");
             ImGui::Separator();
 
-            ImGui::Text("Shadow Bolt: ");
-            ImGui::SameLine(180);
-            ImGui::ProgressBar(static_cast<float>(batch.pct_shadow_bolt * 0.01), ImVec2(240, 0), "");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "%.1f%%", batch.pct_shadow_bolt);
+            auto spell_row = [&](const char* name, double pct, const ImVec4& col, SpellID id = SpellID::NONE) {
+                ImGui::Text("%s: ", name);
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(pct * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(col, "%.1f%% (%.1f DPS)", pct, pct * 0.01 * batch.mean_dps);
+                if (id != SpellID::NONE) {
+                    const BatchSpellStats& st = batch.spell_stats[static_cast<size_t>(id)];
+                    if (st.mean_casts > 0.005 || st.mean_hits > 0.005) {
+                        ImGui::TextDisabled("      %.1f casts | %.1f hits | %.0f avg hit | %.1f%% crit | %.1f%% miss",
+                            st.mean_casts, st.mean_hits, spell_avg_hit(st), spell_crit_pct(st), spell_miss_pct(st));
+                    }
+                }
+            };
 
-            ImGui::Text("Corruption: ");
-            ImGui::SameLine(180);
-            ImGui::ProgressBar(static_cast<float>(batch.pct_corruption * 0.01), ImVec2(240, 0), "");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1.0f), "%.1f%%", batch.pct_corruption);
+            spell_row("Shadow Bolt", batch.pct_shadow_bolt, ImVec4(0.8f, 0.5f, 1.0f, 1.0f), SpellID::SHADOW_BOLT);
+            spell_row("Corruption", batch.pct_corruption, ImVec4(0.5f, 0.9f, 0.5f, 1.0f), SpellID::CORRUPTION);
 
             if (batch.pct_agony > 0.001) {
-                ImGui::Text("Bane of Agony: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_agony * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), "%.1f%%", batch.pct_agony);
+                spell_row("Bane of Agony", batch.pct_agony, ImVec4(1.0f, 0.8f, 0.3f, 1.0f), SpellID::CURSE_OF_AGONY);
             }
 
             if (batch.pct_doom > 0.001) {
-                ImGui::Text("Curse of Doom: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_doom * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "%.1f%%", batch.pct_doom);
+                spell_row("Curse of Doom", batch.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
             }
 
             if (batch.pct_siphon_life > 0.001) {
-                ImGui::Text("Siphon Life: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_siphon_life * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.6f, 1.0f), "%.1f%%", batch.pct_siphon_life);
+                spell_row("Siphon Life", batch.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
             }
 
-            ImGui::Text("Immolate: ");
-            ImGui::SameLine(180);
-            ImGui::ProgressBar(static_cast<float>(batch.pct_immolate * 0.01), ImVec2(240, 0), "");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "%.1f%%", batch.pct_immolate);
-
-            ImGui::Text("Shadowburn: ");
-            ImGui::SameLine(180);
-            ImGui::ProgressBar(static_cast<float>(batch.pct_shadowburn * 0.01), ImVec2(240, 0), "");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.7f, 1.0f), "%.1f%%", batch.pct_shadowburn);
+            spell_row("Immolate", batch.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::IMMOLATE);
+            spell_row("Shadowburn", batch.pct_shadowburn, ImVec4(0.9f, 0.3f, 0.7f, 1.0f), SpellID::SHADOWBURN);
 
             if (batch.pct_conflagrate > 0.001) {
-                ImGui::Text("Conflagrate: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_conflagrate * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.1f, 1.0f), "%.1f%%", batch.pct_conflagrate);
+                spell_row("Conflagrate", batch.pct_conflagrate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f), SpellID::CONFLAGRATE);
             }
 
             if (batch.pct_incinerate > 0.001) {
-                ImGui::Text("Incinerate: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_incinerate * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%.1f%%", batch.pct_incinerate);
+                spell_row("Incinerate", batch.pct_incinerate, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::INCINERATE);
             }
 
             if (batch.pct_searing_pain > 0.001) {
-                ImGui::Text("Searing Pain: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_searing_pain * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "%.1f%%", batch.pct_searing_pain);
+                spell_row("Searing Pain", batch.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::SEARING_PAIN);
             }
 
             if (batch.pct_soul_fire > 0.001) {
-                ImGui::Text("Soul Fire: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_soul_fire * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "%.1f%%", batch.pct_soul_fire);
+                spell_row("Soul Fire", batch.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.2f, 1.0f), SpellID::SOUL_FIRE);
             }
 
             if (batch.pct_drain_hope > 0.001) {
-                ImGui::Text("Drain Hope: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_drain_hope * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.6f, 0.3f, 0.9f, 1.0f), "%.1f%%", batch.pct_drain_hope);
+                spell_row("Drain Hope", batch.pct_drain_hope, ImVec4(0.6f, 0.3f, 0.9f, 1.0f), SpellID::DRAIN_HOPE);
             }
 
             if (batch.pct_drain_life > 0.001) {
-                ImGui::Text("Drain Life: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_drain_life * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.5f, 1.0f), "%.1f%%", batch.pct_drain_life);
+                spell_row("Drain Life", batch.pct_drain_life, ImVec4(0.3f, 0.9f, 0.5f, 1.0f), SpellID::DRAIN_LIFE);
             }
 
             if (batch.pct_drain_soul > 0.001) {
-                ImGui::Text("Drain Soul: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_drain_soul * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.4f, 0.9f, 1.0f), "%.1f%%", batch.pct_drain_soul);
+                spell_row("Drain Soul", batch.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f), SpellID::DRAIN_SOUL);
             }
 
             if (batch.pct_pet_firebolt > 0.001) {
-                ImGui::Text("Imp (Firebolt): ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_firebolt * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%.1f%%", batch.pct_pet_firebolt);
+                spell_row("Imp (Firebolt)", batch.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::PET_FIREBOLT);
             }
 
             if (batch.pct_pet_lash_of_pain > 0.001) {
-                ImGui::Text("Succubus (Lash of Pain): ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_lash_of_pain * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.7f, 0.3f, 0.9f, 1.0f), "%.1f%%", batch.pct_pet_lash_of_pain);
+                spell_row("Succubus (Lash of Pain)", batch.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f), SpellID::PET_LASH_OF_PAIN);
             }
 
             if (batch.pct_pet_melee > 0.001) {
-                ImGui::Text("Succubus (Melee): ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_melee * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%.1f%%", batch.pct_pet_melee);
+                spell_row("Succubus (Melee)", batch.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f), SpellID::PET_MELEE);
             }
 
             if (batch.pct_demonic_brand > 0.001) {
-                ImGui::Text("Demonic Brand: ");
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_demonic_brand * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.8f, 1.0f), "%.1f%%", batch.pct_demonic_brand);
+                spell_row("Demonic Brand", batch.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
             }
 
             if (batch.pct_pet > 0.001) {
