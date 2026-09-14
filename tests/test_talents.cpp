@@ -89,6 +89,34 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t9.demo.decimation, 2);
 }
 
+TEST_CASE(Talents, NightfallAfflictionPreset) {
+    Talents t = Talents::create_forever_nf_af();
+    CHECK_EQ(t.total_points(), 51);
+    CHECK(t.is_valid());
+    CHECK_EQ(t.aff.total_points(), 23);
+    CHECK_EQ(t.demo.total_points(), 10);
+    CHECK_EQ(t.destro.total_points(), 18);
+
+    CHECK_EQ(t.aff.improved_life_tap, 2);
+    CHECK_EQ(t.aff.suppression, 5);
+    CHECK_EQ(t.aff.improved_corruption, 5);
+    CHECK_EQ(t.aff.malediction, 4);
+    CHECK_EQ(t.aff.malevolence, 5);
+    CHECK_EQ(t.aff.nightfall, 2);
+
+    CHECK_EQ(t.demo.improved_imp, 3);
+    CHECK_EQ(t.demo.unholy_power, 5);
+    CHECK_EQ(t.demo.demonic_energies, 2);
+
+    CHECK_EQ(t.destro.improved_shadow_bolt, 5);
+    CHECK_EQ(t.destro.bane, 5);
+    CHECK_EQ(t.destro.ruin, 5);
+    CHECK_EQ(t.destro.agonizing_flames, 3);
+    CHECK_EQ(t.destro.shadowburn, 0);
+
+    CHECK_EQ(Talents::create_nf_af().total_points(), 51);
+}
+
 TEST_CASE(Talents, SuppressionHitBonus) {
     WarlockSimulator sim;
     sim.use_raw_stats = true;

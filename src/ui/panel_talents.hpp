@@ -508,6 +508,14 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     }
     ImGui::SameLine();
+    if (ImGui::SmallButton("NF/AF")) {
+        sim.talents = Talents::create_forever_nf_af();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.pet = PetChoice::IMP;
+        sim.policy.rotation = RotationChoice::SM_RUIN;
+    }
+    ImGui::SameLine();
     if (ImGui::SmallButton("Reset All")) {
         sim.talents = Talents();
     }

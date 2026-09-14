@@ -96,7 +96,8 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
         {"10/10/31 Shadow and Flame Fire 2", Talents::create_forever_shadow_and_flame_fire_2(), RotationChoice::SHADOW_AND_FLAME_FIRE_2, PetChoice::IMP, false, false},
         {"2/17/32 Shadow and Flame Shadow", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
         {"2/17/32 Shadow and Flame Shadow 2", Talents::create_forever_shadow_and_flame_shadow_2(), RotationChoice::SHADOW_DESTRO_2, PetChoice::IMP, false, false},
-        {"19/11/21 NF/DS/Ruin DS-Imp", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
+        {"19/11/21 NF/DS/Ruin DS-Imp", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
+        {"23/10/18 NF/AF", Talents::create_forever_nf_af(), RotationChoice::SM_RUIN, PetChoice::IMP, false, false}
     };
 
     std::vector<Race> races_to_test = compare_all_races

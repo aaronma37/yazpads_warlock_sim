@@ -149,6 +149,13 @@ public:
                             sim.policy.pet = PetChoice::IMP;
                             sim.policy.rotation = RotationChoice::SM_RUIN;
                         }
+                        if (ImGui::MenuItem("23/10/18 NF/AF")) {
+                            sim.talents = Talents::create_forever_nf_af();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.rotation = RotationChoice::SM_RUIN;
+                        }
                         if (ImGui::MenuItem("1/17/33 Shadow and Flame Fire")) {
                             sim.talents = Talents::create_forever_shadow_and_flame();
                             sim.buffs.sacrifice_succubus = false;

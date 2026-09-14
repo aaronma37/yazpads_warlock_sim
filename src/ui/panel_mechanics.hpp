@@ -63,7 +63,7 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Pet Stat Inheritance & Mana Management:");
         ImGui::Checkbox("Enable Pet Spell Power / AP Scaling (Forever)", &mechanics.pet_scaling);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When ON (Forever): Summoned pets inherit 57%% of master's Spell Power to their spells and Attack Power.\nWhen OFF (Classic 1.12): Pets deal flat base ability damage.");
+            ImGui::SetTooltip("When ON (Forever): Summoned pets inherit 15%% of master's Spell Power to their spells and 57%% to Attack Power.\nWhen OFF (Classic 1.12): Pets deal flat base ability damage.");
         }
         ImGui::Checkbox("Enable Pet Mana Tracking & Spell Costs", &mechanics.pet_mana_management);
         if (ImGui::IsItemHovered()) {

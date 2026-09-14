@@ -20,7 +20,7 @@ void print_help() {
               << "  --iterations <N>               Number of fight simulations (default: 10000)\n"
               << "  --duration <seconds>           Duration of each fight in seconds (default: 120)\n"
               << "  --threads <N>                  Worker threads (default: hardware concurrency)\n"
-              << "  --spec <name>                  Talent spec: shadow_destro, fire_destro, demonic_pact, deep_affliction, sm_ruin\n"
+              << "  --spec <name>                  Talent spec: shadow_destro, fire_destro, demonic_pact, deep_affliction, sm_ruin, nf_af\n"
               << "  --gear <name>                  Gear preset: preraid, p3, p5, p6\n"
               << "  --race <name>                  Playable race: undead, orc, troll, human, gnome\n"
               << "  --raw-stats                    Direct stat mode (overrides gear items)\n"
@@ -82,6 +82,12 @@ int run_headless(int argc, char* argv[]) {
                 sim.buffs.sacrifice_succubus = false;
                 sim.buffs.sacrifice_imp = false;
                 sim.policy.pet = PetChoice::SUCCUBUS;
+            } else if (spec == "nf_af" || spec == "nf-af" || spec == "nf") {
+                sim.talents = Talents::create_forever_nf_af();
+                sim.buffs.sacrifice_succubus = false;
+                sim.buffs.sacrifice_imp = false;
+                sim.policy.pet = PetChoice::IMP;
+                sim.policy.rotation = RotationChoice::SM_RUIN;
             } else {
                 sim.talents = Talents::create_forever_shadow_destro();
                 sim.buffs.sacrifice_succubus = false;

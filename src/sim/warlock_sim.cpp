@@ -1630,7 +1630,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (active_pet == PetChoice::SUCCUBUS) {
                     if (rng.chance(0.95)) {
                         double master_sp = get_current_sp(School::SHADOW, current_time);
-                        double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                        double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_ap_ratio * master_sp) : 0.0;
                         double base_swing = rng.range(145.0, 195.0) + (bonus_ap / 14.0) * 2.0;
 
                         // Unholy Power in Forever: +2% per point (+10% at 5/5)
@@ -1687,7 +1687,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::SHADOW, current_time);
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
-                            double base_lop = rng.range(99.0, 115.0) + (1.5 / 3.5) * pet_sp;
+                            double base_lop = rng.range(99.0, 115.0) + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
 
                             // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
                             base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
@@ -1748,7 +1748,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::FIRE, current_time);
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
-                            double base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp;
+                            double base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
 
                             base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_fb *= (1.0 + talents.demo.improved_imp * 0.10);

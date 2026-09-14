@@ -739,6 +739,30 @@ struct Talents {
         return create_forever_sm_ruin();
     }
 
+    // 5c. Forever NF/AF (23/10/18 - Nightfall + active Imp + Ruin)
+    static Talents create_forever_nf_af() {
+        Talents t;
+        // Affliction: 23 points
+        t.aff.improved_life_tap = 2;         // 2/2 (+20% mana from Life Tap)
+        t.aff.suppression = 5;               // 5/5 (+5% spell hit, -20% threat)
+        t.aff.improved_corruption = 5;       // 5/5 (Instant Corruption, +10% damage)
+        t.aff.malediction = 4;               // 4/5 (+4% periodic damage)
+        t.aff.malevolence = 5;               // 5/5 (+5% Shadow spell crit)
+        t.aff.nightfall = 2;                 // 2/2 (Shadow Trance on Corruption ticks)
+
+        // Demonology: 10 points (active Imp)
+        t.demo.improved_imp = 3;             // 3/3 (+30% Imp Firebolt damage)
+        t.demo.unholy_power = 5;             // 5/5 (+10% pet damage)
+        t.demo.demonic_energies = 2;         // 2/2 (Life Tap shares mana with pet + pet heal)
+
+        // Destruction: 18 points
+        t.destro.improved_shadow_bolt = 5;   // 5/5 (20% Shadow vuln on crit)
+        t.destro.bane = 5;                   // 5/5 (-0.5s Shadow Bolt cast time)
+        t.destro.ruin = 5;                   // 5/5 (+100% crit damage bonus, 2.0x total)
+        t.destro.agonizing_flames = 3;       // 3/3 (+9% Destruction spell damage)
+        return t;
+    }
+
     // 6. Forever MD / Ruin (0/31/20 - 5/5 Master Demo + 5/5 Ruin)
     static Talents create_forever_md_ruin() {
         Talents t;
@@ -782,6 +806,7 @@ struct Talents {
     static Talents create_forever_nf_ds() { return create_forever_nf_ds_ruin(); }
     static Talents create_nf_ds_ruin() { return create_forever_nf_ds_ruin(); }
     static Talents create_nf_ds() { return create_forever_nf_ds_ruin(); }
+    static Talents create_nf_af() { return create_forever_nf_af(); }
     static Talents create_fire_destro_decimation() { return create_forever_fire_destro_decimation(); }
     static Talents create_shadow_and_flame() { return create_forever_shadow_and_flame(); }
     static Talents create_shadow_and_flame_shadow() { return create_forever_shadow_and_flame_shadow(); }

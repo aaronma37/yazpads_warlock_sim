@@ -102,7 +102,8 @@ TEST_CASE(Mechanics, NightfallProcSimulation) {
 TEST_CASE(Mechanics, PetStatScalingToggle) {
     MechanicsConfig mech;
     CHECK(mech.pet_scaling);
-    CHECK_NEAR(mech.pet_sp_ratio, 0.57, 0.001);
+    CHECK_NEAR(mech.pet_sp_ratio, 0.15, 0.001); // 15% SP inheritance to pet spell damage
+    CHECK_NEAR(mech.pet_ap_ratio, 0.57, 0.001); // 57% SP inheritance to pet Attack Power
 }
 
 TEST_CASE(Mechanics, PersonalShadowWeavingDefault) {
@@ -161,6 +162,66 @@ TEST_CASE(Mechanics, SeparatedPetDamageBreakdown) {
         CHECK_EQ(res.dmg_pet_lash_of_pain, 0.0);
         CHECK(res.dmg_demonic_brand > 0.0);
         CHECK_NEAR(res.dmg_pet, res.dmg_pet_firebolt + res.dmg_demonic_brand, 0.01);
+    }
+}
+
+TEST_CASE(Mechanics, PetSpellAndApRatiosApplySeparately) {
+    // Spell path: Imp Firebolt scales with pet_sp_ratio (same seed => identical casts)
+    {
+        FastRNG rng_lo(777);
+        WarlockSimulator sim_lo;
+        sim_lo.talents = Talents::create_forever_nf_af();
+        sim_lo.policy.rotation = RotationChoice::SM_RUIN;
+        sim_lo.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim_lo.buffs.sacrifice_imp = false;
+        sim_lo.policy.pet = PetChoice::IMP;
+        sim_lo.mechanics.pet_sp_ratio = 0.0;
+        sim_lo.fight_duration = 30.0;
+        SimResult lo = sim_lo.run_single_simulation(rng_lo);
+
+        FastRNG rng_hi(777);
+        WarlockSimulator sim_hi;
+        sim_hi.talents = Talents::create_forever_nf_af();
+        sim_hi.policy.rotation = RotationChoice::SM_RUIN;
+        sim_hi.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim_hi.buffs.sacrifice_imp = false;
+        sim_hi.policy.pet = PetChoice::IMP;
+        sim_hi.mechanics.pet_sp_ratio = 0.57;
+        sim_hi.fight_duration = 30.0;
+        SimResult hi = sim_hi.run_single_simulation(rng_hi);
+
+        CHECK(lo.dmg_pet_firebolt > 0.0); // Base damage even at 0% inheritance
+        CHECK(hi.dmg_pet_firebolt > lo.dmg_pet_firebolt);
+    }
+
+    // AP path: Succubus melee scales with pet_ap_ratio (same seed => identical swings)
+    {
+        FastRNG rng_lo(777);
+        WarlockSimulator sim_lo;
+        sim_lo.talents = Talents::create_forever_sm_ruin();
+        sim_lo.policy.rotation = RotationChoice::SM_RUIN;
+        sim_lo.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim_lo.buffs.sacrifice_imp = false;
+        sim_lo.buffs.sacrifice_succubus = false;
+        sim_lo.policy.pet = PetChoice::SUCCUBUS;
+        sim_lo.mechanics.pet_ap_ratio = 0.0;
+        sim_lo.fight_duration = 30.0;
+        SimResult lo = sim_lo.run_single_simulation(rng_lo);
+
+        FastRNG rng_hi(777);
+        WarlockSimulator sim_hi;
+        sim_hi.talents = Talents::create_forever_sm_ruin();
+        sim_hi.policy.rotation = RotationChoice::SM_RUIN;
+        sim_hi.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim_hi.buffs.sacrifice_imp = false;
+        sim_hi.buffs.sacrifice_succubus = false;
+        sim_hi.policy.pet = PetChoice::SUCCUBUS;
+        sim_hi.mechanics.pet_ap_ratio = 0.57;
+        sim_hi.fight_duration = 30.0;
+        SimResult hi = sim_hi.run_single_simulation(rng_hi);
+
+        CHECK(lo.dmg_pet_melee > 0.0); // Base damage even at 0% inheritance
+        CHECK(hi.dmg_pet_melee > lo.dmg_pet_melee);
     }
 }
 

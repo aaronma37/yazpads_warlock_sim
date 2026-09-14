@@ -171,6 +171,46 @@ TEST_CASE(Rotations, SMRuinDeterministicRun) {
     CHECK_EQ(res.dmg_immolate, 0.0); // No Immolate in SM/Ruin
 }
 
+TEST_CASE(Rotations, NFAfflictionUsesSMRuinRotation) {
+    PolicyConfig policy;
+    policy.rotation = RotationChoice::SM_RUIN;
+    policy.curse = CurseChoice::BANE_OF_AGONY;
+    Talents talents = Talents::create_forever_nf_af();
+    auto rules = policy.get_priority_rules(talents);
+    int pos_corr = -1, pos_agony = -1, pos_sb = -1, pos_sburn = -1;
+    for (size_t i = 0; i < rules.size(); ++i) {
+        if (rules[i].spell_id == SpellID::CORRUPTION) pos_corr = (int)i;
+        if (rules[i].spell_id == SpellID::CURSE_OF_AGONY) pos_agony = (int)i;
+        if (rules[i].spell_id == SpellID::SHADOW_BOLT) pos_sb = (int)i;
+        if (rules[i].spell_id == SpellID::SHADOWBURN) pos_sburn = (int)i;
+    }
+    CHECK(pos_corr != -1);
+    CHECK(pos_agony != -1);
+    CHECK(pos_sb != -1);
+    CHECK(pos_corr < pos_sb);
+    CHECK(pos_agony < pos_sb);
+    CHECK_EQ(pos_sburn, -1); // No Shadowburn point in 23/10/18, so no Shadowburn rule
+    CHECK_EQ(static_cast<int>(rules.back().action), static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
+
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = talents;
+    sim.policy.rotation = RotationChoice::SM_RUIN;
+    sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+    sim.policy.pet = PetChoice::IMP;
+    sim.fight_duration = 30.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0); // Bane of Agony
+    CHECK(res.shadow_bolt_casts > 0);
+    CHECK_EQ(res.dmg_shadowburn, 0.0); // Untalented
+    CHECK_EQ(res.dmg_immolate, 0.0); // No Immolate in SM/Ruin-style rotation
+}
+
 TEST_CASE(Rotations, DemonologyExecuteSoulFire) {
     FastRNG rng(1337);
     WarlockSimulator sim;

@@ -65,10 +65,11 @@ struct MechanicsConfig {
     bool haste_affects_gcd = false; // In classic, haste does not affect 1.5s GCD floor; toggleable for modern.
 
     // 11. Pet Stat Scaling & Mana Modeling
-    // True: Pets inherit master's Spell Power (57% SP inheritance to pet spell damage and attack power).
+    // True: Pets inherit master's Spell Power (15% to pet spell damage, 57% to pet Attack Power).
     // False: Static base damage (Classic 1.12).
     bool pet_scaling = true; // Default: ON (WoW Forever)
-    double pet_sp_ratio = 0.57; // 57% SP inheritance
+    double pet_sp_ratio = 0.15; // 15% SP inheritance to pet spell damage
+    double pet_ap_ratio = 0.57; // 57% SP inheritance to pet Attack Power (melee)
 
     // Pet Mana Management
     // When enabled, Imp and Succubus track mana pools, cast costs, and regen.
