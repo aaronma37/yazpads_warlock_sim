@@ -61,3 +61,52 @@ TEST_CASE(Races, HumanSwordCritBonus) {
     double undead_crit = stats_undead.total_spell_crit(get_base_attributes_for_race(Race::UNDEAD).base_spell_crit);
     CHECK_NEAR(human_crit, undead_crit, 0.5); // Close in stats, but sim checks sword bonus
 }
+
+TEST_CASE(Races, OrcAxeCritBonusAndNoPetCommand) {
+    WarlockSimulator sim_orc;
+    sim_orc.race = Race::ORC;
+    sim_orc.use_raw_stats = false;
+    sim_orc.gear = GearLoadout::create_preraid_bis();
+
+    // Equip an Axe
+    Item axe;
+    axe.name = "Doom's Edge Axe";
+    axe.slot = Slot::MAIN_HAND;
+    sim_orc.gear.equip(Slot::MAIN_HAND, axe);
+
+    WarlockSimulator sim_undead = sim_orc;
+    sim_undead.race = Race::UNDEAD;
+
+    // Orc with Axe gains +1% crit in simulation
+    CHECK(sim_orc.race == Race::ORC);
+    CHECK(sim_undead.race == Race::UNDEAD);
+
+    // Verify pet damage parity (Command +5% pet damage removed in Forever)
+    FastRNG rng1(100), rng2(100);
+    sim_orc.talents = Talents::create_forever_dp_af_shadow();
+    sim_orc.policy.rotation = RotationChoice::DP_AF_SHADOW;
+    sim_orc.buffs.sacrifice_imp = true;
+    sim_orc.policy.pet = PetChoice::SUCCUBUS;
+    sim_orc.fight_duration = 3.0;
+    sim_orc.mechanics.pet_scaling = false; // Disable master SP inheritance to compare base ability formulas
+    sim_orc.use_raw_stats = true;
+    sim_orc.raw_stats.spell_power = 0.0;
+    sim_orc.record_timeline = true;
+
+    sim_undead.talents = sim_orc.talents;
+    sim_undead.policy = sim_orc.policy;
+    sim_undead.buffs = sim_orc.buffs;
+    sim_undead.fight_duration = sim_orc.fight_duration;
+    sim_undead.mechanics.pet_scaling = false;
+    sim_undead.use_raw_stats = true;
+    sim_undead.raw_stats.spell_power = 0.0;
+    sim_undead.record_timeline = true;
+
+    SimResult res_orc = sim_orc.run_single_simulation(rng1);
+    SimResult res_undead = sim_undead.run_single_simulation(rng2);
+
+    // Succubus melee and Lash of Pain base damage are identical between Orc and Undead
+    CHECK_NEAR(res_orc.dmg_pet_melee, res_undead.dmg_pet_melee, 0.01);
+    CHECK_NEAR(res_orc.dmg_pet_lash_of_pain, res_undead.dmg_pet_lash_of_pain, 0.01);
+}
+

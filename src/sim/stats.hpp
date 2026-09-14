@@ -132,9 +132,37 @@ struct Stats {
     }
 };
 
+enum class CreatureType : uint8_t {
+    HUMANOID = 0,
+    BEAST,
+    DEMON,
+    UNDEAD,
+    DRAGONKIN,
+    ELEMENTAL,
+    GIANT,
+    MECHANICAL,
+    OTHER
+};
+
+inline const char* creature_type_to_string(CreatureType c) {
+    switch (c) {
+        case CreatureType::HUMANOID: return "Humanoid";
+        case CreatureType::BEAST: return "Beast";
+        case CreatureType::DEMON: return "Demon";
+        case CreatureType::UNDEAD: return "Undead";
+        case CreatureType::DRAGONKIN: return "Dragonkin";
+        case CreatureType::ELEMENTAL: return "Elemental";
+        case CreatureType::GIANT: return "Giant";
+        case CreatureType::MECHANICAL: return "Mechanical";
+        case CreatureType::OTHER: return "Other";
+        default: return "Humanoid";
+    }
+}
+
 // Target (Boss) characteristics
 struct TargetConfig {
-    int level = 63;                 // Standard raid boss level
+    int level = 63;                 // Standard raid boss level (60-63+)
+    CreatureType creature_type = CreatureType::HUMANOID;
     double base_shadow_resistance = 24.0; // Boss base innate resistance (cannot be lowered below 0)
     double base_fire_resistance = 24.0;
     double current_shadow_resistance = 24.0;

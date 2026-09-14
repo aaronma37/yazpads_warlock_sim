@@ -133,15 +133,44 @@ inline void render_tree_column(
     ImVec2 win_size = ImGui::GetWindowSize();
     ImVec2 win_max = ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y);
 
-    // 1. Draw Authentic Talent Background Image
+    // 1. Draw Authentic Talent Background Image (Preserving Aspect Ratio - Cover/Crop)
     const Texture2D& bg_tex = AssetManager::get().get_icon(bg_filename);
     if (bg_tex.id > 0) {
+        float tex_w = static_cast<float>(bg_tex.width);
+        float tex_h = static_cast<float>(bg_tex.height);
+        float win_w = win_size.x;
+        float win_h = win_size.y;
+
+        ImVec2 uv0(0.0f, 0.0f);
+        ImVec2 uv1(1.0f, 1.0f);
+
+        if (tex_w > 0.0f && tex_h > 0.0f && win_w > 0.0f && win_h > 0.0f) {
+            float win_aspect = win_w / win_h;
+            float tex_aspect = tex_w / tex_h;
+
+            if (win_aspect > tex_aspect) {
+                // Window is wider than texture: crop top/bottom
+                float v_span = tex_aspect / win_aspect;
+                float v0 = (1.0f - v_span) * 0.5f;
+                float v1 = v0 + v_span;
+                uv0 = ImVec2(0.0f, std::max(0.0f, v0));
+                uv1 = ImVec2(1.0f, std::min(1.0f, v1));
+            } else {
+                // Window is narrower than texture: crop sides (centered horizontally)
+                float u_span = win_aspect / tex_aspect;
+                float u0 = (1.0f - u_span) * 0.5f;
+                float u1 = u0 + u_span;
+                uv0 = ImVec2(std::max(0.0f, u0), 0.0f);
+                uv1 = ImVec2(std::min(1.0f, u1), 1.0f);
+            }
+        }
+
         draw_list->AddImage(
             ImTextureID(bg_tex.id),
             win_pos,
             win_max,
-            ImVec2(0.0f, 0.0f),
-            ImVec2(1.0f, 1.0f),
+            uv0,
+            uv1,
             IM_COL32(255, 255, 255, 210)
         );
         // Subtle dark ambient overlay so icons, text, and lines are sharp and readable
@@ -385,7 +414,7 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("DS/Incinerate")) {
+    if (ImGui::SmallButton("Fire Destro+Suppression")) {
         sim.talents = Talents::create_forever_ds_incinerate();
         sim.buffs.sacrifice_succubus = true;
         sim.buffs.sacrifice_imp = false;
@@ -436,7 +465,7 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.pet = PetChoice::NONE;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("Shadow and Flame")) {
+    if (ImGui::SmallButton("Shadow and Flame Fire")) {
         sim.talents = Talents::create_forever_shadow_and_flame();
         sim.buffs.sacrifice_succubus = false;
         sim.buffs.sacrifice_imp = false;
@@ -445,7 +474,7 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.rotation = RotationChoice::FIRE_DESTRO;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("Shadow and Flame (Shadow)")) {
+    if (ImGui::SmallButton("Shadow and Flame Shadow")) {
         sim.talents = Talents::create_forever_shadow_and_flame_shadow();
         sim.buffs.sacrifice_succubus = false;
         sim.buffs.sacrifice_imp = false;

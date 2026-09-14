@@ -358,7 +358,7 @@ struct Talents {
     // Build Presets
     // =========================================================================
 
-    // 1. 5/11/35 DS/AF (sac-imp)
+    // 1. 5/11/35 DS/AF DS-Imp
     static Talents create_forever_shadow_destro() {
         Talents t;
         // Affliction: 5 points
@@ -385,7 +385,7 @@ struct Talents {
         return t;
     }
 
-    // 1b. 19/11/21 NF/DS/Ruin (sac-imp)
+    // 1b. 19/11/21 NF/DS/Ruin DS-Imp
     static Talents create_forever_nf_ds_ruin() {
         Talents t;
         // Affliction: 19 points (Nightfall 2/2)
@@ -411,12 +411,12 @@ struct Talents {
         return t;
     }
 
-    // 2. 5/11/35 DS/Incinerate (sac-succubus)
+    // 2. 9/11/31 Fire Destro+Suppression DS-Succ
     static Talents create_forever_ds_incinerate() {
         Talents t;
-        // Affliction: 5 points
+        // Affliction: 9 points
+        t.aff.suppression = 5;             // 5/5 (+5% spell hit, -20% threat)
         t.aff.improved_corruption = 4;     // 4/5 (0.4s cast time Corruption)
-        t.aff.suppression = 1;             // +1% spell hit
 
         // Demonology: 11 points (Sac Succubus -> +15% Fire!)
         t.demo.demonic_embrace = 5;
@@ -424,9 +424,8 @@ struct Talents {
         t.demo.demonic_aegis = 2;
         t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
 
-        // Destruction: 35 points
-        t.destro.destructive_reach = 2;
-        t.destro.improved_shadow_bolt = 4;
+        // Destruction: 31 points
+        t.destro.improved_shadow_bolt = 2; // 2/5 Improved Shadow Bolt
         t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
         t.destro.cataclysm = 3;
         t.destro.aftermath = 1;            // 1/5 Aftermath
@@ -446,7 +445,7 @@ struct Talents {
         return create_forever_ds_incinerate();
     }
 
-    // 2b. 5/11/35 DS/Searing Pain (sac-succubus)
+    // 2b. 5/11/35 DS/Searing Pain DS-Succ
     static Talents create_forever_ds_searing_pain() {
         Talents t;
         // Affliction: 5 points
@@ -472,7 +471,7 @@ struct Talents {
         return t;
     }
 
-    // 2c. 3/17/31 Fire Destro + Decimation (sac-succubus)
+    // 2c. 3/17/31 Fire Destro+Decimation DS-Succ
     static Talents create_forever_fire_destro_decimation() {
         Talents t;
         // Affliction: 3 points
@@ -503,7 +502,7 @@ struct Talents {
         return t;
     }
 
-    // 2d. 1/17/33 Shadow and Flame (Imp / Incinerate + Decimation)
+    // 2d. 1/17/33 Shadow and Flame Fire
     static Talents create_forever_shadow_and_flame() {
         Talents t;
         // Affliction: 1 point
@@ -532,7 +531,7 @@ struct Talents {
         return t;
     }
 
-    // 2e. 2/17/32 Shadow and Flame (Shadow / Shadow Bolt + Conflagrate + Decimation)
+    // 2e. 2/17/32 Shadow and Flame Shadow
     static Talents create_forever_shadow_and_flame_shadow() {
         Talents t;
         // Affliction: 2 points
@@ -562,7 +561,7 @@ struct Talents {
     }
 
 
-    // 3. 2/31/18 DP/AF Shadow (sac-imp + succubus)
+    // 3. 2/31/18 DP/AF Shadow DS-Imp
     static Talents create_forever_demonic_pact() {
         Talents t;
         // Affliction: 2 points
@@ -589,7 +588,7 @@ struct Talents {
         return t;
     }
 
-    // 3b. 0/31/20 DP/AF Fire (sac-succubus + imp)
+    // 3b. 0/31/20 DP/AF Fire DS-Succ
     static Talents create_forever_demonic_pact_fire() {
         Talents t;
         // Affliction: 0 points
@@ -618,7 +617,7 @@ struct Talents {
         return t;
     }
 
-    // 4. 40/11/0 Deep Affliction (DS Imp / Drain Hope)
+    // 4. 40/11/0 Deep Affliction DS-Imp
     static Talents create_forever_deep_affliction() {
         Talents t;
         // Affliction: 40 points
@@ -646,7 +645,7 @@ struct Talents {
         return t;
     }
 
-    // 5. Forever SM/AF (32/0/19 - 5/5 Shadow Mastery, 3/3 Agonizing Flames)
+    // 5. Forever SM/AF (32/0/19)
     static Talents create_forever_sm_ruin() {
         Talents t;
         // Affliction: 32 points

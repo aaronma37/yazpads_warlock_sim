@@ -84,17 +84,17 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
     };
 
     std::vector<Candidate> candidates = {
-        {"5/11/35 DS/AF (sac-imp)", Talents::create_forever_ds_af(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
-        {"5/11/35 Fire Destro (sac-succubus)", Talents::create_forever_fire_destro(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"3/17/31 Fire Destro+Decimation (sac-succubus)", Talents::create_forever_fire_destro_decimation(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"5/11/35 DS/Searing Pain (sac-succubus)", Talents::create_forever_ds_searing_pain(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", Talents::create_forever_dp_af_shadow(), RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true},
-        {"0/31/20 DP/AF Fire (sac-succubus + imp)", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
-        {"40/11/0 Deep Affliction (DS Imp / Drain Hope)", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
-        {"32/0/19 SM/AF (3/3 Flames)", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::SUCCUBUS, false, false},
-        {"1/17/33 Shadow and Flame (Imp / Incinerate)", Talents::create_forever_shadow_and_flame(), RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false},
-        {"2/17/32 Shadow and Flame (Shadow)", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
-        {"19/11/21 NF/DS/Ruin (sac-imp)", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
+        {"5/11/35 DS/AF DS-Imp", Talents::create_forever_ds_af(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
+        {"9/11/31 Fire Destro+Suppression DS-Succ", Talents::create_forever_fire_destro(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"3/17/31 Fire Destro+Decimation DS-Succ", Talents::create_forever_fire_destro_decimation(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"5/11/35 DS/Searing Pain DS-Succ", Talents::create_forever_ds_searing_pain(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"2/31/18 DP/AF Shadow DS-Imp", Talents::create_forever_dp_af_shadow(), RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true},
+        {"0/31/20 DP/AF Fire DS-Succ", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
+        {"40/11/0 Deep Affliction DS-Imp", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
+        {"32/0/19 SM/AF", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::SUCCUBUS, false, false},
+        {"1/17/33 Shadow and Flame Fire", Talents::create_forever_shadow_and_flame(), RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false},
+        {"2/17/32 Shadow and Flame Shadow", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
+        {"19/11/21 NF/DS/Ruin DS-Imp", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
     };
 
     std::vector<Race> races_to_test = compare_all_races
@@ -467,13 +467,13 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
     };
 
     std::vector<TalentPointSplit> splits = {
-        {"5/11/35 DS/AF (sac-imp)", 5, 11, 35, false, true},
-        {"19/11/21 NF/DS/Ruin (sac-imp)", 19, 11, 21, false, true},
-        {"5/11/35 Fire Destro (sac-succubus)", 5, 11, 35, true, false},
-        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", 2, 31, 18, false, true},
-        {"0/31/20 DP/AF Fire (sac-succubus + imp)", 0, 31, 20, true, false},
-        {"40/11/0 Deep Affliction (DS Imp / Drain Hope)", 40, 11, 0, false, true},
-        {"32/0/19 SM/AF (3/3 Flames)", 32, 0, 19, false, false},
+        {"5/11/35 DS/AF DS-Imp", 5, 11, 35, false, true},
+        {"19/11/21 NF/DS/Ruin DS-Imp", 19, 11, 21, false, true},
+        {"9/11/31 Fire Destro+Suppression DS-Succ", 9, 11, 31, true, false},
+        {"2/31/18 DP/AF Shadow DS-Imp", 2, 31, 18, false, true},
+        {"0/31/20 DP/AF Fire DS-Succ", 0, 31, 20, true, false},
+        {"40/11/0 Deep Affliction DS-Imp", 40, 11, 0, false, true},
+        {"32/0/19 SM/AF", 32, 0, 19, false, false},
         {"20/0/31 Aff/Destro Conflagrate", 20, 0, 31, false, false},
         {"0/31/20 Decimation Execute", 0, 31, 20, false, false},
         {"11/20/20 Triple Tree", 11, 20, 20, false, false}

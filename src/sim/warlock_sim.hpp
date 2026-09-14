@@ -90,7 +90,7 @@ struct SimResult {
 
 class WarlockSimulator {
 public:
-    Race race = Race::GNOME;
+    Race race = Race::HUMAN;
     BaseAttributes base_attrs;
     GearLoadout gear;
     Talents talents;
@@ -111,7 +111,6 @@ public:
     // Runs a single deterministic or stochastic DES iteration
     SimResult run_single_simulation(FastRNG& rng);
 
-private:
     // Helper calculation methods
     double calculate_hit_chance(School school) const;
     double calculate_crit_chance(School school, const Stats& stats) const;

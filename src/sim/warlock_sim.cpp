@@ -5,7 +5,7 @@
 namespace warlock {
 
 WarlockSimulator::WarlockSimulator() {
-    race = Race::GNOME;
+    race = Race::HUMAN;
     base_attrs = get_base_attributes_for_race(race);
     gear = GearLoadout::create_preraid_bis();
     talents = Talents::create_forever_shadow_destro();
@@ -16,7 +16,21 @@ WarlockSimulator::WarlockSimulator() {
 }
 
 double WarlockSimulator::calculate_hit_chance(School school) const {
-    double hit = mechanics.base_hit_vs_boss; // 0.83 (83%)
+    double base_hit = mechanics.base_hit_vs_boss; // 0.83 (83% for lvl 63 boss)
+    int delta = target_config.level - 60;
+    if (delta <= 0) {
+        base_hit = 0.96 + std::min(0.03, -delta * 0.01);
+    } else if (delta == 1) {
+        base_hit = 0.95;
+    } else if (delta == 2) {
+        base_hit = 0.94;
+    } else if (delta == 3) {
+        base_hit = mechanics.base_hit_vs_boss; // 0.83 (83%)
+    } else {
+        base_hit = std::max(0.01, mechanics.base_hit_vs_boss - (delta - 3) * 0.11);
+    }
+
+    double hit = base_hit;
     Stats current_stats = use_raw_stats ? raw_stats : gear.calculate_stats();
     hit += current_stats.spell_hit_percent * 0.01;
 
@@ -210,6 +224,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
     // Target state
     TargetConfig target = target_config;
+    target.is_beast = (target.creature_type == CreatureType::BEAST) || target.is_beast;
     if (buffs.curse_of_shadows) {
         target.current_shadow_resistance = std::max(0.0, target.base_shadow_resistance - 75.0);
         target.curse_of_shadows = true;
@@ -1614,9 +1629,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // Unholy Power in Forever: +2% per point (+10% at 5/5)
                         base_swing *= (1.0 + talents.demo.unholy_power * 0.02);
 
-                        // Orc Command: +5% pet damage
-                        if (race == Race::ORC) base_swing *= 1.05;
-
                         double armor_mult = 0.86;
                         double swing_dmg = base_swing * armor_mult;
 
@@ -1635,7 +1647,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             demonic_brand_charges--;
                             brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                             brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
-                            if (race == Race::ORC) brand_dmg *= 1.05;
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                             if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                             brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
@@ -1675,9 +1686,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_lop *= (1.0 + talents.demo.improved_sayaad * 0.10);
 
-                            // Orc Command: +5% pet damage
-                            if (race == Race::ORC) base_lop *= 1.05;
-
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
                             if (buffs.curse_of_shadows) base_lop *= 1.10;
 
@@ -1698,7 +1706,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 demonic_brand_charges--;
                                 brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
-                                if (race == Race::ORC) brand_dmg *= 1.05;
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                                 if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
@@ -1739,9 +1746,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
 
-                            // Orc Command: +5% pet damage
-                            if (race == Race::ORC) base_fb *= 1.05;
-
                             if (buffs.curse_of_elements) base_fb *= 1.10;
 
                             if (rng.chance(0.05)) {
@@ -1761,7 +1765,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 demonic_brand_charges--;
                                 brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
-                                if (race == Race::ORC) brand_dmg *= 1.05;
                                 if (buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
                                 result.dmg_demonic_brand += brand_dmg;

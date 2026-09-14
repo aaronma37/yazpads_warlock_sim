@@ -164,3 +164,31 @@ TEST_CASE(Mechanics, SeparatedPetDamageBreakdown) {
     }
 }
 
+TEST_CASE(Mechanics, TargetLevelAndCreatureTypeBeastScaling) {
+    WarlockSimulator sim;
+    sim.race = Race::TROLL;
+    sim.target_config.level = 60; // Equal level
+    sim.target_config.creature_type = CreatureType::BEAST;
+    sim.target_config.is_beast = true;
+    sim.fight_duration = 10.0;
+
+    CHECK_EQ(sim.target_config.level, 60);
+    CHECK(sim.target_config.is_beast);
+    CHECK(sim.target_config.creature_type == CreatureType::BEAST);
+
+    // Hit chance at level 60 should be 96% base (+ gear hit)
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_hit_percent = 0.0;
+    sim.talents.aff.suppression = 0;
+    
+    // Check hit rate
+    double hit_60 = sim.calculate_hit_chance(School::SHADOW);
+    CHECK_NEAR(hit_60, 0.96, 0.001);
+
+    // Boss level 63 should be 83% base
+    sim.target_config.level = 63;
+    double hit_63 = sim.calculate_hit_chance(School::SHADOW);
+    CHECK_NEAR(hit_63, 0.83, 0.001);
+}
+
+

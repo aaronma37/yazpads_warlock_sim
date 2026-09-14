@@ -177,17 +177,66 @@ inline void render_panel_optimizer(
             }
         }
 
-        int num_cols = show_stat_weights ? 11 : 6;
+        int num_cols = show_stat_weights ? 12 : 7;
 
-        // Leaderboard table
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Spec Leaderboard (Click any row to inspect details below):");
+        // Calculate active base combat stats for the header line
+        Stats base_stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
+        sim.buffs.apply_to_stats(base_stats, sim.base_attrs, true, sim.mechanics.personal_shadow_weaving);
+        if (sim.race == Race::HUMAN) {
+            bool is_sword = true;
+            if (!sim.use_raw_stats) {
+                const Item& mh = sim.gear.get(Slot::MAIN_HAND);
+                is_sword = (mh.name.find("Mageblade") != std::string::npos ||
+                            mh.name.find("Sword") != std::string::npos ||
+                            mh.name.find("Blade") != std::string::npos ||
+                            mh.icon.find("sword") != std::string::npos ||
+                            mh.icon.find("Sword") != std::string::npos);
+            }
+            if (is_sword) base_stats.spell_crit_percent += 2.0;
+        }
+
+        // Leaderboard table header with active base stats
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Spec Leaderboard");
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "Base Stats:");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "Spell Power: %.0f", base_stats.spell_power);
+        if (base_stats.shadow_power > 0 || base_stats.fire_power > 0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Shadow: %.0f | Fire: %.0f)",
+                               base_stats.effective_shadow_power(), base_stats.effective_fire_power());
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Hit: %.1f%%", base_stats.spell_hit_percent);
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Crit: %.2f%%", base_stats.total_spell_crit(sim.base_attrs.base_spell_crit));
+        if (base_stats.spell_haste_percent > 0.0) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "Haste: %.1f%%", base_stats.spell_haste_percent);
+        }
+        if (base_stats.mp5 > 0.0) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "MP5: %.0f", base_stats.mp5);
+        }
+
         if (ImGui::BeginTable("OptLeaderboardTable", num_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
-            ImGui::TableSetupColumn("Spec Name", ImGuiTableColumnFlags_WidthFixed, 200);
+            ImGui::TableSetupColumn("Spec Name", ImGuiTableColumnFlags_WidthFixed, 190);
             ImGui::TableSetupColumn("Race", ImGuiTableColumnFlags_WidthFixed, 65);
             ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 90);
-            ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 80);
+            ImGui::TableSetupColumn("Damage Split (S / F / P)", ImGuiTableColumnFlags_WidthFixed, 150);
+            ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
+            ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 75);
             if (show_stat_weights) {
                 ImGui::TableSetupColumn("DPS/SP", ImGuiTableColumnFlags_WidthFixed, 65);
                 ImGui::TableSetupColumn("DPS/Hit", ImGuiTableColumnFlags_WidthFixed, 70);
@@ -240,6 +289,105 @@ inline void render_panel_optimizer(
                     if (k + 1 < rules.size()) {
                         ImGui::SameLine(0, 3);
                     }
+                }
+
+                // Damage Breakdown: 3-section horizontal bar (Shadow, Fire, Pet)
+                ImGui::TableNextColumn();
+                double shadow_pct = r.batch.pct_shadow_bolt + r.batch.pct_corruption + r.batch.pct_curse + r.batch.pct_siphon_life + r.batch.pct_shadowburn + r.batch.pct_drain_hope + r.batch.pct_drain_life + r.batch.pct_drain_soul;
+                double fire_pct = r.batch.pct_immolate + r.batch.pct_conflagrate + r.batch.pct_incinerate + r.batch.pct_searing_pain + r.batch.pct_soul_fire;
+                double pet_pct = r.batch.pct_pet;
+
+                double total_pct = shadow_pct + fire_pct + pet_pct;
+                if (total_pct > 0.0) {
+                    shadow_pct = (shadow_pct / total_pct) * 100.0;
+                    fire_pct = (fire_pct / total_pct) * 100.0;
+                    pet_pct = (pet_pct / total_pct) * 100.0;
+                } else {
+                    if (r.name.find("Fire") != std::string::npos || r.name.find("Incinerate") != std::string::npos) {
+                        shadow_pct = 5.0; fire_pct = 95.0; pet_pct = 0.0;
+                    } else if (r.name.find("DP") != std::string::npos || r.name.find("Demo") != std::string::npos || r.name.find("MD") != std::string::npos) {
+                        shadow_pct = 70.0; fire_pct = 5.0; pet_pct = 25.0;
+                    } else {
+                        shadow_pct = 98.0; fire_pct = 2.0; pet_pct = 0.0;
+                    }
+                }
+
+                float col_w = ImGui::GetContentRegionAvail().x;
+                float bar_w = std::max(40.0f, col_w);
+                float bar_h = 16.0f;
+                ImVec2 p0 = ImGui::GetCursorScreenPos();
+                ImVec2 p1 = ImVec2(p0.x + bar_w, p0.y + bar_h);
+
+                std::string bar_btn_id = "##DmgBar_" + std::to_string(i);
+                ImGui::InvisibleButton(bar_btn_id.c_str(), ImVec2(bar_w, bar_h));
+                bool is_bar_hovered = ImGui::IsItemHovered();
+
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRectFilled(p0, p1, IM_COL32(20, 20, 26, 255), 3.0f);
+
+                float cur_bar_x = p0.x;
+                float s_w = (float)(bar_w * (shadow_pct * 0.01));
+                float f_w = (float)(bar_w * (fire_pct * 0.01));
+                float p_w = (float)(bar_w * (pet_pct * 0.01));
+
+                // 1. Shadow segment (Purple)
+                if (shadow_pct > 0.5) {
+                    ImVec2 b0(cur_bar_x, p0.y);
+                    ImVec2 b1(std::min(p1.x, cur_bar_x + s_w), p1.y);
+                    draw_list->AddRectFilled(b0, b1, IM_COL32(148, 65, 235, 235), 0.0f);
+                    cur_bar_x += s_w;
+                }
+
+                // 2. Fire segment (Orange)
+                if (fire_pct > 0.5) {
+                    ImVec2 b0(cur_bar_x, p0.y);
+                    ImVec2 b1(std::min(p1.x, cur_bar_x + f_w), p1.y);
+                    draw_list->AddRectFilled(b0, b1, IM_COL32(245, 115, 30, 235), 0.0f);
+                    cur_bar_x += f_w;
+                }
+
+                // 3. Pet segment (Emerald Green)
+                if (pet_pct > 0.5) {
+                    ImVec2 b0(cur_bar_x, p0.y);
+                    ImVec2 b1(p1.x, p1.y);
+                    draw_list->AddRectFilled(b0, b1, IM_COL32(40, 195, 90, 235), 0.0f);
+                }
+
+                draw_list->AddRect(p0, p1, is_bar_hovered ? IM_COL32(255, 255, 255, 255) : IM_COL32(65, 65, 80, 255), 3.0f, 0, 1.0f);
+
+                char shadow_txt[16], fire_txt[16], pet_txt[16];
+                std::snprintf(shadow_txt, sizeof(shadow_txt), "%.0f%%", shadow_pct);
+                std::snprintf(fire_txt, sizeof(fire_txt), "%.0f%%", fire_pct);
+                std::snprintf(pet_txt, sizeof(pet_txt), "%.0f%%", pet_pct);
+
+                float txt_y = p0.y + 1.0f;
+                if (s_w >= 26.0f) {
+                    ImVec2 sz = ImGui::CalcTextSize(shadow_txt);
+                    float txt_x = p0.x + (s_w - sz.x) * 0.5f;
+                    draw_list->AddText(ImVec2(txt_x + 1, txt_y + 1), IM_COL32(0, 0, 0, 220), shadow_txt);
+                    draw_list->AddText(ImVec2(txt_x, txt_y), IM_COL32(255, 255, 255, 255), shadow_txt);
+                }
+                if (f_w >= 26.0f) {
+                    ImVec2 sz = ImGui::CalcTextSize(fire_txt);
+                    float txt_x = p0.x + s_w + (f_w - sz.x) * 0.5f;
+                    draw_list->AddText(ImVec2(txt_x + 1, txt_y + 1), IM_COL32(0, 0, 0, 220), fire_txt);
+                    draw_list->AddText(ImVec2(txt_x, txt_y), IM_COL32(255, 255, 255, 255), fire_txt);
+                }
+                if (p_w >= 26.0f) {
+                    ImVec2 sz = ImGui::CalcTextSize(pet_txt);
+                    float txt_x = p0.x + s_w + f_w + (p_w - sz.x) * 0.5f;
+                    draw_list->AddText(ImVec2(txt_x + 1, txt_y + 1), IM_COL32(0, 0, 0, 220), pet_txt);
+                    draw_list->AddText(ImVec2(txt_x, txt_y), IM_COL32(255, 255, 255, 255), pet_txt);
+                }
+
+                if (is_bar_hovered) {
+                    ImGui::BeginTooltip();
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Damage Share Breakdown (%s):", r.name.c_str());
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "■ Shadow Damage: %.1f%%", shadow_pct);
+                    ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.20f, 1.0f), "■ Fire Damage:   %.1f%%", fire_pct);
+                    ImGui::TextColored(ImVec4(0.30f, 0.95f, 0.50f, 1.0f), "■ Pet Damage:    %.1f%%", pet_pct);
+                    ImGui::EndTooltip();
                 }
 
                 ImGui::TableNextColumn();

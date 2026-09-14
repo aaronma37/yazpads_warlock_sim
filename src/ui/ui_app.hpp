@@ -7,6 +7,7 @@
 #include "asset_manager.hpp"
 #include "ui_theme.hpp"
 #include "panel_gear.hpp"
+#include "panel_target.hpp"
 #include "panel_sim_control.hpp"
 #include "panel_talents.hpp"
 #include "panel_mechanics.hpp"
@@ -49,7 +50,7 @@ public:
     bool request_switch_to_preset = false;
 
     std::string character_name = "Grimmortis";
-    int selected_model_idx = 4; // 4 = Gnome (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
+    int selected_model_idx = 3; // 3 = Human (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
 
     WarlockSimApp() {
         thread_count = static_cast<int>(std::thread::hardware_concurrency());
@@ -97,14 +98,14 @@ public:
                     ImGui::Separator();
 
                     if (ImGui::BeginMenu("Build Presets")) {
-                        if (ImGui::MenuItem("5/11/35 DS/AF (sac-imp)")) {
+                        if (ImGui::MenuItem("5/11/35 DS/AF DS-Imp")) {
                             sim.talents = Talents::create_forever_ds_af();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.pet = PetChoice::NONE;
                             sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
-                        if (ImGui::MenuItem("5/11/35 DS/Incinerate (sac-succubus)")) {
+                        if (ImGui::MenuItem("9/11/31 Fire Destro+Suppression DS-Succ")) {
                             sim.talents = Talents::create_forever_ds_incinerate();
                             sim.buffs.sacrifice_succubus = true;
                             sim.buffs.sacrifice_imp = false;
@@ -112,7 +113,7 @@ public:
                             sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                             sim.policy.pet = PetChoice::NONE;
                         }
-                        if (ImGui::MenuItem("5/11/35 DS/Searing Pain (sac-succubus)")) {
+                        if (ImGui::MenuItem("5/11/35 DS/Searing Pain DS-Succ")) {
                             sim.talents = Talents::create_forever_ds_searing_pain();
                             sim.buffs.sacrifice_succubus = true;
                             sim.buffs.sacrifice_imp = false;
@@ -120,35 +121,35 @@ public:
                             sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                             sim.policy.pet = PetChoice::NONE;
                         }
-                        if (ImGui::MenuItem("2/31/18 DP/AF Shadow (sac-imp + succubus)")) {
+                        if (ImGui::MenuItem("2/31/18 DP/AF Shadow DS-Imp")) {
                             sim.talents = Talents::create_forever_dp_af_shadow();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.pet = PetChoice::SUCCUBUS;
                             sim.policy.rotation = RotationChoice::DP_AF_SHADOW;
                         }
-                        if (ImGui::MenuItem("0/31/20 DP/AF Fire (sac-succubus + imp)")) {
+                        if (ImGui::MenuItem("0/31/20 DP/AF Fire DS-Succ")) {
                             sim.talents = Talents::create_forever_dp_af_fire();
                             sim.buffs.sacrifice_succubus = true;
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.pet = PetChoice::IMP;
                             sim.policy.rotation = RotationChoice::DP_RUIN_FIRE;
                         }
-                        if (ImGui::MenuItem("40/11/0 Deep Affliction (DS Imp / Drain Hope)")) {
+                        if (ImGui::MenuItem("40/11/0 Deep Affliction DS-Imp")) {
                             sim.talents = Talents::create_forever_deep_affliction();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
                             sim.policy.pet = PetChoice::NONE;
                         }
-                        if (ImGui::MenuItem("32/0/19 SM/AF (3/3 Flames)")) {
+                        if (ImGui::MenuItem("32/0/19 SM/AF")) {
                             sim.talents = Talents::create_forever_sm_af();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.pet = PetChoice::SUCCUBUS;
                             sim.policy.rotation = RotationChoice::SM_RUIN;
                         }
-                        if (ImGui::MenuItem("1/17/33 Shadow and Flame (Imp / Incinerate)")) {
+                        if (ImGui::MenuItem("1/17/33 Shadow and Flame Fire")) {
                             sim.talents = Talents::create_forever_shadow_and_flame();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = false;
@@ -156,7 +157,7 @@ public:
                             sim.policy.maintain_immolate = true;
                             sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                         }
-                        if (ImGui::MenuItem("2/17/32 Shadow and Flame (Shadow)")) {
+                        if (ImGui::MenuItem("2/17/32 Shadow and Flame Shadow")) {
                             sim.talents = Talents::create_forever_shadow_and_flame_shadow();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = false;
@@ -164,7 +165,7 @@ public:
                             sim.policy.maintain_immolate = true;
                             sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
-                        if (ImGui::MenuItem("19/11/21 NF/DS/Ruin (sac-imp)")) {
+                        if (ImGui::MenuItem("19/11/21 NF/DS/Ruin DS-Imp")) {
                             sim.talents = Talents::create_forever_nf_ds_ruin();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
@@ -287,8 +288,11 @@ public:
 
                                 ImGui::SameLine();
 
-                                // Pane 3: Consumables, Buffs, Rotation Policy & Mechanics
+                                // Pane 3: Target Encounter, Consumables, Buffs, Rotation Policy & Mechanics
                                 ImGui::BeginChild("PresetPane_BuffsPolicy", ImVec2(0, pane_height), true);
+                                render_panel_target(sim.target_config, sim.fight_duration);
+                                ImGui::Spacing();
+                                ImGui::Separator();
                                 render_panel_buffs(sim.buffs);
                                 ImGui::Spacing();
                                 ImGui::Separator();

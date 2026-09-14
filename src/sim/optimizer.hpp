@@ -20,7 +20,7 @@ struct CandidateResult {
     int rank = 0;
     std::string name;
     std::string category; // "Talents", "Gear", "Policy", "Snapshotting"
-    Race race = Race::GNOME;
+    Race race = Race::HUMAN;
     double mean_dps = 0.0;
     double std_dev_dps = 0.0;
     double min_dps = 0.0;

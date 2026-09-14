@@ -14,7 +14,9 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t2.total_points(), 51);
     CHECK(t2.is_valid());
     CHECK_EQ(t2.aff.improved_corruption, 4);
-    CHECK_EQ(t2.aff.suppression, 1);
+    CHECK_EQ(t2.aff.suppression, 5);
+    CHECK_EQ(t2.destro.destructive_reach, 0);
+    CHECK_EQ(t2.destro.improved_shadow_bolt, 2);
     CHECK_EQ(t2.destro.aftermath, 1);
 
     Talents t3 = Talents::create_forever_demonic_pact();

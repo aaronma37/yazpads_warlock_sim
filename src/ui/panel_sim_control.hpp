@@ -42,10 +42,29 @@ inline void render_panel_sim_control(
 
     ImGui::Separator();
 
-    // Simulation Parameters
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Simulation Parameters:");
+    // Encounter & Simulation Parameters
+    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Encounter & Simulation Parameters:");
+    ImGui::SliderFloat("Fight Duration (s)", (float*)&sim.fight_duration, 10.0f, 600.0f, "%.0f seconds");
+    
+    // Target Level & Type
+    const char* level_presets[] = { "Level 60 (Equal Lvl)", "Level 61 (+1 Lvl)", "Level 62 (+2 Lvl)", "Level 63 (Raid Boss)" };
+    int current_lvl_idx = (sim.target_config.level >= 60 && sim.target_config.level <= 63) ? (sim.target_config.level - 60) : 3;
+    ImGui::SetNextItemWidth(180);
+    if (ImGui::Combo("Target Level", &current_lvl_idx, level_presets, IM_ARRAYSIZE(level_presets))) {
+        sim.target_config.level = 60 + current_lvl_idx;
+    }
+
+    const char* creature_types[] = { "Humanoid", "Beast (Troll +5%)", "Demon", "Undead", "Dragonkin", "Elemental", "Giant", "Mechanical", "Other" };
+    int current_type_idx = static_cast<int>(sim.target_config.creature_type);
+    if (current_type_idx < 0 || current_type_idx >= IM_ARRAYSIZE(creature_types)) current_type_idx = 0;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(180);
+    if (ImGui::Combo("Target Type", &current_type_idx, creature_types, IM_ARRAYSIZE(creature_types))) {
+        sim.target_config.creature_type = static_cast<CreatureType>(current_type_idx);
+        sim.target_config.is_beast = (sim.target_config.creature_type == CreatureType::BEAST);
+    }
+
     ImGui::SliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
-    ImGui::SliderFloat("Fight Duration (s)", (float*)&sim.fight_duration, 30.0f, 300.0f, "%.0f seconds");
 
     int max_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (max_threads <= 0) max_threads = 4;
