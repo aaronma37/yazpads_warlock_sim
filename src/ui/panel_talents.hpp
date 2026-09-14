@@ -491,6 +491,14 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.maintain_immolate = true;
         sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
     }
+    if (ImGui::SmallButton("Shadow and Flame Shadow 2")) {
+        sim.talents = Talents::create_forever_shadow_and_flame_shadow_2();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.pet = PetChoice::IMP;
+        sim.policy.maintain_immolate = true;
+        sim.policy.rotation = RotationChoice::SHADOW_DESTRO_2;
+    }
     ImGui::SameLine();
     if (ImGui::SmallButton("NF/DS/Ruin")) {
         sim.talents = Talents::create_forever_nf_ds_ruin();

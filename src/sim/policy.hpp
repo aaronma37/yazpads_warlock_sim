@@ -55,6 +55,7 @@ inline const char* pet_choice_to_string(PetChoice p) {
 
 enum class RotationChoice : uint8_t {
     SHADOW_DESTRO = 0,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
+    SHADOW_DESTRO_2,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
     FIRE_DESTRO,            // Fire Destro: Immolate (+25% Incinerate dmg) + Conflagrate + Shadowburn (10% Fire buff) + Incinerate filler
     DP_AF_SHADOW,           // 2/31/18 DP/AF Shadow: Shadow Bolt spam (no Corruption / DoTs)
     DP_RUIN_FIRE,           // DP/Ruin Fire: Immolate + Conflagrate + Searing Pain / Decimation Soul Fire (<35% HP)
@@ -73,6 +74,7 @@ enum class RotationChoice : uint8_t {
 inline const char* rotation_choice_to_string(RotationChoice r) {
     switch (r) {
         case RotationChoice::SHADOW_DESTRO: return "5/11/35 DS/AF (Conflag Weave + SB Spam)";
+        case RotationChoice::SHADOW_DESTRO_2: return "5/11/35 DS/AF (Conflag Weave + SB Spam)";
         case RotationChoice::FIRE_DESTRO: return "5/11/35 Fire Destro (Incinerate + Conflagrate)";
         case RotationChoice::DP_AF_SHADOW: return "2/31/18 DP/AF Shadow (Corruption + CoA + SB)";
         case RotationChoice::DP_RUIN_FIRE: return "0/31/20 DP/AF Fire (Searing Pain + Immolate + Conflag)";
@@ -90,6 +92,8 @@ inline const char* rotation_choice_description(RotationChoice r) {
     switch (r) {
         case RotationChoice::SHADOW_DESTRO:
             return "5/11/35 Demonic Sacrifice / Agonizing Flames: Sacrifices Imp (+15% Shadow damage), maintains Immolate and Conflagrate for Shadow & Flame (+10% Shadow damage for 20s), casts Shadowburn, and spams Shadow Bolt.";
+        case RotationChoice::SHADOW_DESTRO_2:
+            return "maintains Immolate and Conflagrate for Shadow & Flame (+10% Shadow damage for 20s), casts Shadowburn, and spams Shadow Bolt.";
         case RotationChoice::FIRE_DESTRO:
             return "Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, weaves Shadowburn for +10% Fire buff, and spams Incinerate.";
         case RotationChoice::DP_AF_SHADOW:
@@ -459,6 +463,18 @@ struct PolicyConfig {
             case RotationChoice::SHADOW_DESTRO:
                 add_racial();
                 add_decimation();
+                if (talents.destro.shadow_and_flame > 0 && talents.destro.conflagrate > 0) {
+                    add_immolate();
+                    add_conflagrate();
+                }
+                add_nightfall();
+                add_corruption();
+                add_shadowburn();
+                add_sb_filler();
+                break;
+
+            case RotationChoice::SHADOW_DESTRO_2:
+                add_racial();
                 if (talents.destro.shadow_and_flame > 0 && talents.destro.conflagrate > 0) {
                     add_immolate();
                     add_conflagrate();

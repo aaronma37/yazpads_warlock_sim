@@ -91,10 +91,11 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
         {"2/31/18 DP/AF Shadow DS-Imp", Talents::create_forever_dp_af_shadow(), RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true},
         {"0/31/20 DP/AF Fire DS-Succ", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
         {"40/11/0 Deep Affliction DS-Imp", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
-        {"32/0/19 SM/AF", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::SUCCUBUS, false, false},
+        {"32/0/19 SM/AF", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::IMP, false, false},
         {"1/17/33 Shadow and Flame Fire", Talents::create_forever_shadow_and_flame(), RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false},
         {"10/10/31 Shadow and Flame Fire 2", Talents::create_forever_shadow_and_flame_fire_2(), RotationChoice::SHADOW_AND_FLAME_FIRE_2, PetChoice::IMP, false, false},
         {"2/17/32 Shadow and Flame Shadow", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
+        {"2/17/32 Shadow and Flame Shadow 2", Talents::create_forever_shadow_and_flame_shadow_2(), RotationChoice::SHADOW_DESTRO_2, PetChoice::IMP, false, false},
         {"19/11/21 NF/DS/Ruin DS-Imp", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
     };
 

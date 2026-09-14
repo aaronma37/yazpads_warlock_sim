@@ -550,10 +550,10 @@ struct Talents {
         t.demo.demonic_energies = 2;       // Life Tap restores pet mana
 
         // Destruction: 31 points
-        t.destro.improved_shadow_bolt = 3; // 3/5 Improved Shadow Bolt
+        t.destro.improved_shadow_bolt = 0; // 3/5 Improved Shadow Bolt
         t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
-        t.destro.cataclysm = 2;            // 2/3 (-6% mana cost)
-        t.destro.aftermath = 1;            // 1/5 Aftermath (+10% initial Immolate damage)
+        t.destro.cataclysm = 1;            // 2/3 (-6% mana cost)
+        t.destro.aftermath = 5;            // 1/5 Aftermath (+10% initial Immolate damage)
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // Instant finisher, triggers +10% Fire buff from Shadow & Flame!
         t.destro.intensity = 0;            // 0/3 Intensity
@@ -589,6 +589,33 @@ struct Talents {
         t.destro.agonizing_flames = 3;     // +9% Destruction damage
         t.destro.conflagrate = 1;          // Conflagrate (buffs Shadow damage by +10% via Shadow & Flame)
         t.destro.bane_of_havoc = 1;        // Prerequisite
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate & buffs Shadow by 10%
+        // Note: 0 points in incinerate
+        return t;
+    }
+
+    // 2f. 2/17/32 Shadow and Flame Shadow
+    static Talents create_forever_shadow_and_flame_shadow_2() {
+        Talents t;
+        // Affliction: 2 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 5;
+        t.aff.malediction = 1;
+
+        // Demonology: 17 points
+        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
+        t.demo.unholy_power = 5;           // +10% Imp damage
+        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+
+        // Destruction: 32 points
+        t.destro.improved_shadow_bolt = 5; // +20% Shadow vulnerability on crit
+        t.destro.bane = 5;                 // -0.5s Shadow Bolt / -2.0s Soul Fire
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // Instant finisher
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;          // Conflagrate (buffs Shadow damage by +10% via Shadow & Flame)
         t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
         t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate & buffs Shadow by 10%
         // Note: 0 points in incinerate

@@ -146,7 +146,7 @@ public:
                             sim.talents = Talents::create_forever_sm_af();
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = false;
-                            sim.policy.pet = PetChoice::SUCCUBUS;
+                            sim.policy.pet = PetChoice::IMP;
                             sim.policy.rotation = RotationChoice::SM_RUIN;
                         }
                         if (ImGui::MenuItem("1/17/33 Shadow and Flame Fire")) {
@@ -180,6 +180,14 @@ public:
                             sim.policy.pet = PetChoice::IMP;
                             sim.policy.maintain_immolate = true;
                             sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+                        }
+                        if (ImGui::MenuItem("2/17/32 Shadow and Flame Shadow 2")) {
+                            sim.talents = Talents::create_forever_shadow_and_flame_shadow_2();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO_2;
                         }
                         if (ImGui::MenuItem("19/11/21 NF/DS/Ruin DS-Imp")) {
                             sim.talents = Talents::create_forever_nf_ds_ruin();
