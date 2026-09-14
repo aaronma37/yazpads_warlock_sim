@@ -328,7 +328,7 @@ inline const std::array<TalentNodeDef, 16> FOREVER_DESTRUCTION_NODES = {{
     {"bane", "Bane", 1, 3, 5, "spell_shadow_deathpact.png", nullptr, {"Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.1 sec and your Soul Fire spell by 0.4 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.2 sec and your Soul Fire spell by 0.8 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.3 sec and your Soul Fire spell by 1.2 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.4 sec and your Soul Fire spell by 1.6 sec.", "Reduces the casting time of your Shadow Bolt, Immolate, and Incinerate spells by 0.5 sec and your Soul Fire spell by 2 sec."}},
     {"molten_skin", "Molten Skin", 2, 1, 5, "ability_mage_moltenarmor.png", nullptr, {"Reduces all damage taken by 2%.", "Reduces all damage taken by 4%.", "Reduces all damage taken by 6%.", "Reduces all damage taken by 8%.", "Reduces all damage taken by 10%."}},
     {"cataclysm", "Cataclysm", 2, 2, 3, "spell_fire_windsofwoe.png", nullptr, {"Reduces the Mana cost of your Destruction spells by 3%.", "Reduces the Mana cost of your Destruction spells by 6%.", "Reduces the Mana cost of your Destruction spells by 9%.", nullptr, nullptr}},
-    {"aftermath", "Aftermath", 2, 3, 5, "spell_fire_fire.png", nullptr, {"Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 20% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 40% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 60% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 80% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 100% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec."}},
+    {"aftermath", "Aftermath", 2, 3, 5, "spell_fire_fire.png", nullptr, {"Increases the initial damage of your Immolate spell by 10% and your Conflagrate spell has a 20% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 20% and your Conflagrate spell has a 40% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 30% and your Conflagrate spell has a 60% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 40% and your Conflagrate spell has a 80% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec.", "Increases the initial damage of your Immolate spell by 50% and your Conflagrate spell has a 100% chance to Daze the target, reducing the target's movement speed by 50% for 5 sec."}},
     {"ruin", "Ruin", 3, 2, 5, "spell_shadow_shadowwordpain.png", nullptr, {"Increases the critical strike damage bonus of your Destruction spells by 20%.", "Increases the critical strike damage bonus of your Destruction spells by 40%.", "Increases the critical strike damage bonus of your Destruction spells by 60%.", "Increases the critical strike damage bonus of your Destruction spells by 80%.", "Increases the critical strike damage bonus of your Destruction spells by 100%."}},
     {"shadowburn", "Shadowburn", 3, 3, 1, "spell_shadow_scourgebuild.png", nullptr, {"Instantly blasts the target for 102 to 111 Shadow damage. If a non-trivial target dies within 8 sec of being hit with Shadowburn, the caster gains a Soul Shard.", nullptr, nullptr, nullptr, nullptr}},
     {"intensity", "Intensity", 4, 1, 3, "spell_fire_lavaspawn.png", nullptr, {"Gives you a 23% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", "Gives you a 46% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", "Gives you a 70% chance to resist interruption caused by damage while casting or channeling any Destruction spell.", nullptr, nullptr}},
@@ -471,8 +471,8 @@ struct Talents {
         return t;
     }
 
-    // 2c. 3/17/31 Fire Destro+Decimation DS-Succ
-    static Talents create_forever_fire_destro_decimation() {
+    // 2c. 3/17/31 Shadow and Flame Fire DS-Succ (Decimation + DS-Succ)
+    static Talents create_forever_shadow_and_flame_fire_ds_succ() {
         Talents t;
         // Affliction: 3 points
         t.aff.suppression = 3;             // +3% spell hit
@@ -502,6 +502,11 @@ struct Talents {
         return t;
     }
 
+    // Compatibility alias
+    static Talents create_forever_fire_destro_decimation() {
+        return create_forever_shadow_and_flame_fire_ds_succ();
+    }
+
     // 2d. 1/17/33 Shadow and Flame Fire
     static Talents create_forever_shadow_and_flame() {
         Talents t;
@@ -522,6 +527,36 @@ struct Talents {
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // Instant finisher, triggers +10% Fire buff from Shadow & Flame!
         t.destro.intensity = 3;            // 70% pushback resistance
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;          // Conflagrate (never consumes Immolate, buffs Shadow by 10%)
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
+    // 2d2. 10/10/31 Shadow and Flame Fire 2 (5/5 Suppression, 3/5 Imp Corruption, 2/2 Imp Life Tap)
+    static Talents create_forever_shadow_and_flame_fire_2() {
+        Talents t;
+        // Affliction: 10 points
+        t.aff.improved_life_tap = 2;       // 2/2 (+20% mana from Life Tap)
+        t.aff.suppression = 5;             // 5/5 (+5% spell hit, -20% threat)
+        t.aff.improved_corruption = 3;     // 3/5 (-1.2s cast time, +6% damage)
+
+        // Demonology: 10 points
+        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
+        t.demo.unholy_power = 5;           // +10% Imp damage
+        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+
+        // Destruction: 31 points
+        t.destro.improved_shadow_bolt = 3; // 3/5 Improved Shadow Bolt
+        t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
+        t.destro.cataclysm = 2;            // 2/3 (-6% mana cost)
+        t.destro.aftermath = 1;            // 1/5 Aftermath (+10% initial Immolate damage)
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // Instant finisher, triggers +10% Fire buff from Shadow & Flame!
+        t.destro.intensity = 0;            // 0/3 Intensity
         t.destro.agonizing_flames = 3;     // +9% Destruction damage
         t.destro.conflagrate = 1;          // Conflagrate (never consumes Immolate, buffs Shadow by 10%)
         t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate

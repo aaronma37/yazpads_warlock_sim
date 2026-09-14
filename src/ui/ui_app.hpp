@@ -157,6 +157,22 @@ public:
                             sim.policy.maintain_immolate = true;
                             sim.policy.rotation = RotationChoice::FIRE_DESTRO;
                         }
+                        if (ImGui::MenuItem("3/17/31 Shadow and Flame Fire DS-Succ")) {
+                            sim.talents = Talents::create_forever_shadow_and_flame_fire_ds_succ();
+                            sim.buffs.sacrifice_succubus = true;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::NONE;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+                        }
+                        if (ImGui::MenuItem("10/10/31 Shadow and Flame Fire 2")) {
+                            sim.talents = Talents::create_forever_shadow_and_flame_fire_2();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::SHADOW_AND_FLAME_FIRE_2;
+                        }
                         if (ImGui::MenuItem("2/17/32 Shadow and Flame Shadow")) {
                             sim.talents = Talents::create_forever_shadow_and_flame_shadow();
                             sim.buffs.sacrifice_succubus = false;

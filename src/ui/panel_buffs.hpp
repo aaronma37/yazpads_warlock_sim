@@ -13,6 +13,7 @@ inline void render_panel_buffs(BuffConfig& buffs) {
         ImGui::Checkbox("Flask of Supreme Power (+150 Spell Power)", &buffs.flask_of_supreme_power);
         ImGui::Checkbox("Greater Arcane Elixir (+35 Spell Power)", &buffs.greater_arcane_elixir);
         ImGui::Checkbox("Elixir of Shadow Power (+40 Shadow Power)", &buffs.elixir_of_shadow_power);
+        ImGui::Checkbox("Elixir of Greater Firepower (+40 Fire Power)", &buffs.elixir_of_greater_firepower);
         ImGui::Checkbox("Brilliant Wizard Oil (+36 Spell Power, +1% Crit)", &buffs.brilliant_wizard_oil);
         ImGui::Checkbox("Use Major Mana Potions (~1800 Mana)", &buffs.use_mana_potions);
         ImGui::Checkbox("Use Demonic / Dark Runes (~1200 Mana)", &buffs.use_demonic_runes);

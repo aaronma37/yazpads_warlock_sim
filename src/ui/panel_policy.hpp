@@ -128,12 +128,14 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     const char* rot_names[] = {
         "5/11/35 DS/AF (Conflag Weave + SB Spam)",
         "5/11/35 Fire Destro (Incinerate + Conflagrate)",
+        "2/31/18 DP/AF Shadow (Corruption + CoA + SB)",
         "0/31/20 DP/AF Fire (Searing Pain + Immolate + Conflag)",
         "40/11/0 Deep Affliction (DS Imp / Drain Hope)",
         "32/0/19 SM/AF (Corruption + CoA + SB Spam)",
         "0/31/20 Demo Execute (Decimation Soul Fire + SB)",
         "Pure Shadow Bolt (No DoTs / Classic Limit)",
-        "20/0/31 Multi-DoT Hybrid (Agony + Corr + Immo)"
+        "20/0/31 Multi-DoT Hybrid (Agony + Corr + Immo)",
+        "8/12/31 Shadow and Flame Fire 2 (Incinerate + Immolate + Conflag)"
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {

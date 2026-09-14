@@ -479,6 +479,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             current_casting_spell = SpellID::SEARING_PAIN;
                             cast_finish_time = now + cast_time;
                             queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.cast_sequence.push_back({now, SpellID::SEARING_PAIN, 0.0, false, false, cast_time, "Decimation Proc"});
                             }
@@ -497,6 +499,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             current_casting_spell = SpellID::SOUL_FIRE;
                             cast_finish_time = now + cast_time;
                             queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SOUL_FIRE));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.cast_sequence.push_back({now, SpellID::SOUL_FIRE, 0.0, false, false, cast_time, "Decimation Execute"});
                             }
@@ -553,7 +557,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double total_channel_time = (6.0 / drain_speed_mult) * haste;
                             double tick_interval = (1.0 / drain_speed_mult) * haste;
 
-                            gcd_ready_time = now + total_channel_time;
+                            gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
                             for (int i = 1; i <= 6; ++i) {
                                 queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
@@ -577,6 +581,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             current_casting_spell = SpellID::IMMOLATE;
                             cast_finish_time = now + cast_time;
                             queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::IMMOLATE));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.cast_sequence.push_back({now, SpellID::IMMOLATE, 0.0, false, false, cast_time, (now < 5.0) ? "Opener DoT" : "DoT Refresh"});
                             }
@@ -650,7 +656,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::SHADOWBURN: {
                     bool sb_cond = true;
-                    if (eff_rotation == RotationChoice::FIRE_DESTRO) {
+                    if (eff_rotation == RotationChoice::FIRE_DESTRO || eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2) {
                         sb_cond = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
                     } else if (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY) {
                         sb_cond = execute_phase;
@@ -743,6 +749,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 current_casting_spell = SpellID::CORRUPTION;
                                 cast_finish_time = now + cast_time;
                                 queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::CORRUPTION));
+                                gcd_ready_time = now + mechanics.base_gcd;
+                                queue.push(gcd_ready_time, EventType::GCD_READY);
                                 if (record_timeline) {
                                     result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, cast_time, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
                                 }
@@ -762,6 +770,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         current_casting_spell = SpellID::SEARING_PAIN;
                         cast_finish_time = now + cast_time;
                         queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                        gcd_ready_time = now + mechanics.base_gcd;
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
                         if (record_timeline) {
                             result.cast_sequence.push_back({now, SpellID::SEARING_PAIN, 0.0, false, false, cast_time, "Primary Fire Filler"});
                         }
@@ -779,6 +789,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             current_casting_spell = SpellID::INCINERATE;
                             cast_finish_time = now + cast_time;
                             queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::INCINERATE));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.cast_sequence.push_back({now, SpellID::INCINERATE, 0.0, false, false, cast_time, "Primary Filler"});
                             }
@@ -801,7 +813,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double total_channel_time = (5.0 / drain_speed_mult) * haste;
                         double tick_interval = (1.0 / drain_speed_mult) * haste;
 
-                        gcd_ready_time = now + total_channel_time;
+                        gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
                         for (int i = 1; i <= 5; ++i) {
                             queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_LIFE));
@@ -828,7 +840,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double total_channel_time = (15.0 / drain_speed_mult) * haste;
                         double tick_interval = (3.0 / drain_speed_mult) * haste;
 
-                        gcd_ready_time = now + total_channel_time;
+                        gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
                         for (int i = 1; i <= 5; ++i) {
                             queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_SOUL));
@@ -850,6 +862,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         current_casting_spell = SpellID::SHADOW_BOLT;
                         cast_finish_time = now + cast_time;
                         queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                        gcd_ready_time = now + mechanics.base_gcd;
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
                         if (record_timeline) {
                             result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, "Primary Filler"});
                         }
@@ -915,7 +929,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
-                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     result.direct_spell_casts++;
                     double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
@@ -928,7 +941,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN));
-                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
                     result.direct_spell_casts++;
                     double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
@@ -937,7 +949,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::INCINERATE));
-                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     result.direct_spell_casts++;
                     double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
@@ -947,7 +958,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SOUL_FIRE));
-                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
                     double imm_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= imm_mana;
@@ -991,7 +1001,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     } else {
                         result.misses++;
                     }
-                    gcd_ready_time = current_time;
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
                     double corr_mana = 290.0;
                     player_mana -= corr_mana;
@@ -1009,9 +1018,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     } else {
                         result.misses++;
                     }
-                    gcd_ready_time = current_time;
                 }
-
 
                 decide_next_action(current_time);
                 break;

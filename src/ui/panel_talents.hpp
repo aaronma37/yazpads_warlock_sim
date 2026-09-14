@@ -456,8 +456,8 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.pet = PetChoice::NONE;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("Fire Destro+Decim")) {
-        sim.talents = Talents::create_forever_fire_destro_decimation();
+    if (ImGui::SmallButton("Shadow and Flame Fire DS-Succ")) {
+        sim.talents = Talents::create_forever_shadow_and_flame_fire_ds_succ();
         sim.buffs.sacrifice_succubus = true;
         sim.buffs.sacrifice_imp = false;
         sim.policy.maintain_immolate = true;
@@ -472,6 +472,15 @@ inline void render_panel_talents(WarlockSimulator& sim) {
         sim.policy.pet = PetChoice::IMP;
         sim.policy.maintain_immolate = true;
         sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Shadow and Flame Fire 2")) {
+        sim.talents = Talents::create_forever_shadow_and_flame_fire_2();
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.pet = PetChoice::IMP;
+        sim.policy.maintain_immolate = true;
+        sim.policy.rotation = RotationChoice::SHADOW_AND_FLAME_FIRE_2;
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Shadow and Flame Shadow")) {

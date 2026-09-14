@@ -52,6 +52,25 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t7.destro.shadow_and_flame, 5);
     CHECK_EQ(t7.destro.incinerate, 1);
 
+    Talents t7b = Talents::create_forever_shadow_and_flame_fire_2();
+    CHECK_EQ(t7b.total_points(), 51);
+    CHECK(t7b.is_valid());
+    CHECK_EQ(t7b.aff.total_points(), 10);
+    CHECK_EQ(t7b.aff.improved_life_tap, 2);
+    CHECK_EQ(t7b.aff.suppression, 5);
+    CHECK_EQ(t7b.aff.improved_corruption, 3);
+    CHECK_EQ(t7b.demo.total_points(), 10);
+    CHECK_EQ(t7b.demo.demonic_aegis, 0);
+    CHECK_EQ(t7b.demo.decimation, 0);
+    CHECK_EQ(t7b.demo.fel_vitality, 0);
+    CHECK_EQ(t7b.destro.total_points(), 31);
+    CHECK_EQ(t7b.destro.improved_shadow_bolt, 3);
+    CHECK_EQ(t7b.destro.intensity, 0);
+    CHECK_EQ(t7b.destro.cataclysm, 2);
+    CHECK_EQ(t7b.destro.aftermath, 1);
+    CHECK_EQ(t7b.destro.shadow_and_flame, 5);
+    CHECK_EQ(t7b.destro.incinerate, 1);
+
     Talents t8 = Talents::create_forever_shadow_and_flame_shadow();
     CHECK_EQ(t8.total_points(), 51);
     CHECK(t8.is_valid());
@@ -148,4 +167,35 @@ TEST_CASE(Talents, FelVitalityManaBonus) {
     double mana_mult = 1.0 + t.demo.fel_vitality * 0.05;
     CHECK_NEAR(mana_mult, 1.15, 0.001); // +15%
 }
+
+TEST_CASE(Talents, ImprovedCorruptionGcdScaling) {
+    WarlockSimulator sim;
+    sim.policy.rotation = RotationChoice::SHADOW_AND_FLAME_FIRE_2;
+    sim.fight_duration = 180.0;
+    sim.talents = Talents::create_forever_shadow_and_flame_fire_2();
+
+    double total_dps_4 = 0.0;
+    double total_dps_5 = 0.0;
+    const int iters = 100;
+
+    sim.talents.aff.improved_corruption = 4;
+    for (int i = 0; i < iters; ++i) {
+        FastRNG rng(42 + i);
+        total_dps_4 += sim.run_single_simulation(rng).dps;
+    }
+
+    sim.talents.aff.improved_corruption = 5;
+    for (int i = 0; i < iters; ++i) {
+        FastRNG rng(42 + i);
+        total_dps_5 += sim.run_single_simulation(rng).dps;
+    }
+
+    double avg_4 = total_dps_4 / iters;
+    double avg_5 = total_dps_5 / iters;
+
+    // With proper 1.5s GCD enforcement on both casted and instant Corruption, 5/5 should be >= 4/5
+    CHECK(avg_5 >= avg_4 * 0.98);
+}
+
+
 

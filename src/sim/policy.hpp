@@ -63,6 +63,7 @@ enum class RotationChoice : uint8_t {
     DEMONOLOGY_EXECUTE,     // Demo Execute: Corruption + Bane of Agony + Decimation Soul Fire (<35% HP execute) + SB filler
     PURE_SHADOW_BOLT,       // Pure Shadow Bolt: SB spam only (0 DoTs, classic 16 debuff limit)
     AFFLICTION_HYBRID_DOTS, // Multi-DoT Hybrid: Agony + Corruption + Immolate + Drain Hope + SB filler
+    SHADOW_AND_FLAME_FIRE_2,// 8/12/31 Shadow & Flame Fire 2: Immolate + Conflag + Corruption + SBurn + Incinerate (No Searing Pain / Soul Fire)
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -80,6 +81,7 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::DEMONOLOGY_EXECUTE: return "0/31/20 Demo Execute (Decimation Soul Fire + SB)";
         case RotationChoice::PURE_SHADOW_BOLT: return "Pure Shadow Bolt (No DoTs / Classic Limit)";
         case RotationChoice::AFFLICTION_HYBRID_DOTS: return "20/0/31 Multi-DoT Hybrid (Agony + Corr + Immo)";
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_2: return "8/12/31 Shadow and Flame Fire 2 (Incinerate + Immolate + Conflag)";
         default: return "DS/AF";
     }
 }
@@ -104,6 +106,8 @@ inline const char* rotation_choice_description(RotationChoice r) {
             return "Strictly spams Shadow Bolt without placing any DoTs (ideal for Classic 16 debuff limit). Raid curses are handled by raid debuffs.";
         case RotationChoice::AFFLICTION_HYBRID_DOTS:
             return "Maintains Bane of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Drain Hope and Shadow Bolt.";
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
+            return "Shadow and Flame Fire 2: Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, maintains Corruption, weaves Shadowburn for +10% Fire buff, and spams Incinerate as filler with active Imp (no Searing Pain or Soul Fire).";
         default:
             return "";
     }
@@ -420,6 +424,22 @@ struct PolicyConfig {
                         "Fast 1.5s Fire filler spell."
                     });
                 }
+                break;
+
+            case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
+                add_racial();
+                add_immolate();
+                add_conflagrate();
+                add_corruption();
+                add_shadowburn();
+                rules.push_back({
+                    PriorityAction::INCINERATE_FILLER,
+                    SpellID::INCINERATE,
+                    "Incinerate",
+                    "Primary Filler",
+                    "Trigger when: Primary rotational fallback for Shadow and Flame Fire 2.",
+                    "Fast 2.0s Fire filler dealing massive direct damage (+25% bonus damage against Immolated targets)."
+                });
                 break;
 
             case RotationChoice::DP_RUIN_FIRE:

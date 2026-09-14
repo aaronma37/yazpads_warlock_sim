@@ -195,19 +195,18 @@ inline void render_panel_optimizer(
             if (is_sword) base_stats.spell_crit_percent += 2.0;
         }
 
-        // Leaderboard table header with active base stats
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Spec Leaderboard");
+        // Spec table header with active base stats matching Build Configuration
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Specs");
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "Base Stats:");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "Spell Power: %.0f", base_stats.spell_power);
-        if (base_stats.shadow_power > 0 || base_stats.fire_power > 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Shadow: %.0f | Fire: %.0f)",
-                               base_stats.effective_shadow_power(), base_stats.effective_fire_power());
-        }
+        ImGui::TextColored(ImVec4(0.75f, 0.50f, 1.0f, 1.0f), "Shadow SP: %.0f", base_stats.effective_shadow_power());
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.25f, 1.0f), "Fire SP: %.0f", base_stats.effective_fire_power());
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();

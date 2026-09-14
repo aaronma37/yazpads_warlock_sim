@@ -16,6 +16,7 @@ struct BuffConfig {
     bool flask_of_supreme_power = true; // +150 Spell Power
     bool greater_arcane_elixir = true;  // +35 Spell Power
     bool elixir_of_shadow_power = true; // +40 Shadow Spell Power
+    bool elixir_of_greater_firepower = true; // +40 Fire Spell Power
     bool brilliant_wizard_oil = true;   // +36 Spell Power, +1% Spell Crit
     bool use_mana_potions = true;       // Major Mana Potion (~1800 mana, 120s cd)
     bool use_demonic_runes = true;      // Demonic / Dark Rune (~1200 mana, 120s cd)
@@ -74,6 +75,7 @@ struct BuffConfig {
         if (flask_of_supreme_power) stats.spell_power += 150.0;
         if (greater_arcane_elixir) stats.spell_power += 35.0;
         if (elixir_of_shadow_power) stats.shadow_power += 40.0;
+        if (elixir_of_greater_firepower) stats.fire_power += 40.0;
         if (brilliant_wizard_oil) {
             stats.spell_power += 36.0;
             stats.spell_crit_percent += 1.0;
