@@ -415,7 +415,8 @@ struct Talents {
     static Talents create_forever_ds_incinerate() {
         Talents t;
         // Affliction: 5 points
-        t.aff.suppression = 5;             // +5% spell hit, -20% threat
+        t.aff.improved_corruption = 4;     // 4/5 (0.4s cast time Corruption)
+        t.aff.suppression = 1;             // +1% spell hit
 
         // Demonology: 11 points (Sac Succubus -> +15% Fire!)
         t.demo.demonic_embrace = 5;
@@ -425,9 +426,10 @@ struct Talents {
 
         // Destruction: 35 points
         t.destro.destructive_reach = 2;
+        t.destro.improved_shadow_bolt = 4;
         t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
         t.destro.cataclysm = 3;
-        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
+        t.destro.aftermath = 1;            // 1/5 Aftermath
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
         t.destro.agonizing_flames = 3;     // +9% Destruction damage
@@ -470,9 +472,12 @@ struct Talents {
         return t;
     }
 
-    // 2c. 0/17/34 Fire Destro + Decimation (sac-succubus)
+    // 2c. 3/17/31 Fire Destro + Decimation (sac-succubus)
     static Talents create_forever_fire_destro_decimation() {
         Talents t;
+        // Affliction: 3 points
+        t.aff.suppression = 3;             // +3% spell hit
+
         // Demonology: 17 points (Demonic Sacrifice + 2/2 Decimation)
         t.demo.demonic_embrace = 5;
         t.demo.fel_vitality = 3;
@@ -482,11 +487,11 @@ struct Talents {
         t.demo.master_summoner = 2;
         t.demo.improved_imp = 2;
 
-        // Destruction: 34 points
+        // Destruction: 31 points
         t.destro.destructive_reach = 1;
         t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
         t.destro.cataclysm = 3;
-        t.destro.aftermath = 5;            // Immolate initial direct damage +50%!
+        t.destro.aftermath = 2;            // Immolate initial direct damage +20%
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
         t.destro.agonizing_flames = 3;     // +9% Destruction damage
@@ -495,6 +500,64 @@ struct Talents {
         t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
         t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
         t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
+    // 2d. 1/17/33 Shadow and Flame (Imp / Incinerate + Decimation)
+    static Talents create_forever_shadow_and_flame() {
+        Talents t;
+        // Affliction: 1 point
+        t.aff.suppression = 1;             // +1% spell hit
+
+        // Demonology: 17 points
+        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
+        t.demo.unholy_power = 5;           // +10% Imp damage
+        t.demo.demonic_aegis = 2;          // +30% Armor/Fel Armor effects
+        t.demo.fel_vitality = 3;           // +15% Max Mana
+        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+        t.demo.decimation = 2;             // Soul Fire execute <35% HP
+
+        // Destruction: 33 points
+        t.destro.improved_shadow_bolt = 5; // +20% Shadow vulnerability on crit
+        t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // Instant finisher, triggers +10% Fire buff from Shadow & Flame!
+        t.destro.intensity = 3;            // 70% pushback resistance
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;          // Conflagrate (never consumes Immolate, buffs Shadow by 10%)
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
+    // 2e. 2/17/32 Shadow and Flame (Shadow / Shadow Bolt + Conflagrate + Decimation)
+    static Talents create_forever_shadow_and_flame_shadow() {
+        Talents t;
+        // Affliction: 2 points
+        t.aff.suppression = 2;             // +2% spell hit
+
+        // Demonology: 17 points
+        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
+        t.demo.unholy_power = 5;           // +10% Imp damage
+        t.demo.demonic_aegis = 2;          // +30% Armor/Fel Armor effects
+        t.demo.fel_vitality = 3;           // +15% Max Mana
+        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+        t.demo.decimation = 2;             // Soul Fire execute <35% HP
+
+        // Destruction: 32 points
+        t.destro.improved_shadow_bolt = 5; // +20% Shadow vulnerability on crit
+        t.destro.bane = 5;                 // -0.5s Shadow Bolt / -2.0s Soul Fire
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // Instant finisher
+        t.destro.intensity = 3;            // 70% pushback resistance
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;          // Conflagrate (buffs Shadow damage by +10% via Shadow & Flame)
+        t.destro.bane_of_havoc = 1;        // Prerequisite
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate & buffs Shadow by 10%
+        // Note: 0 points in incinerate
         return t;
     }
 
@@ -509,7 +572,7 @@ struct Talents {
         t.demo.demonic_embrace = 5;
         t.demo.unholy_power = 5;
         t.demo.fel_vitality = 3;
-        t.demo.demonic_aegis = 2;
+        t.demo.decimation = 2;             // 2/2 Decimation (Execute SF + 6% SB buff <35% HP)
         t.demo.demonic_energies = 2;       // 2/2 Demonic Energies (Life Tap shares mana with pet + pet heal)
         t.demo.improved_sayaad = 3;
         t.demo.demonic_sacrifice = 1;      // Sac Imp for +15% Shadow!
@@ -659,6 +722,8 @@ struct Talents {
     static Talents create_nf_ds_ruin() { return create_forever_nf_ds_ruin(); }
     static Talents create_nf_ds() { return create_forever_nf_ds_ruin(); }
     static Talents create_fire_destro_decimation() { return create_forever_fire_destro_decimation(); }
+    static Talents create_shadow_and_flame() { return create_forever_shadow_and_flame(); }
+    static Talents create_shadow_and_flame_shadow() { return create_forever_shadow_and_flame_shadow(); }
 };
 
 } // namespace warlock

@@ -32,10 +32,59 @@ TEST_CASE(Rotations, FireDestroDeterministicRun) {
     SimResult res = sim.run_single_simulation(rng);
     CHECK(res.total_damage > 0.0);
     CHECK(res.dps > 0.0);
-    // Primary filler must be Incinerate
+    // Primary filler must be Incinerate, with Immolate, Conflagrate, and Corruption
     CHECK(res.dmg_incinerate > 0.0);
     CHECK(res.dmg_immolate > 0.0);
     CHECK(res.dmg_conflagrate > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+}
+
+TEST_CASE(Rotations, ShadowAndFlameRotationExecution) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_and_flame();
+    sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+    sim.policy.maintain_immolate = true;
+    sim.policy.pet = PetChoice::IMP;
+    sim.buffs.sacrifice_succubus = false;
+    sim.buffs.sacrifice_imp = false;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    
+    // Rotation must enforce maintaining Immolate, casting Conflagrate, weaving Shadowburn, and filling with Incinerate
+    CHECK(res.dmg_immolate > 0.0);
+    CHECK(res.dmg_conflagrate > 0.0);
+    CHECK(res.dmg_shadowburn > 0.0);
+    CHECK(res.dmg_incinerate > 0.0);
+    CHECK(res.dmg_pet_firebolt > 0.0);
+}
+
+TEST_CASE(Rotations, ShadowAndFlameShadowRotationExecution) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_and_flame_shadow();
+    sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim.policy.maintain_immolate = true;
+    sim.policy.pet = PetChoice::IMP;
+    sim.buffs.sacrifice_succubus = false;
+    sim.buffs.sacrifice_imp = false;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    
+    // Rotation must enforce maintaining Immolate, casting Conflagrate to proc +10% Shadow from Shadow & Flame, and filling with Shadow Bolt
+    CHECK(res.dmg_immolate > 0.0);
+    CHECK(res.dmg_conflagrate > 0.0);
+    CHECK(res.dmg_shadow_bolt > 0.0);
+    CHECK(res.shadow_bolt_casts > 0);
+    CHECK(res.dmg_pet_firebolt > 0.0);
 }
 
 TEST_CASE(Rotations, DSSearingPainDeterministicRun) {
@@ -122,6 +171,43 @@ TEST_CASE(Rotations, PureShadowBoltNoDots) {
     CHECK_EQ(res.dmg_immolate, 0.0);
     CHECK_EQ(res.dmg_drain_hope, 0.0);
     CHECK(res.shadow_bolt_casts > 0);
+}
+
+TEST_CASE(Rotations, DPAFShadowFullDurationCorruptionAndAgony) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_dp_af_shadow();
+    sim.policy.rotation = RotationChoice::DP_AF_SHADOW;
+    sim.buffs.sacrifice_imp = true;
+    sim.policy.pet = PetChoice::SUCCUBUS;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    // Verify talent setup: 0 points in improved_corruption (2.0s hardcast, standard duration)
+    CHECK_EQ(sim.talents.aff.improved_corruption, 0);
+
+    SimResult res = sim.run_single_simulation(rng);
+
+    // Verify Corruption, Bane of Agony, and Shadow Bolt deal substantial damage
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0); // Bane of Agony
+    CHECK(res.dmg_agony > 0.0);
+    CHECK(res.shadow_bolt_casts > 0);
+    CHECK(res.dmg_shadow_bolt > 0.0);
+
+    // Verify in cast sequence that Corruption was hardcast (cast_time >= 2.0s)
+    bool found_hardcast_corruption = false;
+    bool found_agony = false;
+    for (const auto& cast : res.cast_sequence) {
+        if (cast.spell_id == SpellID::CORRUPTION) {
+            CHECK_NEAR(cast.cast_time, 2.0, 0.05);
+            found_hardcast_corruption = true;
+        } else if (cast.spell_id == SpellID::CURSE_OF_AGONY) {
+            found_agony = true;
+        }
+    }
+    CHECK(found_hardcast_corruption);
+    CHECK(found_agony);
 }
 
 TEST_CASE(Rotations, AfflictionMultiDotHybrid) {
@@ -320,4 +406,39 @@ TEST_CASE(Rotations, NFDSRuinDeterministicRun) {
     CHECK(res.dmg_shadowburn > 0.0);
 }
 
+TEST_CASE(Rotations, DecimationSearingPainSoulFireExecution) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_and_flame();
+    sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+    sim.policy.use_decimation_soul_fire = true;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
 
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+
+    // Look for Searing Pain cast in execute phase (<35% HP -> time >= 60 * 0.65 = 39.0s)
+    bool found_sp_execute = false;
+    bool found_sf_execute = false;
+    double first_sp_time = -1.0;
+    double first_sf_time = -1.0;
+
+    for (const auto& cast : res.cast_sequence) {
+        if (cast.time >= 39.0) {
+            if (cast.spell_id == SpellID::SEARING_PAIN && first_sp_time < 0.0) {
+                first_sp_time = cast.time;
+                found_sp_execute = true;
+            }
+            if (cast.spell_id == SpellID::SOUL_FIRE && first_sf_time < 0.0) {
+                first_sf_time = cast.time;
+                found_sf_execute = true;
+            }
+        }
+    }
+
+    CHECK(found_sp_execute);
+    CHECK(found_sf_execute);
+    // Searing Pain must trigger Decimation before Soul Fire can be cast
+    CHECK(first_sp_time <= first_sf_time);
+}

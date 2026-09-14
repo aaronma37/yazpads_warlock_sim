@@ -79,6 +79,10 @@ struct SimResult {
     double dmg_pet = 0.0; // Total pet damage
     double dmg_pet_imp = 0.0;
     double dmg_pet_succubus = 0.0;
+    double dmg_pet_melee = 0.0;
+    double dmg_pet_lash_of_pain = 0.0;
+    double dmg_pet_firebolt = 0.0;
+    double dmg_demonic_brand = 0.0;
 
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;

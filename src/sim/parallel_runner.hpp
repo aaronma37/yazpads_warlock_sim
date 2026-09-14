@@ -61,6 +61,10 @@ struct BatchSimResult {
     double pct_pet = 0.0; // Total Pet
     double pct_pet_imp = 0.0;
     double pct_pet_succubus = 0.0;
+    double pct_pet_melee = 0.0;
+    double pct_pet_lash_of_pain = 0.0;
+    double pct_pet_firebolt = 0.0;
+    double pct_demonic_brand = 0.0;
     double mean_pet_dps = 0.0;
 
     // Distribution Histogram (40 bins)
@@ -76,7 +80,8 @@ public:
         const WarlockSimulator& base_sim,
         int iterations = 10000,
         int num_threads = 0,
-        std::function<void(float progress)> progress_callback = nullptr
+        std::function<void(float progress)> progress_callback = nullptr,
+        uint64_t base_seed = 0
     );
 };
 

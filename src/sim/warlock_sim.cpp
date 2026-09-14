@@ -206,6 +206,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     double drain_hope_channel_end = 0.0;         // +10% Shadow DoT damage during channel
     int demonic_brand_charges = 0;               // Pet attacks consuming Demonic Brand
     double demonic_brand_expire = 0.0;
+    double decimation_buff_expire = 0.0;         // 10s Soul Fire cast time reduction buff from SB/Searing Pain on <35% HP
 
     // Target state
     TargetConfig target = target_config;
@@ -454,8 +455,26 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     break;
                 }
 
+                case PriorityAction::DECIMATION_SEARING_PAIN: {
+                    if (execute_phase && talents.demo.decimation > 0 && now >= decimation_buff_expire) {
+                        double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        if (player_mana >= sp_mana) {
+                            double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
+                            is_casting = true;
+                            current_casting_spell = SpellID::SEARING_PAIN;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SEARING_PAIN, 0.0, false, false, cast_time, "Decimation Proc"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
                 case PriorityAction::DECIMATION_SOUL_FIRE: {
-                    if (execute_phase && talents.demo.decimation > 0 && now >= soul_fire_cd_ready) {
+                    if (execute_phase && talents.demo.decimation > 0 && now < decimation_buff_expire && now >= soul_fire_cd_ready) {
                         double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                         if (player_mana >= sf_mana) {
                             double cast_time = std::max(0.5, (4.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
@@ -875,6 +894,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
 
+                    if ((current_time / fight_duration) >= 0.65 && talents.demo.decimation > 0) {
+                        decimation_buff_expire = current_time + 10.0;
+                    }
+
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
                     gcd_ready_time = current_time;
@@ -883,6 +906,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
                     player_mana -= sp_mana;
                     result.mana_spent += sp_mana;
+
+                    if ((current_time / fight_duration) >= 0.65 && talents.demo.decimation > 0) {
+                        decimation_buff_expire = current_time + 10.0;
+                    }
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN));
@@ -1603,20 +1630,22 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
 
                         // Demonic Brand proc (Succubus deals bonus Shadow damage)
+                        double brand_dmg = 0.0;
                         if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                             demonic_brand_charges--;
-                            double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                            brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                             brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                             if (race == Race::ORC) brand_dmg *= 1.05;
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                             if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                             brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                            swing_dmg += brand_dmg;
+                            result.dmg_demonic_brand += brand_dmg;
                         }
 
-                        result.dmg_pet += swing_dmg;
-                        result.dmg_pet_succubus += swing_dmg;
-                        result.total_damage += swing_dmg;
+                        result.dmg_pet_melee += swing_dmg;
+                        result.dmg_pet_succubus += (swing_dmg + brand_dmg);
+                        result.dmg_pet += (swing_dmg + brand_dmg);
+                        result.total_damage += (swing_dmg + brand_dmg);
                     }
 
                     if (current_time + 2.0 < fight_duration) {
@@ -1664,20 +1693,22 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             // Demonic Brand proc (Succubus deals bonus Shadow damage)
+                            double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (race == Race::ORC) brand_dmg *= 1.05;
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                                 if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                                base_lop += brand_dmg;
+                                result.dmg_demonic_brand += brand_dmg;
                             }
 
-                            result.dmg_pet += base_lop;
-                            result.dmg_pet_succubus += base_lop;
-                            result.total_damage += base_lop;
+                            result.dmg_pet_lash_of_pain += base_lop;
+                            result.dmg_pet_succubus += (base_lop + brand_dmg);
+                            result.dmg_pet += (base_lop + brand_dmg);
+                            result.total_damage += (base_lop + brand_dmg);
                         }
                     }
 
@@ -1725,19 +1756,21 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             // Demonic Brand proc (Imp deals bonus Fire damage)
+                            double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                double brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (race == Race::ORC) brand_dmg *= 1.05;
                                 if (buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
-                                base_fb += brand_dmg;
+                                result.dmg_demonic_brand += brand_dmg;
                             }
 
-                            result.dmg_pet += base_fb;
-                            result.dmg_pet_imp += base_fb;
-                            result.total_damage += base_fb;
+                            result.dmg_pet_firebolt += base_fb;
+                            result.dmg_pet_imp += (base_fb + brand_dmg);
+                            result.dmg_pet += (base_fb + brand_dmg);
+                            result.total_damage += (base_fb + brand_dmg);
                         }
                     }
 

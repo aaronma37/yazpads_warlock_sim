@@ -3,11 +3,76 @@
 
 namespace warlock {
 
+StatWeights Optimizer::calculate_candidate_stat_weights(
+    const WarlockSimulator& candidate_sim,
+    int iterations_per_sample
+) {
+    StatWeights weights;
+    weights.valid = true;
+
+    // Get baseline stats
+    Stats base_stats = candidate_sim.use_raw_stats ? candidate_sim.raw_stats : candidate_sim.gear.calculate_stats();
+
+    // Use Common Random Numbers (CRN) with identical seed across all stat perturb runs
+    // This isolates pure deterministic gradient without stochastic variance / Monte-Carlo noise
+    const uint64_t CRN_SEED = 0x9e3779b97f4a7c15ULL;
+    int samples = std::max(1500, iterations_per_sample);
+
+    // 0. Base run
+    WarlockSimulator sim_base = candidate_sim;
+    sim_base.use_raw_stats = true;
+    sim_base.raw_stats = base_stats;
+    double base_dps = ParallelSimRunner::run_batch(sim_base, samples, 0, nullptr, CRN_SEED).mean_dps;
+
+    // 1. +40 Spell Power sample
+    {
+        WarlockSimulator sim_sp = sim_base;
+        sim_sp.raw_stats.spell_power += 40.0;
+        double sp_dps = ParallelSimRunner::run_batch(sim_sp, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_sp = std::max(0.0, (sp_dps - base_dps) / 40.0);
+    }
+
+    // 2. +3% Spell Hit sample
+    {
+        WarlockSimulator sim_hit = sim_base;
+        sim_hit.raw_stats.spell_hit_percent += 3.0;
+        double hit_dps = ParallelSimRunner::run_batch(sim_hit, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_hit = std::max(0.0, (hit_dps - base_dps) / 3.0);
+    }
+
+    // 3. +3% Spell Crit sample
+    {
+        WarlockSimulator sim_crit = sim_base;
+        sim_crit.raw_stats.spell_crit_percent += 3.0;
+        double crit_dps = ParallelSimRunner::run_batch(sim_crit, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_crit = std::max(0.0, (crit_dps - base_dps) / 3.0);
+    }
+
+    // 4. +3% Spell Haste sample
+    {
+        WarlockSimulator sim_haste = sim_base;
+        sim_haste.raw_stats.spell_haste_percent += 3.0;
+        double haste_dps = ParallelSimRunner::run_batch(sim_haste, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_haste = std::max(0.0, (haste_dps - base_dps) / 3.0);
+    }
+
+    // 5. +30 Intellect sample
+    {
+        WarlockSimulator sim_int = sim_base;
+        sim_int.raw_stats.intellect += 30.0;
+        double int_dps = ParallelSimRunner::run_batch(sim_int, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_int = std::max(0.0, (int_dps - base_dps) / 30.0);
+    }
+
+    return weights;
+}
+
 std::vector<CandidateResult> Optimizer::optimize_talents(
     const WarlockSimulator& base_sim,
     int iterations_per_candidate,
     std::function<void(float progress, const std::string& current_name)> callback,
-    bool compare_all_races
+    bool compare_all_races,
+    bool calculate_stat_weights
 ) {
     struct Candidate {
         std::string name;
@@ -21,12 +86,14 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
     std::vector<Candidate> candidates = {
         {"5/11/35 DS/AF (sac-imp)", Talents::create_forever_ds_af(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
         {"5/11/35 Fire Destro (sac-succubus)", Talents::create_forever_fire_destro(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"0/17/34 Fire Destro+Decimation (sac-succubus)", Talents::create_forever_fire_destro_decimation(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
+        {"3/17/31 Fire Destro+Decimation (sac-succubus)", Talents::create_forever_fire_destro_decimation(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
         {"5/11/35 DS/Searing Pain (sac-succubus)", Talents::create_forever_ds_searing_pain(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", Talents::create_forever_dp_af_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::SUCCUBUS, false, true},
+        {"2/31/18 DP/AF Shadow (sac-imp + succubus)", Talents::create_forever_dp_af_shadow(), RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true},
         {"0/31/20 DP/AF Fire (sac-succubus + imp)", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
         {"40/11/0 Deep Affliction (DS Imp / Drain Hope)", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
         {"32/0/19 SM/AF (3/3 Flames)", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::SUCCUBUS, false, false},
+        {"1/17/33 Shadow and Flame (Imp / Incinerate)", Talents::create_forever_shadow_and_flame(), RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false},
+        {"2/17/32 Shadow and Flame (Shadow)", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
         {"19/11/21 NF/DS/Ruin (sac-imp)", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true}
     };
 
@@ -78,6 +145,11 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             res.policy = sim.policy;
             res.mechanics = sim.mechanics;
             res.batch = batch;
+
+            if (calculate_stat_weights) {
+                if (callback) callback(static_cast<float>(current_idx - 1) / total, run_name + " (Stat Weights)");
+                res.stat_weights = calculate_candidate_stat_weights(sim, std::max(1000, iterations_per_candidate / 2));
+            }
 
             results.push_back(res);
         }
@@ -381,7 +453,8 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
     const WarlockSimulator& base_sim,
     int iterations_per_candidate,
     std::function<void(float progress, const std::string& current_name)> callback,
-    bool compare_all_races
+    bool compare_all_races,
+    bool calculate_stat_weights
 ) {
     // Generate diverse valid 51-point distributions across Affliction / Demonology / Destruction
     struct TalentPointSplit {
@@ -527,6 +600,12 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
             res.policy = sim.policy;
             res.mechanics = sim.mechanics;
             res.batch = batch;
+
+            if (calculate_stat_weights) {
+                if (callback) callback(static_cast<float>(current_idx - 1) / total, run_name + " (Stat Weights)");
+                res.stat_weights = calculate_candidate_stat_weights(sim, std::max(1000, iterations_per_candidate / 2));
+            }
+
             results.push_back(res);
         }
     }
@@ -886,6 +965,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         b_dp.sacrifice_imp = true;
         auto p_dp = base_sim.policy;
         p_dp.pet = PetChoice::SUCCUBUS;
+        p_dp.rotation = RotationChoice::DP_AF_SHADOW;
         candidates.push_back({"[Talents] DP/AF Shadow (2/31/18 - Sac Imp + Succubus)", Talents::create_forever_dp_af_shadow(), p_dp, b_dp});
 
         auto b_md = base_sim.buffs;

@@ -9,7 +9,8 @@ BatchSimResult ParallelSimRunner::run_batch(
     const WarlockSimulator& base_sim,
     int iterations,
     int num_threads,
-    std::function<void(float progress)> progress_callback
+    std::function<void(float progress)> progress_callback,
+    uint64_t base_seed
 ) {
     if (iterations <= 0) iterations = 1;
     if (num_threads <= 0) {
@@ -21,6 +22,7 @@ BatchSimResult ParallelSimRunner::run_batch(
     }
 
     auto start_time = std::chrono::high_resolution_clock::now();
+    uint64_t initial_seed = (base_seed != 0) ? base_seed : (0x85467291ULL + static_cast<uint64_t>(start_time.time_since_epoch().count()));
 
     struct ThreadOutput {
         std::vector<double> dps_list;
@@ -56,6 +58,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_pet = 0.0;
         double sum_dmg_pet_imp = 0.0;
         double sum_dmg_pet_succubus = 0.0;
+        double sum_dmg_pet_melee = 0.0;
+        double sum_dmg_pet_lop = 0.0;
+        double sum_dmg_pet_fb = 0.0;
+        double sum_dmg_demonic_brand = 0.0;
         double sum_dmg_total = 0.0;
     };
 
@@ -69,7 +75,7 @@ BatchSimResult ParallelSimRunner::run_batch(
 
     for (int t = 0; t < num_threads; ++t) {
         int count = iters_per_thread + (t < remainder ? 1 : 0);
-        uint64_t seed = 0x85467291ULL + static_cast<uint64_t>(t * 192837465ULL) + static_cast<uint64_t>(start_time.time_since_epoch().count());
+        uint64_t seed = initial_seed + static_cast<uint64_t>(t * 192837465ULL);
 
         workers.emplace_back([&base_sim, &thread_outputs, &completed_iterations, t, count, seed, iterations, progress_callback]() {
             FastRNG rng(seed);
@@ -115,6 +121,10 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_dmg_pet += res.dmg_pet;
                 out.sum_dmg_pet_imp += res.dmg_pet_imp;
                 out.sum_dmg_pet_succubus += res.dmg_pet_succubus;
+                out.sum_dmg_pet_melee += res.dmg_pet_melee;
+                out.sum_dmg_pet_lop += res.dmg_pet_lash_of_pain;
+                out.sum_dmg_pet_fb += res.dmg_pet_firebolt;
+                out.sum_dmg_demonic_brand += res.dmg_demonic_brand;
                 out.sum_dmg_total += res.total_damage;
 
                 int done = ++completed_iterations;
@@ -173,6 +183,10 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_dmg_pet = 0.0;
     double total_dmg_pet_imp = 0.0;
     double total_dmg_pet_succubus = 0.0;
+    double total_dmg_pet_melee = 0.0;
+    double total_dmg_pet_lop = 0.0;
+    double total_dmg_pet_fb = 0.0;
+    double total_dmg_demonic_brand = 0.0;
     double total_dmg_all = 0.0;
 
     for (const auto& out : thread_outputs) {
@@ -209,6 +223,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         total_dmg_pet += out.sum_dmg_pet;
         total_dmg_pet_imp += out.sum_dmg_pet_imp;
         total_dmg_pet_succubus += out.sum_dmg_pet_succubus;
+        total_dmg_pet_melee += out.sum_dmg_pet_melee;
+        total_dmg_pet_lop += out.sum_dmg_pet_lop;
+        total_dmg_pet_fb += out.sum_dmg_pet_fb;
+        total_dmg_demonic_brand += out.sum_dmg_demonic_brand;
         total_dmg_all += out.sum_dmg_total;
     }
 
@@ -262,6 +280,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         batch.pct_pet = (total_dmg_pet / total_dmg_all) * 100.0;
         batch.pct_pet_imp = (total_dmg_pet_imp / total_dmg_all) * 100.0;
         batch.pct_pet_succubus = (total_dmg_pet_succubus / total_dmg_all) * 100.0;
+        batch.pct_pet_melee = (total_dmg_pet_melee / total_dmg_all) * 100.0;
+        batch.pct_pet_lash_of_pain = (total_dmg_pet_lop / total_dmg_all) * 100.0;
+        batch.pct_pet_firebolt = (total_dmg_pet_fb / total_dmg_all) * 100.0;
+        batch.pct_demonic_brand = (total_dmg_demonic_brand / total_dmg_all) * 100.0;
     }
 
     // Build 40-bin Histogram

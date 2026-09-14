@@ -122,3 +122,45 @@ TEST_CASE(Mechanics, PetManaManagement) {
     CHECK_NEAR(mech.pet_base_mp5, 45.0, 0.01);
 }
 
+TEST_CASE(Mechanics, SeparatedPetDamageBreakdown) {
+    // 1. Succubus breakdown (Melee + Lash of Pain)
+    {
+        FastRNG rng(42);
+        WarlockSimulator sim;
+        sim.talents = Talents::create_forever_dp_af_shadow();
+        sim.policy.rotation = RotationChoice::DP_AF_SHADOW;
+        sim.buffs.sacrifice_imp = true;
+        sim.policy.pet = PetChoice::SUCCUBUS;
+        sim.fight_duration = 60.0;
+        sim.record_timeline = true;
+
+        SimResult res = sim.run_single_simulation(rng);
+        CHECK(res.dmg_pet_succubus > 0.0);
+        CHECK(res.dmg_pet_melee > 0.0);
+        CHECK(res.dmg_pet_lash_of_pain > 0.0);
+        CHECK_EQ(res.dmg_pet_firebolt, 0.0);
+        CHECK_NEAR(res.dmg_pet, res.dmg_pet_melee + res.dmg_pet_lash_of_pain + res.dmg_demonic_brand, 0.01);
+    }
+
+    // 2. Imp breakdown (Firebolt + Demonic Brand)
+    {
+        FastRNG rng(42);
+        WarlockSimulator sim;
+        sim.talents = Talents::create_forever_dp_af_fire();
+        sim.policy.rotation = RotationChoice::DP_RUIN_FIRE;
+        sim.buffs.sacrifice_succubus = true;
+        sim.buffs.sacrifice_imp = false;
+        sim.policy.pet = PetChoice::IMP;
+        sim.fight_duration = 60.0;
+        sim.record_timeline = true;
+
+        SimResult res = sim.run_single_simulation(rng);
+        CHECK(res.dmg_pet_imp > 0.0);
+        CHECK(res.dmg_pet_firebolt > 0.0);
+        CHECK_EQ(res.dmg_pet_melee, 0.0);
+        CHECK_EQ(res.dmg_pet_lash_of_pain, 0.0);
+        CHECK(res.dmg_demonic_brand > 0.0);
+        CHECK_NEAR(res.dmg_pet, res.dmg_pet_firebolt + res.dmg_demonic_brand, 0.01);
+    }
+}
+

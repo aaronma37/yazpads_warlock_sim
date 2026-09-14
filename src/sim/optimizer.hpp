@@ -7,6 +7,15 @@
 
 namespace warlock {
 
+struct StatWeights {
+    double dps_per_sp = 0.0;    // DPS gained per 1 Spell Power
+    double dps_per_hit = 0.0;   // DPS gained per 1% Spell Hit
+    double dps_per_crit = 0.0;  // DPS gained per 1% Spell Crit
+    double dps_per_haste = 0.0; // DPS gained per 1% Spell Haste
+    double dps_per_int = 0.0;   // DPS gained per 1 Intellect
+    bool valid = false;
+};
+
 struct CandidateResult {
     int rank = 0;
     std::string name;
@@ -29,16 +38,26 @@ struct CandidateResult {
 
     // Full detailed batch simulation results (damage breakdown, crits, percentiles)
     BatchSimResult batch;
+
+    // Local Stat Sensitivity / Stat Weights (DPS per stat change)
+    StatWeights stat_weights;
 };
 
 class Optimizer {
 public:
+    // Helper to calculate local stat sensitivities for a candidate simulator configuration
+    static StatWeights calculate_candidate_stat_weights(
+        const WarlockSimulator& candidate_sim,
+        int iterations_per_sample = 1500
+    );
+
     // Compares standard talent specs
     static std::vector<CandidateResult> optimize_talents(
         const WarlockSimulator& base_sim,
         int iterations_per_candidate = 2000,
         std::function<void(float progress, const std::string& current_name)> callback = nullptr,
-        bool compare_all_races = false
+        bool compare_all_races = false,
+        bool calculate_stat_weights = false
     );
 
     // Dynamic combinatorial brute-force exploration across talent configurations
@@ -46,7 +65,8 @@ public:
         const WarlockSimulator& base_sim,
         int iterations_per_candidate = 1500,
         std::function<void(float progress, const std::string& current_name)> callback = nullptr,
-        bool compare_all_races = false
+        bool compare_all_races = false,
+        bool calculate_stat_weights = false
     );
 
     // Compares gear loadouts & trinkets

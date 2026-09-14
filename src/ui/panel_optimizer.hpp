@@ -23,10 +23,13 @@ inline void render_panel_optimizer(
 
     static int iters_per_candidate = 3000;
     static bool compare_all_races = false;
+    static bool calculate_stat_weights = false;
     ImGui::SetNextItemWidth(200);
     ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
     ImGui::SameLine(340);
     ImGui::Checkbox("Compare specs across all races (Undead, Orc, Troll, Human, Gnome)", &compare_all_races);
+    ImGui::SameLine();
+    ImGui::Checkbox("Calculate DPS per stat change (Stat Weights)", &calculate_stat_weights);
 
     ImGui::Spacing();
     if (is_optimizing) ImGui::BeginDisabled();
@@ -37,7 +40,7 @@ inline void render_panel_optimizer(
         optimizer_results = Optimizer::optimize_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
             opt_progress = p;
             current_opt_target = name;
-        }, compare_all_races);
+        }, compare_all_races, calculate_stat_weights);
         is_optimizing = false;
         opt_progress = 1.0f;
     }
@@ -48,7 +51,7 @@ inline void render_panel_optimizer(
         optimizer_results = Optimizer::explore_combinatorial_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
             opt_progress = p;
             current_opt_target = name;
-        }, compare_all_races);
+        }, compare_all_races, calculate_stat_weights);
         is_optimizing = false;
         opt_progress = 1.0f;
     }
@@ -166,16 +169,32 @@ inline void render_panel_optimizer(
             selected_candidate_idx = 0;
         }
 
+        bool show_stat_weights = false;
+        for (const auto& res : optimizer_results) {
+            if (res.stat_weights.valid) {
+                show_stat_weights = true;
+                break;
+            }
+        }
+
+        int num_cols = show_stat_weights ? 11 : 6;
+
         // Leaderboard table
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Spec Leaderboard (Click any row to inspect details below):");
-        if (ImGui::BeginTable("OptLeaderboardTable", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+        if (ImGui::BeginTable("OptLeaderboardTable", num_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
             ImGui::TableSetupColumn("Spec Name", ImGuiTableColumnFlags_WidthFixed, 200);
             ImGui::TableSetupColumn("Race", ImGuiTableColumnFlags_WidthFixed, 65);
             ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 90);
             ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 80);
-            ImGui::TableSetupColumn("Delta vs BiS", ImGuiTableColumnFlags_WidthFixed, 90);
+            if (show_stat_weights) {
+                ImGui::TableSetupColumn("DPS/SP", ImGuiTableColumnFlags_WidthFixed, 65);
+                ImGui::TableSetupColumn("DPS/Hit", ImGuiTableColumnFlags_WidthFixed, 70);
+                ImGui::TableSetupColumn("DPS/Crit", ImGuiTableColumnFlags_WidthFixed, 70);
+                ImGui::TableSetupColumn("DPS/Haste", ImGuiTableColumnFlags_WidthFixed, 75);
+                ImGui::TableSetupColumn("DPS/Int", ImGuiTableColumnFlags_WidthFixed, 65);
+            }
             ImGui::TableHeadersRow();
 
             for (size_t i = 0; i < optimizer_results.size(); ++i) {
@@ -229,12 +248,41 @@ inline void render_panel_optimizer(
                 ImGui::TableNextColumn();
                 ImGui::TextDisabled("+/- %.1f", r.std_dev_dps);
 
-                ImGui::TableNextColumn();
-                double delta = r.mean_dps - best.mean_dps;
-                if (delta >= 0.0) {
-                    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Baseline");
-                } else {
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%.1f DPS", delta);
+                if (show_stat_weights) {
+                    ImGui::TableNextColumn();
+                    if (r.stat_weights.valid) {
+                        ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "+%.2f", r.stat_weights.dps_per_sp);
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (r.stat_weights.valid) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "+%.1f", r.stat_weights.dps_per_hit);
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (r.stat_weights.valid) {
+                        ImGui::TextColored(ImVec4(0.9f, 0.4f, 1.0f, 1.0f), "+%.1f", r.stat_weights.dps_per_crit);
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (r.stat_weights.valid) {
+                        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.8f, 1.0f), "+%.1f", r.stat_weights.dps_per_haste);
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (r.stat_weights.valid) {
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "+%.2f", r.stat_weights.dps_per_int);
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
                 }
             }
 
@@ -290,18 +338,14 @@ inline void render_panel_optimizer(
             draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f));
             draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f));
             draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f));
-            if (b.pct_pet_imp > 0.05) {
-                char pet_name[64];
-                snprintf(pet_name, sizeof(pet_name), "Imp (%.1f DPS)", b.mean_pet_dps);
-                draw_dmg_bar(pet_name, b.pct_pet_imp, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
-            } else if (b.pct_pet_succubus > 0.05) {
-                char pet_name[64];
-                snprintf(pet_name, sizeof(pet_name), "Succubus (%.1f DPS)", b.mean_pet_dps);
-                draw_dmg_bar(pet_name, b.pct_pet_succubus, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
-            } else if (b.pct_pet > 0.05) {
-                char pet_name[64];
-                snprintf(pet_name, sizeof(pet_name), "Pet (%.1f DPS)", b.mean_pet_dps);
-                draw_dmg_bar(pet_name, b.pct_pet, ImVec4(0.2f, 0.8f, 0.3f, 1.0f));
+            if (b.pct_pet_firebolt > 0.05) draw_dmg_bar("Imp (Firebolt)", b.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f));
+            if (b.pct_pet_lash_of_pain > 0.05) draw_dmg_bar("Succubus (Lash)", b.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f));
+            if (b.pct_pet_melee > 0.05) draw_dmg_bar("Succubus (Melee)", b.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f));
+            if (b.pct_demonic_brand > 0.05) draw_dmg_bar("Demonic Brand", b.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
+            if (b.pct_pet > 0.05) {
+                char pet_summary[64];
+                snprintf(pet_summary, sizeof(pet_summary), "Total Pet: %.1f DPS (%.1f%%)", b.mean_pet_dps, b.pct_pet);
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", pet_summary);
             }
 
             ImGui::Spacing();
@@ -310,6 +354,16 @@ inline void render_panel_optimizer(
             ImGui::BulletText("Spell Crit Rate: %.1f%% | Miss Rate: %.1f%%", b.crit_percent, b.miss_percent);
             ImGui::BulletText("Life Taps per fight: %.1f (Mana spent: %.0f)", b.mean_life_taps, b.mean_mana_spent);
             ImGui::BulletText("Min - Max DPS Range: [%.1f - %.1f]", sel.min_dps, sel.max_dps);
+
+            if (sel.stat_weights.valid) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Local Stat Sensitivity / Weights (DPS per +1 Stat):");
+                ImGui::BulletText("+1 Spell Power:  %.2f DPS", sel.stat_weights.dps_per_sp);
+                ImGui::BulletText("+1%% Spell Hit:   %.1f DPS (EP: %.1f SP)", sel.stat_weights.dps_per_hit, sel.stat_weights.dps_per_sp > 0 ? (sel.stat_weights.dps_per_hit / sel.stat_weights.dps_per_sp) : 0.0);
+                ImGui::BulletText("+1%% Spell Crit:  %.1f DPS (EP: %.1f SP)", sel.stat_weights.dps_per_crit, sel.stat_weights.dps_per_sp > 0 ? (sel.stat_weights.dps_per_crit / sel.stat_weights.dps_per_sp) : 0.0);
+                ImGui::BulletText("+1%% Spell Haste: %.1f DPS (EP: %.1f SP)", sel.stat_weights.dps_per_haste, sel.stat_weights.dps_per_sp > 0 ? (sel.stat_weights.dps_per_haste / sel.stat_weights.dps_per_sp) : 0.0);
+                ImGui::BulletText("+1 Intellect:     %.2f DPS", sel.stat_weights.dps_per_int);
+            }
 
             ImGui::NextColumn();
 

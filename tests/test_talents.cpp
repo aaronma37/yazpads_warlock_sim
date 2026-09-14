@@ -1,6 +1,7 @@
 #include "test_framework.hpp"
 #include "src/sim/talents.hpp"
 #include "src/sim/warlock_sim.hpp"
+#include "src/sim/optimizer.hpp"
 
 using namespace warlock;
 
@@ -12,6 +13,9 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     Talents t2 = Talents::create_forever_fire_destro();
     CHECK_EQ(t2.total_points(), 51);
     CHECK(t2.is_valid());
+    CHECK_EQ(t2.aff.improved_corruption, 4);
+    CHECK_EQ(t2.aff.suppression, 1);
+    CHECK_EQ(t2.destro.aftermath, 1);
 
     Talents t3 = Talents::create_forever_demonic_pact();
     CHECK_EQ(t3.total_points(), 51);
@@ -36,6 +40,32 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t6.aff.nightfall, 2);
     CHECK_EQ(t6.demo.demonic_sacrifice, 1);
     CHECK_EQ(t6.destro.ruin, 5);
+
+    Talents t7 = Talents::create_forever_shadow_and_flame();
+    CHECK_EQ(t7.total_points(), 51);
+    CHECK(t7.is_valid());
+    CHECK_EQ(t7.aff.total_points(), 1);
+    CHECK_EQ(t7.demo.total_points(), 17);
+    CHECK_EQ(t7.destro.total_points(), 33);
+    CHECK_EQ(t7.destro.shadow_and_flame, 5);
+    CHECK_EQ(t7.destro.incinerate, 1);
+
+    Talents t8 = Talents::create_forever_shadow_and_flame_shadow();
+    CHECK_EQ(t8.total_points(), 51);
+    CHECK(t8.is_valid());
+    CHECK_EQ(t8.aff.total_points(), 2);
+    CHECK_EQ(t8.demo.total_points(), 17);
+    CHECK_EQ(t8.destro.total_points(), 32);
+    CHECK_EQ(t8.destro.shadow_and_flame, 5);
+    CHECK_EQ(t8.destro.conflagrate, 1);
+    CHECK_EQ(t8.destro.incinerate, 0);
+
+    Talents t9 = Talents::create_forever_fire_destro_decimation();
+    CHECK_EQ(t9.total_points(), 51);
+    CHECK(t9.is_valid());
+    CHECK_EQ(t9.aff.suppression, 3);
+    CHECK_EQ(t9.destro.aftermath, 2);
+    CHECK_EQ(t9.demo.decimation, 2);
 }
 
 TEST_CASE(Talents, SuppressionHitBonus) {

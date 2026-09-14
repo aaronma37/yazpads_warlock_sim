@@ -125,7 +125,7 @@ public:
                             sim.buffs.sacrifice_succubus = false;
                             sim.buffs.sacrifice_imp = true;
                             sim.policy.pet = PetChoice::SUCCUBUS;
-                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+                            sim.policy.rotation = RotationChoice::DP_AF_SHADOW;
                         }
                         if (ImGui::MenuItem("0/31/20 DP/AF Fire (sac-succubus + imp)")) {
                             sim.talents = Talents::create_forever_dp_af_fire();
@@ -147,6 +147,22 @@ public:
                             sim.buffs.sacrifice_imp = false;
                             sim.policy.pet = PetChoice::SUCCUBUS;
                             sim.policy.rotation = RotationChoice::SM_RUIN;
+                        }
+                        if (ImGui::MenuItem("1/17/33 Shadow and Flame (Imp / Incinerate)")) {
+                            sim.talents = Talents::create_forever_shadow_and_flame();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::FIRE_DESTRO;
+                        }
+                        if (ImGui::MenuItem("2/17/32 Shadow and Flame (Shadow)")) {
+                            sim.talents = Talents::create_forever_shadow_and_flame_shadow();
+                            sim.buffs.sacrifice_succubus = false;
+                            sim.buffs.sacrifice_imp = false;
+                            sim.policy.pet = PetChoice::IMP;
+                            sim.policy.maintain_immolate = true;
+                            sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
                         }
                         if (ImGui::MenuItem("19/11/21 NF/DS/Ruin (sac-imp)")) {
                             sim.talents = Talents::create_forever_nf_ds_ruin();

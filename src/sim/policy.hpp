@@ -56,6 +56,7 @@ inline const char* pet_choice_to_string(PetChoice p) {
 enum class RotationChoice : uint8_t {
     SHADOW_DESTRO = 0,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
     FIRE_DESTRO,            // Fire Destro: Immolate (+25% Incinerate dmg) + Conflagrate + Shadowburn (10% Fire buff) + Incinerate filler
+    DP_AF_SHADOW,           // 2/31/18 DP/AF Shadow: Shadow Bolt spam (no Corruption / DoTs)
     DP_RUIN_FIRE,           // DP/Ruin Fire: Immolate + Conflagrate + Searing Pain / Decimation Soul Fire (<35% HP)
     DEEP_AFFLICTION,        // Deep Affliction: Corruption + Bane of Agony + Drain Hope (20s CD) + Nightfall procs + SB filler
     SM_RUIN,                // SM/Ruin: Corruption + Bane of Agony + Nightfall + Shadowburn + Shadow Bolt filler
@@ -72,6 +73,7 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
     switch (r) {
         case RotationChoice::SHADOW_DESTRO: return "5/11/35 DS/AF (Conflag Weave + SB Spam)";
         case RotationChoice::FIRE_DESTRO: return "5/11/35 Fire Destro (Incinerate + Conflagrate)";
+        case RotationChoice::DP_AF_SHADOW: return "2/31/18 DP/AF Shadow (Corruption + CoA + SB)";
         case RotationChoice::DP_RUIN_FIRE: return "0/31/20 DP/AF Fire (Searing Pain + Immolate + Conflag)";
         case RotationChoice::DEEP_AFFLICTION: return "40/11/0 Deep Affliction (DS Imp / Drain Hope)";
         case RotationChoice::SM_RUIN: return "32/0/19 SM/AF (Corruption + CoA + SB Spam)";
@@ -88,6 +90,8 @@ inline const char* rotation_choice_description(RotationChoice r) {
             return "5/11/35 Demonic Sacrifice / Agonizing Flames: Sacrifices Imp (+15% Shadow damage), maintains Immolate and Conflagrate for Shadow & Flame (+10% Shadow damage for 20s), casts Shadowburn, and spams Shadow Bolt.";
         case RotationChoice::FIRE_DESTRO:
             return "Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, weaves Shadowburn for +10% Fire buff, and spams Incinerate.";
+        case RotationChoice::DP_AF_SHADOW:
+            return "Demonic Pact / Agonizing Flames Shadow: Sacrifices Imp (+15% Shadow) and summons Succubus (+10% Shadow from Master Demonologist + 60 SP from Demonic Knowledge). Maintains Corruption and Bane of Agony (CoA), and spams Shadow Bolt.";
         case RotationChoice::DP_RUIN_FIRE:
             return "Fire Demonic Pact / Agonizing Flames: Maintains Immolate, casts Conflagrate on CD, weaves Shadowburn, spams Searing Pain (benefiting from Agonizing Flames & Demonic Brand), and feeds pet mana via Demonic Energies.";
         case RotationChoice::DEEP_AFFLICTION:
@@ -113,6 +117,7 @@ enum class PriorityAction : uint8_t {
     CURSE_OF_AGONY,
     CURSE_OF_DOOM,
     NIGHTFALL_SHADOW_BOLT,
+    DECIMATION_SEARING_PAIN,
     DECIMATION_SOUL_FIRE,
     CORRUPTION,
     SIPHON_LIFE,
@@ -225,11 +230,19 @@ struct PolicyConfig {
         auto add_decimation = [&]() {
             if (talents.demo.decimation > 0 || use_decimation_soul_fire) {
                 rules.push_back({
+                    PriorityAction::DECIMATION_SEARING_PAIN,
+                    SpellID::SEARING_PAIN,
+                    "Decimation Trigger (Searing Pain)",
+                    "Target HP < 35% & Decimation Inactive",
+                    "Trigger when: Boss is below 35% health AND Decimation 10s buff is inactive, casting Searing Pain to activate Decimation.",
+                    "Fast Searing Pain cast on execute to activate Decimation's Soul Fire cast time reduction and 0-shard cost."
+                });
+                rules.push_back({
                     PriorityAction::DECIMATION_SOUL_FIRE,
                     SpellID::SOUL_FIRE,
                     "Decimation Soul Fire",
-                    "Target HP < 35% (Execute)",
-                    "Trigger when: Boss is below 35% health AND Decimation proc reduces Soul Fire cast time by 40% with 0 Soul Shards.",
+                    "Target HP < 35% & Decimation Active",
+                    "Trigger when: Boss is below 35% health AND Decimation buff is active on player AND Soul Fire CD is ready.",
                     "Executes the boss with rapid high-damage Soul Fire casts."
                 });
             }
@@ -249,7 +262,7 @@ struct PolicyConfig {
         };
 
         auto add_agony = [&]() {
-            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) {
+            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW) {
                 rules.push_back({
                     PriorityAction::CURSE_OF_AGONY,
                     SpellID::CURSE_OF_AGONY,
@@ -373,11 +386,20 @@ struct PolicyConfig {
                 add_sb_filler();
                 break;
 
+            case RotationChoice::DP_AF_SHADOW:
+                add_racial();
+                add_decimation();
+                add_corruption();
+                add_agony();
+                add_sb_filler();
+                break;
+
             case RotationChoice::FIRE_DESTRO:
                 add_racial();
                 add_decimation();
                 add_immolate();
                 add_conflagrate();
+                add_corruption();
                 add_shadowburn();
                 if (talents.destro.incinerate > 0) {
                     rules.push_back({
@@ -416,6 +438,7 @@ struct PolicyConfig {
 
             case RotationChoice::SHADOW_DESTRO:
                 add_racial();
+                add_decimation();
                 if (talents.destro.shadow_and_flame > 0 && talents.destro.conflagrate > 0) {
                     add_immolate();
                     add_conflagrate();

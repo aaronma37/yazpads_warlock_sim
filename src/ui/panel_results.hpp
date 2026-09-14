@@ -212,24 +212,40 @@ inline void render_panel_results(const BatchSimResult& batch) {
                 ImGui::TextColored(ImVec4(0.5f, 0.4f, 0.9f, 1.0f), "%.1f%%", batch.pct_drain_soul);
             }
 
-            if (batch.pct_pet_imp > 0.001) {
+            if (batch.pct_pet_firebolt > 0.001) {
                 ImGui::Text("Imp (Firebolt): ");
                 ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_imp * 0.01), ImVec2(240, 0), "");
+                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_firebolt * 0.01), ImVec2(240, 0), "");
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet_imp, batch.mean_pet_dps);
-            } else if (batch.pct_pet_succubus > 0.001) {
-                ImGui::Text("Succubus (Lash/Melee): ");
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "%.1f%%", batch.pct_pet_firebolt);
+            }
+
+            if (batch.pct_pet_lash_of_pain > 0.001) {
+                ImGui::Text("Succubus (Lash of Pain): ");
                 ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_succubus * 0.01), ImVec2(240, 0), "");
+                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_lash_of_pain * 0.01), ImVec2(240, 0), "");
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet_succubus, batch.mean_pet_dps);
-            } else if (batch.pct_pet > 0.001) {
-                ImGui::Text("Demon (Pet): ");
+                ImGui::TextColored(ImVec4(0.7f, 0.3f, 0.9f, 1.0f), "%.1f%%", batch.pct_pet_lash_of_pain);
+            }
+
+            if (batch.pct_pet_melee > 0.001) {
+                ImGui::Text("Succubus (Melee): ");
                 ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(batch.pct_pet * 0.01), ImVec2(240, 0), "");
+                ImGui::ProgressBar(static_cast<float>(batch.pct_pet_melee * 0.01), ImVec2(240, 0), "");
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%.1f%% (%.1f DPS)", batch.pct_pet, batch.mean_pet_dps);
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%.1f%%", batch.pct_pet_melee);
+            }
+
+            if (batch.pct_demonic_brand > 0.001) {
+                ImGui::Text("Demonic Brand: ");
+                ImGui::SameLine(180);
+                ImGui::ProgressBar(static_cast<float>(batch.pct_demonic_brand * 0.01), ImVec2(240, 0), "");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.8f, 1.0f), "%.1f%%", batch.pct_demonic_brand);
+            }
+
+            if (batch.pct_pet > 0.001) {
+                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Total Pet DPS: %.1f (%.1f%% of total)", batch.mean_pet_dps, batch.pct_pet);
             }
 
             ImGui::Spacing();
