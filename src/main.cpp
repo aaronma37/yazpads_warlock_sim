@@ -13,7 +13,7 @@
 using namespace warlock;
 
 void print_help() {
-    std::cout << "WoW Forever Warlock DES Simulator & Multi-Threaded Optimizer\n"
+    std::cout << "WoW: Forever Warlock DES\n"
               << "Usage: ./warlock_sim [options]\n\n"
               << "Options:\n"
               << "  --headless                     Run in headless CLI mode (no window)\n"

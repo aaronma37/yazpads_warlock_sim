@@ -156,23 +156,6 @@ inline void render_armory_panel(
     float avail_w = ImGui::GetContentRegionAvail().x;
     float mode_btn_w = (avail_w - 6.0f) * 0.5f;
 
-    bool in_gear_mode = !sim.use_raw_stats;
-    if (in_gear_mode) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.42f, 0.20f, 0.68f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 0.85f, 0.20f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.12f, 0.18f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.28f, 0.45f, 0.6f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    }
-    if (ImGui::Button("EQUIPPED ITEMS", ImVec2(mode_btn_w, 28))) {
-        sim.use_raw_stats = false;
-    }
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(2);
-
-    ImGui::SameLine();
 
     bool in_raw_mode = sim.use_raw_stats;
     if (in_raw_mode) {
@@ -189,6 +172,24 @@ inline void render_armory_panel(
         if (sim.raw_stats.spell_power == 0.0 && sim.raw_stats.shadow_power == 0.0) {
             sim.raw_stats = sim.gear.calculate_stats();
         }
+    }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
+
+    ImGui::SameLine();
+
+    bool in_gear_mode = !sim.use_raw_stats;
+    if (in_gear_mode) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.42f, 0.20f, 0.68f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 0.85f, 0.20f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.12f, 0.18f, 0.85f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.28f, 0.45f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    }
+    if (ImGui::Button("EQUIPPED ITEMS", ImVec2(mode_btn_w, 28))) {
+        sim.use_raw_stats = false;
     }
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);

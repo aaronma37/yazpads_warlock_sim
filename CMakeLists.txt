@@ -69,6 +69,7 @@ set(TEST_SOURCES
     tests/test_buffs.cpp
     tests/test_rotations.cpp
     tests/test_mechanics.cpp
+    tests/test_spec_presets.cpp
 )
 
 add_executable(sim_tests

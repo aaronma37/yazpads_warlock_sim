@@ -1,4 +1,5 @@
 #include "optimizer.hpp"
+#include "spec_presets.hpp"
 #include <algorithm>
 
 namespace warlock {
@@ -81,24 +82,19 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
         PetChoice pet;
         bool sac_succubus;
         bool sac_imp;
+        bool maintain_immolate;
     };
 
-    std::vector<Candidate> candidates = {
-        {"5/11/35 DS/AF DS-Imp", Talents::create_forever_ds_af(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
-        {"9/11/31 Fire Destro+Suppression DS-Succ", Talents::create_forever_fire_destro(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"3/17/31 Shadow and Flame Fire DS-Succ", Talents::create_forever_shadow_and_flame_fire_ds_succ(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"5/11/35 DS/Searing Pain DS-Succ", Talents::create_forever_ds_searing_pain(), RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false},
-        {"2/31/18 DP/AF Shadow DS-Imp", Talents::create_forever_dp_af_shadow(), RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true},
-        {"0/31/20 DP/AF Fire DS-Succ", Talents::create_forever_dp_af_fire(), RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false},
-        {"40/11/0 Deep Affliction DS-Imp", Talents::create_forever_deep_affliction(), RotationChoice::DEEP_AFFLICTION, PetChoice::NONE, false, true},
-        {"32/0/19 SM/AF", Talents::create_forever_sm_af(), RotationChoice::SM_RUIN, PetChoice::IMP, false, false},
-        {"1/17/33 Shadow and Flame Fire", Talents::create_forever_shadow_and_flame(), RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false},
-        {"10/10/31 Shadow and Flame Fire 2", Talents::create_forever_shadow_and_flame_fire_2(), RotationChoice::SHADOW_AND_FLAME_FIRE_2, PetChoice::IMP, false, false},
-        {"2/17/32 Shadow and Flame Shadow", Talents::create_forever_shadow_and_flame_shadow(), RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false},
-        {"2/17/32 Shadow and Flame Shadow 2", Talents::create_forever_shadow_and_flame_shadow_2(), RotationChoice::SHADOW_DESTRO_2, PetChoice::IMP, false, false},
-        {"19/11/21 NF/DS/Ruin DS-Imp", Talents::create_forever_nf_ds_ruin(), RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true},
-        {"23/10/18 NF/AF", Talents::create_forever_nf_af(), RotationChoice::SM_RUIN, PetChoice::IMP, false, false}
-    };
+    // Spec names, talents, and policies come from the central registry in
+    // spec_presets.hpp so a rename there propagates to every consumer.
+    std::vector<Candidate> candidates;
+    candidates.reserve(standard_spec_presets().size());
+    for (const auto& preset : standard_spec_presets()) {
+        candidates.push_back({preset.display_name, preset.make_talents(),
+                              preset.rotation, preset.pet,
+                              preset.sac_succubus, preset.sac_imp,
+                              preset.maintain_immolate});
+    }
 
     std::vector<Race> races_to_test = compare_all_races
         ? std::vector<Race>{Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME}
@@ -125,9 +121,7 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             sim.buffs.sacrifice_imp = cand.sac_imp;
             sim.policy.pet = cand.pet;
             sim.policy.rotation = cand.rotation;
-            if (cand.rotation == RotationChoice::FIRE_DESTRO || cand.rotation == RotationChoice::DP_RUIN_FIRE || cand.rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2) {
-                sim.policy.maintain_immolate = true;
-            }
+            sim.policy.maintain_immolate = cand.maintain_immolate;
 
             BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
 
