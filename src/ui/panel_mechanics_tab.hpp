@@ -49,6 +49,15 @@ inline void render_panel_mechanics_tab() {
         ImGui::BulletText("Dynamic Spell Power Scaling: DoTs dynamically query active player spell power on each tick rather than snapshotting on initial application (classic snapshotting toggleable).");
         ImGui::Spacing();
     }
+
+    // 6. Pet Stat Scaling & Mana Management
+    if (ImGui::CollapsingHeader("6. Pet Stat Scaling & Mana Management", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::BulletText("Pet SP Inheritance: Summoned demons inherit a percentage of the master's Spell Power (default 15%% for demon spells like Imp Firebolt and Succubus Lash of Pain).");
+        ImGui::BulletText("Pet AP Inheritance: Demons inherit master's Spell Power converted into Attack Power (default 57%% for melee auto-attacks like Succubus melee).");
+        ImGui::BulletText("Customizable Ratios: Pet scaling toggle and custom SP / AP scaling percentages can be adjusted under Game Mechanics in the Presets & Setup panel.");
+        ImGui::BulletText("Pet Mana Pools: Imp (1,150 mana) and Succubus (1,450 mana) consume mana on casts, benefiting from MP5 and raid mana restoration buffs (Blessing / Judgement of Wisdom).");
+        ImGui::Spacing();
+    }
 }
 
 } // namespace warlock

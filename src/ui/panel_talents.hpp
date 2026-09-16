@@ -12,6 +12,32 @@
 
 namespace warlock {
 
+// Encodes talent points into a talentsforever.com URL segment.
+// Each tree is encoded as a string of digits in the order the nodes appear in the
+// node definition array (which is already row-major, col-major). One digit per node,
+// no padding, no trailing-zero stripping — the segment length equals the node count.
+template<size_t N>
+inline std::string encode_tree_url(
+    const std::array<TalentNodeDef, N>& nodes,
+    auto get_pts_func
+) {
+    std::string s;
+    s.reserve(N);
+    for (size_t i = 0; i < N; ++i)
+        s += static_cast<char>('0' + std::min(get_pts_func(i), 9));
+    return s;
+}
+
+inline std::string talents_to_url(const Talents& t) {
+    std::string aff = encode_tree_url(FOREVER_AFFLICTION_NODES,
+        [&](size_t i) { return t.aff.get_points_by_index(i); });
+    std::string demo = encode_tree_url(FOREVER_DEMONOLOGY_NODES,
+        [&](size_t i) { return t.demo.get_points_by_index(i); });
+    std::string destro = encode_tree_url(FOREVER_DESTRUCTION_NODES,
+        [&](size_t i) { return t.destro.get_points_by_index(i); });
+    return "https://talentsforever.com/warlock/60/" + aff + "-" + demo + "-" + destro;
+}
+
 // Helper to check prerequisite for a node in a tree
 template<size_t N>
 inline bool is_prereq_fulfilled(const std::array<TalentNodeDef, N>& nodes, const TalentNodeDef& node, auto get_pts_func) {
@@ -404,25 +430,74 @@ inline void render_panel_talents(WarlockSimulator& sim) {
 
     ImGui::Spacing();
 
-    // Presets Row — labels/configs come from standard_spec_presets()
+    // Presets dropdown — labels/configs come from standard_spec_presets()
     // (src/sim/spec_presets.hpp); full display names live there too.
-    ImGui::Text("Presets:");
+    ImGui::Text("Preset:");
+    ImGui::SameLine();
     {
-        bool first = true;
-        for (const auto& preset : standard_spec_presets()) {
-            if (!first) ImGui::SameLine();
-            first = false;
-            if (ImGui::SmallButton(preset.short_label)) {
-                apply_spec_preset(sim, preset);
+        const auto& presets = standard_spec_presets();
+        static int preset_idx = -1; // -1 = no selection / placeholder
+
+        // Build a flat list of display names for the combo
+        // (ImGui::Combo needs a contiguous const char* array)
+        static std::vector<const char*> preset_names;
+        if (preset_names.size() != presets.size()) {
+            preset_names.clear();
+            for (const auto& p : presets)
+                preset_names.push_back(p.display_name);
+        }
+
+        const char* preview = (preset_idx >= 0 && preset_idx < (int)presets.size())
+            ? presets[preset_idx].display_name
+            : "-- Select a preset --";
+
+        ImGui::SetNextItemWidth(340);
+        if (ImGui::BeginCombo("##PresetCombo", preview)) {
+            for (int i = 0; i < (int)presets.size(); ++i) {
+                bool selected = (preset_idx == i);
+                if (ImGui::Selectable(presets[i].display_name, selected)) {
+                    preset_idx = i;
+                    apply_spec_preset(sim, presets[i]);
+                }
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", presets[i].display_name);
+                    ImGui::TextDisabled("Rotation: %s", rotation_choice_to_string(presets[i].rotation));
+                    ImGui::EndTooltip();
+                }
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", preset.display_name);
-            }
+            ImGui::EndCombo();
         }
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset All")) {
         sim.talents = Talents();
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+    static bool url_copied = false;
+    static float url_copied_timer = 0.0f;
+    if (ImGui::SmallButton("Copy URL")) {
+        std::string url = talents_to_url(sim.talents);
+        ImGui::SetClipboardText(url.c_str());
+        url_copied = true;
+        url_copied_timer = 2.5f;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Copy a talentsforever.com link for the current talent build to clipboard");
+    }
+    if (url_copied) {
+        url_copied_timer -= ImGui::GetIO().DeltaTime;
+        if (url_copied_timer <= 0.0f) {
+            url_copied = false;
+        } else {
+            float alpha = std::min(1.0f, url_copied_timer);
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.5f, alpha), "✓ Copied!");
+        }
     }
 
     ImGui::Separator();

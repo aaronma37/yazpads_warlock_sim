@@ -104,6 +104,8 @@ inline void render_panel_optimizer(
         }
 
         int num_cols = show_stat_weights ? 13 : 8;
+        static bool show_std_dev = false;
+        if (!show_std_dev) num_cols -= 1; // hide +/- StdDev column
 
         // Calculate active base combat stats for the header line
         Stats base_stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
@@ -122,6 +124,7 @@ inline void render_panel_optimizer(
         }
 
         // Spec table header with active base stats matching Build Configuration
+        static bool show_pct_from_leader = false;
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Specs");
         ImGui::SameLine();
         ImGui::TextDisabled("|");
@@ -153,6 +156,41 @@ inline void render_panel_optimizer(
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "MP5: %.0f", base_stats.mp5);
         }
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        if (sim.mechanics.pet_scaling) {
+            double pet_sp_pct = sim.mechanics.pet_sp_ratio * 100.0;
+            double pet_ap_pct = sim.mechanics.pet_ap_ratio * 100.0;
+            ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.55f, 1.0f),
+                               (std::fmod(pet_sp_pct, 1.0) == 0.0 ? "Pet SP: %.0f%%" : "Pet SP: %.1f%%"),
+                               pet_sp_pct);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Pet Spell Power inheritance: %.1f%% of master's SP (demon spells)", pet_sp_pct);
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.55f, 1.0f),
+                               (std::fmod(pet_ap_pct, 1.0) == 0.0 ? "Pet AP: %.0f%%" : "Pet AP: %.1f%%"),
+                               pet_ap_pct);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Pet Attack Power inheritance: %.1f%% of master's SP (demon melee)", pet_ap_pct);
+            }
+        } else {
+            ImGui::TextColored(ImVec4(0.60f, 0.60f, 0.60f, 1.0f), "Pet Scaling: Off");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Pet stat scaling is disabled (Classic 1.12 flat base damage)");
+            }
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::Checkbox("% from Leader", &show_pct_from_leader);
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::Checkbox("Show Std Dev", &show_std_dev);
 
         if (ImGui::BeginTable("OptLeaderboardTable", num_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
@@ -161,8 +199,9 @@ inline void render_panel_optimizer(
             ImGui::TableSetupColumn("Pet / Sac", ImGuiTableColumnFlags_WidthFixed, 80);
             ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Damage Split (S / F / P)", ImGuiTableColumnFlags_WidthFixed, 150);
-            ImGui::TableSetupColumn("Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
-            ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 75);
+            ImGui::TableSetupColumn(show_pct_from_leader ? "% vs Leader" : "Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
+            if (show_std_dev)
+                ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 75);
             if (show_stat_weights) {
                 ImGui::TableSetupColumn("DPS/SP", ImGuiTableColumnFlags_WidthFixed, 65);
                 ImGui::TableSetupColumn("DPS/Hit", ImGuiTableColumnFlags_WidthFixed, 70);
@@ -382,10 +421,25 @@ inline void render_panel_optimizer(
                 }
 
                 ImGui::TableNextColumn();
-                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.1f", r.mean_dps);
+                if (show_pct_from_leader) {
+                    if (best.mean_dps > 0.0) {
+                        double pct_diff = ((r.mean_dps - best.mean_dps) / best.mean_dps) * 100.0;
+                        if (r.rank == 1) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "= Leader");
+                        } else {
+                            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%.2f%%", pct_diff);
+                        }
+                    } else {
+                        ImGui::TextDisabled("-");
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.1f", r.mean_dps);
+                }
 
-                ImGui::TableNextColumn();
-                ImGui::TextDisabled("+/- %.1f", r.std_dev_dps);
+                if (show_std_dev) {
+                    ImGui::TableNextColumn();
+                    ImGui::TextDisabled("+/- %.1f", r.std_dev_dps);
+                }
 
                 if (show_stat_weights) {
                     ImGui::TableNextColumn();
