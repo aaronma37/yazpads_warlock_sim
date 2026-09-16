@@ -25,7 +25,7 @@ struct SpecPreset {
     bool maintain_immolate;
 };
 
-// Canonical registry of the 14 standard specs. Order here determines the
+// Canonical registry of the 15 standard specs. Order here determines the
 // order of the talent panel buttons, the Build Presets menu, and (before
 // DPS sorting) the optimizer candidates.
 inline const std::vector<SpecPreset>& standard_spec_presets() {
@@ -50,6 +50,8 @@ inline const std::vector<SpecPreset>& standard_spec_presets() {
             &Talents::create_forever_shadow_and_flame, RotationChoice::FIRE_DESTRO, PetChoice::IMP, false, false, true},
         {"incin_supp_imp", "10/10/31 Incinerate - Suppression + Imp", "Shadow and Flame Fire 2",
             &Talents::create_forever_shadow_and_flame_fire_2, RotationChoice::SHADOW_AND_FLAME_FIRE_2, PetChoice::IMP, false, false, true},
+        {"incin_supp_succ", "7/13/31 Incinerate - Suppression + Succubus", "Shadow and Flame Fire Succ",
+            &Talents::create_forever_shadow_and_flame_fire_2_succubus, RotationChoice::SHADOW_AND_FLAME_FIRE_2, PetChoice::SUCCUBUS, false, false, true},
         {"sf_shadow_decimate", "2/17/32 Shadow and Flame Shadow - Decimate", "Shadow and Flame Shadow",
             &Talents::create_forever_shadow_and_flame_shadow, RotationChoice::SHADOW_DESTRO, PetChoice::IMP, false, false, true},
         {"sf_shadow", "2/17/32 Shadow and Flame Shadow", "Shadow and Flame Shadow 2",

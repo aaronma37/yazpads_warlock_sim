@@ -6,7 +6,9 @@
 
 namespace warlock {
 
-inline void render_panel_buffs(BuffConfig& buffs) {
+inline void render_panel_buffs(WarlockSimulator& sim) {
+    BuffConfig& buffs = sim.buffs;
+
     // 1. Consumables (Default Collapsed)
     if (ImGui::CollapsingHeader("Consumables & Elixirs", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent(8.0f);
@@ -52,7 +54,28 @@ inline void render_panel_buffs(BuffConfig& buffs) {
         ImGui::Unindent(8.0f);
     }
 
-    // 5. Demonic Sacrifice Modifiers (Default Collapsed)
+    // 5. Active Demon Pet (collapsible one-of checkboxes above Demonic Sacrifice)
+    if (ImGui::CollapsingHeader("Active Demon Pet", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        auto pet_option = [&](PetChoice pet) {
+            bool selected = (sim.policy.pet == pet);
+            const char* pet_icon = pet_choice_to_icon(pet);
+            if (pet_icon[0] != '\0') {
+                Texture2D icon = AssetManager::get().get_icon(pet_icon);
+                ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(18, 18));
+                ImGui::SameLine();
+            }
+            if (ImGui::Checkbox(pet_choice_to_string(pet), &selected) && selected) {
+                sim.policy.pet = pet;
+            }
+        };
+        pet_option(PetChoice::NONE);
+        pet_option(PetChoice::SUCCUBUS);
+        pet_option(PetChoice::IMP);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 6. Demonic Sacrifice Modifiers (Default Collapsed)
     if (ImGui::CollapsingHeader("Demonic Sacrifice Modifiers", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent(8.0f);
         ImGui::Checkbox("Sacrifice Imp (+15% Shadow Damage in Forever)", &buffs.sacrifice_imp);

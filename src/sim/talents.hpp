@@ -565,6 +565,35 @@ struct Talents {
         return t;
     }
 
+    // 2d3. 7/13/31 Incinerate - Suppression + Succubus (5/5 Suppression, 2/5 Imp Corruption,
+    //      5/5 Unholy Power, 3/3 Fel Vitality, 2/2 Demonic Energies, 3/3 Imp Sayaad; active Succubus)
+    static Talents create_forever_shadow_and_flame_fire_2_succubus() {
+        Talents t;
+        // Affliction: 7 points
+        t.aff.suppression = 5;             // 5/5 (+5% spell hit, -20% threat)
+        t.aff.improved_corruption = 2;     // 2/5 (-0.8s cast time, +4% damage)
+
+        // Demonology: 13 points
+        t.demo.unholy_power = 5;           // +10% pet damage
+        t.demo.fel_vitality = 3;           // +15% Max Mana
+        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+        t.demo.improved_sayaad = 3;        // +30% Succubus Lash of Pain, -3s Lash cooldown
+
+        // Destruction: 31 points
+        t.destro.bane = 5;                 // -0.5s Incinerate / -2.0s Soul Fire
+        t.destro.cataclysm = 1;            // 1/3 (-3% mana cost)
+        t.destro.aftermath = 5;            // 5/5 Aftermath
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // Instant finisher, triggers +10% Fire buff from Shadow & Flame!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;          // Conflagrate (never consumes Immolate, buffs Shadow by 10%)
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
     // 2e. 2/17/32 Shadow and Flame Shadow
     static Talents create_forever_shadow_and_flame_shadow() {
         Talents t;

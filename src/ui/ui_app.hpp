@@ -14,16 +14,17 @@
 #include "panel_buffs.hpp"
 #include "panel_policy.hpp"
 #include "panel_results.hpp"
-#include "panel_comparison.hpp"
 #include "panel_optimizer.hpp"
 #include "panel_spellbook.hpp"
 #include "panel_mechanics_tab.hpp"
 #include "panel_known_issues.hpp"
+#include "panel_imp_analysis.hpp"
 
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/optimizer.hpp"
 #include "src/sim/spec_presets.hpp"
+#include "src/sim/build_export.hpp"
 
 namespace warlock {
 
@@ -31,7 +32,6 @@ class WarlockSimApp {
 public:
     WarlockSimulator sim;
     BatchSimResult last_result;
-    std::vector<CandidateResult> comparison_results;
     std::vector<CandidateResult> optimizer_results;
 
     int iterations = 10000;
@@ -40,15 +40,13 @@ public:
     bool is_sim_running = false;
     float sim_progress = 0.0f;
 
-    bool is_comparing = false;
-    float compare_progress = 0.0f;
-    std::string compare_task_name;
-
     bool is_optimizing = false;
     float opt_progress = 0.0f;
     std::string opt_task_name;
 
     bool request_switch_to_preset = false;
+
+    float build_copied_timer = 0.0f;
 
     std::string character_name = "Grimmortis";
     int selected_model_idx = 3; // 3 = Human (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
@@ -204,9 +202,21 @@ public:
                             // SUBTAB 1: BUILD CONFIGURATION (Gear, Talents, Buffs, Rotation)
                             // -------------------------------------------------------------
                             if (ImGui::BeginTabItem("  Build Configuration  ")) {
+                                if (ImGui::Button("Copy Build to Clipboard")) {
+                                    ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
+                                    build_copied_timer = 3.0f;
+                                }
+                                if (build_copied_timer > 0.0f) {
+                                    build_copied_timer -= ImGui::GetIO().DeltaTime;
+                                    ImGui::SameLine();
+                                    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
+                                                       "Build copied to clipboard!");
+                                }
+                                ImGui::Spacing();
+
                                 const float pane1_w = 320.0f; // Gear & Direct Stats
                                 const float pane2_w = 830.0f; // Talents Tree (51 Points - All 3 Trees Visible)
-                                const float pane_height = full_height - 40.0f;
+                                const float pane_height = full_height - 75.0f; // Toolbar row above
 
                                 // Pane 1: Gear & Direct Stats
                                 ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
@@ -227,7 +237,7 @@ public:
                                 render_panel_target(sim.target_config, sim.fight_duration);
                                 ImGui::Spacing();
                                 ImGui::Separator();
-                                render_panel_buffs(sim.buffs);
+                                render_panel_buffs(sim);
                                 ImGui::Spacing();
                                 ImGui::Separator();
                                 render_panel_policy(sim);
@@ -257,27 +267,11 @@ public:
                     }
 
                     // -----------------------------------------------------------------
-                    // 2. COMBINATORIAL SIMULATION (Brute-Force Optimizer & Comparison)
+                    // 2. SIMULATE (Brute-Force Optimizer)
                     // -----------------------------------------------------------------
                     if (ImGui::BeginTabItem("  Simulate  ")) {
-                        if (ImGui::BeginTabBar("CombinatorialSubTabs", ImGuiTabBarFlags_None)) {
-
-                            // Subtab 1: Optimizer & Leaderboard
-                            if (ImGui::BeginTabItem("  Brute-Force Optimizer & Leaderboard  ")) {
-                                ImGui::Spacing();
-                                render_panel_optimizer(sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset);
-                                ImGui::EndTabItem();
-                            }
-
-                            // Subtab 2: Theorycrafting Comparison
-                            if (ImGui::BeginTabItem("  Side-by-Side Comparison  ")) {
-                                ImGui::Spacing();
-                                render_panel_comparison(sim, comparison_results, is_comparing, compare_progress, compare_task_name);
-                                ImGui::EndTabItem();
-                            }
-
-                            ImGui::EndTabBar();
-                        }
+                        ImGui::Spacing();
+                        render_panel_optimizer(sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset);
 
                         ImGui::EndTabItem();
                     }
@@ -306,6 +300,15 @@ public:
                     if (ImGui::BeginTabItem("  Known Issues  ")) {
                         ImGui::Spacing();
                         render_panel_known_issues();
+                        ImGui::EndTabItem();
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 6. IMP DAMAGE ANALYSIS (Firebolt DPS vs Master SP)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  Imp Damage Analysis  ")) {
+                        ImGui::Spacing();
+                        render_panel_imp_analysis(sim.fight_duration);
                         ImGui::EndTabItem();
                     }
 

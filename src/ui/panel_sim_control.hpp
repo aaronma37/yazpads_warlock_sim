@@ -69,49 +69,6 @@ inline void render_panel_sim_control(
     int max_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (max_threads <= 0) max_threads = 4;
     ImGui::SliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
-
-    ImGui::Separator();
-
-    // Raid Buffs & Consumables
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Raid Buffs & Consumables:");
-    if (ImGui::CollapsingHeader("Raid Buffs", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Checkbox("Arcane Intellect (+31 Int)", &sim.buffs.arcane_intellect);
-        ImGui::SameLine(220);
-        ImGui::Checkbox("Blessing of Kings (+10% Stats)", &sim.buffs.blessing_of_kings);
-        ImGui::Checkbox("Blessing of Wisdom (+30 MP5)", &sim.buffs.blessing_of_wisdom);
-        ImGui::SameLine(220);
-        ImGui::Checkbox("Mark of the Wild (+12 Stats)", &sim.buffs.mark_of_the_wild);
-        ImGui::Checkbox("Judgement of Wisdom (Mana Proc)", &sim.buffs.judgement_of_wisdom);
-        ImGui::SameLine(220);
-        ImGui::Checkbox("Shadow Weaving (+15% Shadow)", &sim.buffs.shadow_weaving);
-    }
-
-    if (ImGui::CollapsingHeader("Consumables", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Checkbox("Flask of Supreme Power (+150 SP)", &sim.buffs.flask_of_supreme_power);
-        ImGui::SameLine(240);
-        ImGui::Checkbox("Brilliant Wizard Oil (+36 SP, +1% Crit)", &sim.buffs.brilliant_wizard_oil);
-        ImGui::Checkbox("Greater Arcane Elixir (+35 SP)", &sim.buffs.greater_arcane_elixir);
-        ImGui::SameLine(240);
-        ImGui::Checkbox("Elixir of Shadow Power (+40 Shadow)", &sim.buffs.elixir_of_shadow_power);
-        ImGui::Checkbox("Major Mana Potions (120s CD)", &sim.buffs.use_mana_potions);
-        ImGui::SameLine(240);
-        ImGui::Checkbox("Demonic Runes (120s CD)", &sim.buffs.use_demonic_runes);
-    }
-
-    if (ImGui::CollapsingHeader("World Buffs", ImGuiTreeNodeFlags_None)) {
-        ImGui::Checkbox("Rallying Cry (+10% Spell Crit)", &sim.buffs.rallying_cry);
-        ImGui::SameLine(240);
-        ImGui::Checkbox("Songflower (+5% Crit, +15 Stats)", &sim.buffs.songflower);
-        ImGui::Checkbox("Spirit of Zandalar (+10% Stats)", &sim.buffs.spirit_of_zandalar);
-        ImGui::SameLine(240);
-        ImGui::Checkbox("Sayge's Fortune (+10% Damage)", &sim.buffs.sayges_fortune);
-    }
-
-    if (ImGui::CollapsingHeader("Pet & Sacrifice", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Checkbox("Sacrifice Succubus (+15% Shadow Damage)", &sim.buffs.sacrifice_succubus);
-        ImGui::SameLine(260);
-        ImGui::Checkbox("Sacrifice Imp (+15% Fire Damage)", &sim.buffs.sacrifice_imp);
-    }
 }
 
 } // namespace warlock

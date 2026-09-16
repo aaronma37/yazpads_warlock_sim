@@ -34,7 +34,7 @@ inline void render_panel_optimizer(
     ImGui::Spacing();
     if (is_optimizing) ImGui::BeginDisabled();
 
-    if (ImGui::Button("Explore Standard Specs", ImVec2(210, 28))) {
+    if (ImGui::Button("Simulate", ImVec2(210, 28))) {
         is_optimizing = true;
         opt_progress = 0.0f;
         optimizer_results = Optimizer::optimize_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
@@ -43,80 +43,6 @@ inline void render_panel_optimizer(
         }, compare_all_races, calculate_stat_weights);
         is_optimizing = false;
         opt_progress = 1.0f;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Combinatorial Talent Search", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::explore_combinatorial_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        }, compare_all_races, calculate_stat_weights);
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Explore Phase Gear Sets", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::optimize_gear(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        });
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-
-    ImGui::Spacing();
-    if (ImGui::Button("Explore Consumables", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::compare_consumable_tiers(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        });
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Calculate Stat Weights (EP)", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::compare_stat_values(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        });
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Explore Rotation Policy", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::optimize_policy(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        });
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-
-    ImGui::Spacing();
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.25f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.65f, 0.35f, 1.0f));
-    if (ImGui::Button("🧬 Perturb & Maximize Active Setup (Talents + Rotation APL)", ImVec2(430, 30))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::perturb_preset(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        });
-        is_optimizing = false;
-        opt_progress = 1.0f;
-    }
-    ImGui::PopStyleColor(2);
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Takes your current active talents, pet, and rotation, and systematically evaluates localized mutations\n(e.g., shifting points between Agonizing Flames and Shadow Mastery, testing DoTs/Banes, pet choices, cooldowns)\nto uncover the highest DPS configuration!");
     }
 
     if (is_optimizing) ImGui::EndDisabled();
