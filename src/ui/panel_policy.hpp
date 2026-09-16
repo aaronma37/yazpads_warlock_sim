@@ -126,16 +126,19 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     ImGui::Text("Active Spell Rotation Preset:");
     int rot_idx = static_cast<int>(policy.rotation);
     const char* rot_names[] = {
-        "5/11/35 DS/AF (Conflag Weave + SB Spam)",
-        "5/11/35 Fire Destro (Incinerate + Conflagrate)",
-        "2/31/18 DP/AF Shadow (Corruption + CoA + SB)",
-        "0/31/20 DP/AF Fire (Searing Pain + Immolate + Conflag)",
-        "40/11/0 Deep Affliction (DS Imp / Drain Hope)",
-        "32/0/19 SM/AF (Corruption + CoA + SB Spam)",
-        "0/31/20 Demo Execute (Decimation Soul Fire + SB)",
-        "Pure Shadow Bolt (No DoTs / Classic Limit)",
-        "20/0/31 Multi-DoT Hybrid (Agony + Corr + Immo)",
-        "8/12/31 Shadow and Flame Fire 2 (Incinerate + Immolate + Conflag)"
+        "Shadow Destro — Conflag Weave + Decimation",  // 0  SHADOW_DESTRO
+        "Shadow Destro — Conflag Weave",               // 1  SHADOW_DESTRO_2
+        "Fire Destro — Incinerate + Conflag",          // 2  FIRE_DESTRO
+        "Demonology Shadow — Corruption + Bane + SB",  // 3  DP_AF_SHADOW
+        "Demonology Fire — Searing Pain",              // 4  DP_RUIN_FIRE
+        "Deep Affliction — Drain Hope",                // 5  DEEP_AFFLICTION
+        "Shadow Mastery — DoTs + SB",                  // 6  SM_RUIN
+        "Demo Execute — Decimation Soul Fire",         // 7  DEMONOLOGY_EXECUTE
+        "Pure Shadow Bolt — No DoTs",                  // 8  PURE_SHADOW_BOLT
+        "Affliction Hybrid — Multi-DoT",               // 9  AFFLICTION_HYBRID_DOTS
+        "Shadow & Flame Fire — Incinerate + Conflag",  // 10 SHADOW_AND_FLAME_FIRE_2
+        "Demonology Shadow — Bane + SB",               // 11 DP_AF_SHADOW_NO_CORRUPTION
+        "Fire Destro — Incinerate + Conflag (No Corruption)", // 12 FIRE_DESTRO_NO_CORRUPTION
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {

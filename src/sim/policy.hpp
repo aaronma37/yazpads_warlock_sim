@@ -67,14 +67,16 @@ enum class RotationChoice : uint8_t {
     SHADOW_DESTRO = 0,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
     SHADOW_DESTRO_2,      // Shadow Destro: Corruption + Shadowburn + SB filler (no Immolate/Conflag)
     FIRE_DESTRO,            // Fire Destro: Immolate (+25% Incinerate dmg) + Conflagrate + Shadowburn (10% Fire buff) + Incinerate filler
-    DP_AF_SHADOW,           // 2/31/18 DP/AF Shadow: Shadow Bolt spam (no Corruption / DoTs)
+    DP_AF_SHADOW,           // Demonology Shadow: Corruption + Bane of Agony + SB filler
     DP_RUIN_FIRE,           // DP/Ruin Fire: Immolate + Conflagrate + Searing Pain / Decimation Soul Fire (<35% HP)
     DEEP_AFFLICTION,        // Deep Affliction: Corruption + Bane of Agony + Drain Hope (20s CD) + Nightfall procs + SB filler
     SM_RUIN,                // SM/Ruin: Corruption + Bane of Agony + Nightfall + Shadowburn + Shadow Bolt filler
     DEMONOLOGY_EXECUTE,     // Demo Execute: Corruption + Bane of Agony + Decimation Soul Fire (<35% HP execute) + SB filler
     PURE_SHADOW_BOLT,       // Pure Shadow Bolt: SB spam only (0 DoTs, classic 16 debuff limit)
     AFFLICTION_HYBRID_DOTS, // Multi-DoT Hybrid: Agony + Corruption + Immolate + Drain Hope + SB filler
-    SHADOW_AND_FLAME_FIRE_2,// 8/12/31 Shadow & Flame Fire 2: Immolate + Conflag + Corruption + SBurn + Incinerate (No Searing Pain / Soul Fire)
+    SHADOW_AND_FLAME_FIRE_2,// Shadow & Flame Fire 2: Immolate + Conflag + Corruption + SBurn + Incinerate (No Searing Pain / Soul Fire)
+    DP_AF_SHADOW_NO_CORRUPTION, // Demonology Shadow (No Corruption): Bane of Agony only + SB filler
+    FIRE_DESTRO_NO_CORRUPTION,  // Fire Destro (No Corruption): Immolate + Conflagrate + Shadowburn + Incinerate filler, no Corruption
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -83,18 +85,20 @@ enum class RotationChoice : uint8_t {
 
 inline const char* rotation_choice_to_string(RotationChoice r) {
     switch (r) {
-        case RotationChoice::SHADOW_DESTRO: return "5/11/35 DS/AF (Conflag Weave + SB Spam)";
-        case RotationChoice::SHADOW_DESTRO_2: return "5/11/35 DS/AF (Conflag Weave + SB Spam)";
-        case RotationChoice::FIRE_DESTRO: return "5/11/35 Fire Destro (Incinerate + Conflagrate)";
-        case RotationChoice::DP_AF_SHADOW: return "2/31/18 DP/AF Shadow (Corruption + CoA + SB)";
-        case RotationChoice::DP_RUIN_FIRE: return "0/31/20 DP/AF Fire (Searing Pain + Immolate + Conflag)";
-        case RotationChoice::DEEP_AFFLICTION: return "40/11/0 Deep Affliction (DS Imp / Drain Hope)";
-        case RotationChoice::SM_RUIN: return "32/0/19 SM/AF (Corruption + CoA + SB Spam)";
-        case RotationChoice::DEMONOLOGY_EXECUTE: return "0/31/20 Demo Execute (Decimation Soul Fire + SB)";
-        case RotationChoice::PURE_SHADOW_BOLT: return "Pure Shadow Bolt (No DoTs / Classic Limit)";
-        case RotationChoice::AFFLICTION_HYBRID_DOTS: return "20/0/31 Multi-DoT Hybrid (Agony + Corr + Immo)";
-        case RotationChoice::SHADOW_AND_FLAME_FIRE_2: return "8/12/31 Shadow and Flame Fire 2 (Incinerate + Immolate + Conflag)";
-        default: return "DS/AF";
+        case RotationChoice::SHADOW_DESTRO: return "Shadow Destro — Conflag Weave + Decimation";
+        case RotationChoice::SHADOW_DESTRO_2: return "Shadow Destro — Conflag Weave";
+        case RotationChoice::FIRE_DESTRO: return "Fire Destro — Incinerate + Conflag";
+        case RotationChoice::DP_AF_SHADOW: return "Demonology Shadow — Corruption + Bane + SB";
+        case RotationChoice::DP_RUIN_FIRE: return "Demonology Fire — Searing Pain";
+        case RotationChoice::DEEP_AFFLICTION: return "Deep Affliction — Drain Hope";
+        case RotationChoice::SM_RUIN: return "Shadow Mastery — DoTs + SB";
+        case RotationChoice::DEMONOLOGY_EXECUTE: return "Demo Execute — Decimation Soul Fire";
+        case RotationChoice::PURE_SHADOW_BOLT: return "Pure Shadow Bolt — No DoTs";
+        case RotationChoice::AFFLICTION_HYBRID_DOTS: return "Affliction Hybrid — Multi-DoT";
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_2: return "Shadow & Flame Fire — Incinerate + Conflag";
+        case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION: return "Demonology Shadow — Bane + SB";
+        case RotationChoice::FIRE_DESTRO_NO_CORRUPTION: return "Fire Destro — Incinerate + Conflag (No Corruption)";
+        default: return "Shadow Destro";
     }
 }
 
@@ -122,6 +126,10 @@ inline const char* rotation_choice_description(RotationChoice r) {
             return "Maintains Bane of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Drain Hope and Shadow Bolt.";
         case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
             return "Shadow and Flame Fire 2: Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, maintains Corruption, weaves Shadowburn for +10% Fire buff, and spams Incinerate as filler with active Imp (no Searing Pain or Soul Fire).";
+        case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
+            return "Demonology Shadow variant that skips Corruption entirely. Maintains only Bane of Agony and spams Shadow Bolt as filler — useful when Corruption's debuff slot is not available or its DPS contribution is outweighed by omitting it.";
+        case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
+            return "Fire Destro variant that drops Corruption. Maintains Immolate, casts Conflagrate on CD, weaves Shadowburn for +10% Fire buff, and spams Incinerate — useful when the Corruption debuff slot is not available.";
         default:
             return "";
     }
@@ -412,6 +420,13 @@ struct PolicyConfig {
                 add_sb_filler();
                 break;
 
+            case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
+                add_racial();
+                add_decimation();
+                add_agony();
+                add_sb_filler();
+                break;
+
             case RotationChoice::FIRE_DESTRO:
                 add_racial();
                 add_decimation();
@@ -426,6 +441,33 @@ struct PolicyConfig {
                         "Incinerate",
                         "Primary Filler",
                         "Trigger when: Primary rotational fallback for Fire Destro.",
+                        "Fast 2.0s Fire filler dealing massive direct damage (+25% bonus damage against Immolated targets)."
+                    });
+                } else {
+                    rules.push_back({
+                        PriorityAction::SEARING_PAIN_FILLER,
+                        SpellID::SEARING_PAIN,
+                        "Searing Pain",
+                        "Primary Filler",
+                        "Trigger when: Fire filler spell.",
+                        "Fast 1.5s Fire filler spell."
+                    });
+                }
+                break;
+
+            case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
+                add_racial();
+                add_decimation();
+                add_immolate();
+                add_conflagrate();
+                add_shadowburn();
+                if (talents.destro.incinerate > 0) {
+                    rules.push_back({
+                        PriorityAction::INCINERATE_FILLER,
+                        SpellID::INCINERATE,
+                        "Incinerate",
+                        "Primary Filler",
+                        "Trigger when: Primary rotational fallback for Fire Destro (No Corruption).",
                         "Fast 2.0s Fire filler dealing massive direct damage (+25% bonus damage against Immolated targets)."
                     });
                 } else {
