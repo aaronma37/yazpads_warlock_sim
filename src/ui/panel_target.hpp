@@ -30,6 +30,16 @@ inline void render_panel_target(TargetConfig& target, double& fight_duration) {
         ImGui::Spacing();
         ImGui::Separator();
 
+        // 1b. Target Count
+        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Encounter Target Count:");
+        ImGui::SliderInt("##TargetCountSlider", &target.target_count, 1, 5, "%d Target(s)");
+        if (target.target_count > 1) {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.30f, 1.0f), "  -> Multi-Target Active (%d targets). Cleave & multi-DoTs enabled.", target.target_count);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
         // 2. Target Level
         ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Target Level:");
         const char* level_presets[] = {

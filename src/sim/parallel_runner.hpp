@@ -70,6 +70,7 @@ struct BatchSimResult {
     double pct_curse = 0.0; // Total Curse / Bane
     double pct_agony = 0.0;
     double pct_doom = 0.0;
+    double pct_bane_of_havoc = 0.0;
     double pct_siphon_life = 0.0;
     double pct_immolate = 0.0;
     double pct_shadowburn = 0.0;

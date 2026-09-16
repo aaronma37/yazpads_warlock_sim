@@ -134,6 +134,10 @@ inline void render_panel_results(const BatchSimResult& batch) {
                 spell_row("Curse of Doom", batch.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
             }
 
+            if (batch.pct_bane_of_havoc > 0.001) {
+                spell_row("Bane of Havoc (Cleave)", batch.pct_bane_of_havoc, ImVec4(0.85f, 0.4f, 0.95f, 1.0f), SpellID::BANE_OF_HAVOC);
+            }
+
             if (batch.pct_siphon_life > 0.001) {
                 spell_row("Siphon Life", batch.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
             }

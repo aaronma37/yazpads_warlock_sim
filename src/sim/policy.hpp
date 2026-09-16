@@ -80,6 +80,7 @@ enum class RotationChoice : uint8_t {
     DP_AF_SHADOW_NO_SOUL_FIRE,        // Demonology Shadow (No Soul Fire): Corruption + Bane of Agony + SB filler, no Decimation Soul Fire
     DP_AF_SHADOW_NO_BANE,             // Demonology Shadow (No Bane): Corruption only + SB filler, no Bane of Agony
     DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE,// Demonology Shadow (No Soul Fire, No Bane): Corruption only + SB filler
+    DEEP_AFFLICTION_SB,               // Deep Affliction (SB filler): Corruption + Bane of Agony + Siphon Life + Drain Hope + Nightfall + SB filler
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -104,6 +105,7 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE: return "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)";
         case RotationChoice::DP_AF_SHADOW_NO_BANE: return "Demonology Shadow — Corruption + SB (No Bane)";
         case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE: return "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)";
+        case RotationChoice::DEEP_AFFLICTION_SB: return "Deep Affliction — Drain Hope (SB Filler)";
         default: return "Shadow Destro";
     }
 }
@@ -121,7 +123,9 @@ inline const char* rotation_choice_description(RotationChoice r) {
         case RotationChoice::DP_RUIN_FIRE:
             return "Fire Demonic Pact / Agonizing Flames: Maintains Immolate, casts Conflagrate on CD, weaves Shadowburn, spams Searing Pain (benefiting from Agonizing Flames & Demonic Brand), and feeds pet mana via Demonic Energies.";
         case RotationChoice::DEEP_AFFLICTION:
-            return "Maintains Corruption and Bane of Agony (CoA) on top priority for Nightfall procs and Pandemic crits, channels Drain Hope on 20s CD for +10% DoT amplification.";
+            return "Maintains Corruption and Bane of Agony (CoA) on top priority for Nightfall procs and Pandemic crits, channels Drain Hope on 20s CD for +10% DoT amplification, with Drain Soul as filler.";
+        case RotationChoice::DEEP_AFFLICTION_SB:
+            return "Maintains Corruption, Bane of Agony (CoA), and Siphon Life, channels Drain Hope on 20s CD for +10% DoT amplification, with Shadow Bolt as filler.";
         case RotationChoice::SM_RUIN:
             return "Shadow Mastery / Agonizing Flames (32/0/19): Maintains Corruption and Bane of Agony (CoA) for Nightfall instant Shadow Bolts and Pandemic crits, casts Shadowburn on cooldown, and spams Shadow Bolt.";
         case RotationChoice::DEMONOLOGY_EXECUTE:
@@ -154,6 +158,7 @@ enum class PriorityAction : uint8_t {
     RACIAL_BERSERKING,
     CURSE_OF_AGONY,
     CURSE_OF_DOOM,
+    BANE_OF_HAVOC,
     NIGHTFALL_SHADOW_BOLT,
     DECIMATION_SEARING_PAIN,
     DECIMATION_SOUL_FIRE,
@@ -194,6 +199,10 @@ struct PolicyConfig {
     double life_tap_threshold_pct = 25.0;     // Life Tap if mana drops below this %
     bool use_trinkets_on_cooldown = true;
     bool cast_nightfall_procs = true;
+
+    // Multi-target rotational capabilities
+    bool multi_dot_corruption = true;         // Maintain Corruption across all targets when target_count >= 2
+    bool auto_bane_of_havoc = true;           // Apply Bane of Havoc on secondary target when talented and target_count >= 2
 
     // WoW Forever rotational abilities
     bool use_conflagrate = true;              // Cast Conflagrate on cooldown
@@ -302,7 +311,7 @@ struct PolicyConfig {
         };
 
         auto add_agony = [&]() {
-            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE) {
+            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE) {
                 rules.push_back({
                     PriorityAction::CURSE_OF_AGONY,
                     SpellID::CURSE_OF_AGONY,
@@ -337,7 +346,7 @@ struct PolicyConfig {
         };
 
         auto add_drain_hope = [&]() {
-            if ((talents.aff.drain_hope > 0 || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) && channel_drain_hope) {
+            if ((talents.aff.drain_hope > 0 || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) && channel_drain_hope) {
                 rules.push_back({
                     PriorityAction::DRAIN_HOPE,
                     SpellID::DRAIN_HOPE,
@@ -564,6 +573,17 @@ struct PolicyConfig {
                 add_siphon_life();
                 add_drain_hope();
                 add_drain_soul_filler(); // Drain Soul as filler
+                break;
+
+            case RotationChoice::DEEP_AFFLICTION_SB:
+                // Same as Deep Affliction (Corruption, CoA, Siphon Life, Drain Hope), but uses Shadow Bolt as filler
+                add_racial();
+                add_nightfall();
+                add_corruption();
+                add_agony();
+                add_siphon_life();
+                add_drain_hope();
+                add_sb_filler();         // Shadow Bolt as filler
                 break;
 
             case RotationChoice::SM_RUIN:

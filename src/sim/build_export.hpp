@@ -197,7 +197,9 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
         json << "    \"use_conflagrate\": " << (p.use_conflagrate ? "true" : "false") << ",\n";
         json << "    \"use_incinerate\": " << (p.use_incinerate ? "true" : "false") << ",\n";
         json << "    \"use_decimation_soul_fire\": " << (p.use_decimation_soul_fire ? "true" : "false") << ",\n";
-        json << "    \"channel_drain_hope\": " << (p.channel_drain_hope ? "true" : "false") << "\n";
+        json << "    \"channel_drain_hope\": " << (p.channel_drain_hope ? "true" : "false") << ",\n";
+        json << "    \"multi_dot_corruption\": " << (p.multi_dot_corruption ? "true" : "false") << ",\n";
+        json << "    \"auto_bane_of_havoc\": " << (p.auto_bane_of_havoc ? "true" : "false") << "\n";
         json << "  },\n";
     }
 
@@ -240,6 +242,7 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
     {
         const TargetConfig& t = sim.target_config;
         json << "  \"target\": {\n";
+        json << "    \"target_count\": " << t.target_count << ",\n";
         json << "    \"level\": " << t.level << ",\n";
         json << "    \"creature_type\": \"" << creature_type_to_string(t.creature_type) << "\",\n";
         json << "    \"base_shadow_resistance\": " << json_double(t.base_shadow_resistance) << ",\n";

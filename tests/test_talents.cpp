@@ -16,8 +16,9 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t2.aff.improved_corruption, 4);
     CHECK_EQ(t2.aff.suppression, 5);
     CHECK_EQ(t2.destro.destructive_reach, 0);
-    CHECK_EQ(t2.destro.improved_shadow_bolt, 2);
-    CHECK_EQ(t2.destro.aftermath, 1);
+    CHECK_EQ(t2.destro.improved_shadow_bolt, 0);
+    CHECK_EQ(t2.destro.aftermath, 5);
+    CHECK_EQ(t2.destro.bane_of_havoc, 1);
 
     Talents t3 = Talents::create_forever_demonic_pact();
     CHECK_EQ(t3.total_points(), 51);
@@ -64,10 +65,11 @@ TEST_CASE(Talents, TotalPointsAndLimits) {
     CHECK_EQ(t7b.demo.decimation, 0);
     CHECK_EQ(t7b.demo.fel_vitality, 0);
     CHECK_EQ(t7b.destro.total_points(), 31);
-    CHECK_EQ(t7b.destro.improved_shadow_bolt, 3);
+    CHECK_EQ(t7b.destro.improved_shadow_bolt, 0);
     CHECK_EQ(t7b.destro.intensity, 0);
-    CHECK_EQ(t7b.destro.cataclysm, 2);
-    CHECK_EQ(t7b.destro.aftermath, 1);
+    CHECK_EQ(t7b.destro.cataclysm, 1);
+    CHECK_EQ(t7b.destro.aftermath, 5);
+    CHECK_EQ(t7b.destro.bane_of_havoc, 1);
     CHECK_EQ(t7b.destro.shadow_and_flame, 5);
     CHECK_EQ(t7b.destro.incinerate, 1);
 

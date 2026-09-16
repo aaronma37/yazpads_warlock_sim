@@ -174,6 +174,7 @@ inline const char* creature_type_to_string(CreatureType c) {
 // Target (Boss) characteristics
 struct TargetConfig {
     int level = 63;                 // Standard raid boss level (60-63+)
+    int target_count = 1;           // Number of simultaneous targets (1 to 5)
     CreatureType creature_type = CreatureType::HUMANOID;
     double base_shadow_resistance = 24.0; // Boss base innate resistance (cannot be lowered below 0)
     double base_fire_resistance = 24.0;

@@ -153,6 +153,27 @@ TEST_CASE(Rotations, DeepAfflictionDeterministicRun) {
     CHECK_EQ(res.dmg_immolate, 0.0); // No Immolate in Deep Affliction
 }
 
+TEST_CASE(Rotations, DeepAfflictionSBFillerDeterministicRun) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_deep_affliction();
+    sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+    sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+    sim.fight_duration = 30.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0); // Bane of Agony
+    CHECK(res.dmg_drain_hope > 0.0);
+    CHECK_EQ(res.dmg_drain_soul, 0.0); // No Drain Soul
+    CHECK(res.shadow_bolt_casts > 0);   // Shadow Bolt filler
+    CHECK(res.dmg_shadow_bolt > 0.0);
+    CHECK_EQ(res.dmg_immolate, 0.0);   // No Immolate
+}
+
 TEST_CASE(Rotations, SMRuinDeterministicRun) {
     FastRNG rng(1337);
     WarlockSimulator sim;
@@ -416,6 +437,25 @@ TEST_CASE(Rotations, PriorityRuleChainGeneration) {
     CHECK(pos_dh < pos_ds);
     CHECK_EQ(static_cast<int>(aff_rules.back().action), static_cast<int>(PriorityAction::DRAIN_SOUL_FILLER));
 
+    // For Deep Affliction (SB filler): Corruption > Bane of Agony > Drain Hope > SB Filler
+    policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+    auto aff_sb_rules = policy.get_priority_rules(talents_aff);
+    int pos_sb_corr = -1, pos_sb_agony = -1, pos_sb_dh = -1, pos_sb_filler = -1;
+    for (size_t i = 0; i < aff_sb_rules.size(); ++i) {
+        if (aff_sb_rules[i].spell_id == SpellID::CORRUPTION) pos_sb_corr = (int)i;
+        if (aff_sb_rules[i].spell_id == SpellID::CURSE_OF_AGONY) pos_sb_agony = (int)i;
+        if (aff_sb_rules[i].spell_id == SpellID::DRAIN_HOPE) pos_sb_dh = (int)i;
+        if (aff_sb_rules[i].spell_id == SpellID::SHADOW_BOLT && aff_sb_rules[i].action == PriorityAction::SHADOW_BOLT_FILLER) pos_sb_filler = (int)i;
+    }
+    CHECK(pos_sb_corr != -1);
+    CHECK(pos_sb_agony != -1);
+    CHECK(pos_sb_dh != -1);
+    CHECK(pos_sb_filler != -1);
+    CHECK(pos_sb_corr < pos_sb_dh);
+    CHECK(pos_sb_agony < pos_sb_dh);
+    CHECK(pos_sb_dh < pos_sb_filler);
+    CHECK_EQ(static_cast<int>(aff_sb_rules.back().action), static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
+
     // For SM Ruin: Corruption > Bane of Agony > Shadowburn > SB Filler
     policy.rotation = RotationChoice::SM_RUIN;
     Talents talents_sm = Talents::create_forever_sm_ruin();
@@ -543,4 +583,80 @@ TEST_CASE(Rotations, DecimationSearingPainSoulFireExecution) {
     CHECK(found_sf_execute);
     // Searing Pain must trigger Decimation before Soul Fire can be cast
     CHECK(first_sp_time <= first_sf_time);
+}
+
+TEST_CASE(Rotations, MultiTargetCorruptionDistribution) {
+    FastRNG rng1(42);
+    FastRNG rng2(42);
+
+    WarlockSimulator sim1; // 1 target
+    sim1.target_config.target_count = 1;
+    sim1.talents = Talents::create_forever_sm_ruin();
+    sim1.policy.rotation = RotationChoice::SM_RUIN;
+    sim1.policy.multi_dot_corruption = true;
+    sim1.fight_duration = 60.0;
+    SimResult res1 = sim1.run_single_simulation(rng1);
+
+    WarlockSimulator sim2; // 2 targets
+    sim2.target_config.target_count = 2;
+    sim2.talents = Talents::create_forever_sm_ruin();
+    sim2.policy.rotation = RotationChoice::SM_RUIN;
+    sim2.policy.multi_dot_corruption = true;
+    sim2.fight_duration = 60.0;
+    SimResult res2 = sim2.run_single_simulation(rng2);
+
+    // With 2 targets and multi-dotting enabled, corruption damage should roughly double
+    CHECK(res2.dmg_corruption > res1.dmg_corruption * 1.5);
+    CHECK(res2.total_damage > res1.total_damage);
+}
+
+TEST_CASE(Rotations, MultiTargetBaneOfHavocCleave) {
+    FastRNG rng(12345);
+
+    WarlockSimulator sim;
+    sim.target_config.target_count = 2;
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_hit_percent = 16.0; // Hit capped
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.talents.destro.bane_of_havoc = 1;
+    sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim.policy.auto_bane_of_havoc = true;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+
+    CHECK(res.dmg_bane_of_havoc > 0.0);
+    double primary_dmg = res.total_damage - res.dmg_bane_of_havoc;
+    CHECK(primary_dmg > 0.0);
+    CHECK(res.dmg_bane_of_havoc >= primary_dmg * 0.12);
+    CHECK(res.dmg_bane_of_havoc <= primary_dmg * 0.16);
+}
+
+TEST_CASE(Rotations, SingleTargetNoHavocOrMultiDotOverhead) {
+    FastRNG rng1(999);
+    FastRNG rng2(999);
+
+    WarlockSimulator sim_default;
+    sim_default.target_config.target_count = 1;
+    sim_default.talents = Talents::create_forever_shadow_destro();
+    sim_default.talents.destro.bane_of_havoc = 1;
+    sim_default.fight_duration = 60.0;
+    SimResult res1 = sim_default.run_single_simulation(rng1);
+
+    WarlockSimulator sim_with_toggles;
+    sim_with_toggles.target_config.target_count = 1;
+    sim_with_toggles.talents = Talents::create_forever_shadow_destro();
+    sim_with_toggles.talents.destro.bane_of_havoc = 1;
+    sim_with_toggles.policy.auto_bane_of_havoc = true;
+    sim_with_toggles.policy.multi_dot_corruption = true;
+    sim_with_toggles.fight_duration = 60.0;
+    SimResult res2 = sim_with_toggles.run_single_simulation(rng2);
+
+    // Single target must produce identical byte-for-byte damage & zero Bane of Havoc
+    CHECK_EQ(res1.dmg_bane_of_havoc, 0.0);
+    CHECK_EQ(res2.dmg_bane_of_havoc, 0.0);
+    CHECK_EQ(res1.total_damage, res2.total_damage);
+    CHECK_EQ(res1.dps, res2.dps);
+    CHECK_EQ(res1.direct_spell_casts, res2.direct_spell_casts);
 }

@@ -323,7 +323,7 @@ inline void render_panel_optimizer(
 
                 // Damage Breakdown: 3-section horizontal bar (Shadow, Fire, Pet)
                 ImGui::TableNextColumn();
-                double shadow_pct = r.batch.pct_shadow_bolt + r.batch.pct_corruption + r.batch.pct_curse + r.batch.pct_siphon_life + r.batch.pct_shadowburn + r.batch.pct_drain_hope + r.batch.pct_drain_life + r.batch.pct_drain_soul;
+                double shadow_pct = r.batch.pct_shadow_bolt + r.batch.pct_corruption + r.batch.pct_curse + r.batch.pct_siphon_life + r.batch.pct_shadowburn + r.batch.pct_drain_hope + r.batch.pct_drain_life + r.batch.pct_drain_soul + r.batch.pct_bane_of_havoc;
                 double fire_pct = r.batch.pct_immolate + r.batch.pct_conflagrate + r.batch.pct_incinerate + r.batch.pct_searing_pain + r.batch.pct_soul_fire;
                 double pet_pct = r.batch.pct_pet;
 
@@ -535,6 +535,7 @@ inline void render_panel_optimizer(
             draw_dmg_bar("Immolate", b.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::IMMOLATE);
             if (b.pct_agony > 0.05) draw_dmg_bar("Bane of Agony", b.pct_agony, ImVec4(0.6f, 0.6f, 0.8f, 1.0f), SpellID::CURSE_OF_AGONY);
             if (b.pct_doom > 0.05) draw_dmg_bar("Curse of Doom", b.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
+            if (b.pct_bane_of_havoc > 0.05) draw_dmg_bar("Bane of Havoc", b.pct_bane_of_havoc, ImVec4(0.85f, 0.4f, 0.95f, 1.0f), SpellID::BANE_OF_HAVOC);
             if (b.pct_siphon_life > 0.05) draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
             draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f), SpellID::SOUL_FIRE);
             draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f), SpellID::DRAIN_HOPE);

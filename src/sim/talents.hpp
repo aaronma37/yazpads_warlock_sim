@@ -745,7 +745,7 @@ struct Talents {
         // Affliction: 0 points
 
         // Demonology: 31 points (Capstone: Demonic Pact!)
-        t.demo.demonic_embrace = 2;        // 2/5 Demonic Embrace
+        t.demo.demonic_embrace = 4;        // 4/5 Demonic Embrace
         t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
         t.demo.unholy_power = 5;           // 5/5 Unholy Power (+10% pet damage)
         t.demo.fel_vitality = 3;

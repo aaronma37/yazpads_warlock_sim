@@ -88,6 +88,7 @@ struct SimResult {
     double dmg_curse = 0.0; // Total curse damage
     double dmg_agony = 0.0;
     double dmg_doom = 0.0;
+    double dmg_bane_of_havoc = 0.0;
     double dmg_siphon_life = 0.0;
     double dmg_immolate = 0.0;
     double dmg_shadowburn = 0.0;

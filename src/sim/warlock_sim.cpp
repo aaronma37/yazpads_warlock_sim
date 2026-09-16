@@ -246,7 +246,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     }
     double pet_mana = pet_max_mana;
 
-    // Active DoTs tracking
+    // Active DoTs tracking & Multi-Target state
+    constexpr int MAX_TARGETS = 5;
+    int num_targets = std::clamp(target_config.target_count, 1, MAX_TARGETS);
+
     struct ActiveDot {
         bool active = false;
         double expire_time = 0.0;
@@ -255,10 +258,33 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         double tick_damage = 0.0;
         double tick_multiplier = 1.0;
     };
-    ActiveDot dot_corruption;
-    ActiveDot dot_agony;
-    ActiveDot dot_immolate;
-    ActiveDot dot_siphon_life;
+
+    struct TargetCombatState {
+        ActiveDot dot_corruption;
+        ActiveDot dot_agony;
+        ActiveDot dot_immolate;
+        ActiveDot dot_siphon_life;
+        bool has_bane_of_havoc = false;
+        double bane_of_havoc_expire = 0.0;
+    };
+    TargetCombatState target_states[MAX_TARGETS];
+
+    // Reference aliases for target 0 (primary target) for single-target transparent compatibility
+    ActiveDot& dot_corruption = target_states[0].dot_corruption;
+    ActiveDot& dot_agony = target_states[0].dot_agony;
+    ActiveDot& dot_immolate = target_states[0].dot_immolate;
+    ActiveDot& dot_siphon_life = target_states[0].dot_siphon_life;
+
+    // Bane of Havoc cleave applicator
+    auto apply_havoc_cleave = [&](double raw_damage, int source_target_idx) {
+        if (num_targets >= 2 && target_states[1].has_bane_of_havoc && current_time < target_states[1].bane_of_havoc_expire && source_target_idx != 1) {
+            double havoc_dmg = raw_damage * 0.15;
+            result.dmg_bane_of_havoc += havoc_dmg;
+            result.dmg_curse += havoc_dmg;
+            result.total_damage += havoc_dmg;
+            result.record_spell_hit(SpellID::BANE_OF_HAVOC, havoc_dmg, false);
+        }
+    };
 
     // Setup FastEventQueue
     FastEventQueue<256> queue;
@@ -352,7 +378,87 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        // 3. Sequential Rule-Based Priority Evaluation
+        // 3. Multi-Target Openers & Upkeep (Bane of Havoc & Multi-DoT Corruption)
+        if (num_targets >= 2 && talents.destro.bane_of_havoc > 0 && policy.auto_bane_of_havoc) {
+            if (!target_states[1].has_bane_of_havoc || now >= target_states[1].bane_of_havoc_expire) {
+                double havoc_mana = 150.0;
+                if (player_mana >= havoc_mana) {
+                    player_mana -= havoc_mana;
+                    result.mana_spent += havoc_mana;
+                    result.total_casts++;
+                    result.record_spell_cast(SpellID::BANE_OF_HAVOC);
+
+                    if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                        target_states[1].has_bane_of_havoc = true;
+                        target_states[1].bane_of_havoc_expire = now + 300.0;
+                    } else {
+                        result.misses++;
+                        result.record_spell_miss(SpellID::BANE_OF_HAVOC);
+                    }
+
+                    gcd_ready_time = now + mechanics.base_gcd;
+                    queue.push(gcd_ready_time, EventType::GCD_READY);
+                    if (record_timeline) {
+                        result.cast_sequence.push_back({now, SpellID::BANE_OF_HAVOC, 0.0, false, false, 0.0, "Bane of Havoc (T2)"});
+                    }
+                    return;
+                }
+            }
+        }
+
+        if (num_targets >= 2 && policy.multi_dot_corruption && policy.corruption != DotPolicy::NEVER &&
+            eff_rotation != RotationChoice::PURE_SHADOW_BOLT &&
+            eff_rotation != RotationChoice::DP_AF_SHADOW_NO_CORRUPTION &&
+            eff_rotation != RotationChoice::FIRE_DESTRO_NO_CORRUPTION) {
+            for (int t = 1; t < num_targets; ++t) {
+                if ((!target_states[t].dot_corruption.active || now >= target_states[t].dot_corruption.expire_time) &&
+                    (fight_duration - now >= 8.0)) {
+                    double corr_mana = 290.0;
+                    if (player_mana >= corr_mana) {
+                        double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
+                        if (cast_time == 0.0) {
+                            player_mana -= corr_mana;
+                            result.mana_spent += corr_mana;
+                            result.total_casts++;
+                            result.record_spell_cast(SpellID::CORRUPTION);
+
+                            if (rng.chance(calculate_hit_chance(School::SHADOW))) {
+                                target_states[t].dot_corruption.active = true;
+                                target_states[t].dot_corruption.expire_time = now + 18.0;
+                                target_states[t].dot_corruption.ticks_remaining = 6;
+                                target_states[t].dot_corruption.tick_interval = 3.0;
+                                double sp = get_current_sp(School::SHADOW, now);
+                                target_states[t].dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
+                                target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                                queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
+                            } else {
+                                result.misses++;
+                                result.record_spell_miss(SpellID::CORRUPTION);
+                            }
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, 0.0, "Multi-DoT Corruption"});
+                            }
+                            return;
+                        } else {
+                            is_casting = true;
+                            current_casting_spell = SpellID::CORRUPTION;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, cast_time, "Multi-DoT Corruption"});
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Sequential Rule-Based Priority Evaluation
         for (const auto& rule : priority_rules) {
             if (!rule.enabled) continue;
 
@@ -634,6 +740,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.dmg_conflagrate += dmg;
                                 result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
                                 result.total_damage += dmg;
+                                apply_havoc_cleave(dmg, 0);
 
                                 if (talents.destro.shadow_and_flame > 0) {
                                     shadow_and_flame_shadow_expire = now + 20.0;
@@ -710,6 +817,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.dmg_shadowburn += dmg;
                                 result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
                                 result.total_damage += dmg;
+                                apply_havoc_cleave(dmg, 0);
 
                                 if (talents.destro.shadow_and_flame > 0) {
                                     shadow_and_flame_fire_expire = now + 20.0;
@@ -1014,6 +1122,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_immolate += dmg;
                         result.record_spell_hit(SpellID::IMMOLATE, dmg, crit);
                         result.total_damage += dmg;
+                        apply_havoc_cleave(dmg, 0);
 
                         dot_immolate.active = true;
                         dot_immolate.expire_time = current_time + 15.0;
@@ -1032,15 +1141,19 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.mana_spent += corr_mana;
                     result.record_spell_cast(SpellID::CORRUPTION);
 
+                    uint32_t t_idx = ev.user_data;
+                    if (t_idx >= static_cast<uint32_t>(num_targets)) t_idx = 0;
+                    ActiveDot& cur_corr = target_states[t_idx].dot_corruption;
+
                     if (rng.chance(calculate_hit_chance(School::SHADOW))) {
-                        dot_corruption.active = true;
-                        dot_corruption.expire_time = current_time + 18.0;
-                        dot_corruption.ticks_remaining = 6;
-                        dot_corruption.tick_interval = 3.0;
+                        cur_corr.active = true;
+                        cur_corr.expire_time = current_time + 18.0;
+                        cur_corr.ticks_remaining = 6;
+                        cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
-                        dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
-                        dot_corruption.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
-                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
+                        cur_corr.tick_damage = (822.0 / 6.0) + (sp / 6.0);
+                        cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
                     } else {
                         result.misses++;
                         result.record_spell_miss(SpellID::CORRUPTION);
@@ -1125,6 +1238,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_shadow_bolt += dmg;
                     result.record_spell_hit(SpellID::SHADOW_BOLT, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     if (record_timeline) {
                         result.timeline.push_back({current_time, dmg, SpellID::SHADOW_BOLT, is_crit, false, player_mana, target.isb_charges});
@@ -1190,6 +1304,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_incinerate += dmg;
                     result.record_spell_hit(SpellID::INCINERATE, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     if (record_timeline) {
                         result.timeline.push_back({current_time, dmg, SpellID::INCINERATE, is_crit, false, player_mana, target.isb_charges});
@@ -1264,6 +1379,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_searing_pain += dmg;
                     result.record_spell_hit(SpellID::SEARING_PAIN, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     if (record_timeline) {
                         result.timeline.push_back({current_time, dmg, SpellID::SEARING_PAIN, is_crit, false, player_mana, target.isb_charges});
@@ -1323,6 +1439,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_soul_fire += dmg;
                     result.record_spell_hit(SpellID::SOUL_FIRE, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     if (record_timeline) {
                         result.timeline.push_back({current_time, dmg, SpellID::SOUL_FIRE, is_crit, false, player_mana, target.isb_charges});
@@ -1364,6 +1481,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_hope += dmg;
                     result.record_spell_hit(SpellID::DRAIN_HOPE, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     // Nightfall proc check on Drain Hope ticks (2% per pt = 4% at 2/2)
                     if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
@@ -1408,6 +1526,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_life += dmg;
                     result.record_spell_hit(SpellID::DRAIN_LIFE, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     // Health restored from Drain Life (Soul Siphon reduces healing by 10/20/30%)
                     double heal = dmg * (1.0 - talents.aff.soul_siphon * 0.10);
@@ -1458,6 +1577,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_soul += dmg;
                     result.record_spell_hit(SpellID::DRAIN_SOUL, dmg, is_crit);
                     result.total_damage += dmg;
+                    apply_havoc_cleave(dmg, 0);
 
                     // Nightfall proc check on Drain Soul ticks (2% per pt = 4% at 2/2)
                     if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
@@ -1474,11 +1594,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
 
             case EventType::DOT_TICK: {
+                uint32_t t_idx = ev.user_data;
+                if (t_idx >= static_cast<uint32_t>(num_targets)) t_idx = 0;
+
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
-                    if (dot_corruption.active && dot_corruption.ticks_remaining > 0) {
-                        dot_corruption.ticks_remaining--;
+                    ActiveDot& cur_corr = target_states[t_idx].dot_corruption;
+                    if (cur_corr.active && cur_corr.ticks_remaining > 0) {
+                        cur_corr.ticks_remaining--;
                         result.total_damage_events++;
-                        double dmg = dot_corruption.tick_damage;
+                        double dmg = cur_corr.tick_damage;
 
                         // Dynamic DoT scaling (No snapshotting in Forever)
                         if (!mechanics.snapshot_dots) {
@@ -1508,6 +1632,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_corruption += dmg;
                         result.record_spell_hit(SpellID::CORRUPTION, dmg, is_crit);
                         result.total_damage += dmg;
+                        apply_havoc_cleave(dmg, t_idx);
 
                         // Nightfall proc check (2% per point = 4% at 2/2)
                         if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
@@ -1520,20 +1645,21 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
                         }
 
-                        if (dot_corruption.ticks_remaining > 0 && current_time + dot_corruption.tick_interval <= dot_corruption.expire_time) {
-                            queue.push(current_time + dot_corruption.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
+                        if (cur_corr.ticks_remaining > 0 && current_time + cur_corr.tick_interval <= cur_corr.expire_time) {
+                            queue.push(current_time + cur_corr.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
                         } else {
-                            dot_corruption.active = false;
+                            cur_corr.active = false;
                         }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_AGONY)) {
-                    if (dot_agony.active && dot_agony.ticks_remaining > 0) {
-                        dot_agony.ticks_remaining--;
+                    ActiveDot& cur_agony = target_states[t_idx].dot_agony;
+                    if (cur_agony.active && cur_agony.ticks_remaining > 0) {
+                        cur_agony.ticks_remaining--;
                         result.total_damage_events++;
-                        int tick_index = 12 - dot_agony.ticks_remaining;
+                        int tick_index = 12 - cur_agony.ticks_remaining;
                         double ramp = (tick_index <= 4) ? 0.50 : (tick_index <= 8 ? 1.0 : 1.50);
 
-                        double base_tick = dot_agony.tick_damage;
+                        double base_tick = cur_agony.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
                             base_tick = (1044.0 / 12.0) + (sp / 12.0);
@@ -1556,18 +1682,20 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_curse += dmg;
                         result.record_spell_hit(SpellID::CURSE_OF_AGONY, dmg, is_crit);
                         result.total_damage += dmg;
+                        apply_havoc_cleave(dmg, t_idx);
 
-                        if (dot_agony.ticks_remaining > 0) {
-                            queue.push(current_time + dot_agony.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
+                        if (cur_agony.ticks_remaining > 0) {
+                            queue.push(current_time + cur_agony.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY), 0, t_idx);
                         } else {
-                            dot_agony.active = false;
+                            cur_agony.active = false;
                         }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SIPHON_LIFE)) {
-                    if (dot_siphon_life.active && dot_siphon_life.ticks_remaining > 0) {
-                        dot_siphon_life.ticks_remaining--;
+                    ActiveDot& cur_sl = target_states[t_idx].dot_siphon_life;
+                    if (cur_sl.active && cur_sl.ticks_remaining > 0) {
+                        cur_sl.ticks_remaining--;
                         result.total_damage_events++;
-                        double dmg = dot_siphon_life.tick_damage;
+                        double dmg = cur_sl.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
                             dmg = 15.0 + (0.10 * sp);
@@ -1588,19 +1716,21 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_siphon_life += dmg;
                         result.record_spell_hit(SpellID::SIPHON_LIFE, dmg, is_crit);
                         result.total_damage += dmg;
+                        apply_havoc_cleave(dmg, t_idx);
                         player_health = std::min(stats.max_health, player_health + dmg);
 
-                        if (dot_siphon_life.ticks_remaining > 0) {
-                            queue.push(current_time + dot_siphon_life.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
+                        if (cur_sl.ticks_remaining > 0) {
+                            queue.push(current_time + cur_sl.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE), 0, t_idx);
                         } else {
-                            dot_siphon_life.active = false;
+                            cur_sl.active = false;
                         }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
-                    if (dot_immolate.active && dot_immolate.ticks_remaining > 0) {
-                        dot_immolate.ticks_remaining--;
+                    ActiveDot& cur_imm = target_states[t_idx].dot_immolate;
+                    if (cur_imm.active && cur_imm.ticks_remaining > 0) {
+                        cur_imm.ticks_remaining--;
                         result.total_damage_events++;
-                        double dmg = dot_immolate.tick_damage;
+                        double dmg = cur_imm.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::FIRE, current_time);
                             dmg = (485.0 / 5.0) + (0.65 / 5.0) * sp;
@@ -1619,11 +1749,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_immolate += dmg;
                         result.record_spell_hit(SpellID::IMMOLATE, dmg, is_crit);
                         result.total_damage += dmg;
+                        apply_havoc_cleave(dmg, t_idx);
 
-                        if (dot_immolate.ticks_remaining > 0) {
-                            queue.push(current_time + dot_immolate.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE));
+                        if (cur_imm.ticks_remaining > 0) {
+                            queue.push(current_time + cur_imm.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE), 0, t_idx);
                         } else {
-                            dot_immolate.active = false;
+                            cur_imm.active = false;
                         }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_DOOM)) {
@@ -1643,7 +1774,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_curse += dmg;
                     result.record_spell_hit(SpellID::CURSE_OF_DOOM, dmg, is_crit);
                     result.total_damage += dmg;
-                    dot_agony.active = false;
+                    apply_havoc_cleave(dmg, t_idx);
+                    target_states[t_idx].dot_agony.active = false;
                 }
                 break;
             }
@@ -1718,6 +1850,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_pet_succubus += (swing_dmg + brand_dmg);
                         result.dmg_pet += (swing_dmg + brand_dmg);
                         result.total_damage += (swing_dmg + brand_dmg);
+                        apply_havoc_cleave(swing_dmg + brand_dmg, 0);
                     } else {
                         result.record_spell_miss(SpellID::PET_MELEE);
                     }
@@ -1782,6 +1915,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.dmg_pet_succubus += (base_lop + brand_dmg);
                             result.dmg_pet += (base_lop + brand_dmg);
                             result.total_damage += (base_lop + brand_dmg);
+                            apply_havoc_cleave(base_lop + brand_dmg, 0);
                         } else {
                             result.record_spell_miss(SpellID::PET_LASH_OF_PAIN);
                         }
@@ -1845,6 +1979,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.dmg_pet_imp += (base_fb + brand_dmg);
                             result.dmg_pet += (base_fb + brand_dmg);
                             result.total_damage += (base_fb + brand_dmg);
+                            apply_havoc_cleave(base_fb + brand_dmg, 0);
                         } else {
                             result.record_spell_miss(SpellID::PET_FIREBOLT);
                         }

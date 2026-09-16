@@ -13,6 +13,7 @@ enum class SpellID : uint8_t {
     CURSE_OF_ELEMENTS,
     CURSE_OF_AGONY,
     CURSE_OF_DOOM,
+    BANE_OF_HAVOC,
     IMMOLATE,
     SEARING_PAIN,
     SHADOWBURN,
@@ -141,6 +142,17 @@ public:
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 175.0;
+        s.is_binary = true;
+        return s;
+    }
+
+    static inline SpellDefinition bane_of_havoc() {
+        SpellDefinition s;
+        s.id = SpellID::BANE_OF_HAVOC;
+        s.name = "Bane of Havoc";
+        s.school = School::SHADOW;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 150.0;
         s.is_binary = true;
         return s;
     }
@@ -301,6 +313,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::CURSE_OF_ELEMENTS: return "Curse of the Elements";
         case SpellID::CURSE_OF_AGONY: return "Bane of Agony";
         case SpellID::CURSE_OF_DOOM: return "Curse of Doom";
+        case SpellID::BANE_OF_HAVOC: return "Bane of Havoc";
         case SpellID::IMMOLATE: return "Immolate";
         case SpellID::SEARING_PAIN: return "Searing Pain";
         case SpellID::SHADOWBURN: return "Shadowburn";
@@ -330,6 +343,7 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::CURSE_OF_ELEMENTS: return "spell_shadow_chilltouch.png";
         case SpellID::CURSE_OF_AGONY: return "spell_shadow_curseofsargeras.png";
         case SpellID::CURSE_OF_DOOM: return "spell_shadow_auraofdarkness.png";
+        case SpellID::BANE_OF_HAVOC: return "ability_warlock_baneofhavoc.png";
         case SpellID::IMMOLATE: return "spell_fire_immolation.png";
         case SpellID::SEARING_PAIN: return "spell_fire_soulburn.png";
         case SpellID::SHADOWBURN: return "spell_shadow_scourgebuild.png";

@@ -45,6 +45,7 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_curse = 0.0;
         double sum_dmg_agony = 0.0;
         double sum_dmg_doom = 0.0;
+        double sum_dmg_bane_of_havoc = 0.0;
         double sum_dmg_siphon_life = 0.0;
         double sum_dmg_imm = 0.0;
         double sum_dmg_sb_urn = 0.0;
@@ -110,6 +111,7 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_dmg_curse += (res.dmg_curse + res.dmg_siphon_life);
                 out.sum_dmg_agony += res.dmg_agony;
                 out.sum_dmg_doom += res.dmg_doom;
+                out.sum_dmg_bane_of_havoc += res.dmg_bane_of_havoc;
                 out.sum_dmg_siphon_life += res.dmg_siphon_life;
                 out.sum_dmg_imm += res.dmg_immolate;
                 out.sum_dmg_sb_urn += res.dmg_shadowburn;
@@ -180,6 +182,7 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_dmg_curse = 0.0;
     double total_dmg_agony = 0.0;
     double total_dmg_doom = 0.0;
+    double total_dmg_bane_of_havoc = 0.0;
     double total_dmg_siphon_life = 0.0;
     double total_dmg_imm = 0.0;
     double total_dmg_sb_urn = 0.0;
@@ -219,9 +222,10 @@ BatchSimResult ParallelSimRunner::run_batch(
 
         total_dmg_sb += out.sum_dmg_sb;
         total_dmg_corr += out.sum_dmg_corr;
-        total_dmg_curse += out.sum_dmg_curse;
+        total_dmg_curse += (out.sum_dmg_curse + out.sum_dmg_bane_of_havoc);
         total_dmg_agony += out.sum_dmg_agony;
         total_dmg_doom += out.sum_dmg_doom;
+        total_dmg_bane_of_havoc += out.sum_dmg_bane_of_havoc;
         total_dmg_siphon_life += out.sum_dmg_siphon_life;
         total_dmg_imm += out.sum_dmg_imm;
         total_dmg_sb_urn += out.sum_dmg_sb_urn;
@@ -295,6 +299,7 @@ BatchSimResult ParallelSimRunner::run_batch(
         batch.pct_curse = (total_dmg_curse / total_dmg_all) * 100.0;
         batch.pct_agony = (total_dmg_agony / total_dmg_all) * 100.0;
         batch.pct_doom = (total_dmg_doom / total_dmg_all) * 100.0;
+        batch.pct_bane_of_havoc = (total_dmg_bane_of_havoc / total_dmg_all) * 100.0;
         batch.pct_siphon_life = (total_dmg_siphon_life / total_dmg_all) * 100.0;
         batch.pct_immolate = (total_dmg_imm / total_dmg_all) * 100.0;
         batch.pct_shadowburn = (total_dmg_sb_urn / total_dmg_all) * 100.0;

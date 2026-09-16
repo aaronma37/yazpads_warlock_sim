@@ -8,11 +8,11 @@ using namespace warlock;
 
 TEST_CASE(Icons, RaceToIconCoversAllRaces) {
     // Small head icons read well at table size; full character portraits do not.
-    CHECK_EQ(std::string(race_to_icon(Race::UNDEAD)), std::string("INV_Misc_Head_Undead_01.png"));
-    CHECK_EQ(std::string(race_to_icon(Race::ORC)), std::string("INV_Misc_Head_Orc_01.png"));
-    CHECK_EQ(std::string(race_to_icon(Race::TROLL)), std::string("INV_Misc_Head_Troll_01.png"));
-    CHECK_EQ(std::string(race_to_icon(Race::HUMAN)), std::string("INV_Misc_Head_Human_01.png"));
-    CHECK_EQ(std::string(race_to_icon(Race::GNOME)), std::string("INV_Misc_Head_Gnome_01.png"));
+    CHECK_EQ(std::string(race_to_icon(Race::UNDEAD)), std::string("Achievement_Character_Undead_Male.png"));
+    CHECK_EQ(std::string(race_to_icon(Race::ORC)), std::string("Achievement_Character_Orc_Male.png"));
+    CHECK_EQ(std::string(race_to_icon(Race::TROLL)), std::string("Achievement_Character_Troll_Male.png"));
+    CHECK_EQ(std::string(race_to_icon(Race::HUMAN)), std::string("Achievement_Character_Human_Male.png"));
+    CHECK_EQ(std::string(race_to_icon(Race::GNOME)), std::string("Achievement_Character_Gnome_Female.png"));
 
     std::set<std::string> seen;
     Race races[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};

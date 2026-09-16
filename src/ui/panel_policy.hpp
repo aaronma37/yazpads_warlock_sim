@@ -142,6 +142,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)", // 13 DP_AF_SHADOW_NO_SOUL_FIRE
         "Demonology Shadow — Corruption + SB (No Bane)",             // 14 DP_AF_SHADOW_NO_BANE
         "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)", // 15 DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE
+        "Deep Affliction — Drain Hope (SB Filler)",                    // 16 DEEP_AFFLICTION_SB
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {
@@ -155,6 +156,21 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     // 1. Dynamic Rule-Based Priority Chain Subpane (<Spell> > <Spell> > <Spell>)
     std::vector<PriorityRule> rules = policy.get_priority_rules(talents, race);
     render_priority_chain_subpane(rules);
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // 2. Multi-Target Combat Policy
+    ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Multi-Target Combat Policy:");
+    ImGui::Checkbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When 2+ targets are configured, automatically maintains Corruption on secondary targets.");
+    }
+    ImGui::SameLine(0, 16);
+    ImGui::Checkbox("Auto-Apply Bane of Havoc##Policy", &policy.auto_bane_of_havoc);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When 2+ targets are configured, places Bane of Havoc on secondary target to duplicate 15%% damage dealt.");
+    }
 }
 
 inline void render_panel_policy(PolicyConfig& policy, const Talents& talents, Race race = Race::UNDEAD) {
