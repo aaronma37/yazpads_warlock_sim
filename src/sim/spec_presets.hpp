@@ -25,7 +25,7 @@ struct SpecPreset {
     bool maintain_immolate;
 };
 
-// Canonical registry of the 15 standard specs. Order here determines the
+// Canonical registry of the 17 standard specs. Order here determines the
 // order of the talent panel buttons, the Build Presets menu, and (before
 // DPS sorting) the optimizer candidates.
 inline const std::vector<SpecPreset>& standard_spec_presets() {
@@ -34,12 +34,16 @@ inline const std::vector<SpecPreset>& standard_spec_presets() {
             &Talents::create_forever_ds_af, RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true, true},
         {"fire_supp_ds", "9/11/31 Incinerate - Suppression + DS", "Fire Destro+Suppression",
             &Talents::create_forever_fire_destro, RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false, true},
+        {"fire_supp_ds_no_corr", "7/11/33 Incinerate - Suppression + DS (No Corruption)", "Fire DS No Corr",
+            &Talents::create_forever_ds_incinerate_no_corruption, RotationChoice::FIRE_DESTRO_NO_CORRUPTION, PetChoice::NONE, true, false, true},
         {"incin_ds_decimate", "3/17/31 Incinerate - DS + Decimate", "Shadow and Flame Fire DS-Succ",
-            &Talents::create_forever_shadow_and_flame_fire_ds_succ, RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false, true},
+            &Talents::create_forever_shadow_and_flame_fire_ds_succ, RotationChoice::FIRE_DESTRO_NO_CORRUPTION, PetChoice::NONE, true, false, true},
         {"ds_searing", "5/11/35 DS/Searing Pain DS-Succ", "DS/Searing Pain",
             &Talents::create_forever_ds_searing_pain, RotationChoice::FIRE_DESTRO, PetChoice::NONE, true, false, true},
         {"dp_shadow", "2/31/18 DP/AF Shadow", "DP/AF Shadow",
             &Talents::create_forever_dp_af_shadow, RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true, true},
+        {"dp_shadow_corr", "2/31/18 DP/AF Shadow Corruption", "DP/AF Corruption",
+            &Talents::create_forever_dp_af_shadow_corruption, RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true, true},
         {"dp_fire", "0/31/20 DP/AF Fire", "DP/AF Fire",
             &Talents::create_forever_dp_af_fire, RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false, true},
         {"deep_aff", "40/11/0 Deep Affliction DS-Imp", "Deep Affliction",

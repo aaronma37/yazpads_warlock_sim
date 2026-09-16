@@ -38,11 +38,11 @@ inline const char* race_faction(Race r) {
 // Small race head icon asset used for the spec-rank table race icon column.
 inline const char* race_to_icon(Race r) {
     switch (r) {
-        case Race::UNDEAD: return "INV_Misc_Head_Undead_01.png";
-        case Race::ORC: return "INV_Misc_Head_Orc_01.png";
-        case Race::TROLL: return "INV_Misc_Head_Troll_01.png";
-        case Race::HUMAN: return "INV_Misc_Head_Human_01.png";
-        case Race::GNOME: return "INV_Misc_Head_Gnome_01.png";
+        case Race::UNDEAD: return "Achievement_Character_Undead_Male.png";
+        case Race::ORC: return "Achievement_Character_Orc_Male.png";
+        case Race::TROLL: return "Achievement_Character_Troll_Male.png";
+        case Race::HUMAN: return "Achievement_Character_Human_Male.png";
+        case Race::GNOME: return "Achievement_Character_Gnome_Female.png";
         default: return "INV_Misc_Head_Undead_01.png";
     }
 }

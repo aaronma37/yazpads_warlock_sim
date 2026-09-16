@@ -279,6 +279,39 @@ TEST_CASE(Rotations, DPAFShadowFullDurationCorruptionAndAgony) {
     CHECK(found_agony);
 }
 
+TEST_CASE(Rotations, DPAFShadowHasNoSearingPainTrigger) {
+    // Shadow Bolt casts trigger Decimation in execute, so the SB-filler
+    // DP/AF Shadow rotation needs no dedicated Searing Pain trigger cast —
+    // but the Soul Fire execute must still be scheduled.
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_dp_af_shadow();
+    sim.policy.rotation = RotationChoice::DP_AF_SHADOW;
+    auto rules = sim.policy.get_priority_rules(sim.talents);
+    bool has_sp_trigger = false;
+    bool has_soul_fire = false;
+    bool has_corruption = false;
+    for (const auto& r : rules) {
+        if (r.action == PriorityAction::DECIMATION_SEARING_PAIN) has_sp_trigger = true;
+        if (r.action == PriorityAction::DECIMATION_SOUL_FIRE) has_soul_fire = true;
+        if (r.action == PriorityAction::CORRUPTION) has_corruption = true;
+    }
+    CHECK(has_sp_trigger == false);
+    CHECK(has_soul_fire == true);
+    CHECK(has_corruption == true);
+    CHECK_EQ(static_cast<int>(rules.back().action),
+             static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
+
+    // Default behavior is preserved: sibling rotations still schedule the
+    // Searing Pain trigger.
+    sim.policy.rotation = RotationChoice::DP_AF_SHADOW_NO_CORRUPTION;
+    auto nocorr_rules = sim.policy.get_priority_rules(sim.talents);
+    bool nocorr_has_sp_trigger = false;
+    for (const auto& r : nocorr_rules) {
+        if (r.action == PriorityAction::DECIMATION_SEARING_PAIN) nocorr_has_sp_trigger = true;
+    }
+    CHECK(nocorr_has_sp_trigger == true);
+}
+
 TEST_CASE(Rotations, AfflictionMultiDotHybrid) {
     FastRNG rng(1337);
     WarlockSimulator sim;

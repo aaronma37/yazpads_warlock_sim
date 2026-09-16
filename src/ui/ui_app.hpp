@@ -19,6 +19,7 @@
 #include "panel_mechanics_tab.hpp"
 #include "panel_known_issues.hpp"
 #include "panel_imp_analysis.hpp"
+#include "panel_isb_analysis.hpp"
 
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
@@ -309,6 +310,15 @@ public:
                     if (ImGui::BeginTabItem("  Imp Damage Analysis  ")) {
                         ImGui::Spacing();
                         render_panel_imp_analysis(sim.fight_duration);
+                        ImGui::EndTabItem();
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 7. ISB UPTIME ANALYSIS (ISB uptime vs crit, per hit chance)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  ISB Uptime Analysis  ")) {
+                        ImGui::Spacing();
+                        render_panel_isb_analysis();
                         ImGui::EndTabItem();
                     }
 

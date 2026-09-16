@@ -444,6 +444,39 @@ struct Talents {
         return create_forever_ds_incinerate();
     }
 
+    // 2a. 7/11/33 Fire Destro+Suppression DS-Succ (No Corruption)
+    // Variation of create_forever_ds_incinerate: drops Improved Corruption
+    // (4/5 -> 0/5) and moves those points into Improved Life Tap (+2) and
+    // Cataclysm (+2, 1/3 -> 3/3). Paired with the Fire Destro no-Corruption
+    // rotation (Immolate + Conflagrate + Shadowburn + Incinerate filler).
+    static Talents create_forever_ds_incinerate_no_corruption() {
+        Talents t;
+        // Affliction: 7 points
+        t.aff.suppression = 5;             // 5/5 (+5% spell hit, -20% threat)
+        t.aff.improved_life_tap = 2;       // 2/2 (+20% mana from Life Tap)
+        t.aff.improved_corruption = 0;     // 0/5 (Corruption unused)
+
+        // Demonology: 11 points (Sac Succubus -> +15% Fire!)
+        t.demo.demonic_embrace = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_aegis = 2;
+        t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
+
+        // Destruction: 33 points
+        t.destro.bane = 5;                 // -0.5s Incinerate (2.0s cast!)
+        t.destro.cataclysm = 3;            // -9% mana cost
+        t.destro.aftermath = 5;            // 1/5 Aftermath
+        t.destro.ruin = 5;                 // 2.0x crit bonus
+        t.destro.shadowburn = 1;           // triggers +10% Fire buff from Shadow & Flame!
+        t.destro.agonizing_flames = 3;     // +9% Destruction damage
+        t.destro.conflagrate = 1;
+        t.destro.bane_of_havoc = 1;        // Prerequisite for Incinerate
+        t.destro.fire_and_brimstone = 3;   // +24% Conflagrate crit chance!
+        t.destro.shadow_and_flame = 5;     // Conflag never consumes Immolate; Shadowburn buffs Fire by 10%
+        t.destro.incinerate = 1;           // Fire filler spell (2.0s cast, +25% dmg with Immolate)
+        return t;
+    }
+
     // 2b. 5/11/35 DS/Searing Pain DS-Succ
     static Talents create_forever_ds_searing_pain() {
         Talents t;
@@ -675,6 +708,34 @@ struct Talents {
         t.destro.bane = 5;
         t.destro.ruin = 5;                 // +100% spell crit bonus!
         t.destro.agonizing_flames = 3;     // +9% Destruction damage!
+        return t;
+    }
+
+    // 3a. 2/31/18 DP/AF Shadow Corruption (2/2 Improved Corruption over Suppression)
+    static Talents create_forever_dp_af_shadow_corruption() {
+        Talents t;
+        // Affliction: 2 points
+        t.aff.suppression = 0;               // 0/5 (hit capped from gear)
+        t.aff.improved_corruption = 2;       // 2/5 (-0.8s cast time, +4% damage)
+
+        // Demonology: 31 points (Capstone: Demonic Pact!)
+        t.demo.demonic_embrace = 5;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.decimation = 2;               // 2/2 Decimation (Execute SF + 6% SB buff <35% HP)
+        t.demo.demonic_energies = 2;         // 2/2 Demonic Energies (Life Tap shares mana with pet + pet heal)
+        t.demo.improved_sayaad = 3;
+        t.demo.demonic_sacrifice = 1;        // Sac Imp for +15% Shadow!
+        t.demo.soul_link = 1;                // +3% all damage
+        t.demo.demonic_knowledge = 3;        // +60 Spell Power while pet is out!
+        t.demo.master_demonologist = 5;      // +10% Shadow damage from Succubus!
+        t.demo.demonic_pact = 1;             // KEEP Demonic Sacrifice WHILE SUMMONING SUCCUBUS!
+
+        // Destruction: 18 points
+        t.destro.improved_shadow_bolt = 5;
+        t.destro.bane = 5;
+        t.destro.ruin = 5;                   // +100% spell crit bonus!
+        t.destro.agonizing_flames = 3;       // +9% Destruction damage!
         return t;
     }
 

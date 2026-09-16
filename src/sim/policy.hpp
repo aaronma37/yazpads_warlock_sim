@@ -253,16 +253,18 @@ struct PolicyConfig {
             }
         };
 
-        auto add_decimation = [&]() {
+        auto add_decimation = [&](bool include_searing_pain_trigger = true) {
             if (talents.demo.decimation > 0 || use_decimation_soul_fire) {
-                rules.push_back({
-                    PriorityAction::DECIMATION_SEARING_PAIN,
-                    SpellID::SEARING_PAIN,
-                    "Decimation Trigger (Searing Pain)",
-                    "Target HP < 35% & Decimation Inactive",
-                    "Trigger when: Boss is below 35% health AND Decimation 10s buff is inactive, casting Searing Pain to activate Decimation.",
-                    "Fast Searing Pain cast on execute to activate Decimation's Soul Fire cast time reduction and 0-shard cost."
-                });
+                if (include_searing_pain_trigger) {
+                    rules.push_back({
+                        PriorityAction::DECIMATION_SEARING_PAIN,
+                        SpellID::SEARING_PAIN,
+                        "Decimation Trigger (Searing Pain)",
+                        "Target HP < 35% & Decimation Inactive",
+                        "Trigger when: Boss is below 35% health AND Decimation 10s buff is inactive, casting Searing Pain to activate Decimation.",
+                        "Fast Searing Pain cast on execute to activate Decimation's Soul Fire cast time reduction and 0-shard cost."
+                    });
+                }
                 rules.push_back({
                     PriorityAction::DECIMATION_SOUL_FIRE,
                     SpellID::SOUL_FIRE,
@@ -414,7 +416,11 @@ struct PolicyConfig {
 
             case RotationChoice::DP_AF_SHADOW:
                 add_racial();
-                add_decimation();
+                // No Searing Pain trigger: the Shadow Bolt filler refreshes
+                // the 10s Decimation buff on every cast in execute (<35% HP),
+                // so a dedicated trigger cast is redundant. Soul Fire execute
+                // is still scheduled below via add_decimation.
+                add_decimation(false);
                 add_corruption();
                 add_agony();
                 add_sb_filler();

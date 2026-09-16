@@ -197,7 +197,7 @@ inline void render_panel_optimizer(
                     ImGui::Image((ImTextureID)(uintptr_t)race_tex.id, ImVec2(18, 18));
                     if (ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
-                        ImGui::Text("%s (%s)", race_to_string(r.race), race_faction(r.race));
+                        ImGui::Text("%s", race_to_string(r.race));
                         ImGui::EndTooltip();
                     }
                 }
