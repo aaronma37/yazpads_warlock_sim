@@ -139,6 +139,9 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Shadow & Flame Fire — Incinerate + Conflag",  // 10 SHADOW_AND_FLAME_FIRE_2
         "Demonology Shadow — Bane + SB",               // 11 DP_AF_SHADOW_NO_CORRUPTION
         "Fire Destro — Incinerate + Conflag (No Corruption)", // 12 FIRE_DESTRO_NO_CORRUPTION
+        "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)", // 13 DP_AF_SHADOW_NO_SOUL_FIRE
+        "Demonology Shadow — Corruption + SB (No Bane)",             // 14 DP_AF_SHADOW_NO_BANE
+        "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)", // 15 DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {

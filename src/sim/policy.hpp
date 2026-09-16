@@ -77,6 +77,9 @@ enum class RotationChoice : uint8_t {
     SHADOW_AND_FLAME_FIRE_2,// Shadow & Flame Fire 2: Immolate + Conflag + Corruption + SBurn + Incinerate (No Searing Pain / Soul Fire)
     DP_AF_SHADOW_NO_CORRUPTION, // Demonology Shadow (No Corruption): Bane of Agony only + SB filler
     FIRE_DESTRO_NO_CORRUPTION,  // Fire Destro (No Corruption): Immolate + Conflagrate + Shadowburn + Incinerate filler, no Corruption
+    DP_AF_SHADOW_NO_SOUL_FIRE,        // Demonology Shadow (No Soul Fire): Corruption + Bane of Agony + SB filler, no Decimation Soul Fire
+    DP_AF_SHADOW_NO_BANE,             // Demonology Shadow (No Bane): Corruption only + SB filler, no Bane of Agony
+    DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE,// Demonology Shadow (No Soul Fire, No Bane): Corruption only + SB filler
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -98,6 +101,9 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::SHADOW_AND_FLAME_FIRE_2: return "Shadow & Flame Fire — Incinerate + Conflag";
         case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION: return "Demonology Shadow — Bane + SB";
         case RotationChoice::FIRE_DESTRO_NO_CORRUPTION: return "Fire Destro — Incinerate + Conflag (No Corruption)";
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE: return "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)";
+        case RotationChoice::DP_AF_SHADOW_NO_BANE: return "Demonology Shadow — Corruption + SB (No Bane)";
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE: return "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)";
         default: return "Shadow Destro";
     }
 }
@@ -130,6 +136,12 @@ inline const char* rotation_choice_description(RotationChoice r) {
             return "Demonology Shadow variant that skips Corruption entirely. Maintains only Bane of Agony and spams Shadow Bolt as filler — useful when Corruption's debuff slot is not available or its DPS contribution is outweighed by omitting it.";
         case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
             return "Fire Destro variant that drops Corruption. Maintains Immolate, casts Conflagrate on CD, weaves Shadowburn for +10% Fire buff, and spams Incinerate — useful when the Corruption debuff slot is not available.";
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE:
+            return "Demonology Shadow variant without Soul Fire execute. Maintains Corruption and Bane of Agony, and spams Shadow Bolt as filler — identical to the base DP/AF Shadow rotation but without the Decimation Soul Fire execute phase.";
+        case RotationChoice::DP_AF_SHADOW_NO_BANE:
+            return "Demonology Shadow variant without Bane of Agony. Maintains only Corruption and spams Shadow Bolt as filler — useful when the Bane of Agony debuff slot is not available or is better used by another class.";
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE:
+            return "Demonology Shadow variant without Bane of Agony or Soul Fire execute. Maintains only Corruption and spams Shadow Bolt as filler — a pure single-DoT Shadow Bolt spam for highly constrained debuff environments.";
         default:
             return "";
     }
@@ -290,7 +302,7 @@ struct PolicyConfig {
         };
 
         auto add_agony = [&]() {
-            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW) {
+            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE) {
                 rules.push_back({
                     PriorityAction::CURSE_OF_AGONY,
                     SpellID::CURSE_OF_AGONY,
@@ -582,6 +594,29 @@ struct PolicyConfig {
                 add_immolate();
                 add_drain_hope();
                 add_shadowburn();
+                add_sb_filler();
+                break;
+
+            case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE:
+                // Like DP_AF_SHADOW but without Decimation Soul Fire execute
+                add_racial();
+                add_corruption();
+                add_agony();
+                add_sb_filler();
+                break;
+
+            case RotationChoice::DP_AF_SHADOW_NO_BANE:
+                // Like DP_AF_SHADOW but without Bane of Agony; uses Decimation Soul Fire
+                add_racial();
+                add_decimation(false);
+                add_corruption();
+                add_sb_filler();
+                break;
+
+            case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE:
+                // Corruption only + SB filler; no Bane of Agony, no Soul Fire execute
+                add_racial();
+                add_corruption();
                 add_sb_filler();
                 break;
         }
