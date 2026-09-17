@@ -161,8 +161,10 @@ TEST_CASE(Talents, BaneCastTimeReduction) {
 TEST_CASE(Talents, AgonizingFlamesBonus) {
     Talents t;
     t.destro.agonizing_flames = 3;
-    double bonus = 1.0 + t.destro.agonizing_flames * 0.03;
-    CHECK_NEAR(bonus, 1.09, 0.001); // +9% damage
+    double bonus = (t.destro.agonizing_flames == 1) ? 0.03 :
+                   ((t.destro.agonizing_flames == 2) ? 0.07 :
+                   ((t.destro.agonizing_flames == 3) ? 0.10 : 0.0));
+    CHECK_NEAR(1.0 + bonus, 1.10, 0.001); // +10% damage at 3/3
 }
 
 TEST_CASE(Talents, ShadowMasteryBonus) {
@@ -172,14 +174,36 @@ TEST_CASE(Talents, ShadowMasteryBonus) {
     CHECK_NEAR(bonus, 1.05, 0.001); // +5% in Forever
 }
 
+TEST_CASE(Talents, ImprovedDrainsBonus) {
+    Talents t;
+    t.aff.improved_drains = 3;
+    double mult_r1 = 1.07;
+    double mult_r2 = 1.13;
+    double mult_r3 = 1.20;
+    CHECK_NEAR(mult_r1, 1.07, 0.001);
+    CHECK_NEAR(mult_r2, 1.13, 0.001);
+    CHECK_NEAR(mult_r3, 1.20, 0.001);
+}
+
+TEST_CASE(Talents, SoulSiphonBonus) {
+    Talents t;
+    t.aff.soul_siphon = 3;
+    // 3/3 gives +12% per active affliction effect up to 3 effects (max +36%)
+    int active_aff_effects = 3;
+    double ss_mult = 1.0 + active_aff_effects * (t.aff.soul_siphon * 0.04);
+    CHECK_NEAR(ss_mult, 1.36, 0.001);
+}
+
 TEST_CASE(Talents, DemonicBrandBonus) {
     Talents t;
     t.demo.demonic_brand = 3;
     CHECK_EQ(t.demo.demonic_brand, 3);
-    double min_brand = t.demo.demonic_brand * 13.0;
-    double max_brand = t.demo.demonic_brand * 14.0;
-    CHECK_NEAR(min_brand, 39.0, 0.001);
-    CHECK_NEAR(max_brand, 42.0, 0.001);
+    int charges = t.demo.demonic_brand * 2;
+    CHECK_EQ(charges, 6);
+    double min_brand = 65.0;
+    double max_brand = 68.0;
+    CHECK_NEAR(min_brand, 65.0, 0.001);
+    CHECK_NEAR(max_brand, 68.0, 0.001);
 }
 
 TEST_CASE(Talents, DecimationExecuteScaling) {

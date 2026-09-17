@@ -74,9 +74,9 @@ int run_headless(int argc, char* argv[]) {
             } else if (spec == "deep_affliction" || spec == "affliction" || spec == "aff") {
                 sim.talents = Talents::create_forever_deep_affliction();
                 sim.buffs.sacrifice_succubus = false;
-                sim.buffs.sacrifice_imp = false;
-                sim.policy.rotation = RotationChoice::DEEP_AFFLICTION;
-                sim.policy.pet = PetChoice::SUCCUBUS;
+                sim.buffs.sacrifice_imp = true;
+                sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+                sim.policy.pet = PetChoice::NONE;
             } else if (spec == "md_ruin" || spec == "md-ruin" || spec == "md") {
                 sim.talents = Talents::create_forever_md_ruin();
                 sim.buffs.sacrifice_succubus = false;
@@ -242,7 +242,7 @@ int run_headless(int argc, char* argv[]) {
     if (batch.pct_incinerate > 0.001)  std::cout << "  Incinerate:    " << batch.pct_incinerate << "%\n";
     if (batch.pct_searing_pain > 0.001)std::cout << "  Searing Pain:  " << batch.pct_searing_pain << "%\n";
     if (batch.pct_soul_fire > 0.001)   std::cout << "  Soul Fire:     " << batch.pct_soul_fire << "%\n";
-    if (batch.pct_drain_hope > 0.001)  std::cout << "  Drain Hope:    " << batch.pct_drain_hope << "%\n";
+    if (batch.pct_drain_hope > 0.001)  std::cout << "  Wrack:         " << batch.pct_drain_hope << "%\n";
     if (batch.pct_pet_imp > 0.001) {
         std::cout << "  Imp (Firebolt):" << batch.pct_pet_imp << "% (" << batch.mean_pet_dps << " DPS)\n";
     } else if (batch.pct_pet_succubus > 0.001) {

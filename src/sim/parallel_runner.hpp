@@ -88,6 +88,7 @@ struct BatchSimResult {
     double pct_pet_lash_of_pain = 0.0;
     double pct_pet_firebolt = 0.0;
     double pct_demonic_brand = 0.0;
+    double pct_touch_of_the_grave = 0.0;
     double mean_pet_dps = 0.0;
 
     // Per-spell combat averages, indexed by SpellID

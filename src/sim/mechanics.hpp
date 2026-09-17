@@ -64,7 +64,16 @@ struct MechanicsConfig {
     double base_gcd = 1.5;
     bool haste_affects_gcd = false; // In classic, haste does not affect 1.5s GCD floor; toggleable for modern.
 
-    // 11. Pet Stat Scaling & Mana Modeling
+    // 11. Drain Hope Spell Type
+    // True: Drain Hope (Wrack) is an instant cast 6-second DoT (1.5s GCD floor), allowing filler casts during its duration.
+    // False: Drain Hope is a channeled spell (player is locked channeling for its duration).
+    bool instant_drain_hope = true;
+
+    // 12. Corruption Spell Power Coefficient
+    // Default 1.0 (100% total SP over 6 ticks / 18s). Custom toggle/setting allows 1.2 (120% total SP).
+    double corruption_sp_coefficient = 1.0;
+
+    // 13. Pet Stat Scaling & Mana Modeling
     // True: Pets inherit master's Spell Power (15% to pet spell damage, 57% to pet Attack Power).
     // False: Static base damage (Classic 1.12).
     bool pet_scaling = true; // Default: ON (WoW Forever)

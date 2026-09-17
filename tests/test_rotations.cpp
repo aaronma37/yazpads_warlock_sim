@@ -174,6 +174,28 @@ TEST_CASE(Rotations, DeepAfflictionSBFillerDeterministicRun) {
     CHECK_EQ(res.dmg_immolate, 0.0);   // No Immolate
 }
 
+TEST_CASE(Rotations, DeepAfflictionSBFillerNoSLDeterministicRun) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_deep_affliction();
+    sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB_NO_SL;
+    sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+    sim.fight_duration = 30.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0);        // Bane of Agony
+    CHECK(res.dmg_drain_hope > 0.0);    // Wrack
+    CHECK_EQ(res.dmg_siphon_life, 0.0); // No Siphon Life
+    CHECK_EQ(res.dmg_drain_soul, 0.0);  // No Drain Soul
+    CHECK(res.shadow_bolt_casts > 0);   // Shadow Bolt filler
+    CHECK(res.dmg_shadow_bolt > 0.0);
+    CHECK_EQ(res.dmg_immolate, 0.0);    // No Immolate
+}
+
 TEST_CASE(Rotations, SMRuinDeterministicRun) {
     FastRNG rng(1337);
     WarlockSimulator sim;
@@ -456,6 +478,16 @@ TEST_CASE(Rotations, PriorityRuleChainGeneration) {
     CHECK(pos_sb_dh < pos_sb_filler);
     CHECK_EQ(static_cast<int>(aff_sb_rules.back().action), static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
 
+    // For Deep Affliction (SB filler, No Siphon Life): Corruption > Bane of Agony > Drain Hope > SB Filler, no Siphon Life
+    policy.rotation = RotationChoice::DEEP_AFFLICTION_SB_NO_SL;
+    auto aff_sb_no_sl_rules = policy.get_priority_rules(talents_aff);
+    bool has_sl = false;
+    for (const auto& r : aff_sb_no_sl_rules) {
+        if (r.spell_id == SpellID::SIPHON_LIFE) has_sl = true;
+    }
+    CHECK(has_sl == false);
+    CHECK_EQ(static_cast<int>(aff_sb_no_sl_rules.back().action), static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
+
     // For SM Ruin: Corruption > Bane of Agony > Shadowburn > SB Filler
     policy.rotation = RotationChoice::SM_RUIN;
     Talents talents_sm = Talents::create_forever_sm_ruin();
@@ -660,3 +692,64 @@ TEST_CASE(Rotations, SingleTargetNoHavocOrMultiDotOverhead) {
     CHECK_EQ(res1.dps, res2.dps);
     CHECK_EQ(res1.direct_spell_casts, res2.direct_spell_casts);
 }
+
+TEST_CASE(Rotations, AmplifyCursePriorityRuleAndExecution) {
+    PolicyConfig policy;
+    policy.rotation = RotationChoice::DEEP_AFFLICTION;
+    Talents talented = Talents::create_forever_deep_affliction();
+    CHECK_EQ(talented.aff.amplify_curse, 1);
+
+    auto rules = policy.get_priority_rules(talented);
+    int pos_amp = -1, pos_agony = -1;
+    for (size_t i = 0; i < rules.size(); ++i) {
+        if (rules[i].spell_id == SpellID::AMPLIFY_CURSE) pos_amp = (int)i;
+        if (rules[i].spell_id == SpellID::CURSE_OF_AGONY) pos_agony = (int)i;
+    }
+    CHECK(pos_amp != -1);
+    CHECK(pos_agony != -1);
+    CHECK(pos_amp < pos_agony);
+
+    // When untalented, Amplify Curse must NOT be present
+    Talents untalented = talented;
+    untalented.aff.amplify_curse = 0;
+    auto untalented_rules = policy.get_priority_rules(untalented);
+    bool has_amp_rule = false;
+    for (const auto& r : untalented_rules) {
+        if (r.spell_id == SpellID::AMPLIFY_CURSE) has_amp_rule = true;
+    }
+    CHECK_EQ(has_amp_rule, false);
+
+    // Simulation run with Amplify Curse talented
+    FastRNG rng1(1337);
+    FastRNG rng2(1337);
+
+    WarlockSimulator sim_amp;
+    sim_amp.talents = talented;
+    sim_amp.policy.rotation = RotationChoice::DEEP_AFFLICTION;
+    sim_amp.fight_duration = 24.0;
+    sim_amp.record_timeline = true;
+    SimResult res_amp = sim_amp.run_single_simulation(rng1);
+
+    WarlockSimulator sim_no_amp;
+    sim_no_amp.talents = untalented;
+    sim_no_amp.policy.rotation = RotationChoice::DEEP_AFFLICTION;
+    sim_no_amp.fight_duration = 24.0;
+    sim_no_amp.record_timeline = true;
+    SimResult res_no_amp = sim_no_amp.run_single_simulation(rng2);
+
+    CHECK(res_amp.spell_stats[static_cast<size_t>(SpellID::AMPLIFY_CURSE)].casts > 0);
+    CHECK_EQ(res_no_amp.spell_stats[static_cast<size_t>(SpellID::AMPLIFY_CURSE)].casts, 0);
+
+    // Verify Amplify Curse is recorded in cast sequence
+    bool amp_in_cast_seq = false;
+    for (const auto& log : res_amp.cast_sequence) {
+        if (log.spell_id == SpellID::AMPLIFY_CURSE) amp_in_cast_seq = true;
+    }
+    CHECK(amp_in_cast_seq);
+
+    // Amplified Bane of Agony should deal ~50% more damage than unamplified
+    CHECK(res_amp.dmg_agony > res_no_amp.dmg_agony);
+    CHECK(res_amp.dmg_agony >= res_no_amp.dmg_agony * 1.45);
+    CHECK(res_amp.dmg_agony <= res_no_amp.dmg_agony * 1.55);
+}
+

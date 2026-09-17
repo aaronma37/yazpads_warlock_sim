@@ -538,7 +538,7 @@ inline void render_panel_optimizer(
             if (b.pct_bane_of_havoc > 0.05) draw_dmg_bar("Bane of Havoc", b.pct_bane_of_havoc, ImVec4(0.85f, 0.4f, 0.95f, 1.0f), SpellID::BANE_OF_HAVOC);
             if (b.pct_siphon_life > 0.05) draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
             draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f), SpellID::SOUL_FIRE);
-            draw_dmg_bar("Drain Hope", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f), SpellID::DRAIN_HOPE);
+            draw_dmg_bar("Wrack", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f), SpellID::DRAIN_HOPE);
             draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f), SpellID::DRAIN_LIFE);
             draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f), SpellID::DRAIN_SOUL);
             if (b.pct_pet_firebolt > 0.05) draw_dmg_bar("Imp (Firebolt)", b.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::PET_FIREBOLT);

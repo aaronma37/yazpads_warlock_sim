@@ -106,6 +106,8 @@ struct SimResult {
     double dmg_pet_lash_of_pain = 0.0;
     double dmg_pet_firebolt = 0.0;
     double dmg_demonic_brand = 0.0;
+    double dmg_touch_of_the_grave = 0.0;
+    int touch_of_the_grave_procs = 0;
 
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;

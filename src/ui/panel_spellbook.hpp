@@ -42,11 +42,11 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Corruption (Rank 7)",
             "Shadow",
             "2.0s (Instant with 5/5 Imp Corruption)",
-            "290 Mana",
-            "None (or Initial Hit with Empowered Corruption)",
-            "822 Base DoT over 18s (6 ticks of 137.0 every 3s)",
-            "100.0% DoT (16.67% per tick)",
-            "Tick Damage = (822.0 / 6.0 + (SpellPower + ShadowSpellPower) / 6.0) * Multipliers",
+            "340 Mana",
+            "None",
+            "438 Base DoT over 18s (6 ticks of 73.0 every 3s)",
+            "120.0% DoT (20.0% per tick)",
+            "Tick Damage = (73.0 + (SpellPower + ShadowSpellPower) * 0.20) * Multipliers",
             "Baseline primary Shadow DoT. Can trigger Nightfall (4% chance per tick to grant instant cast Shadow Bolt). In WoW Forever, empowered variants allow DoT ticks to crit with Ruin +100% crit bonus.",
             "spell_shadow_abominationexplosion"
         },
@@ -56,10 +56,10 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Fire",
             "2.0s (1.5s with 5/5 Bane)",
             "380 Mana",
-            "258 - 306 Initial Direct Damage",
-            "485 Base DoT over 15s (5 ticks of 97.0 every 3s)",
-            "20.0% Direct, 65.0% DoT (13.0% per tick)",
-            "Direct = Roll(258, 306) + SP * 0.20 | Tick = 97.0 + SP * 0.13",
+            "158 Initial Direct Damage",
+            "275 Base DoT over 15s (5 ticks of 55.0 every 3s, 433 Total)",
+            "20.0% Direct + 65.0% DoT (13.0% per tick) = 85.0% Total",
+            "Direct = 158.0 + SP * 0.20 | Tick = 55.0 + SP * 0.13",
             "Hybrid fire direct/DoT spell. Prerequisite for Conflagrate consumption. Scaled by Demonic Sacrifice: Imp (+15%), Devastation (+5% crit), Fire and Brimstone (+10%), CoE (+10%), and Molten Core.",
             "spell_fire_immolation"
         },
@@ -70,9 +70,9 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Instant (1.5s GCD)",
             "215 Mana",
             "None",
-            "1044 Base DoT over 24s (12 ticks every 2s, ramping)",
-            "100.0% DoT (8.33% per tick average)",
-            "Tick Damage = (1044.0 / 12.0 + (SpellPower + ShadowSpellPower) / 12.0) * Multipliers",
+            "552 Base DoT over 24s (12 ticks of 46.0 avg every 2s, ramping)",
+            "159.6% DoT (13.3% per tick average)",
+            "Tick Damage = ((552.0 / 12.0) + (SpellPower + ShadowSpellPower) * (1.596 / 12.0)) * Ramp * Multipliers",
             "Bane slot DoT ramping damage. Can be used concurrently alongside target utility curses (CoS / CoE) and benefits from Pandemic crits.",
             "spell_shadow_curseofsargeras"
         },
@@ -83,9 +83,9 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Instant (1.5s GCD, 60s CD)",
             "300 Mana",
             "None",
-            "3200 Base Shadow Damage after 60s",
-            "200.0% Coefficient",
-            "Damage = (3200.0 + (SpellPower + ShadowSpellPower) * 2.0) * Multipliers",
+            "1,742 Base Shadow Damage after 60s",
+            "400.0% Coefficient",
+            "Damage = (1742.0 + (SpellPower + ShadowSpellPower) * 4.0) * Multipliers",
             "Massive delayed single-hit shadow curse. Best for long uninterrupted encounters (>= 60s).",
             "spell_shadow_auraofdarkness"
         },
@@ -169,15 +169,15 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
         },
         {
             SpellID::DRAIN_HOPE,
-            "Drain Hope (Rank 1)",
+            "Wrack (Rank 3)",
             "Shadow",
             "Channeled 6.0s (1.0s ticks, 20s CD)",
             "240 Mana",
             "None",
-            "312 Total Shadow Damage (6 ticks of 52.0 every 1s)",
-            "100.0% DoT (16.6% per tick)",
-            "Tick Damage = (52.0 + (SpellPower + ShadowSpellPower) * 0.166) * Multipliers",
-            "WoW Forever Deep Affliction channeled execute / resource-draining mechanism.",
+            "212 Total Shadow Damage (6 ticks of 35.33 every 1s)",
+            "100.0% DoT (16.7% per tick)",
+            "Tick Damage = (35.33 + (SpellPower + ShadowSpellPower) * 0.1667) * Multipliers",
+            "Tears the target apart from within, dealing 36 Shadow damage every 1 sec and increasing the damage they take from your other Shadow damage over time effects by 10%. Lasts 6 sec.",
             "spell_shadow_lifedrain02"
         },
         {
@@ -218,6 +218,19 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Mana Returned = 580 + (SpellPower * 0.80) * (1.0 + 0.10 * Imp_Life_Tap_Points)",
             "Essential resource generation mechanic. Restores mana at the expense of player health.",
             "spell_shadow_burningspirit"
+        },
+        {
+            SpellID::SIPHON_LIFE,
+            "Siphon Life (Rank 4)",
+            "Shadow",
+            "Instant (1.5s GCD)",
+            "365 Mana",
+            "None",
+            "410 Base DoT over 30s (10 ticks of 41.0 every 3s)",
+            "50.0% DoT (5.0% per tick)",
+            "Tick Damage = (41.0 + (SpellPower + ShadowSpellPower) * 0.05) * Multipliers",
+            "Transfers health from the target to the caster every 3 sec over 30 sec. Benefits from Affliction talents and Pandemic crits.",
+            "spell_shadow_requiem"
         }
     };
     return entries;

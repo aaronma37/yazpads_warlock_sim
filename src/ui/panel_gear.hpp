@@ -134,13 +134,13 @@ inline void render_armory_panel(
             ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Sword Spec (+2%% Crit w/ Swords) | Spirit (+5%%)");
             break;
         case Race::GNOME:
-            ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana) | Eureka! (+10%% Dmg 3 casts)");
+            ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana) | Eureka! (-50%% Mana, +10%% Dmg 3 casts)");
             break;
         case Race::ORC:
             ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.30f, 1.0f), "Blood Fury (+10%% SP for 15s) | Shatter Curse | Hardiness (Axe Spec Inactive - Warlocks cannot equip axes)");
             break;
         case Race::UNDEAD:
-            ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Touch of the Grave (Drain Proc) | Will of the Forsaken");
+            ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Touch of the Grave (10%% chance to drain up to 5%% Max HP) | Will of the Forsaken");
             break;
         case Race::TROLL:
             ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s) | Beast Slaying (+5%% vs Beasts)");

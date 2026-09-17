@@ -162,7 +162,7 @@ inline void render_panel_results(const BatchSimResult& batch) {
             }
 
             if (batch.pct_drain_hope > 0.001) {
-                spell_row("Drain Hope", batch.pct_drain_hope, ImVec4(0.6f, 0.3f, 0.9f, 1.0f), SpellID::DRAIN_HOPE);
+                spell_row("Wrack", batch.pct_drain_hope, ImVec4(0.6f, 0.3f, 0.9f, 1.0f), SpellID::DRAIN_HOPE);
             }
 
             if (batch.pct_drain_life > 0.001) {
@@ -187,6 +187,10 @@ inline void render_panel_results(const BatchSimResult& batch) {
 
             if (batch.pct_demonic_brand > 0.001) {
                 spell_row("Demonic Brand", batch.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
+            }
+
+            if (batch.pct_touch_of_the_grave > 0.001) {
+                spell_row("Touch of the Grave", batch.pct_touch_of_the_grave, ImVec4(0.7f, 0.9f, 0.6f, 1.0f), SpellID::TOUCH_OF_THE_GRAVE);
             }
 
             if (batch.pct_pet > 0.001) {

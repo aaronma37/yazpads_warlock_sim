@@ -41,6 +41,17 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("When ON (Classic): DoTs snapshot spell power at cast time.\nWhen OFF (Modern / Forever): DoTs dynamically scale on each tick.");
         }
+        ImGui::Checkbox("Instant Cast DoT Wrack (Non-Channeled)", &mechanics.instant_drain_hope);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON: Wrack is cast as an instant 6-second DoT (1.5s GCD), allowing filler casts during its duration.\nWhen OFF (Default): Wrack is a 6-second channeled spell that locks your casting during the channel.");
+        }
+        bool corr_120 = (mechanics.corruption_sp_coefficient >= 1.19);
+        if (ImGui::Checkbox("Corruption 1.2 SP Coefficient (120%)", &corr_120)) {
+            mechanics.corruption_sp_coefficient = corr_120 ? 1.2 : 1.0;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", "When ON: Corruption gains 120% (1.2x) total master Spell Power over its 18-second duration (20% SP per tick).\nWhen OFF (Default): Corruption gains standard 100% (1.0x) total master Spell Power (16.67% SP per tick).");
+        }
 
         ImGui::Spacing();
         ImGui::Separator();

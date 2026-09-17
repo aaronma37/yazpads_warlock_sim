@@ -39,6 +39,21 @@ enum class ShadowburnPolicy : uint8_t {
     EXECUTE_ONLY // Last 20% of fight
 };
 
+enum class RacialPolicy : uint8_t {
+    EXECUTE_ONLY = 0,     // Trigger during execute phase (<35% target HP)
+    ON_COOLDOWN,          // Trigger on cooldown (immediately at combat start)
+    ALIGN_EXECUTE         // Trigger on opener if fight duration allows recast in execute, else hold for <35% HP
+};
+
+inline const char* racial_policy_to_string(RacialPolicy p) {
+    switch (p) {
+        case RacialPolicy::EXECUTE_ONLY: return "Execute Phase (<35% HP)";
+        case RacialPolicy::ON_COOLDOWN: return "On Cooldown (Opener)";
+        case RacialPolicy::ALIGN_EXECUTE: return "Smart Execute Alignment";
+        default: return "Execute Phase";
+    }
+}
+
 enum class PetChoice : uint8_t {
     NONE = 0,
     SUCCUBUS,
@@ -81,6 +96,7 @@ enum class RotationChoice : uint8_t {
     DP_AF_SHADOW_NO_BANE,             // Demonology Shadow (No Bane): Corruption only + SB filler, no Bane of Agony
     DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE,// Demonology Shadow (No Soul Fire, No Bane): Corruption only + SB filler
     DEEP_AFFLICTION_SB,               // Deep Affliction (SB filler): Corruption + Bane of Agony + Siphon Life + Drain Hope + Nightfall + SB filler
+    DEEP_AFFLICTION_SB_NO_SL,         // Deep Affliction (SB filler, No Siphon Life): Corruption + Bane of Agony + Drain Hope + Nightfall + SB filler
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -94,7 +110,7 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::FIRE_DESTRO: return "Fire Destro — Incinerate + Conflag";
         case RotationChoice::DP_AF_SHADOW: return "Demonology Shadow — Corruption + Bane + SB";
         case RotationChoice::DP_RUIN_FIRE: return "Demonology Fire — Searing Pain";
-        case RotationChoice::DEEP_AFFLICTION: return "Deep Affliction — Drain Hope";
+        case RotationChoice::DEEP_AFFLICTION: return "Deep Affliction — Wrack";
         case RotationChoice::SM_RUIN: return "Shadow Mastery — DoTs + SB";
         case RotationChoice::DEMONOLOGY_EXECUTE: return "Demo Execute — Decimation Soul Fire";
         case RotationChoice::PURE_SHADOW_BOLT: return "Pure Shadow Bolt — No DoTs";
@@ -105,7 +121,8 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE: return "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)";
         case RotationChoice::DP_AF_SHADOW_NO_BANE: return "Demonology Shadow — Corruption + SB (No Bane)";
         case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE: return "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)";
-        case RotationChoice::DEEP_AFFLICTION_SB: return "Deep Affliction — Drain Hope (SB Filler)";
+        case RotationChoice::DEEP_AFFLICTION_SB: return "Deep Affliction — Wrack (SB Filler)";
+        case RotationChoice::DEEP_AFFLICTION_SB_NO_SL: return "Deep Affliction — Wrack (SB Filler, No Siphon Life)";
         default: return "Shadow Destro";
     }
 }
@@ -123,9 +140,11 @@ inline const char* rotation_choice_description(RotationChoice r) {
         case RotationChoice::DP_RUIN_FIRE:
             return "Fire Demonic Pact / Agonizing Flames: Maintains Immolate, casts Conflagrate on CD, weaves Shadowburn, spams Searing Pain (benefiting from Agonizing Flames & Demonic Brand), and feeds pet mana via Demonic Energies.";
         case RotationChoice::DEEP_AFFLICTION:
-            return "Maintains Corruption and Bane of Agony (CoA) on top priority for Nightfall procs and Pandemic crits, channels Drain Hope on 20s CD for +10% DoT amplification, with Drain Soul as filler.";
+            return "Maintains Corruption and Bane of Agony (CoA) on top priority for Nightfall procs and Pandemic crits, casts Wrack on 20s CD for +10% DoT amplification, with Drain Soul as filler.";
         case RotationChoice::DEEP_AFFLICTION_SB:
-            return "Maintains Corruption, Bane of Agony (CoA), and Siphon Life, channels Drain Hope on 20s CD for +10% DoT amplification, with Shadow Bolt as filler.";
+            return "Maintains Corruption, Bane of Agony (CoA), and Siphon Life, casts Wrack on 20s CD for +10% DoT amplification, with Shadow Bolt as filler.";
+        case RotationChoice::DEEP_AFFLICTION_SB_NO_SL:
+            return "Maintains Corruption and Bane of Agony (CoA), casts Wrack on 20s CD for +10% DoT amplification, with Shadow Bolt as filler (skipping Siphon Life).";
         case RotationChoice::SM_RUIN:
             return "Shadow Mastery / Agonizing Flames (32/0/19): Maintains Corruption and Bane of Agony (CoA) for Nightfall instant Shadow Bolts and Pandemic crits, casts Shadowburn on cooldown, and spams Shadow Bolt.";
         case RotationChoice::DEMONOLOGY_EXECUTE:
@@ -133,7 +152,7 @@ inline const char* rotation_choice_description(RotationChoice r) {
         case RotationChoice::PURE_SHADOW_BOLT:
             return "Strictly spams Shadow Bolt without placing any DoTs (ideal for Classic 16 debuff limit). Raid curses are handled by raid debuffs.";
         case RotationChoice::AFFLICTION_HYBRID_DOTS:
-            return "Maintains Bane of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Drain Hope and Shadow Bolt.";
+            return "Maintains Bane of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Wrack and Shadow Bolt.";
         case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
             return "Shadow and Flame Fire 2: Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, maintains Corruption, weaves Shadowburn for +10% Fire buff, and spams Incinerate as filler with active Imp (no Searing Pain or Soul Fire).";
         case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
@@ -156,6 +175,7 @@ enum class PriorityAction : uint8_t {
     RACIAL_EUREKA,
     RACIAL_BLOOD_FURY,
     RACIAL_BERSERKING,
+    AMPLIFY_CURSE,
     CURSE_OF_AGONY,
     CURSE_OF_DOOM,
     BANE_OF_HAVOC,
@@ -175,7 +195,8 @@ enum class PriorityAction : uint8_t {
     SHADOW_BOLT_FILLER,
 
     // Aliases
-    BANE_OF_AGONY = CURSE_OF_AGONY
+    BANE_OF_AGONY = CURSE_OF_AGONY,
+    WRACK = DRAIN_HOPE
 };
 
 struct PriorityRule {
@@ -194,6 +215,7 @@ struct PolicyConfig {
     DotPolicy corruption = DotPolicy::ALWAYS;
     bool maintain_immolate = true;            // Maintain Immolate for Conflag/Incinerate bonuses
     ShadowburnPolicy shadowburn = ShadowburnPolicy::ON_COOLDOWN;
+    RacialPolicy racial_policy = RacialPolicy::EXECUTE_ONLY; // Racial usage timing (<35% execute vs on cooldown)
     PetChoice pet = PetChoice::SUCCUBUS;      // Active demon when not sacrificed
 
     double life_tap_threshold_pct = 25.0;     // Life Tap if mana drops below this %
@@ -231,22 +253,27 @@ struct PolicyConfig {
 
         // Helper lambdas for common rule additions
         auto add_racial = [&]() {
+            std::string cond_summary = (racial_policy == RacialPolicy::EXECUTE_ONLY) ? "Target <35% HP (Execute) & CD Ready" :
+                                       (racial_policy == RacialPolicy::ALIGN_EXECUTE) ? "Smart Execute & CD Ready" : "CD Ready (120s)";
+            std::string trigger_cond = (racial_policy == RacialPolicy::EXECUTE_ONLY) ? "Trigger when: Target is below 35% HP (Execute phase) and racial cooldown is ready." :
+                                       (racial_policy == RacialPolicy::ALIGN_EXECUTE) ? "Trigger when: Opener (if fight length allows recast in execute) or Target <35% HP." :
+                                       "Trigger when: Racial cooldown is ready.";
             if (race == Race::GNOME) {
                 rules.push_back({
                     PriorityAction::RACIAL_EUREKA,
                     SpellID::RACIAL_EUREKA,
                     "Eureka! (Gnome)",
-                    "CD Ready (120s) & Gnome",
-                    "Trigger when: Gnome racial cooldown is ready (120s CD).",
-                    "Instant off-GCD ability. Grants 3 charges of +10% direct damage bonus to the next 3 direct spell damage casts."
+                    cond_summary + " & Gnome",
+                    trigger_cond + " (120s CD).",
+                    "Instant off-GCD ability. Your next 3 damaging abilities have their Mana cost reduced by 50% and deal 10% more damage."
                 });
             } else if (race == Race::ORC) {
                 rules.push_back({
                     PriorityAction::RACIAL_BLOOD_FURY,
                     SpellID::RACIAL_BLOOD_FURY,
                     "Blood Fury (Orc)",
-                    "CD Ready (120s) & Orc",
-                    "Trigger when: Orc racial cooldown is ready (120s CD).",
+                    cond_summary + " & Orc",
+                    trigger_cond + " (120s CD).",
                     "Instant off-GCD ability. Increases spell damage for 15s."
                 });
             } else if (race == Race::TROLL) {
@@ -254,8 +281,8 @@ struct PolicyConfig {
                     PriorityAction::RACIAL_BERSERKING,
                     SpellID::RACIAL_BERSERKING,
                     "Berserking (Troll)",
-                    "CD Ready (180s) & Troll",
-                    "Trigger when: Troll racial cooldown is ready (180s CD).",
+                    cond_summary + " & Troll",
+                    trigger_cond + " (180s CD).",
                     "Instant off-GCD ability. Increases spell casting haste for 10s."
                 });
             }
@@ -311,7 +338,17 @@ struct PolicyConfig {
         };
 
         auto add_agony = [&]() {
-            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE) {
+            if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::DEEP_AFFLICTION_SB_NO_SL || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE || eff == RotationChoice::DEMONOLOGY_EXECUTE || eff == RotationChoice::DP_AF_SHADOW_NO_CORRUPTION) {
+                if (talents.aff.amplify_curse > 0) {
+                    rules.push_back({
+                        PriorityAction::AMPLIFY_CURSE,
+                        SpellID::AMPLIFY_CURSE,
+                        "Amplify Curse",
+                        "CD Ready (180s) & Agony Cast",
+                        "Trigger when: Amplify Curse cooldown is ready (180s) and Bane of Agony is about to be cast.",
+                        "Instant off-GCD ability. Increases the damage of your next Bane of Agony by 50%."
+                    });
+                }
                 rules.push_back({
                     PriorityAction::CURSE_OF_AGONY,
                     SpellID::CURSE_OF_AGONY,
@@ -346,14 +383,14 @@ struct PolicyConfig {
         };
 
         auto add_drain_hope = [&]() {
-            if ((talents.aff.drain_hope > 0 || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) && channel_drain_hope) {
+            if ((talents.aff.drain_hope > 0 || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::DEEP_AFFLICTION_SB_NO_SL || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) && channel_drain_hope) {
                 rules.push_back({
                     PriorityAction::DRAIN_HOPE,
                     SpellID::DRAIN_HOPE,
-                    "Drain Hope",
+                    "Wrack",
                     "CD Ready (20s) & Talented",
-                    "Trigger when: Drain Hope cooldown is ready (20s).",
-                    "Channels Shadow execute, dealing high ticking damage and amplifying all other Shadow DoTs by +10%."
+                    "Trigger when: Wrack cooldown is ready (20s).",
+                    "Tears the target apart from within, dealing ticking Shadow damage and increasing the damage they take from your other Shadow damage over time effects by 10%."
                 });
             }
         };
@@ -582,6 +619,16 @@ struct PolicyConfig {
                 add_corruption();
                 add_agony();
                 add_siphon_life();
+                add_drain_hope();
+                add_sb_filler();         // Shadow Bolt as filler
+                break;
+
+            case RotationChoice::DEEP_AFFLICTION_SB_NO_SL:
+                // Same as Deep Affliction SB filler, but skips Siphon Life (Corruption, CoA, Wrack, SB filler)
+                add_racial();
+                add_nightfall();
+                add_corruption();
+                add_agony();
                 add_drain_hope();
                 add_sb_filler();         // Shadow Bolt as filler
                 break;

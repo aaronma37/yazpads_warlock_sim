@@ -63,6 +63,7 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_pet_lop = 0.0;
         double sum_dmg_pet_fb = 0.0;
         double sum_dmg_demonic_brand = 0.0;
+        double sum_dmg_totg = 0.0;
         double sum_dmg_total = 0.0;
 
         std::array<SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> sum_spell;
@@ -129,6 +130,7 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_dmg_pet_lop += res.dmg_pet_lash_of_pain;
                 out.sum_dmg_pet_fb += res.dmg_pet_firebolt;
                 out.sum_dmg_demonic_brand += res.dmg_demonic_brand;
+                out.sum_dmg_totg += res.dmg_touch_of_the_grave;
                 out.sum_dmg_total += res.total_damage;
 
                 for (size_t s = 0; s < out.sum_spell.size(); ++s) {
@@ -200,6 +202,7 @@ BatchSimResult ParallelSimRunner::run_batch(
     double total_dmg_pet_lop = 0.0;
     double total_dmg_pet_fb = 0.0;
     double total_dmg_demonic_brand = 0.0;
+    double total_dmg_totg = 0.0;
     double total_dmg_all = 0.0;
 
     std::array<SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> total_spell;
@@ -243,6 +246,7 @@ BatchSimResult ParallelSimRunner::run_batch(
         total_dmg_pet_lop += out.sum_dmg_pet_lop;
         total_dmg_pet_fb += out.sum_dmg_pet_fb;
         total_dmg_demonic_brand += out.sum_dmg_demonic_brand;
+        total_dmg_totg += out.sum_dmg_totg;
         total_dmg_all += out.sum_dmg_total;
 
         for (size_t s = 0; s < total_spell.size(); ++s) {
@@ -317,6 +321,7 @@ BatchSimResult ParallelSimRunner::run_batch(
         batch.pct_pet_lash_of_pain = (total_dmg_pet_lop / total_dmg_all) * 100.0;
         batch.pct_pet_firebolt = (total_dmg_pet_fb / total_dmg_all) * 100.0;
         batch.pct_demonic_brand = (total_dmg_demonic_brand / total_dmg_all) * 100.0;
+        batch.pct_touch_of_the_grave = (total_dmg_totg / total_dmg_all) * 100.0;
     }
 
     // Build 40-bin Histogram

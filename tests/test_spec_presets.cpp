@@ -5,7 +5,7 @@ using namespace warlock;
 
 TEST_CASE(SpecPresets, CountAndUniqueNames) {
     const auto& presets = standard_spec_presets();
-    CHECK_EQ(presets.size(), (size_t)17);
+    CHECK_EQ(presets.size(), (size_t)18);
     for (size_t i = 0; i < presets.size(); ++i) {
         CHECK(presets[i].display_name != nullptr && std::string(presets[i].display_name).size() > 0);
         CHECK(presets[i].short_label != nullptr && std::string(presets[i].short_label).size() > 0);
@@ -213,4 +213,37 @@ TEST_CASE(SpecPresets, IncinDsDecimateNoCorruption) {
     CHECK(has_incinerate == true);
     CHECK(has_conflagrate == true);
     CHECK(has_immolate == true);
+}
+
+TEST_CASE(SpecPresets, DeepAfflictionImp) {
+    const SpecPreset* p = find_spec_preset("deep_aff_imp");
+    CHECK(p != nullptr);
+    CHECK(std::string(p->display_name) == "35/6/10 Deep Affliction Imp");
+    CHECK(p->rotation == RotationChoice::DEEP_AFFLICTION_SB);
+    CHECK(p->pet == PetChoice::IMP);
+    CHECK(p->sac_succubus == false);
+    CHECK(p->sac_imp == false);
+    CHECK(p->maintain_immolate == true);
+
+    Talents t = p->make_talents();
+    CHECK_EQ(t.aff.total_points(), 35);
+    CHECK_EQ(t.demo.total_points(), 6);
+    CHECK_EQ(t.destro.total_points(), 10);
+    CHECK_EQ(t.total_points(), 51);
+    CHECK(t.is_valid());
+    CHECK_EQ(t.aff.suppression, 5);
+    CHECK_EQ(t.aff.improved_corruption, 5);
+    CHECK_EQ(t.aff.nightfall, 2);
+    CHECK_EQ(t.aff.drain_hope, 1);
+    CHECK_EQ(t.demo.improved_imp, 3);
+    CHECK_EQ(t.demo.unholy_power, 2);
+    CHECK_EQ(t.demo.demonic_energies, 1);
+    CHECK_EQ(t.destro.improved_shadow_bolt, 5);
+    CHECK_EQ(t.destro.bane, 5);
+
+    WarlockSimulator sim;
+    apply_spec_preset(sim, *p);
+    CHECK(sim.policy.rotation == RotationChoice::DEEP_AFFLICTION_SB);
+    CHECK(sim.policy.pet == PetChoice::IMP);
+    CHECK(sim.buffs.sacrifice_imp == false);
 }

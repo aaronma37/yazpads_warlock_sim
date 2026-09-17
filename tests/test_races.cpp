@@ -110,3 +110,102 @@ TEST_CASE(Races, OrcAxeCritBonusAndNoPetCommand) {
     CHECK_NEAR(res_orc.dmg_pet_lash_of_pain, res_undead.dmg_pet_lash_of_pain, 0.01);
 }
 
+TEST_CASE(Races, UndeadTouchOfTheGraveScaling) {
+    FastRNG rng_undead(12345);
+    FastRNG rng_human(12345);
+
+    WarlockSimulator sim_undead;
+    sim_undead.race = Race::UNDEAD;
+    sim_undead.use_raw_stats = true;
+    sim_undead.raw_stats.max_health = 4000.0;
+    sim_undead.talents = Talents::create_forever_shadow_destro();
+    sim_undead.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    sim_undead.fight_duration = 60.0;
+
+    WarlockSimulator sim_human = sim_undead;
+    sim_human.race = Race::HUMAN;
+
+    SimResult res_undead = sim_undead.run_single_simulation(rng_undead);
+    SimResult res_human = sim_human.run_single_simulation(rng_human);
+
+    // Undead should have Touch of the Grave procs (10% chance, draining up to 5% of max HP = 200 base per proc)
+    CHECK(res_undead.touch_of_the_grave_procs > 0);
+    CHECK(res_undead.dmg_touch_of_the_grave > 0.0);
+    CHECK_EQ(res_human.touch_of_the_grave_procs, 0);
+    CHECK_EQ(res_human.dmg_touch_of_the_grave, 0.0);
+}
+
+TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
+    FastRNG rng_gnome(100);
+    FastRNG rng_human(100);
+
+    WarlockSimulator sim_gnome;
+    sim_gnome.race = Race::GNOME;
+    sim_gnome.use_raw_stats = true;
+    sim_gnome.raw_stats.spell_power = 0.0;
+    sim_gnome.talents = Talents::create_forever_shadow_destro();
+    // Cataclysm = 0 so SB base cost = 380
+    sim_gnome.talents.destro.cataclysm = 0;
+    sim_gnome.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    sim_gnome.policy.racial_policy = RacialPolicy::ON_COOLDOWN;
+    // 3.0s cast with 0/5 Bane -> 3 casts take ~9s (duration 10s gives exactly 3 SB casts)
+    sim_gnome.talents.destro.bane = 0;
+    sim_gnome.fight_duration = 10.0;
+    sim_gnome.record_timeline = true;
+
+    WarlockSimulator sim_human = sim_gnome;
+    sim_human.race = Race::HUMAN;
+
+    SimResult res_gnome = sim_gnome.run_single_simulation(rng_gnome);
+    SimResult res_human = sim_human.run_single_simulation(rng_human);
+
+    // 3 Shadow Bolts cast
+    CHECK_EQ(res_gnome.shadow_bolt_casts, 3);
+    CHECK_EQ(res_human.shadow_bolt_casts, 3);
+
+    // Gnome spent 50% mana per cast (190 * 3 = 570), Human spent 380 * 3 = 1140
+    CHECK_NEAR(res_gnome.mana_spent, 570.0, 0.01);
+    CHECK_NEAR(res_human.mana_spent, 1140.0, 0.01);
+
+    // For 4 casts (duration 13.0s):
+    sim_gnome.fight_duration = 13.0;
+    sim_human.fight_duration = 13.0;
+    FastRNG rng_gnome4(100);
+    FastRNG rng_human4(100);
+    SimResult res_gnome4 = sim_gnome.run_single_simulation(rng_gnome4);
+    SimResult res_human4 = sim_human.run_single_simulation(rng_human4);
+
+    CHECK_EQ(res_gnome4.shadow_bolt_casts, 4);
+    // 3 discounted (190 * 3 = 570) + 1 regular (380) = 950
+    CHECK_NEAR(res_gnome4.mana_spent, 950.0, 0.01);
+    CHECK_NEAR(res_human4.mana_spent, 1520.0, 0.01);
+}
+
+TEST_CASE(Races, GnomeEurekaExecutePhaseTrigger) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.race = Race::GNOME;
+    sim.talents = Talents::create_forever_dp_af_shadow();
+    sim.policy.rotation = RotationChoice::DEMONOLOGY_EXECUTE;
+    sim.policy.racial_policy = RacialPolicy::EXECUTE_ONLY;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+
+    // Execute phase starts at 60.0 * 0.65 = 39.0s
+    double eureka_cast_time = -1.0;
+    for (const auto& c : res.cast_sequence) {
+        if (c.spell_id == SpellID::RACIAL_EUREKA) {
+            eureka_cast_time = c.time;
+            break;
+        }
+    }
+
+    CHECK(eureka_cast_time >= 39.0); // Triggered during execute phase (<35% HP)
+    CHECK(res.dmg_soul_fire > 0.0);
+}
+
+
+
+

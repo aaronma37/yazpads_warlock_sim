@@ -199,7 +199,8 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
         json << "    \"use_decimation_soul_fire\": " << (p.use_decimation_soul_fire ? "true" : "false") << ",\n";
         json << "    \"channel_drain_hope\": " << (p.channel_drain_hope ? "true" : "false") << ",\n";
         json << "    \"multi_dot_corruption\": " << (p.multi_dot_corruption ? "true" : "false") << ",\n";
-        json << "    \"auto_bane_of_havoc\": " << (p.auto_bane_of_havoc ? "true" : "false") << "\n";
+        json << "    \"auto_bane_of_havoc\": " << (p.auto_bane_of_havoc ? "true" : "false") << ",\n";
+        json << "    \"racial_policy\": \"" << racial_policy_to_string(p.racial_policy) << "\"\n";
         json << "  },\n";
     }
 
@@ -225,7 +226,9 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
         json << "\"default_boss_distance_yards\": " << json_double(m.default_boss_distance_yards) << ", ";
         json << "\"projectile_speed_yards_per_sec\": " << json_double(m.projectile_speed_yards_per_sec) << ",\n";
         json << "    \"base_gcd\": " << json_double(m.base_gcd) << ", ";
-        json << "\"haste_affects_gcd\": " << (m.haste_affects_gcd ? "true" : "false") << ",\n";
+        json << "\"haste_affects_gcd\": " << (m.haste_affects_gcd ? "true" : "false") << ", ";
+        json << "\"instant_drain_hope\": " << (m.instant_drain_hope ? "true" : "false") << ",\n";
+        json << "    \"corruption_sp_coefficient\": " << json_double(m.corruption_sp_coefficient) << ",\n";
         json << "    \"pet_scaling\": " << (m.pet_scaling ? "true" : "false") << ", ";
         json << "\"pet_sp_ratio\": " << json_double(m.pet_sp_ratio) << ", ";
         json << "\"pet_ap_ratio\": " << json_double(m.pet_ap_ratio) << ",\n";

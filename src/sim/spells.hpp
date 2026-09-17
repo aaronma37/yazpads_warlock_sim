@@ -35,6 +35,8 @@ enum class SpellID : uint8_t {
     RACIAL_EUREKA,
     RACIAL_BLOOD_FURY,
     RACIAL_BERSERKING,
+    AMPLIFY_CURSE,
+    TOUCH_OF_THE_GRAVE,
 
     COUNT // Number of spell ids; must stay last (sizes per-spell stat arrays)
 };
@@ -80,8 +82,8 @@ public:
         s.school = School::SHADOW;
         s.base_cast_time = 3.0; // Reduced by Bane
         s.mana_cost = 380.0;
-        s.min_dmg = 482.0;
-        s.max_dmg = 538.0;
+        s.min_dmg = 253.0;
+        s.max_dmg = 283.0;
         s.direct_coefficient = 3.0 / 3.5; // ~0.8571
         return s;
     }
@@ -92,20 +94,20 @@ public:
         s.name = "Corruption";
         s.school = School::SHADOW;
         s.base_cast_time = 2.0; // Reduced to 0 by Imp Corruption 5/5
-        s.mana_cost = 290.0;
+        s.mana_cost = 340.0;
         s.is_dot = true;
         s.dot_duration = 18.0;
         s.dot_tick_interval = 3.0;
         s.num_ticks = 6;
-        s.dot_base_dmg_per_tick = 822.0 / 6.0; // 137.0
-        s.dot_coeff_per_tick = 1.0 / 6.0;      // 100% total coefficient
+        s.dot_base_dmg_per_tick = 73.0;        // 438.0 total (73 every 3s)
+        s.dot_coeff_per_tick = 0.20;          // 20% per tick (120% total coefficient)
         return s;
     }
 
     static inline SpellDefinition curse_of_agony_rank6() {
         SpellDefinition s;
         s.id = SpellID::CURSE_OF_AGONY;
-        s.name = "Curse of Agony";
+        s.name = "Bane of Agony";
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 215.0;
@@ -113,8 +115,8 @@ public:
         s.dot_duration = 24.0;
         s.dot_tick_interval = 2.0;
         s.num_ticks = 12;
-        s.dot_base_dmg_per_tick = 1044.0 / 12.0; // 87.0 base avg per tick
-        s.dot_coeff_per_tick = 1.0 / 12.0;       // 100% total coefficient
+        s.dot_base_dmg_per_tick = 552.0 / 12.0; // 46.0 base avg per tick (552 total)
+        s.dot_coeff_per_tick = 1.596 / 12.0;    // 13.3% per tick (159.6% total coefficient)
         return s;
     }
 
@@ -130,8 +132,8 @@ public:
         s.dot_duration = 60.0;
         s.dot_tick_interval = 60.0;
         s.num_ticks = 1;
-        s.dot_base_dmg_per_tick = 3200.0;
-        s.dot_coeff_per_tick = 2.0; // 200% coefficient
+        s.dot_base_dmg_per_tick = 1742.0;       // 1,742 base damage after 60s
+        s.dot_coeff_per_tick = 4.0;            // 400% coefficient
         return s;
     }
 
@@ -164,15 +166,15 @@ public:
         s.school = School::FIRE;
         s.base_cast_time = 2.0; // Reduced by Bane to 1.5s
         s.mana_cost = 380.0;
-        s.min_dmg = 258.0;
-        s.max_dmg = 306.0;
+        s.min_dmg = 158.0;
+        s.max_dmg = 158.0;
         s.direct_coefficient = 0.20; // 20% direct
         s.is_dot = true;
         s.dot_duration = 15.0;
         s.dot_tick_interval = 3.0;
         s.num_ticks = 5;
-        s.dot_base_dmg_per_tick = 485.0 / 5.0; // 97.0
-        s.dot_coeff_per_tick = 0.65 / 5.0;     // 65% total DoT
+        s.dot_base_dmg_per_tick = 55.0; // 55 every 3s (275 DoT + 158 initial = 433 total)
+        s.dot_coeff_per_tick = 0.13;    // 13% per tick (65% total DoT -> 85% full duration)
         return s;
     }
 
@@ -183,8 +185,8 @@ public:
         s.school = School::FIRE;
         s.base_cast_time = 1.5;
         s.mana_cost = 168.0;
-        s.min_dmg = 204.0;
-        s.max_dmg = 240.0;
+        s.min_dmg = 108.0;
+        s.max_dmg = 127.0;
         s.direct_coefficient = 1.5 / 3.5; // ~0.4286
         return s;
     }
@@ -197,8 +199,8 @@ public:
         s.base_cast_time = 0.0;
         s.mana_cost = 365.0;
         s.cooldown = 8.0;
-        s.min_dmg = 450.0;
-        s.max_dmg = 502.0;
+        s.min_dmg = 238.0;
+        s.max_dmg = 266.0;
         s.direct_coefficient = 1.5 / 3.5; // 0.4286
         return s;
     }
@@ -222,9 +224,9 @@ public:
         s.name = "Incinerate";
         s.school = School::FIRE;
         s.base_cast_time = 2.5; // Reduced by Bane
-        s.mana_cost = 355.0;
-        s.min_dmg = 445.0;
-        s.max_dmg = 515.0;
+        s.mana_cost = 325.0;
+        s.min_dmg = 201.0;
+        s.max_dmg = 233.0;
         s.direct_coefficient = 2.5 / 3.5; // 0.7143
         return s;
     }
@@ -237,8 +239,8 @@ public:
         s.base_cast_time = 0.0;
         s.mana_cost = 265.0;
         s.cooldown = 10.0;
-        s.min_dmg = 578.0;
-        s.max_dmg = 704.0;
+        s.min_dmg = 306.0;
+        s.max_dmg = 374.0;
         s.direct_coefficient = 1.5 / 3.5; // 0.4286
         return s;
     }
@@ -248,31 +250,34 @@ public:
         s.id = SpellID::SOUL_FIRE;
         s.name = "Soul Fire";
         s.school = School::FIRE;
-        s.base_cast_time = 4.0; // Reduced by Bane to 2.0s; reduced by Decimation
+        s.base_cast_time = 6.0; // 4.0s with 5/5 Bane; reduced further by Decimation
         s.mana_cost = 335.0;
         s.cooldown = 60.0;      // Reduced by Decimation by 90% -> 6.0s
-        s.min_dmg = 715.0;
-        s.max_dmg = 895.0;
+        s.min_dmg = 383.0;
+        s.max_dmg = 479.0;
         s.direct_coefficient = 1.0;
         return s;
     }
 
-    static inline SpellDefinition drain_hope_rank1() {
+    static inline SpellDefinition wrack_rank3() {
         SpellDefinition s;
         s.id = SpellID::DRAIN_HOPE;
-        s.name = "Drain Hope";
+        s.name = "Wrack";
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 240.0;
         s.cooldown = 20.0;
-        s.is_channeled = true;
+        s.is_channeled = false;
+        s.is_dot = true;
         s.dot_duration = 6.0;
         s.dot_tick_interval = 1.0;
         s.num_ticks = 6;
-        s.dot_base_dmg_per_tick = 52.0;
-        s.dot_coeff_per_tick = 0.166;
+        s.dot_base_dmg_per_tick = 212.0 / 6.0; // 35.3333 (~36)
+        s.dot_coeff_per_tick = 1.0 / 6.0;      // 0.166667
         return s;
     }
+    static inline SpellDefinition drain_hope_rank3() { return wrack_rank3(); }
+    static inline SpellDefinition drain_hope_rank1() { return wrack_rank3(); }
     static inline SpellDefinition drain_life_rank6() {
         SpellDefinition s;
         s.id = SpellID::DRAIN_LIFE;
@@ -284,8 +289,8 @@ public:
         s.dot_duration = 5.0;
         s.dot_tick_interval = 1.0;
         s.num_ticks = 5;
-        s.dot_base_dmg_per_tick = 71.0; // 355 base across 5 sec
-        s.dot_coeff_per_tick = 0.10;   // 50% total SP coefficient
+        s.dot_base_dmg_per_tick = 71.0; // 355 base across 5 sec (5 ticks of 71)
+        s.dot_coeff_per_tick = 0.10;   // 50% total SP coefficient (10% per tick)
         return s;
     }
     static inline SpellDefinition drain_soul_rank4() {
@@ -301,6 +306,33 @@ public:
         s.num_ticks = 5;
         s.dot_base_dmg_per_tick = 91.0; // 455 base across 15 sec (5 ticks of 91)
         s.dot_coeff_per_tick = 0.20;   // 100% total SP coefficient (20% per tick)
+        return s;
+    }
+
+    static inline SpellDefinition siphon_life_rank4() {
+        SpellDefinition s;
+        s.id = SpellID::SIPHON_LIFE;
+        s.name = "Siphon Life";
+        s.school = School::SHADOW;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 365.0;
+        s.is_dot = true;
+        s.dot_duration = 30.0;
+        s.dot_tick_interval = 3.0;
+        s.num_ticks = 10;
+        s.dot_base_dmg_per_tick = 41.0; // 410.0 base across 30 sec (10 ticks of 41)
+        s.dot_coeff_per_tick = 0.05;   // 5% per tick (50% total SP coefficient)
+        return s;
+    }
+
+    static inline SpellDefinition amplify_curse() {
+        SpellDefinition s;
+        s.id = SpellID::AMPLIFY_CURSE;
+        s.name = "Amplify Curse";
+        s.school = School::SHADOW;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 0.0;
+        s.cooldown = 180.0;
         return s;
     }
 };
@@ -320,7 +352,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::CONFLAGRATE: return "Conflagrate";
         case SpellID::INCINERATE: return "Incinerate";
         case SpellID::SOUL_FIRE: return "Soul Fire";
-        case SpellID::DRAIN_HOPE: return "Drain Hope";
+        case SpellID::DRAIN_HOPE: return "Wrack";
         case SpellID::DRAIN_LIFE: return "Drain Life";
         case SpellID::DRAIN_SOUL: return "Drain Soul";
         case SpellID::SIPHON_LIFE: return "Siphon Life";
@@ -331,6 +363,8 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::RACIAL_EUREKA: return "Eureka!";
         case SpellID::RACIAL_BLOOD_FURY: return "Blood Fury";
         case SpellID::RACIAL_BERSERKING: return "Berserking";
+        case SpellID::AMPLIFY_CURSE: return "Amplify Curse";
+        case SpellID::TOUCH_OF_THE_GRAVE: return "Touch of the Grave";
         default: return "Spell";
     }
 }
@@ -361,6 +395,8 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::RACIAL_EUREKA: return "spell_nature_astralrecalgroup.png";
         case SpellID::RACIAL_BLOOD_FURY: return "racial_orc_berserkerstrength.png";
         case SpellID::RACIAL_BERSERKING: return "racial_troll_berserk.png";
+        case SpellID::AMPLIFY_CURSE: return "spell_shadow_contagion.png";
+        case SpellID::TOUCH_OF_THE_GRAVE: return "spell_shadow_chilltouch.png";
         default: return "spell_shadow_shadowbolt.png";
     }
 }

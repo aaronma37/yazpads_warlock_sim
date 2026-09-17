@@ -21,7 +21,7 @@ inline void render_panel_mechanics_tab() {
 
     // 2. DoT Critical Strikes & Pandemic Scaling
     if (ImGui::CollapsingHeader("2. DoT Critical Strikes & Pandemic Scaling", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::BulletText("DoT Crits Enabled: Periodic spells (Corruption, Curse of Agony, Immolate DoT, Drain Hope, Siphon Life) can critically strike based on your spell crit chance.");
+        ImGui::BulletText("DoT Crits Enabled: Periodic spells (Corruption, Curse of Agony, Immolate DoT, Wrack, Siphon Life) can critically strike based on your spell crit chance.");
         ImGui::BulletText("Pandemic Talent: Affliction talent provides up to +100%% critical strike damage bonus to all periodic effects.");
         ImGui::BulletText("Ruin Interaction: In Destruction, Ruin (+100%% crit damage bonus) applies to direct hits as well as Immolate DoT ticks.");
         ImGui::BulletText("Vanilla Contrast: In vanilla Classic WoW, DoT ticks could never critically strike.");

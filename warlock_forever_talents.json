@@ -189,7 +189,7 @@
           "passive": true,
           "icon": "spell_shadow_unstableaffliction_2",
           "desc": {
-            "1": "Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Drain Hope spells by 33%."
+            "1": "Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Wrack spells by 33%."
           },
           "complete": false,
           "classic": {
@@ -314,18 +314,18 @@
           ]
         },
         {
-          "name": "Drain Hope",
+          "name": "Wrack",
           "max": 1,
           "row": 7,
           "col": 2,
           "passive": false,
           "icon": "spell_shadow_haunting",
           "desc": [
-            "Drains all hope from the target, dealing 52 Shadow damage every 1 sec and increasing all other Shadow damage over time you deal to that target by 10%. Lasts 6 sec."
+            "Tears the target apart from within, dealing 36 Shadow damage every 1 sec and increasing the damage they take from your other Shadow damage over time effects by 10%. Lasts 6 sec."
           ],
           "complete": true,
           "req": "Siphon Life",
-          "cost": "200 Mana; 30 yd range; Channeled",
+          "cost": "240 Mana; 30 yd range; Channeled",
           "classic": {
             "status": "new"
           }

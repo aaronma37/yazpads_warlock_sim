@@ -166,8 +166,21 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         fire_multiplier *= (1.0 + talents.demo.master_demonologist * 0.02);
     }
 
-    // Agonizing Flames (Destro Row 4 Col 2): +3% damage per point to ALL Destruction spells (+9% at 3/3)
-    double destro_spell_mult = 1.0 + talents.destro.agonizing_flames * 0.03;
+    // Agonizing Flames (Destro Row 4 Col 2): +3% / +7% / +10% damage to ALL Destruction spells
+    double agonizing_flames_bonus = (talents.destro.agonizing_flames == 1) ? 0.03 :
+                                   ((talents.destro.agonizing_flames == 2) ? 0.07 :
+                                   ((talents.destro.agonizing_flames == 3) ? 0.10 : 0.0));
+    double destro_spell_mult = 1.0 + agonizing_flames_bonus;
+
+    // Cataclysm (Destro Row 2 Col 2): -3% / -6% / -10% Mana cost to Destruction spells
+    double cataclysm_mana_mult = (talents.destro.cataclysm == 1) ? (1.0 - 0.03) :
+                                ((talents.destro.cataclysm == 2) ? (1.0 - 0.06) :
+                                ((talents.destro.cataclysm == 3) ? (1.0 - 0.10) : 1.0));
+
+    // Fire and Brimstone (Destro Row 5 Col 3): +8% / +17% / +25% Conflagrate crit chance
+    double fnb_crit_bonus = (talents.destro.fire_and_brimstone == 1) ? 0.08 :
+                           ((talents.destro.fire_and_brimstone == 2) ? 0.17 :
+                           ((talents.destro.fire_and_brimstone == 3) ? 0.25 : 0.0));
 
     // Malediction (Afflic Row 2 Col 1): +1% periodic damage per point (+5% at 5/5)
     double malediction_mult = 1.0 + talents.aff.malediction * 0.01;
@@ -197,6 +210,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     double trinket_expire_time = 0.0;
     double racial_cd_ready = 0.0;
     double racial_expire_time = 0.0;
+    double amplify_curse_cd_ready = 0.0;
     int eureka_charges = 0;
 
     auto get_current_sp = [&](School school, double t) -> double {
@@ -257,6 +271,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         double tick_interval = 3.0;
         double tick_damage = 0.0;
         double tick_multiplier = 1.0;
+        bool amplified = false;
     };
 
     struct TargetCombatState {
@@ -316,6 +331,18 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         return mult;
     };
 
+    auto apply_touch_of_the_grave = [&](double now) {
+        if (race == Race::UNDEAD && rng.chance(0.10)) {
+            double grave_dmg = 0.05 * stats.max_health * get_current_shadow_multiplier(now);
+            result.total_damage += grave_dmg;
+            result.dmg_touch_of_the_grave += grave_dmg;
+            result.touch_of_the_grave_procs++;
+            result.total_damage_events++;
+            result.record_spell_hit(SpellID::TOUCH_OF_THE_GRAVE, grave_dmg, false);
+            player_health = std::min(stats.max_health, player_health + grave_dmg);
+        }
+    };
+
     // Decision maker using Rule-Based Action Priority List (APL)
     std::vector<PriorityRule> priority_rules = policy.get_priority_rules(talents, race);
     RotationChoice eff_rotation = policy.rotation;
@@ -356,24 +383,43 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // 2b. Racial active cooldowns
-        if (now >= racial_cd_ready) {
+        bool racial_ready = (now >= racial_cd_ready);
+        bool should_trigger_racial = false;
+
+        if (racial_ready) {
+            double racial_cd = (race == Race::TROLL) ? 180.0 : 120.0;
+            if (policy.racial_policy == RacialPolicy::ON_COOLDOWN) {
+                should_trigger_racial = true;
+            } else if (policy.racial_policy == RacialPolicy::EXECUTE_ONLY) {
+                should_trigger_racial = execute_phase;
+            } else if (policy.racial_policy == RacialPolicy::ALIGN_EXECUTE) {
+                double execute_start = fight_duration * 0.65;
+                if (now < 1.0 && (execute_start >= racial_cd)) {
+                    should_trigger_racial = true;
+                } else {
+                    should_trigger_racial = execute_phase;
+                }
+            }
+        }
+
+        if (should_trigger_racial) {
             if (race == Race::ORC) {
                 racial_expire_time = now + 15.0;
                 racial_cd_ready = now + 120.0;
                 if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, "Racial Cooldown"});
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, execute_phase ? "Blood Fury (Execute Phase)" : "Racial Cooldown"});
                 }
             } else if (race == Race::TROLL) {
                 racial_expire_time = now + 10.0;
                 racial_cd_ready = now + 180.0;
                 if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::RACIAL_BERSERKING, 0.0, false, false, 0.0, "Racial Cooldown"});
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_BERSERKING, 0.0, false, false, 0.0, execute_phase ? "Berserking (Execute Phase)" : "Racial Cooldown"});
                 }
             } else if (race == Race::GNOME) {
                 eureka_charges = 3;
                 racial_cd_ready = now + 120.0;
                 if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::RACIAL_EUREKA, 0.0, false, false, 0.0, "Racial Ability (+10% 3 casts)"});
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_EUREKA, 0.0, false, false, 0.0, execute_phase ? "Eureka! (Execute -50% Mana, +10% Dmg)" : "Eureka! (-50% Mana, +10% Dmg 3 casts)"});
                 }
             }
         }
@@ -381,12 +427,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         // 3. Multi-Target Openers & Upkeep (Bane of Havoc & Multi-DoT Corruption)
         if (num_targets >= 2 && talents.destro.bane_of_havoc > 0 && policy.auto_bane_of_havoc) {
             if (!target_states[1].has_bane_of_havoc || now >= target_states[1].bane_of_havoc_expire) {
-                double havoc_mana = 150.0;
+                double havoc_mana = 150.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                 if (player_mana >= havoc_mana) {
                     player_mana -= havoc_mana;
                     result.mana_spent += havoc_mana;
                     result.total_casts++;
                     result.record_spell_cast(SpellID::BANE_OF_HAVOC);
+                    if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                     if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                         target_states[1].has_bane_of_havoc = true;
@@ -413,7 +460,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             for (int t = 1; t < num_targets; ++t) {
                 if ((!target_states[t].dot_corruption.active || now >= target_states[t].dot_corruption.expire_time) &&
                     (fight_duration - now >= 8.0)) {
-                    double corr_mana = 290.0;
+                    double corr_mana = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= corr_mana) {
                         double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
                         if (cast_time == 0.0) {
@@ -421,6 +468,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += corr_mana;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CORRUPTION);
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 target_states[t].dot_corruption.active = true;
@@ -428,8 +477,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 target_states[t].dot_corruption.ticks_remaining = 6;
                                 target_states[t].dot_corruption.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                target_states[t].dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
-                                target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                                target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                                target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
                             } else {
                                 result.misses++;
@@ -466,7 +515,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::RACIAL_EUREKA:
                 case PriorityAction::RACIAL_BLOOD_FURY:
                 case PriorityAction::RACIAL_BERSERKING:
-                    // Handled above in off-GCD check
+                case PriorityAction::AMPLIFY_CURSE:
+                    // Handled above in off-GCD check or during Curse cast
                     break;
 
                 case PriorityAction::LIFE_TAP: {
@@ -499,21 +549,35 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::CURSE_OF_AGONY: {
                     if (!dot_agony.active) {
-                        double mana_cost = 215.0;
+                        double mana_cost = 215.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CURSE_OF_AGONY);
 
+                            bool is_amplified = false;
+                            if (talents.aff.amplify_curse > 0 && now >= amplify_curse_cd_ready) {
+                                amplify_curse_cd_ready = now + 180.0;
+                                is_amplified = true;
+                                result.record_spell_cast(SpellID::AMPLIFY_CURSE);
+                                if (record_timeline) {
+                                    result.cast_sequence.push_back({now, SpellID::AMPLIFY_CURSE, 0.0, false, false, 0.0, "Amplify Curse"});
+                                }
+                            }
+
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
+
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
                                 dot_agony.expire_time = now + 24.0;
                                 dot_agony.ticks_remaining = 12;
                                 dot_agony.tick_interval = 2.0;
+                                dot_agony.amplified = is_amplified;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                dot_agony.tick_damage = (1044.0 / 12.0) + (sp / 12.0);
-                                dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult;
+                                dot_agony.tick_damage = (552.0 / 12.0) + (sp * 1.596 / 12.0);
+                                dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
                             } else {
                                 result.misses++;
@@ -532,12 +596,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::CURSE_OF_DOOM: {
                     if (!dot_agony.active) {
-                        double mana_cost = 300.0;
+                        double mana_cost = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CURSE_OF_DOOM);
+                            if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
                                 dot_agony.expire_time = now + 60.0;
@@ -559,7 +624,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::NIGHTFALL_SHADOW_BOLT: {
                     if (shadow_trance_active && policy.cast_nightfall_procs) {
                         shadow_trance_active = false;
-                        double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
@@ -567,8 +632,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.shadow_bolt_casts++;
                             result.record_spell_cast(SpellID::SHADOW_BOLT);
 
+                            uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
+                            if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
+
                             double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                            queue.push(now + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                            queue.push(now + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT), eureka_flag);
 
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
@@ -583,7 +651,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::DECIMATION_SEARING_PAIN: {
                     if (execute_phase && talents.demo.decimation > 0 && now >= decimation_buff_expire) {
-                        double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= sp_mana) {
                             double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
                             is_casting = true;
@@ -603,9 +671,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::DECIMATION_SOUL_FIRE: {
                     if (execute_phase && talents.demo.decimation > 0 && now < decimation_buff_expire && now >= soul_fire_cd_ready) {
-                        double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= sf_mana) {
-                            double cast_time = std::max(0.5, (4.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
+                            double cast_time = std::max(0.5, (6.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
                             is_casting = true;
                             current_casting_spell = SpellID::SOUL_FIRE;
                             cast_finish_time = now + cast_time;
@@ -623,12 +691,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::SIPHON_LIFE: {
                     if (talents.aff.siphon_life > 0 && !dot_siphon_life.active) {
-                        double mana_cost = 150.0;
+                        double mana_cost = 365.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::SIPHON_LIFE);
+
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_siphon_life.active = true;
@@ -636,8 +707,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 dot_siphon_life.ticks_remaining = 10;
                                 dot_siphon_life.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                dot_siphon_life.tick_damage = 15.0 + (0.10 * sp);
-                                dot_siphon_life.tick_multiplier = get_current_shadow_multiplier(now) * malediction_mult;
+                                dot_siphon_life.tick_damage = 41.0 + (0.05 * sp);
+                                dot_siphon_life.tick_multiplier = get_current_shadow_multiplier(now) * malediction_mult * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
                             } else {
                                 result.misses++;
@@ -656,7 +727,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::DRAIN_HOPE: {
                     if (talents.aff.drain_hope > 0 && now >= drain_hope_cd_ready) {
-                        double dh_mana = 240.0;
+                        double dh_mana = 240.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= dh_mana) {
                             player_mana -= dh_mana;
                             result.mana_spent += dh_mana;
@@ -664,23 +735,34 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.record_spell_cast(SpellID::DRAIN_HOPE);
                             drain_hope_cd_ready = now + 20.0;
                             drain_hope_channel_end = now + 6.0;
+                            if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
-                            // Soul Siphon talent increases drain tick rate (17/34/50% faster)
-                            double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
-                            double haste = get_haste_mult(now);
-                            double total_channel_time = (6.0 / drain_speed_mult) * haste;
-                            double tick_interval = (1.0 / drain_speed_mult) * haste;
+                            if (mechanics.instant_drain_hope) {
+                                gcd_ready_time = now + mechanics.base_gcd;
+                                for (int i = 1; i <= 6; ++i) {
+                                    queue.push(now + i * 1.0, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
+                                }
+                                queue.push(gcd_ready_time, EventType::GCD_READY);
+                                if (record_timeline) {
+                                    result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, 0.0, "Instant DoT"});
+                                }
+                                return;
+                            } else {
+                                double haste = get_haste_mult(now);
+                                double total_channel_time = 6.0 * haste;
+                                double tick_interval = 1.0 * haste;
 
-                            gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
+                                gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
-                            for (int i = 1; i <= 6; ++i) {
-                                queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
+                                for (int i = 1; i <= 6; ++i) {
+                                    queue.push(now + i * tick_interval, EventType::CHANNEL_TICK, static_cast<uint8_t>(SpellID::DRAIN_HOPE));
+                                }
+                                queue.push(gcd_ready_time, EventType::GCD_READY);
+                                if (record_timeline) {
+                                    result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, total_channel_time, "Channel DoT"});
+                                }
+                                return;
                             }
-                            queue.push(gcd_ready_time, EventType::GCD_READY);
-                            if (record_timeline) {
-                                result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, total_channel_time, "Channel DoT"});
-                            }
-                            return;
                         }
                     }
                     break;
@@ -688,7 +770,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::IMMOLATE: {
                     if (!dot_immolate.active) {
-                        double mana_cost = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             double cast_time = std::max(1.0, (2.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 1.5s with 5/5 Bane
                             is_casting = true;
@@ -708,7 +790,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::CONFLAGRATE: {
                     if (talents.destro.conflagrate > 0 && dot_immolate.active && now >= conflagrate_cd_ready) {
-                        double mana_cost = 265.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double mana_cost = 265.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
@@ -717,15 +799,18 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.record_spell_cast(SpellID::CONFLAGRATE);
                             conflagrate_cd_ready = now + 10.0;
 
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
+
                             bool is_crit = false;
                             double dmg = 0.0;
                             if (rng.chance(calculate_hit_chance(School::FIRE))) {
                                 result.total_damage_events++;
                                 double sp = get_current_sp(School::FIRE, now);
-                                dmg = rng.range(578.0, 704.0) + (1.5 / 3.5) * sp;
+                                dmg = rng.range(306.0, 374.0) + (1.5 / 3.5) * sp;
                                 dmg *= get_current_fire_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
 
-                                double crit_chance = calculate_crit_chance(School::FIRE, stats) + (talents.destro.fire_and_brimstone * 0.08);
+                                double crit_chance = calculate_crit_chance(School::FIRE, stats) + fnb_crit_bonus;
                                 is_crit = rng.chance(crit_chance);
                                 if (is_crit) {
                                     dmg *= destro_crit_mult;
@@ -735,8 +820,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
 
                                 dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
-                                if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                                if (eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                                apply_touch_of_the_grave(now);
                                 result.dmg_conflagrate += dmg;
                                 result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
                                 result.total_damage += dmg;
@@ -781,7 +867,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     if (talents.destro.shadowburn > 0 && sb_cond && now >= shadowburn_cd_ready) {
-                        double mana_cost = 365.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double mana_cost = 365.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
@@ -790,12 +876,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.record_spell_cast(SpellID::SHADOWBURN);
                             shadowburn_cd_ready = now + 8.0;
 
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
+
                             bool crit = false;
                             double dmg = 0.0;
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 result.total_damage_events++;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                dmg = rng.range(450.0, 502.0) + (1.5 / 3.5) * sp;
+                                dmg = rng.range(238.0, 266.0) + (1.5 / 3.5) * sp;
                                 dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
 
                                 if (target.consume_isb_charge(now)) {
@@ -812,8 +901,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
 
                                 dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                                if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                                if (eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
+                                apply_touch_of_the_grave(now);
                                 result.dmg_shadowburn += dmg;
                                 result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
                                 result.total_damage += dmg;
@@ -840,7 +930,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::CORRUPTION: {
                     if (!dot_corruption.active) {
-                        double mana_cost = 290.0;
+                        double mana_cost = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
                             if (cast_time == 0.0) {
@@ -848,6 +938,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.mana_spent += mana_cost;
                                 result.total_casts++;
                                 result.record_spell_cast(SpellID::CORRUPTION);
+                                bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                                if (eureka_active) eureka_charges--;
 
                                 if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                     dot_corruption.active = true;
@@ -855,8 +947,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                     dot_corruption.ticks_remaining = 6;
                                     dot_corruption.tick_interval = 3.0;
                                     double sp = get_current_sp(School::SHADOW, now);
-                                    dot_corruption.tick_damage = (822.0 / 6.0) + (sp / 6.0);
-                                    dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                                    dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                                    dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
                                     queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
                                 } else {
                                     result.misses++;
@@ -887,7 +979,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
 
                 case PriorityAction::SEARING_PAIN_FILLER: {
-                    double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= sp_mana) {
                         double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
                         is_casting = true;
@@ -906,7 +998,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::INCINERATE_FILLER: {
                     if (talents.destro.incinerate > 0) {
-                        double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                        double inc_mana = 325.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= inc_mana) {
                             double cast_time = std::max(1.0, (2.5 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.0s with 5/5 Bane
                             is_casting = true;
@@ -925,18 +1017,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::DRAIN_LIFE_FILLER: {
-                    double dl_mana = 300.0;
+                    double dl_mana = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= dl_mana) {
                         player_mana -= dl_mana;
                         result.mana_spent += dl_mana;
                         result.total_casts++;
                         result.record_spell_cast(SpellID::DRAIN_LIFE);
+                        if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
-                        // Soul Siphon talent increases drain tick rate (17/34/50% faster)
-                        double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
                         double haste = get_haste_mult(now);
-                        double total_channel_time = (5.0 / drain_speed_mult) * haste;
-                        double tick_interval = (1.0 / drain_speed_mult) * haste;
+                        double total_channel_time = 5.0 * haste;
+                        double tick_interval = 1.0 * haste;
 
                         gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
@@ -953,18 +1044,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::DRAIN_SOUL_FILLER: {
-                    double ds_mana = 290.0;
+                    double ds_mana = 290.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= ds_mana) {
                         player_mana -= ds_mana;
                         result.mana_spent += ds_mana;
                         result.total_casts++;
                         result.record_spell_cast(SpellID::DRAIN_SOUL);
+                        if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
-                        // Soul Siphon talent increases drain tick rate (17/34/50% faster)
-                        double drain_speed_mult = 1.0 + talents.aff.soul_siphon * (0.50 / 3.0);
                         double haste = get_haste_mult(now);
-                        double total_channel_time = (15.0 / drain_speed_mult) * haste;
-                        double tick_interval = (3.0 / drain_speed_mult) * haste;
+                        double total_channel_time = 15.0 * haste;
+                        double tick_interval = 3.0 * haste;
 
                         gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 
@@ -981,7 +1071,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::SHADOW_BOLT_FILLER: {
-                    double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= sb_mana) {
                         double cast_time = std::max(1.0, (3.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.5s with 5/5 Bane
                         is_casting = true;
@@ -1046,61 +1136,71 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.shadow_bolt_casts++;
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SHADOW_BOLT);
-                    double sb_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
+                    uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
+                    if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                     if ((current_time / fight_duration) >= 0.65 && talents.demo.decimation > 0) {
                         decimation_buff_expire = current_time + 10.0;
                     }
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT));
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT), eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SEARING_PAIN);
-                    double sp_mana = 168.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sp_mana;
                     result.mana_spent += sp_mana;
+                    uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
+                    if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                     if ((current_time / fight_duration) >= 0.65 && talents.demo.decimation > 0) {
                         decimation_buff_expire = current_time + 10.0;
                     }
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SEARING_PAIN), eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::INCINERATE);
-                    double inc_mana = 355.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double inc_mana = 355.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= inc_mana;
                     result.mana_spent += inc_mana;
+                    uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
+                    if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::INCINERATE));
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::INCINERATE), eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SOUL_FIRE);
-                    double sf_mana = 335.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sf_mana;
                     result.mana_spent += sf_mana;
                     soul_fire_cd_ready = current_time + (60.0 * (1.0 - 0.45 * talents.demo.decimation));
+                    uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
+                    if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SOUL_FIRE));
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SOUL_FIRE), eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
-                    double imm_mana = 380.0 * (1.0 - 0.03 * talents.destro.cataclysm);
+                    double imm_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= imm_mana;
                     result.mana_spent += imm_mana;
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::IMMOLATE);
+                    bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                    if (eureka_active) eureka_charges--;
 
                     if (rng.chance(calculate_hit_chance(School::FIRE))) {
                         result.total_damage_events++;
                         double sp = get_current_sp(School::FIRE, current_time);
                         // Aftermath (Destro Row 2 Col 3): +10% initial Immolate damage per point (+50% at 5/5)
                         double aftermath_mult = 1.0 + talents.destro.aftermath * 0.10;
-                        double dmg = (rng.range(258.0, 306.0) * aftermath_mult) + 0.20 * sp;
+                        double dmg = (158.0 * aftermath_mult) + 0.20 * sp;
                         dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
                         bool crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                         if (crit) {
@@ -1111,13 +1211,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                        if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                        if (eureka_active) { dmg *= 1.10; }
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                        if (race == Race::UNDEAD && rng.chance(0.15)) {
-                            double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
-                            result.total_damage += grave_dmg;
-                            player_health = std::min(stats.max_health, player_health + grave_dmg);
-                        }
+                        apply_touch_of_the_grave(current_time);
 
                         result.dmg_immolate += dmg;
                         result.record_spell_hit(SpellID::IMMOLATE, dmg, crit);
@@ -1128,18 +1224,20 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dot_immolate.expire_time = current_time + 15.0;
                         dot_immolate.ticks_remaining = 5;
                         dot_immolate.tick_interval = 3.0;
-                        dot_immolate.tick_damage = (485.0 / 5.0) + (0.65 / 5.0) * sp;
-                        dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult;
+                        dot_immolate.tick_damage = 55.0 + 0.13 * sp;
+                        dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE));
                     } else {
                         result.misses++;
                         result.record_spell_miss(SpellID::IMMOLATE);
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
-                    double corr_mana = 290.0;
+                    double corr_mana = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= corr_mana;
                     result.mana_spent += corr_mana;
                     result.record_spell_cast(SpellID::CORRUPTION);
+                    bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                    if (eureka_active) eureka_charges--;
 
                     uint32_t t_idx = ev.user_data;
                     if (t_idx >= static_cast<uint32_t>(num_targets)) t_idx = 0;
@@ -1151,8 +1249,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         cur_corr.ticks_remaining = 6;
                         cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
-                        cur_corr.tick_damage = (822.0 / 6.0) + (sp / 6.0);
-                        cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult;
+                        cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                        cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
                     } else {
                         result.misses++;
@@ -1221,13 +1319,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (resist_mult < 1.0) result.partial_resists++;
                     dmg *= resist_mult;
 
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    if (race == Race::UNDEAD && rng.chance(0.15)) {
-                        double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
-                        result.total_damage += grave_dmg;
-                        player_health = std::min(stats.max_health, player_health + grave_dmg);
-                    }
+                    apply_touch_of_the_grave(current_time);
 
                     // Judgement of Wisdom
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
@@ -1288,13 +1382,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    if (race == Race::UNDEAD && rng.chance(0.15)) {
-                        double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
-                        result.total_damage += grave_dmg;
-                        player_health = std::min(stats.max_health, player_health + grave_dmg);
-                    }
+                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1345,8 +1435,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
 
-                    // Agonizing Flames: +3%/pt crit chance on Searing Pain
-                    double crit_chance = calculate_crit_chance(School::FIRE, stats) + (talents.destro.agonizing_flames * 0.03);
+                    // Agonizing Flames: +3% / +7% / +10% crit chance on Searing Pain
+                    double crit_chance = calculate_crit_chance(School::FIRE, stats) + agonizing_flames_bonus;
                     bool is_crit = rng.chance(crit_chance);
                     if (is_crit) {
                         dmg *= destro_crit_mult;
@@ -1357,19 +1447,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    // Demonic Brand: Brands the target for 10s (pet's next 2 attacks deal bonus damage)
+                    // Demonic Brand: Brands the target for 10s (pet's next 2/4/6 attacks deal bonus damage)
                     if (talents.demo.demonic_brand > 0) {
-                        demonic_brand_charges = 2;
+                        demonic_brand_charges = talents.demo.demonic_brand * 2;
                         demonic_brand_expire = current_time + 10.0;
                     }
 
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    if (race == Race::UNDEAD && rng.chance(0.15)) {
-                        double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
-                        result.total_damage += grave_dmg;
-                        player_health = std::min(stats.max_health, player_health + grave_dmg);
-                    }
+                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1423,13 +1509,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; eureka_charges--; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    if (race == Race::UNDEAD && rng.chance(0.15)) {
-                        double grave_dmg = (rng.range(95.0, 115.0) + 0.10 * stats.effective_shadow_power()) * get_current_shadow_multiplier(current_time);
-                        result.total_damage += grave_dmg;
-                        player_health = std::min(stats.max_health, player_health + grave_dmg);
-                    }
+                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1456,11 +1538,26 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
 
             case EventType::CHANNEL_TICK: {
+                // Determine active Affliction effects count on target for Soul Siphon
+                // (Corruption, Bane of Agony, Siphon Life, Curse of Shadows/Elements/Doom if applicable, etc.)
+                int aff_effects_count = (dot_corruption.active ? 1 : 0) + 
+                                       (dot_agony.active ? 1 : 0) + 
+                                       (dot_siphon_life.active ? 1 : 0);
+                // Soul Siphon: +4% / +8% / +12% per active Affliction effect, up to 3 effects (max +12% / +24% / +36%)
+                double soul_siphon_bonus_per_effect = talents.aff.soul_siphon * 0.04;
+                double soul_siphon_mult = 1.0 + std::min(3, aff_effects_count) * soul_siphon_bonus_per_effect;
+
+                // Improved Drains: +7% / +13% / +20% flat damage / healing
+                double imp_drains_mult = 1.0;
+                if (talents.aff.improved_drains == 1) imp_drains_mult = 1.07;
+                else if (talents.aff.improved_drains == 2) imp_drains_mult = 1.13;
+                else if (talents.aff.improved_drains >= 3) imp_drains_mult = 1.20;
+
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_HOPE)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double dmg = 52.0 + (0.166667 * sp);
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
+                    double dmg = (212.0 / 6.0) + ((1.0 / 6.0) * sp);
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * imp_drains_mult * soul_siphon_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -1497,11 +1594,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 71.0 + (0.10 * sp);
-
-                    // Improved Drains talent (+2%/4%/6% per active Affliction effect on target)
-                    int aff_count = (dot_corruption.active ? 1 : 0) + (dot_agony.active ? 1 : 0) + (dot_siphon_life.active ? 1 : 0);
-                    double imp_drains_mult = 1.0 + (talents.aff.improved_drains * 0.02 * aff_count);
-                    dmg *= imp_drains_mult;
+                    dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Drain Hope amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
@@ -1528,8 +1621,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage += dmg;
                     apply_havoc_cleave(dmg, 0);
 
-                    // Health restored from Drain Life (Soul Siphon reduces healing by 10/20/30%)
-                    double heal = dmg * (1.0 - talents.aff.soul_siphon * 0.10);
+                    // Health restored from Drain Life
+                    double heal = dmg;
                     player_health = std::min(stats.max_health, player_health + heal);
 
                     // Nightfall proc check on Drain Life ticks (2% per pt = 4% at 2/2)
@@ -1546,13 +1639,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 91.0 + (0.20 * sp);
-
-                    // Improved Drains talent (+2%/4%/6% per active Affliction effect on target, tripled below 20% HP)
-                    int aff_count = (dot_corruption.active ? 1 : 0) + (dot_agony.active ? 1 : 0) + (dot_siphon_life.active ? 1 : 0);
-                    bool execute_20 = (current_time / fight_duration) >= 0.80; // Target <20% HP
-                    double imp_drain_bonus_pct = talents.aff.improved_drains * 0.02 * (execute_20 ? 3.0 : 1.0);
-                    double imp_drains_mult = 1.0 + (imp_drain_bonus_pct * aff_count);
-                    dmg *= imp_drains_mult;
+                    dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Drain Hope amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
@@ -1607,7 +1694,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // Dynamic DoT scaling (No snapshotting in Forever)
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
-                            dmg = (822.0 / 6.0) + (sp / 6.0);
+                            dmg = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
                         }
 
                         // Drain Hope amplification (+10% to other Shadow DoTs)
@@ -1662,11 +1749,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double base_tick = cur_agony.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
-                            base_tick = (1044.0 / 12.0) + (sp / 12.0);
+                            base_tick = (552.0 / 12.0) + (sp * 1.596 / 12.0);
                         }
 
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                        double dmg = base_tick * ramp * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                        double amp_mult = cur_agony.amplified ? 1.50 : 1.0;
+                        double dmg = base_tick * ramp * amp_mult * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -1698,7 +1786,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double dmg = cur_sl.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
-                            dmg = 15.0 + (0.10 * sp);
+                            dmg = 41.0 + (0.05 * sp);
                         }
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                         dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
@@ -1733,7 +1821,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double dmg = cur_imm.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::FIRE, current_time);
-                            dmg = (485.0 / 5.0) + (0.65 / 5.0) * sp;
+                            dmg = 55.0 + 0.13 * sp;
                         }
                         dmg *= get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * stats.all_damage_multiplier;
 
@@ -1760,7 +1848,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_DOOM)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double dmg = 3200.0 + 2.0 * sp;
+                    double dmg = 1742.0 + 4.0 * sp;
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                     if (is_crit) {
@@ -1837,7 +1925,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double brand_dmg = 0.0;
                         if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                             demonic_brand_charges--;
-                            brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                            brand_dmg = rng.range(65.0, 68.0);
                             brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                             if (buffs.curse_of_shadows) brand_dmg *= 1.10;
@@ -1902,7 +1990,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg = rng.range(65.0, 68.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                                 if (buffs.curse_of_shadows) brand_dmg *= 1.10;
@@ -1967,7 +2055,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                brand_dmg = talents.demo.demonic_brand * rng.range(13.0, 14.0);
+                                brand_dmg = rng.range(65.0, 68.0);
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);

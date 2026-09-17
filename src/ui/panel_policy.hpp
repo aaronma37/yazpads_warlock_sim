@@ -59,6 +59,9 @@ inline void render_priority_chain_subpane(const std::vector<PriorityRule>& rules
             } else if (rule.action == PriorityAction::RACIAL_EUREKA || rule.action == PriorityAction::RACIAL_BLOOD_FURY || rule.action == PriorityAction::RACIAL_BERSERKING) {
                 bg_col = IM_COL32(25, 65, 85, 240);
                 border_col = IM_COL32(80, 200, 240, 230);
+            } else if (rule.action == PriorityAction::AMPLIFY_CURSE) {
+                bg_col = IM_COL32(65, 30, 85, 240);
+                border_col = IM_COL32(190, 90, 230, 230);
             }
 
             // Reserve item space with InvisibleButton
@@ -131,7 +134,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Fire Destro — Incinerate + Conflag",          // 2  FIRE_DESTRO
         "Demonology Shadow — Corruption + Bane + SB",  // 3  DP_AF_SHADOW
         "Demonology Fire — Searing Pain",              // 4  DP_RUIN_FIRE
-        "Deep Affliction — Drain Hope",                // 5  DEEP_AFFLICTION
+        "Deep Affliction — Wrack",                     // 5  DEEP_AFFLICTION
         "Shadow Mastery — DoTs + SB",                  // 6  SM_RUIN
         "Demo Execute — Decimation Soul Fire",         // 7  DEMONOLOGY_EXECUTE
         "Pure Shadow Bolt — No DoTs",                  // 8  PURE_SHADOW_BOLT
@@ -142,7 +145,8 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Demonology Shadow — Corruption + Bane + SB (No Soul Fire)", // 13 DP_AF_SHADOW_NO_SOUL_FIRE
         "Demonology Shadow — Corruption + SB (No Bane)",             // 14 DP_AF_SHADOW_NO_BANE
         "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)", // 15 DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE
-        "Deep Affliction — Drain Hope (SB Filler)",                    // 16 DEEP_AFFLICTION_SB
+        "Deep Affliction — Wrack (SB Filler)",                    // 16 DEEP_AFFLICTION_SB
+        "Deep Affliction — Wrack (SB Filler, No Siphon Life)",    // 17 DEEP_AFFLICTION_SB_NO_SL
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {
@@ -157,10 +161,27 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     std::vector<PriorityRule> rules = policy.get_priority_rules(talents, race);
     render_priority_chain_subpane(rules);
 
+    // 2. Racial Ability Strategy
+    if (race == Race::GNOME || race == Race::ORC || race == Race::TROLL) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Racial Ability Strategy:");
+        int racial_idx = static_cast<int>(policy.racial_policy);
+        const char* racial_names[] = {
+            "Execute Phase (<35% HP) — Save for execute abilities burst",
+            "On Cooldown (Opener) — Fire at combat start and on CD",
+            "Smart Execute Alignment — Opener if fight length allows recast in execute, else <35% HP"
+        };
+        ImGui::SetNextItemWidth(450);
+        if (ImGui::Combo("##RacialPolicyCombo", &racial_idx, racial_names, IM_ARRAYSIZE(racial_names))) {
+            policy.racial_policy = static_cast<RacialPolicy>(racial_idx);
+        }
+    }
+
     ImGui::Spacing();
     ImGui::Separator();
 
-    // 2. Multi-Target Combat Policy
+    // 3. Multi-Target Combat Policy
     ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Multi-Target Combat Policy:");
     ImGui::Checkbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
     if (ImGui::IsItemHovered()) {

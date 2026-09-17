@@ -252,4 +252,101 @@ TEST_CASE(Mechanics, TargetLevelAndCreatureTypeBeastScaling) {
     CHECK_NEAR(hit_63, 0.83, 0.001);
 }
 
+TEST_CASE(Mechanics, InstantDrainHopeToggle) {
+    FastRNG rng_chan(1337);
+    FastRNG rng_inst(1337);
 
+    // Channeled Drain Hope
+    WarlockSimulator sim_chan;
+    sim_chan.talents = Talents::create_forever_deep_affliction();
+    sim_chan.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+    sim_chan.mechanics.instant_drain_hope = false;
+    sim_chan.fight_duration = 30.0;
+    sim_chan.record_timeline = true;
+    SimResult res_chan = sim_chan.run_single_simulation(rng_chan);
+
+    // Instant Cast DoT Drain Hope
+    WarlockSimulator sim_inst;
+    sim_inst.talents = Talents::create_forever_deep_affliction();
+    sim_inst.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+    sim_inst.mechanics.instant_drain_hope = true;
+    sim_inst.fight_duration = 30.0;
+    sim_inst.record_timeline = true;
+    SimResult res_inst = sim_inst.run_single_simulation(rng_inst);
+
+    // Both should deal Drain Hope damage
+    CHECK(res_chan.dmg_drain_hope > 0.0);
+    CHECK(res_inst.dmg_drain_hope > 0.0);
+
+    // Instant Drain Hope frees up GCD (1.5s vs 6s channel), allowing more Shadow Bolt filler casts
+    CHECK(res_inst.shadow_bolt_casts > res_chan.shadow_bolt_casts);
+    CHECK(res_inst.total_damage > res_chan.total_damage);
+
+    // Check cast sequence tag
+    bool found_instant_tag = false;
+    for (const auto& log : res_inst.cast_sequence) {
+        if (log.spell_id == SpellID::DRAIN_HOPE && log.tag == "Instant DoT") {
+            found_instant_tag = true;
+        }
+    }
+    CHECK(found_instant_tag);
+}
+
+TEST_CASE(Mechanics, CorruptionSpellPowerCoefficient) {
+    // 100% vs 120% Corruption SP scaling test
+    FastRNG rng1(42);
+    FastRNG rng2(42);
+
+    BuffConfig clean_buffs;
+    clean_buffs.flask_of_supreme_power = false;
+    clean_buffs.greater_arcane_elixir = false;
+    clean_buffs.elixir_of_shadow_power = false;
+    clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.brilliant_wizard_oil = false;
+    clean_buffs.curse_of_shadows = false;
+    clean_buffs.curse_of_elements = false;
+    clean_buffs.sacrifice_imp = false;
+    clean_buffs.sacrifice_succubus = false;
+    clean_buffs.shadow_weaving = false;
+
+    WarlockSimulator sim_default;
+    sim_default.buffs = clean_buffs;
+    sim_default.talents = Talents();
+    sim_default.use_raw_stats = true;
+    sim_default.raw_stats.spell_power = 600.0;
+    sim_default.raw_stats.spell_hit_percent = 100.0; // Avoid misses
+    sim_default.raw_stats.spell_crit_percent = 0.0;  // Avoid crits
+    sim_default.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim_default.policy.use_trinkets_on_cooldown = false;
+    sim_default.mechanics.corruption_sp_coefficient = 1.0;
+    sim_default.mechanics.partial_resists_enabled = false;
+    sim_default.fight_duration = 23.0; // Cast from t=0..2s, 6 ticks at t=5, 8, 11, 14, 17, 20
+
+    SimResult res_default = sim_default.run_single_simulation(rng1);
+
+    WarlockSimulator sim_120;
+    sim_120.buffs = clean_buffs;
+    sim_120.talents = Talents();
+    sim_120.use_raw_stats = true;
+    sim_120.raw_stats.spell_power = 600.0;
+    sim_120.raw_stats.spell_hit_percent = 100.0;
+    sim_120.raw_stats.spell_crit_percent = 0.0;
+    sim_120.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim_120.policy.use_trinkets_on_cooldown = false;
+    sim_120.mechanics.corruption_sp_coefficient = 1.2;
+    sim_120.mechanics.partial_resists_enabled = false;
+    sim_120.fight_duration = 23.0;
+
+    SimResult res_120 = sim_120.run_single_simulation(rng2);
+
+    CHECK(res_default.dmg_corruption > 0.0);
+    CHECK(res_120.dmg_corruption > res_default.dmg_corruption);
+
+    // Rank 7 Corruption: 438 base dmg over 6 ticks (73/tick)
+    // At 600 SP:
+    // With 1.0 coeff: 438 + 600 * 1.2 = 438 + 720 = 1158 total across 6 ticks (193/tick)
+    // With 1.2 coeff: 438 + 600 * 1.2 * 1.2 = 438 + 864 = 1302 total across 6 ticks (217/tick)
+    // Expected diff per 6 ticks is exactly 144 damage (24/tick)
+    double diff = res_120.dmg_corruption - res_default.dmg_corruption;
+    CHECK_NEAR(diff, 144.0, 0.01);
+}
