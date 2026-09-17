@@ -97,6 +97,7 @@ enum class RotationChoice : uint8_t {
     DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE,// Demonology Shadow (No Soul Fire, No Bane): Corruption only + SB filler
     DEEP_AFFLICTION_SB,               // Deep Affliction (SB filler): Corruption + Bane of Agony + Siphon Life + Drain Hope + Nightfall + SB filler
     DEEP_AFFLICTION_SB_NO_SL,         // Deep Affliction (SB filler, No Siphon Life): Corruption + Bane of Agony + Drain Hope + Nightfall + SB filler
+    SHADOW_AND_FLAME_FIRE_BANE,       // Shadow & Flame Fire (with Bane): Immolate + Conflag + Corruption + Bane of Doom/Agony + SBurn + Incinerate
 
     // Backward compatibility aliases
     SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -123,6 +124,7 @@ inline const char* rotation_choice_to_string(RotationChoice r) {
         case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE: return "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)";
         case RotationChoice::DEEP_AFFLICTION_SB: return "Deep Affliction — Wrack (SB Filler)";
         case RotationChoice::DEEP_AFFLICTION_SB_NO_SL: return "Deep Affliction — Wrack (SB Filler, No Siphon Life)";
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE: return "Shadow & Flame Fire — Incinerate + Conflag + Bane";
         default: return "Shadow Destro";
     }
 }
@@ -155,6 +157,8 @@ inline const char* rotation_choice_description(RotationChoice r) {
             return "Maintains Bane of Agony, Corruption, and Immolate concurrently for maximum multi-DoT DPS, filling with Wrack and Shadow Bolt.";
         case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
             return "Shadow and Flame Fire 2: Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, maintains Corruption, weaves Shadowburn for +10% Fire buff, and spams Incinerate as filler with active Imp (no Searing Pain or Soul Fire).";
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE:
+            return "Shadow and Flame Fire (with Bane): Maintains Immolate for +25% Incinerate damage, casts Conflagrate on CD, maintains Corruption and Bane of Doom (>60s left) / Bane of Agony (<=60s left), weaves Shadowburn for +10% Fire buff, and spams Incinerate as filler.";
         case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
             return "Demonology Shadow variant that skips Corruption entirely. Maintains only Bane of Agony and spams Shadow Bolt as filler — useful when Corruption's debuff slot is not available or its DPS contribution is outweighed by omitting it.";
         case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
@@ -339,6 +343,15 @@ struct PolicyConfig {
 
         auto add_agony = [&]() {
             if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::DEEP_AFFLICTION_SB_NO_SL || eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS || eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE || eff == RotationChoice::DEMONOLOGY_EXECUTE || eff == RotationChoice::DP_AF_SHADOW_NO_CORRUPTION) {
+                // Adaptive / Smart Bane: Cast Curse of Doom if >60s left in fight; otherwise Bane of Agony
+                rules.push_back({
+                    PriorityAction::CURSE_OF_DOOM,
+                    SpellID::CURSE_OF_DOOM,
+                    "Curse of Doom",
+                    "Target Missing Curse & >60s Left",
+                    "Trigger when: Target has no active curse and more than 60 seconds remain in combat.",
+                    "Deals massive delayed Shadow damage after 60 seconds (1,742 base + 400% SP)."
+                });
                 if (talents.aff.amplify_curse > 0) {
                     rules.push_back({
                         PriorityAction::AMPLIFY_CURSE,
@@ -353,8 +366,8 @@ struct PolicyConfig {
                     PriorityAction::CURSE_OF_AGONY,
                     SpellID::CURSE_OF_AGONY,
                     "Bane of Agony",
-                    "DoT Expired / Missing",
-                    "Trigger when: Bane of Agony is not active on target.",
+                    "DoT Expired / Missing (<=60s Left)",
+                    "Trigger when: Bane of Agony is not active on target and 60 seconds or less remain.",
                     "Deals ticking Shadow damage over 24 seconds alongside target curses, benefiting from Pandemic DoT crits."
                 });
             } else if (curse == CurseChoice::CURSE_OF_DOOM) {
@@ -497,6 +510,7 @@ struct PolicyConfig {
                 add_immolate();
                 add_conflagrate();
                 add_corruption();
+                add_agony();
                 add_shadowburn();
                 if (talents.destro.incinerate > 0) {
                     rules.push_back({
@@ -562,6 +576,23 @@ struct PolicyConfig {
                 });
                 break;
 
+            case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE:
+                add_racial();
+                add_immolate();
+                add_conflagrate();
+                add_corruption();
+                add_agony();
+                add_shadowburn();
+                rules.push_back({
+                    PriorityAction::INCINERATE_FILLER,
+                    SpellID::INCINERATE,
+                    "Incinerate",
+                    "Primary Filler",
+                    "Trigger when: Primary rotational fallback for Shadow and Flame Fire (with Bane).",
+                    "Fast 2.0s Fire filler dealing massive direct damage (+25% bonus damage against Immolated targets)."
+                });
+                break;
+
             case RotationChoice::DP_RUIN_FIRE:
                 add_racial();
                 add_immolate();
@@ -585,6 +616,7 @@ struct PolicyConfig {
                 }
                 add_nightfall();
                 add_corruption();
+                add_agony();
                 add_shadowburn();
                 add_sb_filler();
                 break;
@@ -597,6 +629,7 @@ struct PolicyConfig {
                 }
                 add_nightfall();
                 add_corruption();
+                add_agony();
                 add_shadowburn();
                 add_sb_filler();
                 break;

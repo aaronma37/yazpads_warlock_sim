@@ -656,23 +656,24 @@ struct Talents {
         return t;
     }
 
-    // 2f. 2/17/32 Shadow and Flame Shadow
+    // 2f. 8/13/30 Shadow and Flame Shadow (8 Aff / 13 Demo / 30 Destro)
     static Talents create_forever_shadow_and_flame_shadow_2() {
         Talents t;
-        // Affliction: 2 points
-        t.aff.improved_life_tap = 2;
+        // Affliction: 8 points
+        t.aff.improved_life_tap = 1;
         t.aff.suppression = 5;
-        t.aff.improved_corruption = 5;
-        t.aff.malediction = 1;
+        t.aff.improved_corruption = 2;
 
-        // Demonology: 17 points
-        t.demo.improved_imp = 3;           // +30% Imp Firebolt damage
-        t.demo.unholy_power = 5;           // +10% Imp damage
-        t.demo.demonic_energies = 2;       // Life Tap restores pet mana
+        // Demonology: 13 points
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_energies = 2;
+        t.demo.improved_sayaad = 3;
 
-        // Destruction: 32 points
+        // Destruction: 30 points
         t.destro.improved_shadow_bolt = 5; // +20% Shadow vulnerability on crit
         t.destro.bane = 5;                 // -0.5s Shadow Bolt / -2.0s Soul Fire
+        t.destro.cataclysm = 2;            // -6% mana cost
         t.destro.ruin = 5;                 // 2.0x crit bonus
         t.destro.shadowburn = 1;           // Instant finisher
         t.destro.agonizing_flames = 3;     // +9% Destruction damage

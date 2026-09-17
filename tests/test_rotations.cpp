@@ -92,6 +92,36 @@ TEST_CASE(Rotations, ShadowAndFlameFire2RotationExecution) {
     CHECK_EQ(res.dmg_soul_fire, 0.0);
 }
 
+TEST_CASE(Rotations, ShadowAndFlameFireBaneRotationExecution) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_and_flame_fire_2();
+    sim.policy.rotation = RotationChoice::SHADOW_AND_FLAME_FIRE_BANE;
+    sim.policy.maintain_immolate = true;
+    sim.policy.pet = PetChoice::IMP;
+    sim.buffs.sacrifice_succubus = false;
+    sim.buffs.sacrifice_imp = false;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dps > 0.0);
+    
+    // Rotation must maintain Immolate, Conflagrate on CD, Corruption, Bane (Curse of Doom / Agony), Shadowburn, fill with Incinerate
+    CHECK(res.dmg_immolate > 0.0);
+    CHECK(res.dmg_conflagrate > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0);
+    CHECK(res.dmg_shadowburn > 0.0);
+    CHECK(res.dmg_incinerate > 0.0);
+    CHECK(res.dmg_pet_firebolt > 0.0);
+    
+    // Must NOT cast Searing Pain or Soul Fire
+    CHECK_EQ(res.dmg_searing_pain, 0.0);
+    CHECK_EQ(res.dmg_soul_fire, 0.0);
+}
+
 TEST_CASE(Rotations, ShadowAndFlameShadowRotationExecution) {
     FastRNG rng(1337);
     WarlockSimulator sim;

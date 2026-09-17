@@ -147,6 +147,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Demonology Shadow — Corruption + SB (No Soul Fire, No Bane)", // 15 DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE
         "Deep Affliction — Wrack (SB Filler)",                    // 16 DEEP_AFFLICTION_SB
         "Deep Affliction — Wrack (SB Filler, No Siphon Life)",    // 17 DEEP_AFFLICTION_SB_NO_SL
+        "Shadow & Flame Fire — Incinerate + Conflag + Bane",      // 18 SHADOW_AND_FLAME_FIRE_BANE
     };
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {

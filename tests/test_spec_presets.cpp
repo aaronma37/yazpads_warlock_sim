@@ -47,7 +47,7 @@ TEST_CASE(SpecPresets, IncinSuppSuccubus) {
     const SpecPreset* p = find_spec_preset("incin_supp_succ");
     CHECK(p != nullptr);
     CHECK(std::string(p->display_name) == "7/13/31 Incinerate - Suppression + Succubus");
-    CHECK(p->rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2);
+    CHECK(p->rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_BANE);
     CHECK(p->pet == PetChoice::SUCCUBUS);
     CHECK(p->sac_succubus == false);
     CHECK(p->sac_imp == false);
@@ -67,7 +67,7 @@ TEST_CASE(SpecPresets, IncinSuppSuccubus) {
     WarlockSimulator sim;
     apply_spec_preset(sim, *p);
     CHECK(sim.policy.pet == PetChoice::SUCCUBUS);
-    CHECK(sim.policy.rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2);
+    CHECK(sim.policy.rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_BANE);
 }
 
 TEST_CASE(SpecPresets, IncinSuppDsNoCorruption) {

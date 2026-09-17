@@ -595,19 +595,23 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::CURSE_OF_DOOM: {
-                    if (!dot_agony.active) {
+                    double time_left = fight_duration - now;
+                    // Cast Curse of Doom only if at least 60s remain in the fight (or if user explicitly set CURSE_OF_DOOM)
+                    if (!dot_agony.active && (time_left >= 60.0 || policy.curse == CurseChoice::CURSE_OF_DOOM)) {
                         double mana_cost = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CURSE_OF_DOOM);
-                            if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
+                            bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
+                            if (eureka_active) eureka_charges--;
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
                                 dot_agony.expire_time = now + 60.0;
                                 dot_agony.ticks_remaining = 1;
                                 dot_agony.tick_interval = 60.0;
+                                dot_agony.tick_multiplier = eureka_active ? 1.10 : 1.0;
                                 queue.push(now + 60.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_DOOM));
                             } else {
                                 result.misses++;
@@ -615,6 +619,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::CURSE_OF_DOOM, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Curse" : "Curse of Doom"});
+                            }
                             return;
                         }
                     }
@@ -1282,7 +1289,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.shadow_bolt_hits++;
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double base_dmg = rng.range(482.0, 538.0);
+                    double base_dmg = rng.range(253.0, 283.0);
                     double dmg = base_dmg + (3.0 / 3.5) * sp;
 
                     // Decimation bonus: +3% per point on Shadow Bolt when boss <35% HP
@@ -1362,7 +1369,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     result.total_damage_events++;
                     double sp = get_current_sp(School::FIRE, current_time);
-                    double base_dmg = rng.range(445.0, 515.0);
+                    double base_dmg = rng.range(201.0, 233.0);
                     double dmg = base_dmg + (2.5 / 3.5) * sp;
 
                     // +25% bonus damage if Immolate is active on target
@@ -1424,7 +1431,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     result.total_damage_events++;
                     double sp = get_current_sp(School::FIRE, current_time);
-                    double base_dmg = rng.range(204.0, 240.0);
+                    double base_dmg = rng.range(108.0, 127.0);
                     double dmg = base_dmg + (1.5 / 3.5) * sp;
 
                     // Decimation bonus: +3% per point on Searing Pain when boss <35% HP
@@ -1495,7 +1502,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     result.total_damage_events++;
                     double sp = get_current_sp(School::FIRE, current_time);
-                    double base_dmg = rng.range(715.0, 895.0);
+                    double base_dmg = rng.range(383.0, 479.0);
                     double dmg = base_dmg + 1.0 * sp;
                     dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
 
@@ -1849,7 +1856,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 1742.0 + 4.0 * sp;
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier;
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * target_states[t_idx].dot_agony.tick_multiplier;
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                     if (is_crit) {
                         result.total_damage_crits++;
