@@ -203,9 +203,9 @@ inline void render_panel_imp_analysis(double fight_duration) {
 
     ImGui::Spacing();
     ImGui::Separator();
-    ImGui::TextDisabled("Assumptions: Imp Firebolt 85-98 (avg 91.5) + (1.5/3.5) x 15%% of master Fire SP; "
+    ImGui::TextDisabled("Assumptions: Imp Firebolt 44 base + (2.0/3.5) x 15%% of master Fire SP, 2.0s cast (Classic toggle: 85-98 + (1.5/3.5)x15%% SP, 1.5s cast); "
                         "Succubus melee 145-195 + (57%% Shadow SP / 14) x 2.0, x0.86 armor, 95%% hit, 5%% crit x2.0; "
-                        "Lash of Pain 99-115 + (1.5/3.5) x 15%% of master Shadow SP, 83%% hit, 5%% crit x1.5; "
+                        "Lash of Pain 50 + (1.5/3.5) x 15%% of master Shadow SP, 83%% hit, 5%% crit x1.5 (12s base cd); "
                         "UP +2%%/pt, Improved Imp / Sayaad +10%%/pt; "
                         "no CoE/CoS, no resists, no mana buffs. Mirrors the DES pet engine exactly.");
 }

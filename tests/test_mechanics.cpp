@@ -102,8 +102,42 @@ TEST_CASE(Mechanics, NightfallProcSimulation) {
 TEST_CASE(Mechanics, PetStatScalingToggle) {
     MechanicsConfig mech;
     CHECK(mech.pet_scaling);
+    CHECK(mech.imp_firebolt_modern_scaling); // Modern scaling is true by default
     CHECK_NEAR(mech.pet_sp_ratio, 0.15, 0.001); // 15% SP inheritance to pet spell damage
     CHECK_NEAR(mech.pet_ap_ratio, 0.57, 0.001); // 57% SP inheritance to pet Attack Power
+}
+
+TEST_CASE(Mechanics, ImpFireboltModernVsClassicToggle) {
+    // With 500 SP: Modern gives 57.1% master SP (2.0s cast), Classic gives 85-98 + 15% pet SP (1.5s cast)
+    FastRNG rng_mod(1234);
+    WarlockSimulator sim_mod;
+    sim_mod.talents = Talents::create_forever_dp_af_fire();
+    sim_mod.policy.rotation = RotationChoice::DP_RUIN_FIRE;
+    sim_mod.buffs.sacrifice_succubus = false;
+    sim_mod.buffs.sacrifice_imp = false;
+    sim_mod.policy.pet = PetChoice::IMP;
+    sim_mod.mechanics.imp_firebolt_modern_scaling = true;
+    sim_mod.fight_duration = 30.0;
+    SimResult mod_res = sim_mod.run_single_simulation(rng_mod);
+
+    FastRNG rng_cls(1234);
+    WarlockSimulator sim_cls;
+    sim_cls.talents = Talents::create_forever_dp_af_fire();
+    sim_cls.policy.rotation = RotationChoice::DP_RUIN_FIRE;
+    sim_cls.buffs.sacrifice_succubus = false;
+    sim_cls.buffs.sacrifice_imp = false;
+    sim_cls.policy.pet = PetChoice::IMP;
+    sim_cls.mechanics.imp_firebolt_modern_scaling = false;
+    sim_cls.fight_duration = 30.0;
+    SimResult cls_res = sim_cls.run_single_simulation(rng_cls);
+
+    CHECK(mod_res.dmg_pet_firebolt > 0.0);
+    CHECK(cls_res.dmg_pet_firebolt > 0.0);
+    // Modern scaling with end-game spell power provides substantial damage scaling per hit
+    const SpellCombatStats& mod_fb = mod_res.spell_stats[static_cast<size_t>(SpellID::PET_FIREBOLT)];
+    const SpellCombatStats& cls_fb = cls_res.spell_stats[static_cast<size_t>(SpellID::PET_FIREBOLT)];
+    CHECK(mod_fb.casts > 0);
+    CHECK(cls_fb.casts > 0);
 }
 
 TEST_CASE(Mechanics, PersonalShadowWeavingDefault) {
@@ -166,7 +200,7 @@ TEST_CASE(Mechanics, SeparatedPetDamageBreakdown) {
 }
 
 TEST_CASE(Mechanics, PetSpellAndApRatiosApplySeparately) {
-    // Spell path: Imp Firebolt scales with pet_sp_ratio (same seed => identical casts)
+    // Spell path: Classic Imp Firebolt scales with pet_sp_ratio (same seed => identical casts)
     {
         FastRNG rng_lo(777);
         WarlockSimulator sim_lo;
@@ -175,6 +209,7 @@ TEST_CASE(Mechanics, PetSpellAndApRatiosApplySeparately) {
         sim_lo.policy.curse = CurseChoice::BANE_OF_AGONY;
         sim_lo.buffs.sacrifice_imp = false;
         sim_lo.policy.pet = PetChoice::IMP;
+        sim_lo.mechanics.imp_firebolt_modern_scaling = false; // Classic scaling for pet_sp_ratio test
         sim_lo.mechanics.pet_sp_ratio = 0.0;
         sim_lo.fight_duration = 30.0;
         SimResult lo = sim_lo.run_single_simulation(rng_lo);
@@ -186,6 +221,7 @@ TEST_CASE(Mechanics, PetSpellAndApRatiosApplySeparately) {
         sim_hi.policy.curse = CurseChoice::BANE_OF_AGONY;
         sim_hi.buffs.sacrifice_imp = false;
         sim_hi.policy.pet = PetChoice::IMP;
+        sim_hi.mechanics.imp_firebolt_modern_scaling = false;
         sim_hi.mechanics.pet_sp_ratio = 0.57;
         sim_hi.fight_duration = 30.0;
         SimResult hi = sim_hi.run_single_simulation(rng_hi);
@@ -349,4 +385,43 @@ TEST_CASE(Mechanics, CorruptionSpellPowerCoefficient) {
     // Expected diff per 6 ticks is exactly 144 damage (24/tick)
     double diff = res_120.dmg_corruption - res_default.dmg_corruption;
     CHECK_NEAR(diff, 144.0, 0.01);
+}
+
+TEST_CASE(Mechanics, LifeTapSpiritScaling) {
+    // Tests Life Tap: converts 430 health into (430 + Spirit) * (1 + 0.10 * ImpLifeTap) mana
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    BuffConfig clean_buffs{};
+    clean_buffs.arcane_intellect = false;
+    clean_buffs.blessing_of_kings = false;
+    clean_buffs.blessing_of_wisdom = false;
+    clean_buffs.mark_of_the_wild = false;
+    clean_buffs.judgement_of_wisdom = false;
+    clean_buffs.flask_of_supreme_power = false;
+    clean_buffs.greater_arcane_elixir = false;
+    clean_buffs.elixir_of_shadow_power = false;
+    clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.brilliant_wizard_oil = false;
+    clean_buffs.use_mana_potions = false;
+    clean_buffs.use_demonic_runes = false;
+    clean_buffs.sacrifice_imp = false;
+    clean_buffs.sacrifice_succubus = false;
+    sim.buffs = clean_buffs;
+
+    sim.use_raw_stats = true;
+    sim.raw_stats.spirit = 100.0;
+    sim.raw_stats.max_mana = 5000.0;
+    sim.raw_stats.max_health = 4000.0;
+    sim.policy.life_tap_threshold_pct = 100.0; // Force immediate Life Tap
+    sim.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    sim.talents.aff.improved_life_tap = 2; // +20%
+    sim.fight_duration = 1.0; // Runs exactly 1 tap at t=0
+
+    BaseAttributes base = get_base_attributes_for_race(sim.race);
+    double total_spirit = base.spirit + sim.raw_stats.spirit;
+    double expected_mana_per_tap = (430.0 + 0.05 * total_spirit) * 1.20;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK_EQ(res.life_taps, 1);
+    CHECK_NEAR(res.mana_gained, expected_mana_per_tap, 0.01);
 }

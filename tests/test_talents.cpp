@@ -265,6 +265,7 @@ TEST_CASE(Talents, ImprovedImpIsDamageOnly) {
         sim.buffs.sacrifice_succubus = false;
         sim.mechanics.pet_mana_management = false;
         sim.use_raw_stats = true;
+        sim.raw_stats.spell_power = 500.0;
         sim.fight_duration = 30.0;
         return sim;
     };

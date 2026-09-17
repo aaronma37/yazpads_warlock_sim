@@ -237,7 +237,8 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
         json << "\"succubus_base_mana\": " << json_double(m.succubus_base_mana) << ",\n";
         json << "    \"imp_firebolt_cost\": " << json_double(m.imp_firebolt_cost) << ", ";
         json << "\"succubus_lop_cost\": " << json_double(m.succubus_lop_cost) << ", ";
-        json << "\"pet_base_mp5\": " << json_double(m.pet_base_mp5) << "\n";
+        json << "\"pet_base_mp5\": " << json_double(m.pet_base_mp5) << ",\n";
+        json << "    \"imp_firebolt_modern_scaling\": " << (m.imp_firebolt_modern_scaling ? "true" : "false") << "\n";
         json << "  },\n";
     }
 

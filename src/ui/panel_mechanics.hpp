@@ -98,6 +98,10 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("When ON: Imp (1,150 base mana) and Succubus (1,450 base mana) consume mana on casts and regen mana passively (MP5), via raid buffs (Blessing of Wisdom, Judgement of Wisdom), and Demonic Energies talent.\nWhen OFF: Pets have infinite mana.");
         }
+        ImGui::Checkbox("Modern Imp Firebolt (44 Base + 15% Pet SP, 2.0s cast)", &mechanics.imp_firebolt_modern_scaling);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON (Default - Modern/Custom): Firebolt deals 44 base fire damage + 15%% pet SP inheritance (2.0/3.5 coefficient) and a 2.0s cast time.\nWhen OFF (Classic 1.12): Firebolt deals 85-98 flat base damage with 15%% pet SP inheritance (1.5/3.5 coefficient) and a 1.5s cast time.");
+        }
 
         ImGui::Spacing();
         ImGui::Separator();

@@ -212,9 +212,9 @@ public:
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 0.0;
-        s.min_dmg = 580.0; // Health cost
-        s.max_dmg = 580.0; // Base Mana return (scales with 80% spell power)
-        s.direct_coefficient = 0.80;
+        s.min_dmg = 430.0; // Health cost: 430
+        s.max_dmg = 430.0; // Base Mana return (430 + Spirit)
+        s.direct_coefficient = 0.0; // Scales 100% with Spirit
         return s;
     }
 
@@ -304,7 +304,7 @@ public:
         s.dot_duration = 15.0;
         s.dot_tick_interval = 3.0;
         s.num_ticks = 5;
-        s.dot_base_dmg_per_tick = 91.0; // 455 base across 15 sec (5 ticks of 91)
+        s.dot_base_dmg_per_tick = 84.0; // 420 base across 15 sec (5 ticks of 84)
         s.dot_coeff_per_tick = 0.20;   // 100% total SP coefficient (20% per tick)
         return s;
     }

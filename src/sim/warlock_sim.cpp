@@ -521,17 +521,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::LIFE_TAP: {
                     double mana_pct = (player_mana / stats.max_mana) * 100.0;
-                    if (mana_pct <= policy.life_tap_threshold_pct && player_health > 800.0) {
-                        double base_tap = 580.0;
-                        double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
-                        player_mana = std::min(stats.max_mana, player_mana + extra_mana);
-                        player_health -= base_tap;
+                    if (mana_pct <= policy.life_tap_threshold_pct && player_health > 600.0) {
+                        double health_cost = 430.0;
+                        double mana_gained = (health_cost + 0.05 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+                        player_mana = std::min(stats.max_mana, player_mana + mana_gained);
+                        player_health -= health_cost;
                         result.life_taps++;
-                        result.mana_gained += extra_mana;
+                        result.mana_gained += mana_gained;
 
                         // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
                         if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
-                            double pet_gain = extra_mana * (0.50 * talents.demo.demonic_energies);
+                            double pet_gain = mana_gained * (0.50 * talents.demo.demonic_energies);
                             pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
                         }
 
@@ -1098,16 +1098,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
 
         // Emergency Resource Fallback: Life Tap when out of mana for filler
-        double base_tap = 580.0;
-        double extra_mana = (base_tap + 0.80 * stats.effective_shadow_power()) * (1.0 + 0.10 * talents.aff.improved_life_tap);
-        player_mana = std::min(stats.max_mana, player_mana + extra_mana);
-        player_health -= base_tap;
+        double health_cost = 430.0;
+        double mana_gained = (health_cost + 0.05 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+        player_mana = std::min(stats.max_mana, player_mana + mana_gained);
+        player_health -= health_cost;
         result.life_taps++;
-        result.mana_gained += extra_mana;
+        result.mana_gained += mana_gained;
 
         // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
         if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
-            double pet_gain = extra_mana * (0.50 * talents.demo.demonic_energies);
+            double pet_gain = mana_gained * (0.50 * talents.demo.demonic_energies);
             pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
         }
 
@@ -1968,11 +1968,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         result.record_spell_cast(SpellID::PET_LASH_OF_PAIN);
 
-                        // Lash of Pain (Rank 6): 99 - 115 shadow damage + pet SP scaling
+                        // Lash of Pain: 50 shadow damage + pet SP scaling
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::SHADOW, current_time);
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
-                            double base_lop = rng.range(99.0, 115.0) + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
+                            double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
 
                             // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
                             base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
@@ -2016,8 +2016,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                     }
 
-                    // Improved Sayaad reduces Lash of Pain cooldown by 1.0s per rank (9s -> 6s at 3/3)
-                    double lop_cd = std::max(3.0, 9.0 - 1.0 * talents.demo.improved_sayaad);
+                    // Improved Sayaad reduces Lash of Pain cooldown by 1.0s per rank (12s -> 9s at 3/3)
+                    double lop_cd = std::max(3.0, 12.0 - 1.0 * talents.demo.improved_sayaad);
                     if (!can_cast) {
                         // If OOM, retry sooner (every 1.5s)
                         lop_cd = 1.5;
@@ -2035,11 +2035,18 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         result.record_spell_cast(SpellID::PET_FIREBOLT);
 
-                        // Imp Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling
+                        // Imp Firebolt: Modern (44 base + 15% pet SP, 2.0s cast) vs Classic (85-98 + 15% pet SP, 1.5s cast)
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::FIRE, current_time);
+                            double base_fb = 0.0;
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
-                            double base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
+                            if (mechanics.imp_firebolt_modern_scaling) {
+                                // Modern Firebolt (Rank 7): 44 base fire damage + pet SP scaling (15% SP inheritance at 2.0/3.5 coeff)
+                                base_fb = 44.0 + (2.0 / 3.5) * pet_sp;
+                            } else {
+                                // Classic Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling (15% SP inheritance at 1.5/3.5 coeff)
+                                base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp;
+                            }
 
                             base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
@@ -2080,9 +2087,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                     }
 
-                    // Imp Firebolt fires on a fixed 1.5s interval. Improved Imp raises
-                    // Firebolt damage only (+10% per point, applied above), never cast frequency.
-                    double fb_interval = 1.5;
+                    // Imp Firebolt cast interval: 2.0s for Modern, 1.5s for Classic
+                    double fb_interval = mechanics.imp_firebolt_modern_scaling ? 2.0 : 1.5;
                     if (!can_cast) {
                         // If OOM, retry on 1.0s intervals
                         fb_interval = 1.0;

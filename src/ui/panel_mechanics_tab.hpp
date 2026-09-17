@@ -52,7 +52,9 @@ inline void render_panel_mechanics_tab() {
 
     // 6. Pet Stat Scaling & Mana Management
     if (ImGui::CollapsingHeader("6. Pet Stat Scaling & Mana Management", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::BulletText("Pet SP Inheritance: Summoned demons inherit a percentage of the master's Spell Power (default 15%% for demon spells like Imp Firebolt and Succubus Lash of Pain).");
+        ImGui::BulletText("Imp Firebolt (Modern / Default): Deals 44 base Fire damage + 15%% pet SP inheritance (2.0 / 3.5 coefficient) with a 2.0s cast time.");
+        ImGui::BulletText("Imp Firebolt (Classic 1.12): Toggleable in Mechanics to 85-98 base damage + 15%% pet SP inheritance (1.5/3.5 coefficient) and 1.5s cast time.");
+        ImGui::BulletText("Pet SP Inheritance: Summoned demons inherit a percentage of the master's Spell Power (default 15%% for demon spells like Succubus Lash of Pain, or Classic Firebolt).");
         ImGui::BulletText("Pet AP Inheritance: Demons inherit master's Spell Power converted into Attack Power (default 57%% for melee auto-attacks like Succubus melee).");
         ImGui::BulletText("Customizable Ratios: Pet scaling toggle and custom SP / AP scaling percentages can be adjusted under Game Mechanics in the Presets & Setup panel.");
         ImGui::BulletText("Pet Mana Pools: Imp (1,150 mana) and Succubus (1,450 mana) consume mana on casts, benefiting from MP5 and raid mana restoration buffs (Blessing / Judgement of Wisdom).");

@@ -187,9 +187,9 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
             "Channeled 15.0s (3.0s ticks)",
             "290 Mana",
             "None",
-            "455 Total Shadow Damage (5 ticks of 91.0 every 3s)",
+            "420 Total Shadow Damage (5 ticks of 84.0 every 3s)",
             "100.0% DoT (20.0% per tick)",
-            "Tick Damage = (91.0 + (SpellPower + ShadowSpellPower) * 0.20) * Multipliers",
+            "Tick Damage = (84.0 + (SpellPower + ShadowSpellPower) * 0.20) * Multipliers",
             "Channeled Shadow filler for Deep Affliction. Benefits from Improved Drains (+18%, tripled below 20% HP), Soul Siphon (+50% tick rate), and triggers Nightfall procs.",
             "spell_shadow_soulgem"
         },
@@ -208,15 +208,15 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries() {
         },
         {
             SpellID::LIFE_TAP,
-            "Life Tap (Rank 6)",
+            "Life Tap",
             "Shadow",
             "Instant (1.5s GCD)",
-            "0 Mana (Cost: 580 Health)",
-            "580 Base Mana Restored",
+            "0 Mana (Cost: 430 Health)",
+            "430 Base Mana Restored",
             "None",
-            "80.0% Spell Power scaling into Mana returned",
-            "Mana Returned = 580 + (SpellPower * 0.80) * (1.0 + 0.10 * Imp_Life_Tap_Points)",
-            "Essential resource generation mechanic. Restores mana at the expense of player health.",
+            "5.0% Spirit scaling into Mana returned",
+            "Mana Returned = (430 + 0.05 * Spirit) * (1.0 + 0.10 * Imp_Life_Tap_Points)",
+            "Converts 430 health into [(430 + 0.05 * Spirit) * (1)] Mana for you. Spirit increases the amount of Mana converted. Mana gained is increased by your Spirit.",
             "spell_shadow_burningspirit"
         },
         {

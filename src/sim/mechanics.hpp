@@ -88,6 +88,11 @@ struct MechanicsConfig {
     double imp_firebolt_cost = 115.0;     // Rank 7 Firebolt
     double succubus_lop_cost = 160.0;     // Rank 6 Lash of Pain
     double pet_base_mp5 = 45.0;           // Base passive pet regen per 5s
+
+    // 14. Imp Firebolt Scaling Version
+    // True: Modern/Custom Scaling (Default: 57.1% (2.0/3.5) of Master Fire SP, 2.0s cast interval).
+    // False: Classic 1.12 Scaling (85-98 flat base damage + 15% pet SP inheritance at 1.5/3.5 coeff, 1.5s cast interval).
+    bool imp_firebolt_modern_scaling = true;
 };
 
 } // namespace warlock

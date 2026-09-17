@@ -23,6 +23,7 @@ namespace imp_analysis {
 // Talent axes: Unholy Power (+2% pet damage per point) and Improved Imp
 // (+10% Firebolt damage per point). Fel Vitality is assumed 0/3.
 
+constexpr double kModernFireboltBaseDamage = 44.0;
 constexpr double kFireboltMinDamage = 85.0;
 constexpr double kFireboltMaxDamage = 98.0;
 constexpr double kPetSpRatio = 0.15;          // 15% SP inheritance
@@ -40,10 +41,15 @@ constexpr double kRegenPeriod = 5.0;
 
 // Expected damage of one Firebolt cast that spends mana (hit chance and
 // crits folded in; resists assumed 0, no CoE).
-inline double expected_damage_per_cast(double master_sp, int unholy_power, int improved_imp) {
-    const double avg_base = 0.5 * (kFireboltMinDamage + kFireboltMaxDamage);
+inline double expected_damage_per_cast(double master_sp, int unholy_power, int improved_imp, bool modern_scaling = true) {
+    double dmg = 0.0;
     const double pet_sp = kPetSpRatio * master_sp;
-    double dmg = avg_base + kCastTimeCoefficient * pet_sp;
+    if (modern_scaling) {
+        dmg = kModernFireboltBaseDamage + (2.0 / 3.5) * pet_sp;
+    } else {
+        const double avg_base = 0.5 * (kFireboltMinDamage + kFireboltMaxDamage);
+        dmg = avg_base + kCastTimeCoefficient * pet_sp;
+    }
     dmg *= (1.0 + unholy_power * 0.02);
     dmg *= (1.0 + improved_imp * 0.10);
     dmg *= kHitChance;
@@ -53,10 +59,11 @@ inline double expected_damage_per_cast(double master_sp, int unholy_power, int i
 
 // Deterministic mirror of the sim's cast scheduling: how many Firebolts
 // actually spend mana over a fight of the given duration.
-inline int expected_cast_count(double fight_duration, bool mana_limited) {
+inline int expected_cast_count(double fight_duration, bool mana_limited, bool modern_scaling = true) {
     if (fight_duration <= kFirstCastTime) return 0;
+    const double interval = modern_scaling ? 2.0 : kCastInterval;
     if (!mana_limited) {
-        return static_cast<int>(std::floor((fight_duration - kFirstCastTime) / kCastInterval)) + 1;
+        return static_cast<int>(std::floor((fight_duration - kFirstCastTime) / interval)) + 1;
     }
     double mana = kBaseMana;
     double next_tick = kRegenPeriod;
@@ -70,7 +77,7 @@ inline int expected_cast_count(double fight_duration, bool mana_limited) {
         if (mana >= kFireboltCost) {
             mana -= kFireboltCost;
             ++casts;
-            t += kCastInterval;
+            t += interval;
         } else {
             t += kOomRetryInterval;
         }
@@ -79,10 +86,10 @@ inline int expected_cast_count(double fight_duration, bool mana_limited) {
 }
 
 inline double expected_dps(double master_sp, int unholy_power, int improved_imp,
-                           bool mana_limited, double fight_duration) {
+                           bool mana_limited, double fight_duration, bool modern_scaling = true) {
     if (fight_duration <= 0.0) return 0.0;
-    const int casts = expected_cast_count(fight_duration, mana_limited);
-    return casts * expected_damage_per_cast(master_sp, unholy_power, improved_imp) / fight_duration;
+    const int casts = expected_cast_count(fight_duration, mana_limited, modern_scaling);
+    return casts * expected_damage_per_cast(master_sp, unholy_power, improved_imp, modern_scaling) / fight_duration;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,12 +114,12 @@ constexpr double kMeleeCritChance = 0.05;
 constexpr double kMeleeCritMultiplier = 2.0;
 constexpr double kFirstSwingTime = 1.0;
 constexpr double kSwingInterval = 2.0;
-constexpr double kLopMinDamage = 99.0;
-constexpr double kLopMaxDamage = 115.0;
+constexpr double kLopMinDamage = 50.0;
+constexpr double kLopMaxDamage = 50.0;
 constexpr double kSuccubusBaseMana = 1450.0;
 constexpr double kLopCost = 160.0;
 constexpr double kFirstLopTime = 0.5;
-constexpr double kLopBaseCooldown = 9.0;
+constexpr double kLopBaseCooldown = 12.0;
 constexpr double kLopCooldownPerSayaad = 1.0;
 constexpr double kLopMinCooldown = 3.0;
 constexpr double kLopOomRetry = 1.5;

@@ -26,6 +26,7 @@ void print_help() {
               << "  --raw-stats                    Direct stat mode (overrides gear items)\n"
               << "  --sp <value>                   Direct generic spell power value\n"
               << "  --snapshotting <0|1>           Toggle DoT snapshotting (1: Classic, 0: Forever default)\n"
+              << "  --imp-firebolt <modern|classic> Toggle Imp Firebolt scaling (default: modern)\n"
               << "  --optimize-talents             Run brute-force talent optimizer\n"
               << "  --optimize-gear                Run brute-force gear optimizer\n"
               << "  --optimize-policy              Run brute-force rotation policy optimizer\n"
@@ -116,6 +117,9 @@ int run_headless(int argc, char* argv[]) {
             sim.raw_stats.spell_power = std::stod(argv[++i]);
         } else if (arg == "--snapshotting" && i + 1 < argc) {
             sim.mechanics.snapshot_dots = (std::stoi(argv[++i]) != 0);
+        } else if (arg == "--imp-firebolt" && i + 1 < argc) {
+            std::string mode = argv[++i];
+            sim.mechanics.imp_firebolt_modern_scaling = (mode != "classic" && mode != "0");
         } else if (arg == "--optimize-talents") {
             opt_talents = true;
         } else if (arg == "--optimize-gear") {
