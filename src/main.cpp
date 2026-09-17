@@ -282,12 +282,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
+#ifndef _WIN32
     // Check if running in headless environment (e.g. DISPLAY not set)
     if (!headless && getenv("DISPLAY") == nullptr && getenv("WAYLAND_DISPLAY") == nullptr) {
         std::cout << "No graphical display detected ($DISPLAY / $WAYLAND_DISPLAY unset). Defaulting to headless CLI mode.\n"
                   << "Pass --help for available CLI options.\n\n";
         headless = true;
     }
+#endif
 
     if (headless) {
         return run_headless(argc, argv);

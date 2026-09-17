@@ -6,8 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Optimization flags
-if (CMAKE_BUILD_TYPE STREQUAL "Release" OR NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
+if (MSVC)
+    add_compile_options(/O2 /permissive-)
+else()
+    if (CMAKE_BUILD_TYPE STREQUAL "Release" OR NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native")
+    endif()
 endif()
 
 # Include directories
@@ -42,15 +46,39 @@ add_executable(warlock_sim
     ${UI_SOURCES}
 )
 
-target_link_libraries(warlock_sim PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
-    GL
-    m
-    pthread
-    dl
-    rt
-    X11
-)
+if (WIN32)
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/raylib.lib")
+        set(RAYLIB_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/raylib.lib")
+    else()
+        set(RAYLIB_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a")
+    endif()
+    target_link_libraries(warlock_sim PRIVATE
+        ${RAYLIB_LIB}
+        opengl32
+        gdi32
+        winmm
+        shell32
+        user32
+    )
+elseif (APPLE)
+    target_link_libraries(warlock_sim PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
+        "-framework OpenGL"
+        "-framework Cocoa"
+        "-framework IOKit"
+        "-framework CoreVideo"
+    )
+else()
+    target_link_libraries(warlock_sim PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
+        GL
+        m
+        pthread
+        dl
+        rt
+        X11
+    )
+endif()
 
 set_target_properties(warlock_sim PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
@@ -80,10 +108,14 @@ add_executable(sim_tests
     ${SIM_SOURCES}
 )
 
-target_link_libraries(sim_tests PRIVATE
-    pthread
-    m
-)
+if (WIN32)
+    target_link_libraries(sim_tests PRIVATE)
+else()
+    target_link_libraries(sim_tests PRIVATE
+        pthread
+        m
+    )
+endif()
 
 set_target_properties(sim_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
