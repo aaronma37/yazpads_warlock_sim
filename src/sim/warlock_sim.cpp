@@ -1732,7 +1732,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dmg *= pand_crit_mult;
                         }
 
-                        if (mechanics.isb_all_shadow_sources && target.consume_isb_charge(current_time)) {
+                        if (target.consume_isb_charge(current_time)) {
                             dmg *= (1.0 + target.isb_bonus);
                             result.isb_consumed++;
                         }
@@ -1787,6 +1787,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dmg *= pand_crit_mult;
                         }
 
+                        if (target.consume_isb_charge(current_time)) {
+                            dmg *= (1.0 + target.isb_bonus);
+                            result.isb_consumed++;
+                        }
+
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                         result.dmg_agony += dmg;
                         result.dmg_curse += dmg;
@@ -1820,6 +1825,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.crits++;
                             double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                             dmg *= pand_crit_mult;
+                        }
+
+                        if (target.consume_isb_charge(current_time)) {
+                            dmg *= (1.0 + target.isb_bonus);
+                            result.isb_consumed++;
                         }
 
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }

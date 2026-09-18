@@ -395,52 +395,65 @@ std::string format_build_name(const Individual& ind) {
     int d = graph.count_tree_points(ind.talents, 1);
     int x = graph.count_tree_points(ind.talents, 2);
 
+    Talents t = graph.to_talents(ind.talents);
+
+    // Identify key prominent talents across trees
+    bool has_dh   = (t.aff.drain_hope > 0);
+    bool has_sm   = (t.aff.shadow_mastery > 0);
+    bool has_sl   = (t.aff.siphon_life > 0);
+    bool has_nf   = (t.aff.nightfall > 0);
+
+    bool has_dp   = (t.demo.demonic_pact > 0);
+    bool has_md   = (t.demo.master_demonologist > 0);
+    bool has_soul = (t.demo.soul_link > 0);
+    bool has_deci = (t.demo.decimation > 0);
+    bool has_ds   = (t.demo.demonic_sacrifice > 0);
+
+    bool has_inc  = (t.destro.incinerate > 0);
+    bool has_sf   = (t.destro.shadow_and_flame > 0);
+    bool has_conflag = (t.destro.conflagrate > 0);
+    bool has_ruin = (t.destro.ruin > 0);
+    bool has_sburn= (t.destro.shadowburn > 0);
+
+    std::vector<std::string> tags;
+
+    // Affliction tags
+    if (has_dh) tags.push_back("Drain Hope");
+    else if (has_sm) tags.push_back("SM");
+    else if (has_sl) tags.push_back("SL");
+    else if (has_nf) tags.push_back("NF");
+    else if (a >= 20) tags.push_back("Aff");
+
+    // Demonology tags
+    if (has_dp) tags.push_back("DP");
+    else if (has_md) tags.push_back("MD");
+    else if (has_soul) tags.push_back("Soul Link");
+    else if (has_ds && has_deci) tags.push_back("DS/Deci");
+    else if (has_ds) tags.push_back("DS");
+    else if (has_deci) tags.push_back("Deci");
+    else if (d >= 20) tags.push_back("Demo");
+
+    // Destruction tags
+    if (has_inc) tags.push_back("Incin");
+    else if (has_sf) tags.push_back("S&F");
+    else if (has_conflag) tags.push_back("Conflag");
+    else if (has_ruin) tags.push_back("Ruin");
+    else if (has_sburn) tags.push_back("Sburn");
+    else if (x >= 20) tags.push_back("Destro");
+
     std::ostringstream ss;
     ss << a << "/" << d << "/" << x << " ";
 
-    switch (ind.rotation) {
-        case RotationChoice::FIRE_DESTRO:
-        case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
-            ss << "Fire Destro";
-            break;
-        case RotationChoice::SHADOW_DESTRO:
-        case RotationChoice::SHADOW_DESTRO_2:
-            ss << "Shadow Destro";
-            break;
-        case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
-        case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE:
-            ss << "Shadow & Flame Fire";
-            break;
-        case RotationChoice::DP_AF_SHADOW:
-        case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
-        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE:
-        case RotationChoice::DP_AF_SHADOW_NO_BANE:
-        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE:
-            ss << "DP/AF Shadow";
-            break;
-        case RotationChoice::DP_RUIN_FIRE:
-            ss << "DP/AF Fire";
-            break;
-        case RotationChoice::DEEP_AFFLICTION:
-        case RotationChoice::DEEP_AFFLICTION_SB:
-        case RotationChoice::DEEP_AFFLICTION_SB_NO_SL:
-            ss << "Deep Affliction";
-            break;
-        case RotationChoice::SM_RUIN:
-            ss << "SM/Ruin";
-            break;
-        case RotationChoice::DEMONOLOGY_EXECUTE:
-            ss << "Demo Execute";
-            break;
-        case RotationChoice::PURE_SHADOW_BOLT:
-            ss << "Pure Shadow Bolt";
-            break;
-        case RotationChoice::AFFLICTION_HYBRID_DOTS:
-            ss << "Affliction Hybrid";
-            break;
-        default:
-            ss << "Hybrid";
-            break;
+    if (tags.empty()) {
+        // Fallback to highest point tree
+        if (x >= a && x >= d) ss << "Destro";
+        else if (a >= d && a >= x) ss << "Aff";
+        else ss << "Demo";
+    } else {
+        for (size_t i = 0; i < tags.size(); ++i) {
+            if (i > 0) ss << "/";
+            ss << tags[i];
+        }
     }
 
     return ss.str();

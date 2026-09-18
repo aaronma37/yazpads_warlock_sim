@@ -547,3 +547,42 @@ TEST_CASE(Mechanics, WrackShadowDotAmplification) {
     }
 }
 
+TEST_CASE(Mechanics, ISBShadowDoTAmplification) {
+    FastRNG rng1(42);
+    FastRNG rng2(42);
+
+    auto make_sim = [](int isb_points) {
+        WarlockSimulator sim;
+        sim.race = Race::UNDEAD;
+        sim.talents = Talents{};
+        sim.talents.aff.siphon_life = 1;
+        sim.talents.destro.improved_shadow_bolt = isb_points;
+        sim.raw_stats.spell_power = 500.0;
+        sim.raw_stats.spell_hit_percent = 100.0;
+        sim.raw_stats.spell_crit_percent = (isb_points > 0) ? 100.0 : 0.0;
+        sim.mechanics.partial_resists_enabled = false;
+        sim.mechanics.snapshot_dots = false;
+        sim.buffs.sacrifice_imp = false;
+        sim.buffs.sacrifice_succubus = false;
+        sim.buffs.shadow_weaving = false;
+        sim.buffs.curse_of_shadows = false;
+        sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+        sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim.policy.corruption = DotPolicy::ALWAYS;
+        sim.policy.pet = PetChoice::NONE;
+        sim.fight_duration = 18.0;
+        return sim;
+    };
+
+    WarlockSimulator sim_no_isb = make_sim(0);
+    SimResult res_no_isb = sim_no_isb.run_single_simulation(rng1);
+
+    WarlockSimulator sim_isb = make_sim(5);
+    SimResult res_isb = sim_isb.run_single_simulation(rng2);
+
+    CHECK(res_isb.dmg_corruption > res_no_isb.dmg_corruption);
+    CHECK(res_isb.dmg_agony > res_no_isb.dmg_agony);
+    CHECK(res_isb.dmg_siphon_life > res_no_isb.dmg_siphon_life);
+}
+
+
