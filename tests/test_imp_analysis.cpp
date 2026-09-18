@@ -31,20 +31,20 @@ TEST_CASE(ImpAnalysis, ManaStarvedCastsFewer) {
 }
 
 TEST_CASE(ImpAnalysis, ExpectedDamagePerCast) {
-    // Modern: 44 base + 15% pet SP (2.0/3.5 coeff)
+    // Modern: 44 base + 10% pet SP (2.0/3.5 coeff)
     CHECK_NEAR(expected_damage_per_cast(0.0, 0, 0, true), 44.0 * 0.83 * 1.025, 1e-6);
     CHECK_NEAR(expected_damage_per_cast(500.0, 0, 0, true),
-               (44.0 + (2.0 / 3.5) * 0.15 * 500.0) * 0.83 * 1.025, 1e-6);
+               (44.0 + (2.0 / 3.5) * 0.10 * 500.0) * 0.83 * 1.025, 1e-6);
     // 5/5 Unholy Power (+10%) and 3/3 Improved Imp (+30%) stack multiplicatively.
     CHECK_NEAR(expected_damage_per_cast(500.0, 5, 3, true),
-               (44.0 + (2.0 / 3.5) * 0.15 * 500.0) * 0.83 * 1.025 * 1.10 * 1.30, 1e-6);
+               (44.0 + (2.0 / 3.5) * 0.10 * 500.0) * 0.83 * 1.025 * 1.10 * 1.30, 1e-6);
 
     // Classic: (85 + 98) / 2 * 0.83 hit * 1.025 crit = 77.843625
     CHECK_NEAR(expected_damage_per_cast(0.0, 0, 0, false), 77.843625, 1e-6);
     CHECK_NEAR(expected_damage_per_cast(0.0, 5, 3, false),
                77.843625 * 1.10 * 1.30, 1e-6);
     CHECK_NEAR(expected_damage_per_cast(500.0, 0, 0, false),
-               (91.5 + (1.5 / 3.5) * 0.15 * 500.0) * 0.83 * 1.025, 1e-6);
+               (91.5 + (1.5 / 3.5) * 0.10 * 500.0) * 0.83 * 1.025, 1e-6);
 }
 
 TEST_CASE(ImpAnalysis, DpsOrderingAndLinearity) {
@@ -76,9 +76,11 @@ TEST_CASE(ImpAnalysis, SlopePer10Sp) {
     CHECK_NEAR(slope(800.0, 5, 3, false, T, true) / slope(800.0, 0, 0, false, T, true), 1.43, 1e-9);
     CHECK(slope(800.0, 0, 0, true, T, true) < slope(800.0, 0, 0, false, T, true));
 
-    // Classic spot value
-    CHECK_NEAR(slope(800.0, 0, 0, false, T, false), 0.36460714285714285, 1e-9);
-    CHECK_NEAR(slope(800.0, 0, 0, true, T, false), 0.08659419642857142, 1e-9);
+    // Classic spot value (scaled to 10% SP)
+    double expected_classic_inf = ((120.0 / 1.5) * (1.5 / 3.5) * 0.10 * 800.0 * 0.83 * 1.025 / 120.0) / 800.0 * 10.0;
+    CHECK_NEAR(slope(800.0, 0, 0, false, T, false), expected_classic_inf, 1e-9);
+    double expected_classic_mana = (19.0 * (1.5 / 3.5) * 0.10 * 800.0 * 0.83 * 1.025 / 120.0) / 800.0 * 10.0;
+    CHECK_NEAR(slope(800.0, 0, 0, true, T, false), expected_classic_mana, 1e-9);
 }
 
 TEST_CASE(ImpAnalysis, SuccubusMeleeSwings) {
@@ -88,9 +90,9 @@ TEST_CASE(ImpAnalysis, SuccubusMeleeSwings) {
     CHECK_EQ(succubus_expected_melee_swings(0.0), 0);
     // 170 avg * 0.86 armor * 0.95 hit * 1.05 crit.
     CHECK_NEAR(succubus_expected_melee_per_swing(0.0, 0), 170.0 * 0.86 * 0.95 * 1.05, 1e-9);
-    // 57% SP to AP: (0.57 / 14) * 2.0 per swing before multipliers.
+    // 6 SP to 1 AP: ((500.0 / 6.0) / 14.0) * 2.0 per swing before multipliers.
     CHECK_NEAR(succubus_expected_melee_per_swing(500.0, 0),
-               (170.0 + (0.57 * 500.0 / 14.0) * 2.0) * 0.86 * 0.95 * 1.05, 1e-9);
+               (170.0 + ((500.0 / 6.0) / 14.0) * 2.0) * 0.86 * 0.95 * 1.05, 1e-9);
 }
 
 TEST_CASE(ImpAnalysis, SuccubusLopCasts) {

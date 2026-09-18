@@ -74,11 +74,11 @@ struct MechanicsConfig {
     double corruption_sp_coefficient = 1.0;
 
     // 13. Pet Stat Scaling & Mana Modeling
-    // True: Pets inherit master's Spell Power (15% to pet spell damage, 57% to pet Attack Power).
+    // True: Pets inherit master's Spell Power (10 SP = 1 Pet SP -> 10.0%, 6 SP = 1 Pet AP -> ~16.67%).
     // False: Static base damage (Classic 1.12).
     bool pet_scaling = true; // Default: ON (WoW Forever)
-    double pet_sp_ratio = 0.15; // 15% SP inheritance to pet spell damage
-    double pet_ap_ratio = 0.57; // 57% SP inheritance to pet Attack Power (melee)
+    double pet_sp_ratio = 0.10; // 10 SP = 1 Pet SP (10.0% SP inheritance to pet spell damage)
+    double pet_ap_ratio = 1.0 / 6.0; // 6 SP = 1 Pet AP (~16.67% SP inheritance to pet Attack Power)
 
     // Pet Mana Management
     // When enabled, Imp and Succubus track mana pools, cast costs, and regen.

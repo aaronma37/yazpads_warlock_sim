@@ -26,7 +26,7 @@ namespace imp_analysis {
 constexpr double kModernFireboltBaseDamage = 44.0;
 constexpr double kFireboltMinDamage = 85.0;
 constexpr double kFireboltMaxDamage = 98.0;
-constexpr double kPetSpRatio = 0.15;          // 15% SP inheritance
+constexpr double kPetSpRatio = 0.10;          // 10 SP = 1 Pet SP (10% SP inheritance)
 constexpr double kCastTimeCoefficient = 1.5 / 3.5;
 constexpr double kHitChance = 0.83;
 constexpr double kCritChance = 0.05;
@@ -107,7 +107,7 @@ inline double expected_dps(double master_sp, int unholy_power, int improved_imp,
 
 constexpr double kSuccubusMeleeMinDamage = 145.0;
 constexpr double kSuccubusMeleeMaxDamage = 195.0;
-constexpr double kPetApRatio = 0.57;          // 57% SP to pet Attack Power
+constexpr double kPetApRatio = 1.0 / 6.0;    // 6 SP = 1 Pet AP (~16.67% SP to pet Attack Power)
 constexpr double kMeleeArmorMultiplier = 0.86;
 constexpr double kMeleeHitChance = 0.95;
 constexpr double kMeleeCritChance = 0.05;

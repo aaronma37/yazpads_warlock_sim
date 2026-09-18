@@ -570,6 +570,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CURSE_OF_AGONY);
+                            apply_touch_of_the_grave(now);
 
                             bool is_amplified = false;
                             if (talents.aff.amplify_curse > 0 && now >= amplify_curse_cd_ready) {
@@ -619,6 +620,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::CURSE_OF_DOOM);
+                            apply_touch_of_the_grave(now);
                             bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                             if (eureka_active) eureka_charges--;
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
@@ -653,6 +655,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.total_casts++;
                             result.shadow_bolt_casts++;
                             result.record_spell_cast(SpellID::SHADOW_BOLT);
+                            apply_touch_of_the_grave(now);
 
                             uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
                             if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
@@ -719,6 +722,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += mana_cost;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::SIPHON_LIFE);
+                            apply_touch_of_the_grave(now);
 
                             bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                             if (eureka_active) eureka_charges--;
@@ -755,6 +759,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.mana_spent += dh_mana;
                             result.total_casts++;
                             result.record_spell_cast(SpellID::DRAIN_HOPE);
+                            apply_touch_of_the_grave(now);
                             drain_hope_cd_ready = now + 20.0;
                             drain_hope_channel_end = now + 6.0;
                             if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
@@ -819,6 +824,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.total_casts++;
                             result.direct_spell_casts++;
                             result.record_spell_cast(SpellID::CONFLAGRATE);
+                            apply_touch_of_the_grave(now);
                             conflagrate_cd_ready = now + 10.0;
 
                             bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
@@ -844,7 +850,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
                                 if (eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                                apply_touch_of_the_grave(now);
                                 result.dmg_conflagrate += dmg;
                                 result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
                                 result.total_damage += dmg;
@@ -896,6 +901,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.total_casts++;
                             result.direct_spell_casts++;
                             result.record_spell_cast(SpellID::SHADOWBURN);
+                            apply_touch_of_the_grave(now);
                             shadowburn_cd_ready = now + 8.0;
 
                             bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
@@ -925,7 +931,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                                 if (eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                                apply_touch_of_the_grave(now);
                                 result.dmg_shadowburn += dmg;
                                 result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
                                 result.total_damage += dmg;
@@ -960,6 +965,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.mana_spent += mana_cost;
                                 result.total_casts++;
                                 result.record_spell_cast(SpellID::CORRUPTION);
+                                apply_touch_of_the_grave(now);
                                 bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                                 if (eureka_active) eureka_charges--;
 
@@ -1045,6 +1051,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.mana_spent += dl_mana;
                         result.total_casts++;
                         result.record_spell_cast(SpellID::DRAIN_LIFE);
+                        apply_touch_of_the_grave(now);
                         if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                         double haste = get_haste_mult(now);
@@ -1072,6 +1079,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.mana_spent += ds_mana;
                         result.total_casts++;
                         result.record_spell_cast(SpellID::DRAIN_SOUL);
+                        apply_touch_of_the_grave(now);
                         if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                         double haste = get_haste_mult(now);
@@ -1158,6 +1166,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.shadow_bolt_casts++;
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SHADOW_BOLT);
+                    apply_touch_of_the_grave(current_time);
                     double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
@@ -1173,6 +1182,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SEARING_PAIN);
+                    apply_touch_of_the_grave(current_time);
                     double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sp_mana;
                     result.mana_spent += sp_mana;
@@ -1188,6 +1198,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::INCINERATE)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::INCINERATE);
+                    apply_touch_of_the_grave(current_time);
                     double inc_mana = 355.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= inc_mana;
                     result.mana_spent += inc_mana;
@@ -1199,6 +1210,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SOUL_FIRE)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SOUL_FIRE);
+                    apply_touch_of_the_grave(current_time);
                     double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sf_mana;
                     result.mana_spent += sf_mana;
@@ -1214,6 +1226,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.mana_spent += imm_mana;
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::IMMOLATE);
+                    apply_touch_of_the_grave(current_time);
                     bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                     if (eureka_active) eureka_charges--;
 
@@ -1235,7 +1248,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         if (eureka_active) { dmg *= 1.10; }
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                        apply_touch_of_the_grave(current_time);
 
                         result.dmg_immolate += dmg;
                         result.record_spell_hit(SpellID::IMMOLATE, dmg, crit);
@@ -1258,6 +1270,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     player_mana -= corr_mana;
                     result.mana_spent += corr_mana;
                     result.record_spell_cast(SpellID::CORRUPTION);
+                    apply_touch_of_the_grave(current_time);
                     bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                     if (eureka_active) eureka_charges--;
 
@@ -1343,7 +1356,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    apply_touch_of_the_grave(current_time);
 
                     // Judgement of Wisdom
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
@@ -1406,7 +1418,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1477,7 +1488,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1533,7 +1543,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
-                    apply_touch_of_the_grave(current_time);
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
                         player_mana = std::min(stats.max_mana, player_mana + 59.0);
@@ -1951,7 +1960,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double armor_mult = 0.86;
                         double swing_dmg = base_swing * armor_mult;
 
-                        bool melee_crit = rng.chance(0.05);
+                        bool melee_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                         if (melee_crit) {
                             swing_dmg *= 2.0;
                         }
@@ -2005,7 +2014,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::SHADOW, current_time);
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
-                            double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // 15% SP inheritance
+                            double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // Pet SP inheritance
 
                             // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
                             base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
@@ -2014,7 +2023,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
                             if (buffs.curse_of_shadows) base_lop *= 1.10;
 
-                            bool lop_crit = rng.chance(0.05);
+                            bool lop_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                             if (lop_crit) {
                                 base_lop *= 1.5;
                             }
@@ -2068,16 +2077,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         result.record_spell_cast(SpellID::PET_FIREBOLT);
 
-                        // Imp Firebolt: Modern (44 base + 15% pet SP, 2.0s cast) vs Classic (85-98 + 15% pet SP, 1.5s cast)
+                        // Imp Firebolt: Modern (44 base + pet SP, 2.0s cast) vs Classic (85-98 + pet SP, 1.5s cast)
                         if (rng.chance(0.83)) {
                             double master_sp = get_current_sp(School::FIRE, current_time);
                             double base_fb = 0.0;
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
                             if (mechanics.imp_firebolt_modern_scaling) {
-                                // Modern Firebolt (Rank 7): 44 base fire damage + pet SP scaling (15% SP inheritance at 2.0/3.5 coeff)
+                                // Modern Firebolt (Rank 7): 44 base fire damage + pet SP scaling (10 SP = 1 Pet SP at 2.0/3.5 coeff)
                                 base_fb = 44.0 + (2.0 / 3.5) * pet_sp;
                             } else {
-                                // Classic Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling (15% SP inheritance at 1.5/3.5 coeff)
+                                // Classic Firebolt (Rank 7): 85 - 98 fire damage + pet SP scaling (10 SP = 1 Pet SP at 1.5/3.5 coeff)
                                 base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp;
                             }
 
@@ -2086,7 +2095,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                             if (buffs.curse_of_elements) base_fb *= 1.10;
 
-                            bool fb_crit = rng.chance(0.05);
+                            bool fb_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                             if (fb_crit) {
                                 base_fb *= 1.5;
                             }

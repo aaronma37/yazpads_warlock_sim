@@ -103,8 +103,8 @@ TEST_CASE(Mechanics, PetStatScalingToggle) {
     MechanicsConfig mech;
     CHECK(mech.pet_scaling);
     CHECK(mech.imp_firebolt_modern_scaling); // Modern scaling is true by default
-    CHECK_NEAR(mech.pet_sp_ratio, 0.15, 0.001); // 15% SP inheritance to pet spell damage
-    CHECK_NEAR(mech.pet_ap_ratio, 0.57, 0.001); // 57% SP inheritance to pet Attack Power
+    CHECK_NEAR(mech.pet_sp_ratio, 0.10, 0.001); // 10 SP = 1 Pet SP (10.0%)
+    CHECK_NEAR(mech.pet_ap_ratio, 1.0 / 6.0, 0.001); // 6 SP = 1 Pet AP (~16.67%)
 }
 
 TEST_CASE(Mechanics, ImpFireboltModernVsClassicToggle) {

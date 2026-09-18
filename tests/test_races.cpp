@@ -135,6 +135,25 @@ TEST_CASE(Races, UndeadTouchOfTheGraveScaling) {
     CHECK_EQ(res_human.dmg_touch_of_the_grave, 0.0);
 }
 
+TEST_CASE(Races, UndeadTouchOfTheGraveInstantCast) {
+    FastRNG rng(42);
+
+    WarlockSimulator sim;
+    sim.race = Race::UNDEAD;
+    sim.use_raw_stats = true;
+    sim.raw_stats.max_health = 4000.0;
+    sim.talents.aff.improved_corruption = 5; // Instant Corruption
+    sim.talents.aff.siphon_life = 1;
+    sim.policy.curse = CurseChoice::CURSE_OF_AGONY;
+    sim.policy.corruption = DotPolicy::ALWAYS;
+    sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+    sim.fight_duration = 120.0;
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.touch_of_the_grave_procs > 0);
+    CHECK(res.dmg_touch_of_the_grave > 0.0);
+}
+
 TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     FastRNG rng_gnome(100);
     FastRNG rng_human(100);

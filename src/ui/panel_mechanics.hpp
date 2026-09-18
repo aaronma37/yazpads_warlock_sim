@@ -83,14 +83,14 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
                 mechanics.pet_sp_ratio = static_cast<double>(sp_pct) / 100.0;
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Percentage of master's Spell Power inherited by demon spells (e.g. Imp Firebolt, Succubus Lash of Pain). Default: 15.0%%");
+                ImGui::SetTooltip("Percentage of master's Spell Power inherited by demon spells (e.g. Imp Firebolt, Succubus Lash of Pain). Default: 10.0%% (10 SP = 1 Pet SP)");
             }
             float ap_pct = static_cast<float>(mechanics.pet_ap_ratio * 100.0);
             if (ImGui::SliderFloat("Pet AP Scaling (%)", &ap_pct, 0.0f, 100.0f, "%.1f %%")) {
                 mechanics.pet_ap_ratio = static_cast<double>(ap_pct) / 100.0;
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Percentage of master's Spell Power converted to demon Attack Power for physical melee attacks (e.g. Succubus melee). Default: 57.0%%");
+                ImGui::SetTooltip("Percentage of master's Spell Power converted to demon Attack Power for physical melee attacks (e.g. Succubus melee). Default: 16.7%% (6 SP = 1 Pet AP)");
             }
             ImGui::Unindent(12.0f);
         }
