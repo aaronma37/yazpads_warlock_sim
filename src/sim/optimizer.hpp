@@ -8,11 +8,12 @@
 namespace warlock {
 
 struct StatWeights {
-    double dps_per_sp = 0.0;    // DPS gained per 1 Spell Power
-    double dps_per_hit = 0.0;   // DPS gained per 1% Spell Hit
-    double dps_per_crit = 0.0;  // DPS gained per 1% Spell Crit
-    double dps_per_haste = 0.0; // DPS gained per 1% Spell Haste
-    double dps_per_int = 0.0;   // DPS gained per 1 Intellect
+    double dps_per_sp = 0.0;     // DPS gained per 1 Spell Power
+    double dps_per_hit = 0.0;    // DPS gained per 1% Spell Hit
+    double dps_per_crit = 0.0;   // DPS gained per 1% Spell Crit
+    double dps_per_haste = 0.0;  // DPS gained per 1% Spell Haste
+    double dps_per_int = 0.0;    // DPS gained per 1 Intellect
+    double dps_per_spirit = 0.0; // DPS gained per 1 Spirit
     bool valid = false;
 };
 

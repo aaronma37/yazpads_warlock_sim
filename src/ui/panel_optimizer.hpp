@@ -71,7 +71,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
   ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
   ImGui::SameLine();
-  ImGui::RadioButton("Genetic AI Solver", &opt_mode, 0);
+  ImGui::RadioButton("Genetic Search", &opt_mode, 0);
 
   ImGui::Spacing();
 
@@ -503,7 +503,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
     }
 
-    int num_cols = show_stat_weights ? 13 : 8;
+    int num_cols = show_stat_weights ? 14 : 8;
     static bool show_std_dev = false;
     if (!show_std_dev)
       num_cols -= 1;  // hide +/- StdDev column
@@ -646,6 +646,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         ImGui::TableSetupColumn("DPS/Crit", ImGuiTableColumnFlags_WidthFixed, 70);
         ImGui::TableSetupColumn("DPS/Haste", ImGuiTableColumnFlags_WidthFixed, 75);
         ImGui::TableSetupColumn("DPS/Int", ImGuiTableColumnFlags_WidthFixed, 65);
+        ImGui::TableSetupColumn("DPS/Spirit", ImGuiTableColumnFlags_WidthFixed, 75);
       }
       ImGui::TableHeadersRow();
 
@@ -1050,6 +1051,16 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           {
             ImGui::TextDisabled("-");
           }
+
+          ImGui::TableNextColumn();
+          if (r.stat_weights.valid)
+          {
+            ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.8f, 1.0f), "+%.2f", r.stat_weights.dps_per_spirit);
+          }
+          else
+          {
+            ImGui::TextDisabled("-");
+          }
         }
       }
 
@@ -1108,6 +1119,10 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
             sel.stat_weights.dps_per_haste,
             sel.stat_weights.dps_per_sp > 0 ? (sel.stat_weights.dps_per_haste / sel.stat_weights.dps_per_sp) : 0.0);
         ImGui::BulletText("+1 Intellect:     %.2f DPS", sel.stat_weights.dps_per_int);
+        ImGui::BulletText(
+            "+1 Spirit:        %.2f DPS (EP: %.2f SP)",
+            sel.stat_weights.dps_per_spirit,
+            sel.stat_weights.dps_per_sp > 0 ? (sel.stat_weights.dps_per_spirit / sel.stat_weights.dps_per_sp) : 0.0);
       }
 
       ImGui::NextColumn();

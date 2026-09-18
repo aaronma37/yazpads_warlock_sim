@@ -66,6 +66,14 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
         weights.dps_per_int = std::max(0.0, (int_dps - base_dps) / 30.0);
     }
 
+    // 6. +30 Spirit sample
+    {
+        WarlockSimulator sim_spr = sim_base;
+        sim_spr.raw_stats.spirit += 30.0;
+        double spr_dps = ParallelSimRunner::run_batch(sim_spr, samples, 0, nullptr, CRN_SEED).mean_dps;
+        weights.dps_per_spirit = std::max(0.0, (spr_dps - base_dps) / 30.0);
+    }
+
     return weights;
 }
 
@@ -843,6 +851,13 @@ std::vector<CandidateResult> Optimizer::compare_stat_values(
         Stats s = baseline_stats;
         s.mp5 += 20.0;
         tests.push_back({"+20 Mana Regen (MP5)", s});
+    }
+
+    // 10. +20 Spirit (Life Tap scaling)
+    {
+        Stats s = baseline_stats;
+        s.spirit += 20.0;
+        tests.push_back({"+20 Spirit (Life Tap)", s});
     }
 
     std::vector<CandidateResult> results;

@@ -129,6 +129,33 @@ class WarlockSimApp
           player_stats.max_mana *= (1.0 + sim.talents.demo.fel_vitality * 0.05);
         }
 
+        // Blood Pact (Rank 5: +54 Stamina when Imp is active)
+        PetChoice ui_active_pet = sim.policy.pet;
+        if (sim.buffs.sacrifice_succubus || sim.buffs.sacrifice_imp)
+        {
+          if (sim.talents.demo.demonic_pact > 0)
+          {
+            if (sim.buffs.sacrifice_imp && sim.policy.pet == PetChoice::IMP)
+              ui_active_pet = PetChoice::NONE;
+            else if (sim.buffs.sacrifice_succubus && sim.policy.pet == PetChoice::SUCCUBUS)
+              ui_active_pet = PetChoice::NONE;
+          }
+          else
+          {
+            ui_active_pet = PetChoice::NONE;
+          }
+        }
+        if (ui_active_pet == PetChoice::IMP)
+        {
+          double blood_pact_stamina = 54.0;
+          if (sim.talents.demo.demonic_embrace > 0)
+          {
+            blood_pact_stamina *= (1.0 + sim.talents.demo.demonic_embrace * 0.03);
+          }
+          player_stats.stamina += blood_pact_stamina;
+          player_stats.max_health += blood_pact_stamina * 10.0;
+        }
+
         // Human Sword Specialization (+2% crit)
         bool is_sword = false;
         if (!sim.use_raw_stats)

@@ -165,6 +165,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
     }
 
+    // Blood Pact Rank 5: Increases party members' Stamina by 54 whenever Imp is active
+    if (active_pet == PetChoice::IMP) {
+        double blood_pact_stamina = 54.0;
+        if (talents.demo.demonic_embrace > 0) {
+            blood_pact_stamina *= (1.0 + talents.demo.demonic_embrace * 0.03);
+        }
+        stats.stamina += blood_pact_stamina;
+        stats.max_health += blood_pact_stamina * 10.0;
+    }
+
     // Demonic Knowledge (Demo Row 5 Col 3): +33% of level per point to spell damage (+60 SP at 3/3 at level 60)
     if (active_pet != PetChoice::NONE && talents.demo.demonic_knowledge > 0) {
         stats.spell_power += 20.0 * talents.demo.demonic_knowledge;
@@ -547,7 +557,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double mana_pct = (player_mana / stats.max_mana) * 100.0;
                     if (mana_pct <= policy.life_tap_threshold_pct && player_health > 600.0) {
                         double health_cost = 430.0;
-                        double mana_gained = (health_cost + 0.05 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+                        double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
                         player_mana = std::min(stats.max_mana, player_mana + mana_gained);
                         player_health -= health_cost;
                         result.life_taps++;
@@ -1131,7 +1141,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
         // Emergency Resource Fallback: Life Tap when out of mana for filler
         double health_cost = 430.0;
-        double mana_gained = (health_cost + 0.05 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+        double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
         player_mana = std::min(stats.max_mana, player_mana + mana_gained);
         player_health -= health_cost;
         result.life_taps++;

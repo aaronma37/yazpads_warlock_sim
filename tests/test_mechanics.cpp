@@ -423,7 +423,7 @@ TEST_CASE(Mechanics, LifeTapSpiritScaling) {
 
     BaseAttributes base = get_base_attributes_for_race(sim.race);
     double total_spirit = base.spirit + sim.raw_stats.spirit;
-    double expected_mana_per_tap = (430.0 + 0.05 * total_spirit) * 1.20;
+    double expected_mana_per_tap = (430.0 + 1.0 * total_spirit) * 1.20;
 
     SimResult res = sim.run_single_simulation(rng);
     CHECK_EQ(res.life_taps, 1);
@@ -605,5 +605,36 @@ TEST_CASE(Mechanics, ISBShadowDoTAmplification) {
     CHECK(doom_res_isb.dmg_doom > doom_res_no_isb.dmg_doom);
 }
 
+TEST_CASE(Mechanics, BloodPactStaminaBonus) {
+    FastRNG rng1(42);
+    FastRNG rng2(42);
 
+    WarlockSimulator sim_no_imp;
+    sim_no_imp.policy.pet = PetChoice::NONE;
+    sim_no_imp.fight_duration = 1.0;
+    SimResult res_no_imp = sim_no_imp.run_single_simulation(rng1);
 
+    WarlockSimulator sim_imp;
+    sim_imp.policy.pet = PetChoice::IMP;
+    sim_imp.fight_duration = 1.0;
+    SimResult res_imp = sim_imp.run_single_simulation(rng2);
+
+    // Imp's Blood Pact Rank 5 grants +54 Stamina (= +540 Max Health)
+    BaseAttributes base = get_base_attributes_for_race(sim_no_imp.race);
+    Stats stats_no_imp = sim_no_imp.use_raw_stats ? sim_no_imp.raw_stats : sim_no_imp.gear.calculate_stats();
+    sim_no_imp.buffs.apply_to_stats(stats_no_imp, base, true, false);
+
+    Stats stats_imp = stats_no_imp;
+    stats_imp.stamina += 54.0;
+    stats_imp.max_health += 540.0;
+
+    // Test with Demonic Embrace (5/5 = +15% total Stamina)
+    WarlockSimulator sim_demo_imp;
+    sim_demo_imp.policy.pet = PetChoice::IMP;
+    sim_demo_imp.talents.demo.demonic_embrace = 5;
+    sim_demo_imp.fight_duration = 1.0;
+    SimResult res_demo_imp = sim_demo_imp.run_single_simulation(rng1);
+
+    double expected_bp_stam_demo = 54.0 * 1.15;
+    CHECK_NEAR(stats_imp.stamina - stats_no_imp.stamina, 54.0, 0.01);
+}

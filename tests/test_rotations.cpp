@@ -653,18 +653,22 @@ TEST_CASE(Rotations, MultiTargetCorruptionDistribution) {
 
     WarlockSimulator sim1; // 1 target
     sim1.target_config.target_count = 1;
+    sim1.gear = GearLoadout::create_phase3_bis();
+    sim1.use_raw_stats = false;
     sim1.talents = Talents::create_forever_sm_ruin();
     sim1.policy.rotation = RotationChoice::SM_RUIN;
     sim1.policy.multi_dot_corruption = true;
-    sim1.fight_duration = 60.0;
+    sim1.fight_duration = 120.0;
     SimResult res1 = sim1.run_single_simulation(rng1);
 
     WarlockSimulator sim2; // 2 targets
     sim2.target_config.target_count = 2;
+    sim2.gear = GearLoadout::create_phase3_bis();
+    sim2.use_raw_stats = false;
     sim2.talents = Talents::create_forever_sm_ruin();
     sim2.policy.rotation = RotationChoice::SM_RUIN;
     sim2.policy.multi_dot_corruption = true;
-    sim2.fight_duration = 60.0;
+    sim2.fight_duration = 120.0;
     SimResult res2 = sim2.run_single_simulation(rng2);
 
     // With 2 targets and multi-dotting enabled, corruption damage should roughly double

@@ -189,8 +189,8 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries()
        "0 Mana (Cost: 430 HP)",
        "430 Base Mana Restored",
        "None",
-       "5.0% Spirit",
-       "Mana Returned = (430 + 0.05 * Spirit) * (1.0 + 0.10 * Imp_Life_Tap_Points)",
+       "100.0% Spirit",
+       "Mana Returned = (430 + 1.0 * Spirit) * (1.0 + 0.10 * Imp_Life_Tap_Points)",
        "spell_shadow_burningspirit"},
       {SpellID::SIPHON_LIFE,
        "Siphon Life",
@@ -202,7 +202,18 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries()
        "410 Base DoT over 30s (10 ticks of 41.0 every 3s)",
        "50.0%",
        "Tick Damage = (41.0 + (SpellPower + ShadowSpellPower) * 0.05) * Multipliers",
-       "spell_shadow_requiem"}};
+       "spell_shadow_requiem"},
+      {SpellID::NONE,
+       "Blood Pact",
+       "Rank 5",
+       "Passive",
+       "Instant",
+       "0 Mana",
+       "Increases party members' Stamina by 54.",
+       "None",
+       "—",
+       "Stamina +54 (Imp Active Aura)",
+       "spell_shadow_bloodboil"}};
   return entries;
 }
 
