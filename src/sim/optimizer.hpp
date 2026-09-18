@@ -69,6 +69,26 @@ public:
         bool calculate_stat_weights = false
     );
 
+    // Genetic Algorithm with Learned Linear/Ridge Regression Surrogate Guidance
+    static std::vector<CandidateResult> optimize_genetic_ai(
+        const WarlockSimulator& base_sim,
+        int population_size = 50,
+        int generations = 20,
+        int screening_sims = 400,
+        int final_sims = 2500,
+        bool seed_with_presets = true,
+        bool optimize_race = true,
+        double mutation_rate = 0.45,
+        double initial_exploration = 0.50,
+        double min_exploration = 0.15,
+        const std::vector<int>& required_talents = {},
+        int forced_race = -1,
+        int forced_rotation = -1,
+        std::function<void(float progress, const std::string& current_name)> callback = nullptr,
+        std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback = nullptr,
+        const std::atomic<bool>* should_stop = nullptr
+    );
+
     // Compares gear loadouts & trinkets
     static std::vector<CandidateResult> optimize_gear(
         const WarlockSimulator& base_sim,

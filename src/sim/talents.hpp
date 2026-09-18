@@ -490,7 +490,8 @@ struct Talents {
         t.demo.demonic_sacrifice = 1;      // Sac Succubus -> +15% Fire!
 
         // Destruction: 35 points
-        t.destro.destructive_reach = 4;
+        t.destro.destructive_reach = 2;
+        t.destro.improved_shadow_bolt = 2;
         t.destro.bane = 5;                 // -0.5s Immolate / -2.0s Soul Fire
         t.destro.cataclysm = 3;
         t.destro.aftermath = 5;            // Immolate initial direct damage +50%!

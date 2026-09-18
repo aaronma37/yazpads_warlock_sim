@@ -46,6 +46,13 @@ inline void render_panel_sim_control(
     ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Encounter & Simulation Parameters:");
     ImGui::SliderFloat("Fight Duration (s)", (float*)&sim.fight_duration, 10.0f, 600.0f, "%.0f seconds");
     
+    ImGui::Checkbox("🎲 Randomize Fight Duration", &sim.randomize_duration);
+    if (sim.randomize_duration) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(140);
+        ImGui::SliderFloat("Variance (+/- s)", (float*)&sim.duration_variance, 1.0f, 60.0f, "+/- %.0fs");
+    }
+    
     // Target Level & Type
     const char* level_presets[] = { "Level 60 (Equal Lvl)", "Level 61 (+1 Lvl)", "Level 62 (+2 Lvl)", "Level 63 (Raid Boss)" };
     int current_lvl_idx = (sim.target_config.level >= 60 && sim.target_config.level <= 63) ? (sim.target_config.level - 60) : 3;

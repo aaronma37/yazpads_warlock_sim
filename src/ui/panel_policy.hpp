@@ -182,7 +182,22 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     ImGui::Spacing();
     ImGui::Separator();
 
-    // 3. Multi-Target Combat Policy
+    // 3. Spell & Rotational Policy Ability Toggles
+    ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Rotational Ability Policies:");
+    ImGui::Checkbox("Cast Conflagrate on Cooldown##Policy", &policy.use_conflagrate);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When talented and Immolate is active, casts Conflagrate on 10s cooldown.");
+    }
+    ImGui::SameLine(0, 16);
+    ImGui::Checkbox("Decimation Soul Fire (<35% HP)##Policy", &policy.use_decimation_soul_fire);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("When talented and in execute phase (<35%% HP), spams Soul Fire during Decimation buff.");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // 4. Multi-Target Combat Policy
     ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Multi-Target Combat Policy:");
     ImGui::Checkbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
     if (ImGui::IsItemHovered()) {

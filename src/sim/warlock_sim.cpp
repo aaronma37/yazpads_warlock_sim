@@ -105,7 +105,15 @@ double WarlockSimulator::calculate_partial_resist_multiplier(School school, doub
 
 SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     SimResult result;
-    result.duration = fight_duration;
+
+    // Resolve fight duration for this iteration (fixed vs randomized)
+    double effective_duration = fight_duration;
+    if (randomize_duration && duration_variance > 0.0) {
+        double min_d = std::max(5.0, fight_duration - duration_variance);
+        double max_d = fight_duration + duration_variance;
+        effective_duration = rng.range(min_d, max_d);
+    }
+    result.duration = effective_duration;
 
     // Race-specific base attributes
     base_attrs = get_base_attributes_for_race(race);
@@ -303,7 +311,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
     // Setup FastEventQueue
     FastEventQueue<256> queue;
-    queue.push(fight_duration, EventType::SIMULATION_END);
+    queue.push(effective_duration, EventType::SIMULATION_END);
     queue.push(5.0, EventType::MANA_REGEN_TICK);
 
     // Initial Pet actions
@@ -350,7 +358,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     auto decide_next_action = [&](double now) {
         if (is_casting || now < gcd_ready_time) return;
 
-        bool execute_phase = (now / fight_duration) >= 0.65; // Target <35% HP
+        bool execute_phase = (now / effective_duration) >= 0.65; // Target <35% HP
 
         // 1. Off-GCD Cooldown checks: Mana Potions & Demonic Runes
         if (buffs.use_mana_potions && now >= potion_cd_ready && (stats.max_mana - player_mana) >= 1800.0) {
@@ -2093,7 +2101,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // If OOM, retry on 1.0s intervals
                         fb_interval = 1.0;
                     }
-                    if (current_time + fb_interval < fight_duration) {
+                    if (current_time + fb_interval < effective_duration) {
                         queue.push(current_time + fb_interval, EventType::PET_CAST_FINISH);
                     }
                 }
@@ -2106,9 +2114,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     }
 
     // Finalize metrics
-    target.update_isb_uptime(fight_duration);
-    result.dps = result.total_damage / fight_duration;
-    result.isb_uptime_percent = (target.total_isb_uptime / fight_duration) * 100.0;
+    target.update_isb_uptime(effective_duration);
+    result.dps = result.total_damage / effective_duration;
+    result.isb_uptime_percent = (target.total_isb_uptime / effective_duration) * 100.0;
 
     return result;
 }

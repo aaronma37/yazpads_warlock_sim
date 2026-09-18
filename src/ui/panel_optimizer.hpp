@@ -3,11 +3,32 @@
 #include "asset_manager.hpp"
 #include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
+#include "src/sim/talent_graph.hpp"
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 namespace warlock {
+
+// Background worker state for live asynchronous optimization
+struct OptimizerWorkerState {
+    std::thread worker;
+    std::mutex mtx;
+    std::atomic<bool> is_running{false};
+    std::atomic<bool> stop_requested{false};
+    std::atomic<float> progress{0.0f};
+    std::string current_status;
+    std::vector<CandidateResult> live_results;
+    bool has_new_results = false;
+};
+
+inline OptimizerWorkerState& get_opt_worker_state() {
+    static OptimizerWorkerState state;
+    return state;
+}
 
 inline void render_panel_optimizer(
     WarlockSimulator& sim,
@@ -17,39 +38,291 @@ inline void render_panel_optimizer(
     std::string& current_opt_target,
     bool* request_switch_to_preset = nullptr
 ) {
-    ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "⚡ Combinatorial Optimization & Brute-Force Exploration:");
-    ImGui::TextWrapped("Spawns hundreds of thousands of parallel DES simulations across all CPU threads to explore, compare, and rank candidate builds.");
-    ImGui::Separator();
+    auto& worker = get_opt_worker_state();
+
+    // Check if background worker has new live generation results
+    {
+        std::lock_guard<std::mutex> lock(worker.mtx);
+        if (worker.has_new_results) {
+            optimizer_results = worker.live_results;
+            worker.has_new_results = false;
+        }
+        if (worker.is_running.load()) {
+            is_optimizing = true;
+            opt_progress = worker.progress.load();
+            current_opt_target = worker.current_status;
+        } else if (is_optimizing) {
+            is_optimizing = false;
+            opt_progress = 1.0f;
+            if (worker.worker.joinable()) {
+                worker.worker.join();
+            }
+        }
+    }
+
+    static int opt_mode = 1; // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
+    ImGui::RadioButton("🏆 Standard Specs Benchmark", &opt_mode, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("🧬 Genetic AI + Regression Solver", &opt_mode, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("🎲 Perturb Active Preset", &opt_mode, 2);
+
+    ImGui::Spacing();
+
+    static int ga_pop_size = 50;
+    static int ga_generations = 20;
+    static int ga_screening_sims = 400;
+    static int ga_final_sims = 2500;
+    static float ga_mutation_rate = 0.45f;
+    static float ga_initial_explore = 0.50f;
+    static float ga_min_explore = 0.15f;
+    static bool ga_seed_presets = true;
+    static bool ga_optimize_race = true;
+    static bool show_advanced_tuning = false;
+    static int ga_req_talent1 = -1;
+    static int ga_req_talent2 = -1;
+    static int ga_req_talent3 = -1;
+    static int ga_forced_race = -1;
+    static int ga_forced_rotation = -1;
 
     static int iters_per_candidate = 3000;
     static bool compare_all_races = false;
     static bool calculate_stat_weights = false;
-    ImGui::SetNextItemWidth(200);
-    ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
-    ImGui::SameLine(340);
-    ImGui::Checkbox("Compare specs across all races (Undead, Orc, Troll, Human, Gnome)", &compare_all_races);
-    ImGui::SameLine();
-    ImGui::Checkbox("Calculate DPS per stat change (Stat Weights)", &calculate_stat_weights);
 
-    ImGui::Spacing();
-    if (is_optimizing) ImGui::BeginDisabled();
+    if (opt_mode == 0) {
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::InputInt("Generations", &ga_generations)) {
+            if (ga_generations < 1) ga_generations = 1;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100);
+        if (ImGui::InputInt("Population", &ga_pop_size)) {
+            if (ga_pop_size < 2) ga_pop_size = 2;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(110);
+        if (ImGui::InputInt("Screening Sims", &ga_screening_sims)) {
+            if (ga_screening_sims < 10) ga_screening_sims = 10;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(110);
+        if (ImGui::InputInt("Final Precision", &ga_final_sims)) {
+            if (ga_final_sims < 10) ga_final_sims = 10;
+        }
 
-    if (ImGui::Button("Simulate", ImVec2(210, 28))) {
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        optimizer_results = Optimizer::optimize_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
-            opt_progress = p;
-            current_opt_target = name;
-        }, compare_all_races, calculate_stat_weights);
-        is_optimizing = false;
-        opt_progress = 1.0f;
+        ImGui::Spacing();
+        ImGui::Checkbox("Seed with standard presets (uncheck to start from pure scratch)", &ga_seed_presets);
+        ImGui::SameLine(460);
+        ImGui::Checkbox("Optimize Race (Evolve and test all races)", &ga_optimize_race);
+        ImGui::SameLine(750);
+        ImGui::Checkbox("⚙ Advanced Convergence Tuning", &show_advanced_tuning);
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f), "Build Constraints (Optional):");
+
+        // Helper lambda for talent selection combo
+        auto render_talent_combo = [](const char* label, int& selected_idx) {
+            const auto& graph = TalentGraph::get();
+            std::string preview = "[None]";
+            if (selected_idx >= 0 && selected_idx < static_cast<int>(TOTAL_TALENT_NODES)) {
+                const auto& n = graph.node(selected_idx);
+                const char* tree_name = (n.tree_idx == 0) ? "Aff" : ((n.tree_idx == 1) ? "Demo" : "Destro");
+                preview = std::string(n.name) + " (" + tree_name + ")";
+            }
+
+            ImGui::SetNextItemWidth(210);
+            if (ImGui::BeginCombo(label, preview.c_str())) {
+                if (ImGui::Selectable("[None]", selected_idx == -1)) {
+                    selected_idx = -1;
+                }
+                for (size_t i = 0; i < TOTAL_TALENT_NODES; ++i) {
+                    const auto& n = graph.node(i);
+                    const char* tree_name = (n.tree_idx == 0) ? "Aff" : ((n.tree_idx == 1) ? "Demo" : "Destro");
+                    std::string item_name = std::string(n.name) + " (" + tree_name + ")";
+                    bool is_selected = (selected_idx == static_cast<int>(i));
+                    if (ImGui::Selectable(item_name.c_str(), is_selected)) {
+                        selected_idx = static_cast<int>(i);
+                    }
+                    if (is_selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+        };
+
+        render_talent_combo("Req Talent 1", ga_req_talent1);
+        ImGui::SameLine();
+        render_talent_combo("Req Talent 2", ga_req_talent2);
+        ImGui::SameLine();
+        render_talent_combo("Req Talent 3", ga_req_talent3);
+
+        // Race constraint combo
+        ImGui::SetNextItemWidth(170);
+        const char* race_names[] = { "[Any / Evolve]", "Undead", "Orc", "Troll", "Human", "Gnome" };
+        int current_race_idx = (ga_forced_race >= 0 && ga_forced_race < 5) ? (ga_forced_race + 1) : 0;
+        if (ImGui::Combo("Locked Race", &current_race_idx, race_names, IM_ARRAYSIZE(race_names))) {
+            ga_forced_race = (current_race_idx == 0) ? -1 : (current_race_idx - 1);
+        }
+
+        ImGui::SameLine();
+        // Rotation constraint combo
+        ImGui::SetNextItemWidth(260);
+        const char* rot_preview = "[Auto / Adaptive]";
+        if (ga_forced_rotation >= 0) {
+            rot_preview = rotation_choice_to_string(static_cast<RotationChoice>(ga_forced_rotation));
+        }
+        if (ImGui::BeginCombo("Locked Rotation", rot_preview)) {
+            if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_rotation == -1)) {
+                ga_forced_rotation = -1;
+            }
+            for (int r = 0; r <= static_cast<int>(RotationChoice::SHADOW_AND_FLAME_FIRE_BANE); ++r) {
+                RotationChoice rc = static_cast<RotationChoice>(r);
+                const char* r_str = rotation_choice_to_string(rc);
+                bool is_sel = (ga_forced_rotation == r);
+                if (ImGui::Selectable(r_str, is_sel)) {
+                    ga_forced_rotation = r;
+                }
+                if (is_sel) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        if (show_advanced_tuning) {
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.6f));
+            ImGui::BeginChild("GATuningBox", ImVec2(-1, 68), true);
+            ImGui::SetNextItemWidth(150);
+            ImGui::SliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
+            ImGui::SameLine(220);
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
+            ImGui::SameLine(480);
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
+            ImGui::TextDisabled("Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
+            ImGui::EndChild();
+            ImGui::PopStyleColor();
+        }
+    } else if (opt_mode == 1) {
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
+        ImGui::SameLine(340);
+        ImGui::Checkbox("Compare across all races (Undead, Orc, Troll, Human, Gnome)", &compare_all_races);
+        ImGui::SameLine();
+        ImGui::Checkbox("Calculate Stat Weights (DPS per +1 stat)", &calculate_stat_weights);
+    } else {
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
     }
 
-    if (is_optimizing) ImGui::EndDisabled();
+    ImGui::Spacing();
+
+    if (opt_mode == 0) {
+        if (!worker.is_running.load()) {
+            if (ImGui::Button("🚀 Run AI Genetic Optimization (Live)", ImVec2(260, 28))) {
+                if (worker.worker.joinable()) worker.worker.join();
+                worker.is_running = true;
+                worker.stop_requested = false;
+                worker.progress = 0.0f;
+                worker.current_status = "Initializing Population...";
+                is_optimizing = true;
+                opt_progress = 0.0f;
+                current_opt_target = worker.current_status;
+
+                WarlockSimulator sim_copy = sim;
+                int pop_sz = ga_pop_size;
+                int gens = ga_generations;
+                int screen_sims = ga_screening_sims;
+                int fn_sims = ga_final_sims;
+                bool seed_pre = ga_seed_presets;
+                bool opt_race = (ga_forced_race >= 0) ? false : ga_optimize_race;
+                double mut_rate = ga_mutation_rate;
+                double init_exp = ga_initial_explore;
+                double min_exp = ga_min_explore;
+
+                std::vector<int> req_talents;
+                if (ga_req_talent1 >= 0) req_talents.push_back(ga_req_talent1);
+                if (ga_req_talent2 >= 0 && ga_req_talent2 != ga_req_talent1) req_talents.push_back(ga_req_talent2);
+                if (ga_req_talent3 >= 0 && ga_req_talent3 != ga_req_talent1 && ga_req_talent3 != ga_req_talent2) req_talents.push_back(ga_req_talent3);
+                int forced_r = ga_forced_race;
+                int forced_rot = ga_forced_rotation;
+
+                worker.worker = std::thread([sim_copy, pop_sz, gens, screen_sims, fn_sims,
+                                             seed_pre, opt_race, mut_rate, init_exp, min_exp,
+                                             req_talents, forced_r, forced_rot]() {
+                    auto& w = get_opt_worker_state();
+                    auto results = Optimizer::optimize_genetic_ai(
+                        sim_copy,
+                        pop_sz,
+                        gens,
+                        screen_sims,
+                        fn_sims,
+                        seed_pre,
+                        opt_race,
+                        mut_rate,
+                        init_exp,
+                        min_exp,
+                        req_talents,
+                        forced_r,
+                        forced_rot,
+                        [&](float p, const std::string& name) {
+                            w.progress = p;
+                            std::lock_guard<std::mutex> lk(w.mtx);
+                            w.current_status = name;
+                        },
+                        [&](const std::vector<CandidateResult>& current_elites) {
+                            std::lock_guard<std::mutex> lk(w.mtx);
+                            w.live_results = current_elites;
+                            w.has_new_results = true;
+                        },
+                        &w.stop_requested
+                    );
+
+                    {
+                        std::lock_guard<std::mutex> lk(w.mtx);
+                        w.live_results = results;
+                        w.has_new_results = true;
+                        w.is_running = false;
+                    }
+                });
+            }
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
+            if (ImGui::Button("🛑 Stop Search & Keep Best", ImVec2(220, 28))) {
+                worker.stop_requested = true;
+            }
+            ImGui::PopStyleColor();
+        }
+    } else if (opt_mode == 1) {
+        if (is_optimizing) ImGui::BeginDisabled();
+        if (ImGui::Button("Simulate Standard Specs", ImVec2(240, 28))) {
+            is_optimizing = true;
+            opt_progress = 0.0f;
+            optimizer_results = Optimizer::optimize_talents(sim, iters_per_candidate, [&](float p, const std::string& name) {
+                opt_progress = p;
+                current_opt_target = name;
+            }, compare_all_races, calculate_stat_weights);
+            is_optimizing = false;
+            opt_progress = 1.0f;
+        }
+        if (is_optimizing) ImGui::EndDisabled();
+    } else {
+        if (is_optimizing) ImGui::BeginDisabled();
+        if (ImGui::Button("Perturb & Mutate Active Preset", ImVec2(240, 28))) {
+            is_optimizing = true;
+            opt_progress = 0.0f;
+            optimizer_results = Optimizer::perturb_preset(sim, iters_per_candidate, [&](float p, const std::string& name) {
+                opt_progress = p;
+                current_opt_target = name;
+            });
+            is_optimizing = false;
+            opt_progress = 1.0f;
+        }
+        if (is_optimizing) ImGui::EndDisabled();
+    }
 
     if (is_optimizing) {
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Simulating: %s...", current_opt_target.c_str());
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Optimizing (Live): %s", current_opt_target.c_str());
         ImGui::ProgressBar(opt_progress, ImVec2(-1, 8));
     }
 
@@ -58,11 +331,12 @@ inline void render_panel_optimizer(
     auto apply_candidate_config = [&](const CandidateResult& r) {
         sim.race = r.race;
         sim.base_attrs = get_base_attributes_for_race(sim.race);
-        if (r.category == "Talents" || r.category == "Combinatorial Talents") {
+        sim.use_raw_stats = r.use_raw_stats;
+        sim.raw_stats = r.raw_stats;
+        if (r.category == "Talents" || r.category == "Combinatorial Talents" || r.category == "Genetic AI" || r.category == "Diverse Spec Peak (MAP-Elites)" || r.category.find("Peak") != std::string::npos) {
             sim.talents = r.talents;
             sim.buffs = r.buffs;
-            sim.policy.pet = r.policy.pet;
-            sim.policy.rotation = r.policy.rotation;
+            sim.policy = r.policy;
 
         } else if (r.category == "Gear") {
             sim.gear = r.gear;

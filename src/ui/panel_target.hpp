@@ -6,7 +6,7 @@
 
 namespace warlock {
 
-inline void render_panel_target(TargetConfig& target, double& fight_duration) {
+inline void render_panel_target(TargetConfig& target, double& fight_duration, bool& randomize_duration, double& duration_variance) {
     if (ImGui::CollapsingHeader("Target & Encounter Configuration", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent(8.0f);
 
@@ -26,6 +26,18 @@ inline void render_panel_target(TargetConfig& target, double& fight_duration) {
         if (ImGui::SmallButton("180s")) fight_duration = 180.0;
         ImGui::SameLine();
         if (ImGui::SmallButton("300s")) fight_duration = 300.0;
+
+        // 1a. Randomize Fight Length Toggle
+        ImGui::Spacing();
+        ImGui::Checkbox("🎲 Randomize Fight Duration", &randomize_duration);
+        if (randomize_duration) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(140);
+            ImGui::SliderFloat("Variance (+/- s)##DurVariance", (float*)&duration_variance, 1.0f, 60.0f, "+/- %.0fs");
+            double min_d = std::max(5.0, fight_duration - duration_variance);
+            double max_d = fight_duration + duration_variance;
+            ImGui::TextDisabled("  -> Actual range: [%.0fs - %.0fs] uniform distribution per fight", min_d, max_d);
+        }
 
         ImGui::Spacing();
         ImGui::Separator();

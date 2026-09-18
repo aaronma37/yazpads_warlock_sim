@@ -396,7 +396,7 @@ struct PolicyConfig {
         };
 
         auto add_drain_hope = [&]() {
-            if ((talents.aff.drain_hope > 0 || eff == RotationChoice::DEEP_AFFLICTION || eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::DEEP_AFFLICTION_SB_NO_SL || eff == RotationChoice::AFFLICTION_HYBRID_DOTS) && channel_drain_hope) {
+            if (talents.aff.drain_hope > 0) {
                 rules.push_back({
                     PriorityAction::DRAIN_HOPE,
                     SpellID::DRAIN_HOPE,

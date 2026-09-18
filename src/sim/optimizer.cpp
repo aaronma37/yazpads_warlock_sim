@@ -1,5 +1,6 @@
 #include "optimizer.hpp"
 #include "spec_presets.hpp"
+#include "genetic_optimizer.hpp"
 #include <algorithm>
 
 namespace warlock {
@@ -619,6 +620,44 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
 
     if (callback) callback(1.0f, "Completed");
     return results;
+}
+
+std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
+    const WarlockSimulator& base_sim,
+    int population_size,
+    int generations,
+    int screening_sims,
+    int final_sims,
+    bool seed_with_presets,
+    bool optimize_race,
+    double mutation_rate,
+    double initial_exploration,
+    double min_exploration,
+    const std::vector<int>& required_talents,
+    int forced_race,
+    int forced_rotation,
+    std::function<void(float progress, const std::string& current_name)> callback,
+    std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback,
+    const std::atomic<bool>* should_stop
+) {
+    GeneticOptimizerConfig cfg;
+    cfg.population_size = population_size;
+    cfg.generations = generations;
+    cfg.screening_sims = screening_sims;
+    cfg.final_sims = final_sims;
+    cfg.seed_with_presets = seed_with_presets;
+    cfg.optimize_race = optimize_race;
+    cfg.mutation_rate = mutation_rate;
+    cfg.initial_exploration_rate = initial_exploration;
+    cfg.min_exploration_rate = min_exploration;
+    cfg.required_talent_indices = required_talents;
+    cfg.forced_race = forced_race;
+    cfg.forced_rotation = forced_rotation;
+    cfg.offspring_pool_size = std::max(100, population_size * 3);
+    cfg.simulated_offspring_per_gen = std::max(20, population_size / 2);
+
+    auto summary = GeneticOptimizer::run(base_sim, cfg, callback, generation_callback, should_stop);
+    return summary.top_candidates;
 }
 
 std::vector<CandidateResult> Optimizer::compare_consumable_tiers(

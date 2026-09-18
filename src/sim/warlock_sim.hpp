@@ -129,6 +129,8 @@ public:
     Stats raw_stats;
 
     double fight_duration = 120.0;
+    bool randomize_duration = false;      // When true, fight length varies uniformly per simulation: [fight_duration - variance, fight_duration + variance]
+    double duration_variance = 15.0;      // Fight length spread in seconds (+/- seconds)
     bool record_timeline = false;
 
     WarlockSimulator();

@@ -5,6 +5,9 @@
 #include "src/sim/parallel_runner.hpp"
 #include <vector>
 #include <algorithm>
+#include <sstream>
+#include <fstream>
+#include <iomanip>
 
 namespace warlock {
 
@@ -247,7 +250,78 @@ inline void render_panel_results(const BatchSimResult& batch) {
                 ImGui::EndChild();
 
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Complete Cast History (%zu total casts in 120s fight):", seq.size());
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Complete Cast History (%zu total casts in sample fight):", seq.size());
+                ImGui::SameLine();
+
+                auto generate_cast_history_text = [&seq, &batch]() -> std::string {
+                    std::ostringstream ss;
+                    ss << "========================================================================================\n";
+                    ss << "                       OBSERVED SPELL CAST SEQUENCE & COMBAT HISTORY                    \n";
+                    ss << "========================================================================================\n";
+                    ss << "Mean DPS: " << std::fixed << std::setprecision(1) << batch.mean_dps 
+                       << " | Total Casts: " << seq.size() << "\n\n";
+                    ss << std::left << std::setw(5)  << "#"
+                       << std::setw(10) << "Time (s)"
+                       << std::setw(24) << "Spell"
+                       << std::setw(12) << "Cast Time"
+                       << std::setw(18) << "Result / Dmg"
+                       << "Trigger / Role\n";
+                    ss << "----------------------------------------------------------------------------------------\n";
+
+                    for (size_t i = 0; i < seq.size(); ++i) {
+                        const auto& cast = seq[i];
+                        std::string cast_str = (cast.cast_time > 0.0) ? (std::to_string(cast.cast_time).substr(0, 3) + "s") : "Instant";
+                        std::string res_str;
+                        if (cast.damage > 0.0) {
+                            res_str = std::to_string(static_cast<int>(cast.damage)) + (cast.is_crit ? " (CRIT)" : " (Hit)");
+                        } else if (cast.is_miss) {
+                            res_str = "MISS";
+                        } else {
+                            res_str = "-";
+                        }
+
+                        std::ostringstream time_buf;
+                        time_buf << std::fixed << std::setprecision(1) << cast.time << "s";
+
+                        ss << std::left << std::setw(5)  << (i + 1)
+                           << std::setw(10) << time_buf.str()
+                           << std::setw(24) << spell_id_to_name(cast.spell_id)
+                           << std::setw(12) << cast_str
+                           << std::setw(18) << res_str
+                           << cast.tag << "\n";
+                    }
+                    ss << "========================================================================================\n";
+                    return ss.str();
+                };
+
+                static float export_feedback_timer = 0.0f;
+                static std::string export_feedback_msg = "";
+
+                if (ImGui::Button("📋 Copy Cast History to Clipboard")) {
+                    std::string text = generate_cast_history_text();
+                    ImGui::SetClipboardText(text.c_str());
+                    export_feedback_msg = "Copied to clipboard!";
+                    export_feedback_timer = 3.0f;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("💾 Export to Text File (cast_sequence.txt)")) {
+                    std::string text = generate_cast_history_text();
+                    std::ofstream out("cast_sequence.txt");
+                    if (out.is_open()) {
+                        out << text;
+                        out.close();
+                        export_feedback_msg = "Saved to cast_sequence.txt!";
+                    } else {
+                        export_feedback_msg = "Failed to open cast_sequence.txt for writing.";
+                    }
+                    export_feedback_timer = 3.0f;
+                }
+
+                if (export_feedback_timer > 0.0f) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "✔ %s", export_feedback_msg.c_str());
+                    export_feedback_timer -= ImGui::GetIO().DeltaTime;
+                }
 
                 if (ImGui::BeginTable("AllCastsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(-1, 240))) {
                     ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28);

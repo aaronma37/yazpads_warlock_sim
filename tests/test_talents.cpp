@@ -284,5 +284,24 @@ TEST_CASE(Talents, ImprovedImpIsDamageOnly) {
     CHECK_NEAR(res3.dmg_pet_firebolt, res0.dmg_pet_firebolt * 1.3, 0.5);
 }
 
+TEST_CASE(Sim, RandomizedFightDuration) {
+    WarlockSimulator sim;
+    sim.fight_duration = 100.0;
+    sim.randomize_duration = true;
+    sim.duration_variance = 20.0;
 
+    double min_dur = 1e9;
+    double max_dur = -1e9;
 
+    for (int i = 0; i < 50; ++i) {
+        FastRNG rng(1000 + i);
+        SimResult res = sim.run_single_simulation(rng);
+        CHECK(res.duration >= 80.0);
+        CHECK(res.duration <= 120.0);
+        min_dur = std::min(min_dur, res.duration);
+        max_dur = std::max(max_dur, res.duration);
+    }
+
+    // Verify actual variation occurred across iterations
+    CHECK(max_dur - min_dur > 25.0);
+}

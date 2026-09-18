@@ -28,6 +28,7 @@ set(SIM_SOURCES
     src/sim/warlock_sim.cpp
     src/sim/parallel_runner.cpp
     src/sim/optimizer.cpp
+    src/sim/genetic_optimizer.cpp
 )
 
 set(UI_SOURCES
@@ -101,6 +102,7 @@ set(TEST_SOURCES
     tests/test_imp_analysis.cpp
     tests/test_isb_analysis.cpp
     tests/test_build_export.cpp
+    tests/test_genetic_optimizer.cpp
 )
 
 add_executable(sim_tests

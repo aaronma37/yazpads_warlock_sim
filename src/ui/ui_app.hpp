@@ -235,7 +235,7 @@ public:
 
                                 // Pane 3: Target Encounter, Consumables, Buffs, Rotation Policy & Mechanics
                                 ImGui::BeginChild("PresetPane_BuffsPolicy", ImVec2(0, pane_height), true);
-                                render_panel_target(sim.target_config, sim.fight_duration);
+                                render_panel_target(sim.target_config, sim.fight_duration, sim.randomize_duration, sim.duration_variance);
                                 ImGui::Spacing();
                                 ImGui::Separator();
                                 render_panel_buffs(sim);
