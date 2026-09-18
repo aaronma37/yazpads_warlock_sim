@@ -2,6 +2,7 @@
 #include "asset_manager.hpp"
 #include "imgui.h"
 #include "rlImGui.h"
+#include "src/sim/build_export.hpp"
 #include "src/sim/gear.hpp"
 #include "src/sim/stats.hpp"
 #include "src/sim/warlock_sim.hpp"
@@ -141,7 +142,8 @@ inline void render_armory_panel(WarlockSimulator& sim,
                                 const Stats& total_stats,
                                 const BaseAttributes& base_attrs,
                                 std::string& character_name,
-                                int& selected_model_idx)
+                                int& selected_model_idx,
+                                float& build_copied_timer)
 {
   GearLoadout& gear = sim.gear;
 
@@ -349,6 +351,22 @@ inline void render_armory_panel(WarlockSimulator& sim,
   ImGui::Text("Spirit: %.0f", total_stats.spirit);
   ImGui::Text("Shadow Mult: %.3fx", total_stats.shadow_multiplier * total_stats.all_damage_multiplier);
   ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
+
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  float avail_btn_w = ImGui::GetContentRegionAvail().x;
+  if (ImGui::Button("Copy Build to Clipboard", ImVec2(avail_btn_w, 26)))
+  {
+    ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
+    build_copied_timer = 3.0f;
+  }
+  if (build_copied_timer > 0.0f)
+  {
+    build_copied_timer -= ImGui::GetIO().DeltaTime;
+    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Build copied to clipboard!");
+  }
 }
 
 }  // namespace warlock

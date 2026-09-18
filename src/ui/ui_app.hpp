@@ -90,8 +90,7 @@ class WarlockSimApp
       ImGui::SetNextWindowPos(ImVec2(0, 0));
       ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())));
       ImGuiWindowFlags root_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar |
-                                    ImGuiWindowFlags_NoBringToFrontOnFocus;
+                                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
 
       ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
       ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -99,55 +98,6 @@ class WarlockSimApp
 
       if (ImGui::Begin("RootFixedCanvas", nullptr, root_flags))
       {
-        // Top Menu Bar
-        if (ImGui::BeginMenuBar())
-        {
-          ImGui::TextColored(ImVec4(0.85f, 0.55f, 1.0f, 1.0f), "WOW FOREVER WARLOCK DES SIMULATOR");
-          ImGui::Separator();
-
-          if (ImGui::BeginMenu("Build Presets"))
-          {
-            // Spec names/configs come from standard_spec_presets()
-            // (src/sim/spec_presets.hpp) — rename there, not here.
-            for (const auto& preset : standard_spec_presets())
-            {
-              if (ImGui::MenuItem(preset.display_name))
-              {
-                apply_spec_preset(sim, preset);
-              }
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Phase 6 BiS (Naxxramas)"))
-            {
-              sim.gear = GearLoadout::create_phase6_bis();
-            }
-            ImGui::EndMenu();
-          }
-
-          if (ImGui::BeginMenu("Simulation"))
-          {
-            if (ImGui::MenuItem("Run Full Simulation (10,000 fights)"))
-            {
-              last_result = ParallelSimRunner::run_batch(sim, iterations, thread_count);
-            }
-            ImGui::EndMenu();
-          }
-
-          ImGui::SameLine(ImGui::GetWindowWidth() - 360);
-          if (last_result.iterations_per_second > 0.0)
-          {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                               "DES Engine: %.0f sims/sec (%d Threads)",
-                               last_result.iterations_per_second,
-                               thread_count);
-          }
-          else
-          {
-            ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1.0f), "DES Engine: Ready (%d Threads)", thread_count);
-          }
-
-          ImGui::EndMenuBar();
-        }
 
         // Ensure base_attrs is synced to sim.race
         sim.base_attrs = get_base_attributes_for_race(sim.race);
@@ -251,26 +201,14 @@ class WarlockSimApp
               // -------------------------------------------------------------
               if (ImGui::BeginTabItem("  Build Configuration  "))
               {
-                if (ImGui::Button("Copy Build to Clipboard"))
-                {
-                  ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
-                  build_copied_timer = 3.0f;
-                }
-                if (build_copied_timer > 0.0f)
-                {
-                  build_copied_timer -= ImGui::GetIO().DeltaTime;
-                  ImGui::SameLine();
-                  ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Build copied to clipboard!");
-                }
-                ImGui::Spacing();
-
                 const float pane1_w = 320.0f;                   // Gear & Direct Stats
                 const float pane2_w = 830.0f;                   // Talents Tree (51 Points - All 3 Trees Visible)
-                const float pane_height = full_height - 75.0f;  // Toolbar row above
+                const float pane_height = full_height - 35.0f;  // Available content height
 
                 // Pane 1: Gear & Direct Stats
                 ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
-                render_armory_panel(sim, player_stats, sim.base_attrs, character_name, selected_model_idx);
+                render_armory_panel(
+                    sim, player_stats, sim.base_attrs, character_name, selected_model_idx, build_copied_timer);
                 ImGui::EndChild();
 
                 ImGui::SameLine();
@@ -283,16 +221,16 @@ class WarlockSimApp
 
                 ImGui::SameLine();
 
-                // Pane 3: Target Encounter, Consumables, Buffs, Rotation Policy & Mechanics
+                // Pane 3: Rotation Policy, Target Encounter, Consumables & Buffs, Mechanics
                 ImGui::BeginChild("PresetPane_BuffsPolicy", ImVec2(0, pane_height), true);
+                render_panel_policy(sim);
+                ImGui::Spacing();
+                ImGui::Separator();
                 render_panel_target(
                     sim.target_config, sim.fight_duration, sim.randomize_duration, sim.duration_variance);
                 ImGui::Spacing();
                 ImGui::Separator();
                 render_panel_buffs(sim);
-                ImGui::Spacing();
-                ImGui::Separator();
-                render_panel_policy(sim);
                 ImGui::Spacing();
                 ImGui::Separator();
                 render_panel_mechanics(sim.mechanics);
@@ -359,8 +297,6 @@ class WarlockSimApp
           //     render_panel_known_issues();
           //     ImGui::EndTabItem();
           // }
-
-
 
           // -----------------------------------------------------------------
           // 8. THEORYCRAFTING (Mathematical Proofs & Dominance Theorems)

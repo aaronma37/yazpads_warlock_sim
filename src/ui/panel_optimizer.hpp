@@ -82,7 +82,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   static float ga_mutation_rate = 0.45f;
   static float ga_initial_explore = 0.50f;
   static float ga_min_explore = 0.15f;
-  static bool ga_seed_presets = true;
+  static bool ga_seed_presets = false;
   static bool ga_optimize_race = true;
   static bool show_advanced_tuning = false;
   static int ga_req_talent1 = -1;
@@ -1335,10 +1335,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::Columns(1);
     }
   }
-  else
-  {
-    ImGui::TextDisabled("Select an optimization target above to begin multi-threaded parameter search.");
-  }
+  else {}
 }
 
 }  // namespace warlock
