@@ -163,44 +163,26 @@ WarlockSimulator individual_to_sim(const WarlockSimulator& base_sim, const Indiv
     return sim;
 }
 
-// Enforce talent constraints, locked race, and locked rotation
+inline std::vector<int> get_effective_required_talents(const GeneticOptimizerConfig& config) {
+    std::vector<int> reqs = config.required_talent_indices;
+    if (config.forced_pet_mode == static_cast<int>(PetConstraint::SAC_IMP) ||
+        config.forced_pet_mode == static_cast<int>(PetConstraint::SAC_SUCCUBUS)) {
+        reqs.push_back(AFFLICTION_NODE_COUNT + 9); // Demonic Sacrifice (R3C2 Demo)
+    } else if (config.forced_pet_mode == static_cast<int>(PetConstraint::DEMONIC_PACT_IMP_SUCC) ||
+               config.forced_pet_mode == static_cast<int>(PetConstraint::DEMONIC_PACT_SUCC_IMP)) {
+        reqs.push_back(AFFLICTION_NODE_COUNT + 18); // Demonic Pact (R7C2 Demo)
+    }
+    return reqs;
+}
+
+// Enforce talent constraints, locked race, locked rotation, and locked pet/DS mode
 void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, FastRNG& rng) {
     const auto& graph = TalentGraph::get();
 
-    // 0. Enforce Demonic Sacrifice validity: cannot sacrifice pets without Demonic Sacrifice or Demonic Pact
-    bool has_ds = (ind.talents[AFFLICTION_NODE_COUNT + 9] > 0);
-    bool has_dp = (ind.talents[AFFLICTION_NODE_COUNT + 18] > 0);
-
-    if (!has_ds && !has_dp) {
-        if (ind.sac_imp || ind.sac_succubus) {
-            ind.sac_imp = false;
-            ind.sac_succubus = false;
-            if (ind.pet == PetChoice::NONE) {
-                int demo_pts = graph.count_tree_points(ind.talents, 1);
-                if (demo_pts >= 15 || ind.talents[AFFLICTION_NODE_COUNT + 17] > 0) {
-                    ind.pet = (rng.next_u64() % 2 == 0) ? PetChoice::SUCCUBUS : PetChoice::IMP;
-                } else {
-                    ind.pet = PetChoice::IMP;
-                }
-            }
-        }
-    } else if (!has_dp && (ind.sac_imp || ind.sac_succubus)) {
-        ind.pet = PetChoice::NONE;
-    }
-
-    // 1. Lock race if requested
-    if (config.forced_race >= 0) {
-        ind.race = static_cast<Race>(config.forced_race);
-    }
-
-    // 2. Lock rotation if requested
-    if (config.forced_rotation >= 0) {
-        ind.rotation = static_cast<RotationChoice>(config.forced_rotation);
-    }
-
-    // 3. Enforce required talents
-    if (!config.required_talent_indices.empty()) {
-        for (int req_idx : config.required_talent_indices) {
+    // 0. Enforce required talents (including implicit talent requirements from Pet / DS constraints)
+    auto all_req_talents = get_effective_required_talents(config);
+    if (!all_req_talents.empty()) {
+        for (int req_idx : all_req_talents) {
             if (req_idx < 0 || req_idx >= static_cast<int>(TOTAL_TALENT_NODES)) continue;
             const auto& target_node = graph.node(req_idx);
 
@@ -248,7 +230,7 @@ void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, 
             std::vector<size_t> filtered_donors;
             for (size_t d : donors) {
                 bool is_req = false;
-                for (int req : config.required_talent_indices) {
+                for (int req : all_req_talents) {
                     if (static_cast<int>(d) == req) { is_req = true; break; }
                 }
                 if (!is_req) filtered_donors.push_back(d);
@@ -266,6 +248,80 @@ void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, 
             ind.talents[pick]++;
             current++;
         }
+    }
+
+    // 1. Enforce Demonic Sacrifice / Pet configuration
+    if (config.forced_pet_mode >= 0) {
+        PetConstraint pc = static_cast<PetConstraint>(config.forced_pet_mode);
+        switch (pc) {
+            case PetConstraint::ACTIVE_IMP:
+                ind.sac_imp = false;
+                ind.sac_succubus = false;
+                ind.pet = PetChoice::IMP;
+                break;
+            case PetConstraint::ACTIVE_SUCCUBUS:
+                ind.sac_imp = false;
+                ind.sac_succubus = false;
+                ind.pet = PetChoice::SUCCUBUS;
+                break;
+            case PetConstraint::SAC_IMP:
+                ind.sac_imp = true;
+                ind.sac_succubus = false;
+                ind.pet = PetChoice::NONE;
+                break;
+            case PetConstraint::SAC_SUCCUBUS:
+                ind.sac_imp = false;
+                ind.sac_succubus = true;
+                ind.pet = PetChoice::NONE;
+                break;
+            case PetConstraint::DEMONIC_PACT_IMP_SUCC:
+                ind.sac_imp = true;
+                ind.sac_succubus = false;
+                ind.pet = PetChoice::SUCCUBUS;
+                break;
+            case PetConstraint::DEMONIC_PACT_SUCC_IMP:
+                ind.sac_imp = false;
+                ind.sac_succubus = true;
+                ind.pet = PetChoice::IMP;
+                break;
+            case PetConstraint::NO_PET:
+                ind.sac_imp = false;
+                ind.sac_succubus = false;
+                ind.pet = PetChoice::NONE;
+                break;
+            default:
+                break;
+        }
+    } else {
+        bool has_ds = (ind.talents[AFFLICTION_NODE_COUNT + 9] > 0);
+        bool has_dp = (ind.talents[AFFLICTION_NODE_COUNT + 18] > 0);
+
+        if (!has_ds && !has_dp) {
+            if (ind.sac_imp || ind.sac_succubus) {
+                ind.sac_imp = false;
+                ind.sac_succubus = false;
+                if (ind.pet == PetChoice::NONE) {
+                    int demo_pts = graph.count_tree_points(ind.talents, 1);
+                    if (demo_pts >= 15 || ind.talents[AFFLICTION_NODE_COUNT + 17] > 0) {
+                        ind.pet = (rng.next_u64() % 2 == 0) ? PetChoice::SUCCUBUS : PetChoice::IMP;
+                    } else {
+                        ind.pet = PetChoice::IMP;
+                    }
+                }
+            }
+        } else if (!has_dp && (ind.sac_imp || ind.sac_succubus)) {
+            ind.pet = PetChoice::NONE;
+        }
+    }
+
+    // 2. Lock race if requested
+    if (config.forced_race >= 0) {
+        ind.race = static_cast<Race>(config.forced_race);
+    }
+
+    // 3. Lock rotation if requested
+    if (config.forced_rotation >= 0) {
+        ind.rotation = static_cast<RotationChoice>(config.forced_rotation);
     }
 }
 
@@ -651,8 +707,9 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             // Guided point swap mutations with annealing exploration
             if (rng.next_double() < config.mutation_rate) {
                 int swaps = 1 + (rng.next_u64() % 3);
+                auto effective_reqs = get_effective_required_talents(config);
                 for (int s = 0; s < swaps; ++s) {
-                    guided_point_swap(offspring.talents, summary.trained_surrogate, rng, cur_exploration_rate, config.required_talent_indices);
+                    guided_point_swap(offspring.talents, summary.trained_surrogate, rng, cur_exploration_rate, effective_reqs);
                 }
             }
 

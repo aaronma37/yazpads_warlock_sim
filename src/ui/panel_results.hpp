@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "implot.h"
 #include "asset_manager.hpp"
+#include "damage_breakdown_view.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include <vector>
 #include <algorithm>
@@ -111,94 +112,7 @@ inline void render_panel_results(const BatchSimResult& batch) {
             ImGui::Text("Spell Damage Contribution (%% of Total + DPS):");
             ImGui::Separator();
 
-            auto spell_row = [&](const char* name, double pct, const ImVec4& col, SpellID id = SpellID::NONE) {
-                ImGui::Text("%s: ", name);
-                ImGui::SameLine(180);
-                ImGui::ProgressBar(static_cast<float>(pct * 0.01), ImVec2(240, 0), "");
-                ImGui::SameLine();
-                ImGui::TextColored(col, "%.1f%% (%.1f DPS)", pct, pct * 0.01 * batch.mean_dps);
-                if (id != SpellID::NONE) {
-                    const BatchSpellStats& st = batch.spell_stats[static_cast<size_t>(id)];
-                    if (st.mean_casts > 0.005 || st.mean_hits > 0.005) {
-                        ImGui::TextDisabled("      %.1f casts | %.1f hits | %.0f avg hit | %.1f%% crit | %.1f%% miss",
-                            st.mean_casts, st.mean_hits, spell_avg_hit(st), spell_crit_pct(st), spell_miss_pct(st));
-                    }
-                }
-            };
-
-            spell_row("Shadow Bolt", batch.pct_shadow_bolt, ImVec4(0.8f, 0.5f, 1.0f, 1.0f), SpellID::SHADOW_BOLT);
-            spell_row("Corruption", batch.pct_corruption, ImVec4(0.5f, 0.9f, 0.5f, 1.0f), SpellID::CORRUPTION);
-
-            if (batch.pct_agony > 0.001) {
-                spell_row("Bane of Agony", batch.pct_agony, ImVec4(1.0f, 0.8f, 0.3f, 1.0f), SpellID::CURSE_OF_AGONY);
-            }
-
-            if (batch.pct_doom > 0.001) {
-                spell_row("Curse of Doom", batch.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
-            }
-
-            if (batch.pct_bane_of_havoc > 0.001) {
-                spell_row("Bane of Havoc (Cleave)", batch.pct_bane_of_havoc, ImVec4(0.85f, 0.4f, 0.95f, 1.0f), SpellID::BANE_OF_HAVOC);
-            }
-
-            if (batch.pct_siphon_life > 0.001) {
-                spell_row("Siphon Life", batch.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
-            }
-
-            spell_row("Immolate", batch.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::IMMOLATE);
-            spell_row("Shadowburn", batch.pct_shadowburn, ImVec4(0.9f, 0.3f, 0.7f, 1.0f), SpellID::SHADOWBURN);
-
-            if (batch.pct_conflagrate > 0.001) {
-                spell_row("Conflagrate", batch.pct_conflagrate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f), SpellID::CONFLAGRATE);
-            }
-
-            if (batch.pct_incinerate > 0.001) {
-                spell_row("Incinerate", batch.pct_incinerate, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::INCINERATE);
-            }
-
-            if (batch.pct_searing_pain > 0.001) {
-                spell_row("Searing Pain", batch.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::SEARING_PAIN);
-            }
-
-            if (batch.pct_soul_fire > 0.001) {
-                spell_row("Soul Fire", batch.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.2f, 1.0f), SpellID::SOUL_FIRE);
-            }
-
-            if (batch.pct_drain_hope > 0.001) {
-                spell_row("Wrack", batch.pct_drain_hope, ImVec4(0.6f, 0.3f, 0.9f, 1.0f), SpellID::DRAIN_HOPE);
-            }
-
-            if (batch.pct_drain_life > 0.001) {
-                spell_row("Drain Life", batch.pct_drain_life, ImVec4(0.3f, 0.9f, 0.5f, 1.0f), SpellID::DRAIN_LIFE);
-            }
-
-            if (batch.pct_drain_soul > 0.001) {
-                spell_row("Drain Soul", batch.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f), SpellID::DRAIN_SOUL);
-            }
-
-            if (batch.pct_pet_firebolt > 0.001) {
-                spell_row("Imp (Firebolt)", batch.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::PET_FIREBOLT);
-            }
-
-            if (batch.pct_pet_lash_of_pain > 0.001) {
-                spell_row("Succubus (Lash of Pain)", batch.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f), SpellID::PET_LASH_OF_PAIN);
-            }
-
-            if (batch.pct_pet_melee > 0.001) {
-                spell_row("Succubus (Melee)", batch.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f), SpellID::PET_MELEE);
-            }
-
-            if (batch.pct_demonic_brand > 0.001) {
-                spell_row("Demonic Brand", batch.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
-            }
-
-            if (batch.pct_touch_of_the_grave > 0.001) {
-                spell_row("Touch of the Grave", batch.pct_touch_of_the_grave, ImVec4(0.7f, 0.9f, 0.6f, 1.0f), SpellID::TOUCH_OF_THE_GRAVE);
-            }
-
-            if (batch.pct_pet > 0.001) {
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Total Pet DPS: %.1f (%.1f%% of total)", batch.mean_pet_dps, batch.pct_pet);
-            }
+            render_damage_breakdown_bars(batch, 240.0f, 180.0f);
 
             ImGui::Spacing();
             ImGui::Separator();

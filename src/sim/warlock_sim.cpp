@@ -129,6 +129,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     }
     active_buffs.apply_to_stats(stats, base_attrs, true, mechanics.personal_shadow_weaving); // true = WoW Forever mechanics
 
+    // Demonic Embrace (+3% Total Stamina per point, up to +15%)
+    if (talents.demo.demonic_embrace > 0) {
+        double stam_bonus_mult = 1.0 + talents.demo.demonic_embrace * 0.03;
+        stats.stamina *= stam_bonus_mult;
+        stats.max_health = base_attrs.base_health + stats.stamina * 10.0;
+        if (active_buffs.flask_of_the_titans) stats.max_health += 1200.0;
+    }
+
     // Gnome Expansive Mind (+5% Mana)
     if (race == Race::GNOME) {
         stats.max_mana *= 1.05;

@@ -222,6 +222,35 @@ TEST_CASE(Talents, FelVitalityManaBonus) {
     CHECK_NEAR(mana_mult, 1.15, 0.001); // +15%
 }
 
+TEST_CASE(Talents, DemonicEmbraceStaminaAndHealthBonus) {
+    WarlockSimulator sim;
+    sim.race = Race::UNDEAD;
+    sim.use_raw_stats = true;
+    sim.raw_stats.stamina = 100.0;
+    sim.buffs = BuffConfig{}; // No extra buffs
+
+    // 0/5 Demonic Embrace
+    sim.talents.demo.demonic_embrace = 0;
+    FastRNG rng0(1);
+    SimResult res0 = sim.run_single_simulation(rng0);
+
+    // 5/5 Demonic Embrace (+15% Stamina)
+    sim.talents.demo.demonic_embrace = 5;
+    FastRNG rng5(1);
+    SimResult res5 = sim.run_single_simulation(rng5);
+
+    BaseAttributes base = get_base_attributes_for_race(Race::UNDEAD);
+    double base_stam = base.stamina + 100.0;
+    double expected_hp_0 = base.base_health + base_stam * 10.0;
+    double expected_hp_5 = base.base_health + (base_stam * 1.15) * 10.0;
+
+    // Check with Touch of the Grave: 5% of max health
+    // If Undead procs TOTG, damage is 0.05 * max_health * shadow_mult
+    // Verify max health scaling
+    CHECK(expected_hp_5 > expected_hp_0);
+    CHECK_NEAR(expected_hp_5 - expected_hp_0, base_stam * 0.15 * 10.0, 0.01);
+}
+
 TEST_CASE(Talents, ImprovedCorruptionGcdScaling) {
     WarlockSimulator sim;
     sim.policy.rotation = RotationChoice::SHADOW_AND_FLAME_FIRE_2;

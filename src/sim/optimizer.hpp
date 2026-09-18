@@ -84,6 +84,7 @@ public:
         const std::vector<int>& required_talents = {},
         int forced_race = -1,
         int forced_rotation = -1,
+        int forced_pet_mode = -1,
         int num_threads = 0,
         std::function<void(float progress, const std::string& current_name)> callback = nullptr,
         std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback = nullptr,

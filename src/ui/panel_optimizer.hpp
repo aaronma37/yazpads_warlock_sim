@@ -1,5 +1,6 @@
 #pragma once
 #include "asset_manager.hpp"
+#include "damage_breakdown_view.hpp"
 #include "imgui.h"
 #include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
@@ -89,6 +90,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   static int ga_req_talent3 = -1;
   static int ga_forced_race = -1;
   static int ga_forced_rotation = -1;
+  static int ga_forced_pet_mode = -1;
   static int ga_threads = static_cast<int>(std::thread::hardware_concurrency());
 
   static int iters_per_candidate = 3000;
@@ -196,7 +198,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 
     ImGui::SameLine();
     // Rotation constraint combo
-    ImGui::SetNextItemWidth(260);
+    ImGui::SetNextItemWidth(240);
     const char* rot_preview = "[Auto / Adaptive]";
     if (ga_forced_rotation >= 0)
     {
@@ -216,6 +218,35 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         if (ImGui::Selectable(r_str, is_sel))
         {
           ga_forced_rotation = r;
+        }
+        if (is_sel)
+          ImGui::SetItemDefaultFocus();
+      }
+      ImGui::EndCombo();
+    }
+
+    ImGui::SameLine();
+    // Pet / Demonic Sacrifice constraint combo
+    ImGui::SetNextItemWidth(260);
+    const char* pet_preview = "[Auto / Adaptive]";
+    if (ga_forced_pet_mode >= 0)
+    {
+      pet_preview = pet_constraint_to_string(static_cast<PetConstraint>(ga_forced_pet_mode));
+    }
+    if (ImGui::BeginCombo("Locked Pet / DS", pet_preview))
+    {
+      if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_pet_mode == -1))
+      {
+        ga_forced_pet_mode = -1;
+      }
+      for (int p = 0; p <= static_cast<int>(PetConstraint::NO_PET); ++p)
+      {
+        PetConstraint pc = static_cast<PetConstraint>(p);
+        const char* p_str = pet_constraint_to_string(pc);
+        bool is_sel = (ga_forced_pet_mode == p);
+        if (ImGui::Selectable(p_str, is_sel))
+        {
+          ga_forced_pet_mode = p;
         }
         if (is_sel)
           ImGui::SetItemDefaultFocus();
@@ -295,6 +326,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           req_talents.push_back(ga_req_talent3);
         int forced_r = ga_forced_race;
         int forced_rot = ga_forced_rotation;
+        int forced_pet = ga_forced_pet_mode;
         int th_count = ga_threads;
 
         worker.worker = std::thread(
@@ -311,6 +343,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
              req_talents,
              forced_r,
              forced_rot,
+             forced_pet,
              th_count]()
             {
               auto& w = get_opt_worker_state();
@@ -328,6 +361,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
                   req_talents,
                   forced_r,
                   forced_rot,
+                  forced_pet,
                   th_count,
                   [&](float p, const std::string& name)
                   {
@@ -558,6 +592,28 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       if (ImGui::IsItemHovered())
       {
         ImGui::SetTooltip("Pet stat scaling is disabled (Classic 1.12 flat base damage)");
+      }
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+    if (sim.randomize_duration && sim.duration_variance > 0.0)
+    {
+      ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.45f, 1.0f), "Fight: %.0fs +/- %.0fs", sim.fight_duration, sim.duration_variance);
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Simulated fight duration: %.0fs to %.0fs (mean %.0fs)",
+                          std::max(5.0, sim.fight_duration - sim.duration_variance),
+                          sim.fight_duration + sim.duration_variance,
+                          sim.fight_duration);
+      }
+    }
+    else
+    {
+      ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.45f, 1.0f), "Fight: %.0fs", sim.fight_duration);
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Simulated fight duration: %.0f seconds", sim.fight_duration);
       }
     }
     ImGui::SameLine();
@@ -1024,66 +1080,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       // Left Column: Damage Breakdown & Performance
       ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Damage Breakdown (%% of Total Damage + DPS):");
       const auto& b = sel.batch;
-
-      auto draw_dmg_bar = [&](const char* name, double pct, const ImVec4& col, SpellID id = SpellID::NONE)
-      {
-        if (pct > 0.05)
-        {
-          ImGui::Text("%-14s:", name);
-          ImGui::SameLine(130);
-          ImGui::PushStyleColor(ImGuiCol_PlotHistogram, col);
-          char buf[32];
-          snprintf(buf, sizeof(buf), "%.1f%% (%.0f)", pct, pct * 0.01 * sel.mean_dps);
-          ImGui::ProgressBar(static_cast<float>(pct / 100.0), ImVec2(180, 15), buf);
-          ImGui::PopStyleColor();
-          if (id != SpellID::NONE && ImGui::IsItemHovered())
-          {
-            const BatchSpellStats& st = sel.batch.spell_stats[static_cast<size_t>(id)];
-            ImGui::BeginTooltip();
-            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", name);
-            ImGui::Separator();
-            ImGui::Text(
-                "Avg casts: %.1f | Avg hits: %.1f | Avg hit: %.0f", st.mean_casts, st.mean_hits, spell_avg_hit(st));
-            ImGui::Text("Crit: %.1f%% | Miss: %.1f%%", spell_crit_pct(st), spell_miss_pct(st));
-            ImGui::EndTooltip();
-          }
-        }
-      };
-
-      draw_dmg_bar("Shadow Bolt", b.pct_shadow_bolt, ImVec4(0.5f, 0.3f, 0.9f, 1.0f), SpellID::SHADOW_BOLT);
-      draw_dmg_bar("Incinerate", b.pct_incinerate, ImVec4(1.0f, 0.4f, 0.1f, 1.0f), SpellID::INCINERATE);
-      draw_dmg_bar("Searing Pain", b.pct_searing_pain, ImVec4(1.0f, 0.5f, 0.1f, 1.0f), SpellID::SEARING_PAIN);
-      draw_dmg_bar("Conflagrate", b.pct_conflagrate, ImVec4(1.0f, 0.6f, 0.1f, 1.0f), SpellID::CONFLAGRATE);
-      draw_dmg_bar("Shadowburn", b.pct_shadowburn, ImVec4(0.7f, 0.2f, 0.8f, 1.0f), SpellID::SHADOWBURN);
-      draw_dmg_bar("Corruption", b.pct_corruption, ImVec4(0.3f, 0.7f, 0.9f, 1.0f), SpellID::CORRUPTION);
-      draw_dmg_bar("Immolate", b.pct_immolate, ImVec4(1.0f, 0.5f, 0.2f, 1.0f), SpellID::IMMOLATE);
-      if (b.pct_agony > 0.05)
-        draw_dmg_bar("Bane of Agony", b.pct_agony, ImVec4(0.6f, 0.6f, 0.8f, 1.0f), SpellID::CURSE_OF_AGONY);
-      if (b.pct_doom > 0.05)
-        draw_dmg_bar("Curse of Doom", b.pct_doom, ImVec4(1.0f, 0.7f, 0.2f, 1.0f), SpellID::CURSE_OF_DOOM);
-      if (b.pct_bane_of_havoc > 0.05)
-        draw_dmg_bar("Bane of Havoc", b.pct_bane_of_havoc, ImVec4(0.85f, 0.4f, 0.95f, 1.0f), SpellID::BANE_OF_HAVOC);
-      if (b.pct_siphon_life > 0.05)
-        draw_dmg_bar("Siphon Life", b.pct_siphon_life, ImVec4(0.4f, 0.9f, 0.6f, 1.0f), SpellID::SIPHON_LIFE);
-      draw_dmg_bar("Soul Fire", b.pct_soul_fire, ImVec4(1.0f, 0.2f, 0.1f, 1.0f), SpellID::SOUL_FIRE);
-      draw_dmg_bar("Wrack", b.pct_drain_hope, ImVec4(0.3f, 0.9f, 0.6f, 1.0f), SpellID::DRAIN_HOPE);
-      draw_dmg_bar("Drain Life", b.pct_drain_life, ImVec4(0.2f, 0.9f, 0.4f, 1.0f), SpellID::DRAIN_LIFE);
-      draw_dmg_bar("Drain Soul", b.pct_drain_soul, ImVec4(0.5f, 0.4f, 0.9f, 1.0f), SpellID::DRAIN_SOUL);
-      if (b.pct_pet_firebolt > 0.05)
-        draw_dmg_bar("Imp (Firebolt)", b.pct_pet_firebolt, ImVec4(1.0f, 0.6f, 0.2f, 1.0f), SpellID::PET_FIREBOLT);
-      if (b.pct_pet_lash_of_pain > 0.05)
-        draw_dmg_bar(
-            "Succubus (Lash)", b.pct_pet_lash_of_pain, ImVec4(0.7f, 0.3f, 0.9f, 1.0f), SpellID::PET_LASH_OF_PAIN);
-      if (b.pct_pet_melee > 0.05)
-        draw_dmg_bar("Succubus (Melee)", b.pct_pet_melee, ImVec4(0.8f, 0.8f, 0.8f, 1.0f), SpellID::PET_MELEE);
-      if (b.pct_demonic_brand > 0.05)
-        draw_dmg_bar("Demonic Brand", b.pct_demonic_brand, ImVec4(0.9f, 0.4f, 0.8f, 1.0f));
-      if (b.pct_pet > 0.05)
-      {
-        char pet_summary[64];
-        snprintf(pet_summary, sizeof(pet_summary), "Total Pet: %.1f DPS (%.1f%%)", b.mean_pet_dps, b.pct_pet);
-        ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", pet_summary);
-      }
+      render_damage_breakdown_bars(b, 180.0f, 130.0f);
 
       ImGui::Spacing();
       ImGui::Text("Combat Performance:");
@@ -1184,8 +1181,17 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       int total_observed_casts = (int)seq.size();
       for (const auto& cast : seq)
       {
-        auto it = std::find_if(stats.begin(), stats.end(), [&](const SpellStat& s) { return s.id == cast.spell_id; });
-        if (it == stats.end())
+        bool found = false;
+        for (auto& s : stats)
+        {
+          if (s.id == cast.spell_id)
+          {
+            s.count++;
+            found = true;
+            break;
+          }
+        }
+        if (!found)
         {
           SpellStat s;
           s.id = cast.spell_id;
@@ -1193,10 +1199,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           s.first_cast = cast.time;
           s.role = cast.tag;
           stats.push_back(s);
-        }
-        else
-        {
-          it->count++;
         }
       }
       std::sort(stats.begin(),

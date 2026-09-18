@@ -14,7 +14,7 @@ TEST_CASE(BuildExport, ContainsCoreSections) {
     std::string json = build_export::export_build_json(sim);
     CHECK(json.find("\"format\": \"warlock-build/1\"") != std::string::npos);
     CHECK(json.find("\"race\": \"Human\"") != std::string::npos);
-    CHECK(json.find("\"fight_duration\": 120") != std::string::npos);
+    CHECK(json.find("\"fight_duration\": 180") != std::string::npos);
     CHECK(json.find("\"stats_mode\": \"raw\"") != std::string::npos);
     CHECK(json.find("\"talents\"") != std::string::npos);
     CHECK(json.find("\"buffs\"") != std::string::npos);

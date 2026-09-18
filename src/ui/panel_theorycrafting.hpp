@@ -1,6 +1,8 @@
 #pragma once
 #include "imgui.h"
 #include "implot.h"
+#include "panel_imp_analysis.hpp"
+#include "panel_isb_analysis.hpp"
 #include "src/sim/spells.hpp"
 #include "src/sim/stats.hpp"
 #include "src/sim/warlock_sim.hpp"
@@ -14,18 +16,47 @@ namespace warlock
 
 inline void render_panel_theorycrafting(const WarlockSimulator& sim)
 {
-  // Active player stats for live evaluations
-  Stats stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
-  sim.buffs.apply_to_stats(stats, sim.base_attrs, true, sim.mechanics.personal_shadow_weaving);
-  double active_sp = stats.effective_shadow_power();
-  double shadow_mult = stats.all_damage_multiplier * stats.shadow_multiplier;
+  if (ImGui::BeginTabBar("TheorycraftSubTabs", ImGuiTabBarFlags_None))
+  {
+    // -------------------------------------------------------------------------------------------------
+    // SUBTAB 1: PET DAMAGE ANALYSIS (Imp & Succubus Scaling)
+    // -------------------------------------------------------------------------------------------------
+    if (ImGui::BeginTabItem("  Pet Damage Analysis  "))
+    {
+      ImGui::Spacing();
+      render_panel_imp_analysis(sim.fight_duration);
+      ImGui::EndTabItem();
+    }
 
-  // -------------------------------------------------------------------------------------------------
-  // THEOREM 1: Bane of Doom (T >= 60s) Dominance Over Bane of Agony
-  // -------------------------------------------------------------------------------------------------
-  if (ImGui::CollapsingHeader(
-          "[Unverified] Policy that prefers Bane of Doom (T >= 60s) > Bane of Agony strictly Dominates only Bane of Agony",
-          ImGuiTreeNodeFlags_DefaultOpen))
+    // -------------------------------------------------------------------------------------------------
+    // SUBTAB 2: ISB UPTIME ANALYSIS (ISB uptime vs crit & hit chance)
+    // -------------------------------------------------------------------------------------------------
+    if (ImGui::BeginTabItem("  ISB Uptime Analysis  "))
+    {
+      ImGui::Spacing();
+      render_panel_isb_analysis();
+      ImGui::EndTabItem();
+    }
+
+    // -------------------------------------------------------------------------------------------------
+    // SUBTAB 3: MATHEMATICAL PROOFS & DOMINANCE THEOREMS
+    // -------------------------------------------------------------------------------------------------
+    if (ImGui::BeginTabItem("  Dominance Theorems & Proofs  "))
+    {
+      ImGui::Spacing();
+
+      // Active player stats for live evaluations
+      Stats stats = sim.use_raw_stats ? sim.raw_stats : sim.gear.calculate_stats();
+      sim.buffs.apply_to_stats(stats, sim.base_attrs, true, sim.mechanics.personal_shadow_weaving);
+      double active_sp = stats.effective_shadow_power();
+      double shadow_mult = stats.all_damage_multiplier * stats.shadow_multiplier;
+
+      // -------------------------------------------------------------------------------------------------
+      // THEOREM 1: Bane of Doom (T >= 60s) Dominance Over Bane of Agony
+      // -------------------------------------------------------------------------------------------------
+      if (ImGui::CollapsingHeader(
+              "[Unverified] Policy that prefers Bane of Doom (T >= 60s) > Bane of Agony strictly Dominates only Bane of Agony",
+              ImGuiTreeNodeFlags_DefaultOpen))
   {
     ImGui::Indent(8.0f);
 
@@ -551,6 +582,11 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
 
   ImGui::Spacing();
   ImGui::Separator();
+  ImGui::EndTabItem();
+}
+
+  ImGui::EndTabBar();
+}
 }
 
 }  // namespace warlock

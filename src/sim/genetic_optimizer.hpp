@@ -25,10 +25,11 @@ struct GeneticOptimizerConfig {
     bool optimize_race = true;              // Evolve and discover the optimal race for each build
     bool return_diverse_peaks = true;       // Use MAP-Elites quality-diversity archive to return distinct spec champions
 
-    // User-specified constraints (up to 3 required talents, locked race, locked rotation)
+    // User-specified constraints (up to 3 required talents, locked race, locked rotation, locked pet/DS mode)
     std::vector<int> required_talent_indices; // Node indices (0..51) that must be maxed
     int forced_race = -1;                     // -1 = unconstrained/evolve; 0..4 = locked to Race enum
     int forced_rotation = -1;                 // -1 = auto/unconstrained; 0..N = locked to RotationChoice
+    int forced_pet_mode = -1;                 // -1 = auto/unconstrained; 0..6 = locked to PetConstraint
 };
 
 struct GeneticOptimizationSummary {

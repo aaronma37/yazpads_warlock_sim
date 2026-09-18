@@ -183,4 +183,45 @@ TEST_CASE(GeneticOptimizer, DemonicSacrificeTalentRequirement) {
     CHECK_NEAR(res_no_ds.dmg_shadow_bolt, res_clean.dmg_shadow_bolt, 0.0001);
 }
 
+TEST_CASE(GeneticOptimizer, ForcedPetConstraintCombinations) {
+    WarlockSimulator sim;
+    GeneticOptimizerConfig cfg;
+    cfg.population_size = 15;
+    cfg.generations = 3;
+    cfg.screening_sims = 30;
+    cfg.final_sims = 50;
+    cfg.offspring_pool_size = 15;
+    cfg.simulated_offspring_per_gen = 5;
 
+    // 1. Force SAC_IMP
+    cfg.forced_pet_mode = static_cast<int>(PetConstraint::SAC_IMP);
+    auto summary_sac_imp = GeneticOptimizer::run(sim, cfg, nullptr);
+    CHECK(!summary_sac_imp.top_candidates.empty());
+    for (const auto& cand : summary_sac_imp.top_candidates) {
+        CHECK_EQ(cand.buffs.sacrifice_imp, true);
+        CHECK_EQ(cand.buffs.sacrifice_succubus, false);
+        CHECK_EQ(static_cast<int>(cand.policy.pet), static_cast<int>(PetChoice::NONE));
+        CHECK(cand.talents.demo.demonic_sacrifice > 0);
+    }
+
+    // 2. Force DEMONIC_PACT_IMP_SUCC
+    cfg.forced_pet_mode = static_cast<int>(PetConstraint::DEMONIC_PACT_IMP_SUCC);
+    auto summary_dp = GeneticOptimizer::run(sim, cfg, nullptr);
+    CHECK(!summary_dp.top_candidates.empty());
+    for (const auto& cand : summary_dp.top_candidates) {
+        CHECK_EQ(cand.buffs.sacrifice_imp, true);
+        CHECK_EQ(cand.buffs.sacrifice_succubus, false);
+        CHECK_EQ(static_cast<int>(cand.policy.pet), static_cast<int>(PetChoice::SUCCUBUS));
+        CHECK(cand.talents.demo.demonic_pact > 0);
+    }
+
+    // 3. Force ACTIVE_IMP
+    cfg.forced_pet_mode = static_cast<int>(PetConstraint::ACTIVE_IMP);
+    auto summary_imp = GeneticOptimizer::run(sim, cfg, nullptr);
+    CHECK(!summary_imp.top_candidates.empty());
+    for (const auto& cand : summary_imp.top_candidates) {
+        CHECK_EQ(cand.buffs.sacrifice_imp, false);
+        CHECK_EQ(cand.buffs.sacrifice_succubus, false);
+        CHECK_EQ(static_cast<int>(cand.policy.pet), static_cast<int>(PetChoice::IMP));
+    }
+}
