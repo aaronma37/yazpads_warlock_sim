@@ -20,6 +20,7 @@
 #include "panel_known_issues.hpp"
 #include "panel_imp_analysis.hpp"
 #include "panel_isb_analysis.hpp"
+#include "panel_theorycrafting.hpp"
 
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
@@ -319,6 +320,15 @@ public:
                     if (ImGui::BeginTabItem("  ISB Uptime Analysis  ")) {
                         ImGui::Spacing();
                         render_panel_isb_analysis();
+                        ImGui::EndTabItem();
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 8. THEORYCRAFTING (Mathematical Proofs & Dominance Theorems)
+                    // -----------------------------------------------------------------
+                    if (ImGui::BeginTabItem("  Theorycrafting  ")) {
+                        ImGui::Spacing();
+                        render_panel_theorycrafting(sim);
                         ImGui::EndTabItem();
                     }
 

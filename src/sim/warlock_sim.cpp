@@ -531,7 +531,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::RACIAL_BLOOD_FURY:
                 case PriorityAction::RACIAL_BERSERKING:
                 case PriorityAction::AMPLIFY_CURSE:
-                    // Handled above in off-GCD check or during Curse cast
+                case PriorityAction::BANE_OF_HAVOC:
+                    // Handled above in off-GCD check or during Curse cast / Multi-target upkeep
                     break;
 
                 case PriorityAction::LIFE_TAP: {

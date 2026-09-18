@@ -11,7 +11,7 @@ namespace warlock {
 
 struct GeneticOptimizerConfig {
     int population_size = 50;
-    int generations = 20;
+    int generations = 400;
     int screening_sims = 400;
     int final_sims = 2500;
     int offspring_pool_size = 150;

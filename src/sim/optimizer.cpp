@@ -674,9 +674,21 @@ std::vector<CandidateResult> Optimizer::compare_consumable_tiers(
 
     // Tier 0: Naked (Only AI, Mark of the Wild, Kings, Wisdom - No consumables or world buffs)
     BuffConfig t0 = base_sim.buffs;
+    t0.arcane_intellect = true;
+    t0.blessing_of_kings = true;
+    t0.blessing_of_wisdom = true;
+    t0.mark_of_the_wild = true;
+    t0.judgement_of_wisdom = true;
     t0.flask_of_supreme_power = false;
+    t0.flask_of_distilled_wisdom = false;
+    t0.flask_of_the_titans = false;
     t0.greater_arcane_elixir = false;
     t0.elixir_of_shadow_power = false;
+    t0.elixir_of_greater_firepower = false;
+    t0.elixir_of_the_owl = false;
+    t0.elixir_of_the_sages = false;
+    t0.mageblood_elixir = false;
+    t0.greater_mageblood_elixir = false;
     t0.brilliant_wizard_oil = false;
     t0.use_mana_potions = false;
     t0.use_demonic_runes = false;
@@ -696,6 +708,9 @@ std::vector<CandidateResult> Optimizer::compare_consumable_tiers(
     BuffConfig t2 = t1;
     t2.flask_of_supreme_power = true;
     t2.greater_arcane_elixir = true;
+    t2.elixir_of_greater_firepower = true;
+    t2.elixir_of_the_owl = true;
+    t2.elixir_of_the_sages = true;
     t2.brilliant_wizard_oil = true;
 
     // Tier 3: Full Raid Consumes + World Buffs (Dragonslayer + Songflower + Hakkar + DMF)

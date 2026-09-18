@@ -41,45 +41,18 @@ set(UI_SOURCES
     third_party/rlImGui/rlImGui.cpp
 )
 
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/raylib)
+
 add_executable(warlock_sim
     src/main.cpp
     ${SIM_SOURCES}
     ${UI_SOURCES}
 )
 
-if (WIN32)
-    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/raylib.lib")
-        set(RAYLIB_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/raylib.lib")
-    else()
-        set(RAYLIB_LIB "${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a")
-    endif()
-    target_link_libraries(warlock_sim PRIVATE
-        ${RAYLIB_LIB}
-        opengl32
-        gdi32
-        winmm
-        shell32
-        user32
-    )
-elseif (APPLE)
-    target_link_libraries(warlock_sim PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
-        "-framework OpenGL"
-        "-framework Cocoa"
-        "-framework IOKit"
-        "-framework CoreVideo"
-    )
-else()
-    target_link_libraries(warlock_sim PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src/libraylib.a
-        GL
-        m
-        pthread
-        dl
-        rt
-        X11
-    )
-endif()
+target_link_libraries(warlock_sim PRIVATE
+    raylib
+)
 
 set_target_properties(warlock_sim PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"

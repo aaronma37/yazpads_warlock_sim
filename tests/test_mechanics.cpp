@@ -338,6 +338,8 @@ TEST_CASE(Mechanics, CorruptionSpellPowerCoefficient) {
     clean_buffs.greater_arcane_elixir = false;
     clean_buffs.elixir_of_shadow_power = false;
     clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.elixir_of_the_owl = false;
+    clean_buffs.elixir_of_the_sages = false;
     clean_buffs.brilliant_wizard_oil = false;
     clean_buffs.curse_of_shadows = false;
     clean_buffs.curse_of_elements = false;
@@ -401,6 +403,8 @@ TEST_CASE(Mechanics, LifeTapSpiritScaling) {
     clean_buffs.greater_arcane_elixir = false;
     clean_buffs.elixir_of_shadow_power = false;
     clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.elixir_of_the_owl = false;
+    clean_buffs.elixir_of_the_sages = false;
     clean_buffs.brilliant_wizard_oil = false;
     clean_buffs.use_mana_potions = false;
     clean_buffs.use_demonic_runes = false;
@@ -439,6 +443,8 @@ TEST_CASE(Mechanics, WrackShadowDotAmplification) {
     clean_buffs.greater_arcane_elixir = false;
     clean_buffs.elixir_of_shadow_power = false;
     clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.elixir_of_the_owl = false;
+    clean_buffs.elixir_of_the_sages = false;
     clean_buffs.brilliant_wizard_oil = false;
     clean_buffs.curse_of_shadows = false;
     clean_buffs.curse_of_elements = false;

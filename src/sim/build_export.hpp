@@ -161,9 +161,15 @@ inline std::string export_build_json(const WarlockSimulator& sim) {
         append_bool(json, "mark_of_the_wild", b.mark_of_the_wild, first);
         append_bool(json, "judgement_of_wisdom", b.judgement_of_wisdom, first);
         append_bool(json, "flask_of_supreme_power", b.flask_of_supreme_power, first);
+        append_bool(json, "flask_of_distilled_wisdom", b.flask_of_distilled_wisdom, first);
+        append_bool(json, "flask_of_the_titans", b.flask_of_the_titans, first);
         append_bool(json, "greater_arcane_elixir", b.greater_arcane_elixir, first);
         append_bool(json, "elixir_of_shadow_power", b.elixir_of_shadow_power, first);
         append_bool(json, "elixir_of_greater_firepower", b.elixir_of_greater_firepower, first);
+        append_bool(json, "elixir_of_the_owl", b.elixir_of_the_owl, first);
+        append_bool(json, "elixir_of_the_sages", b.elixir_of_the_sages, first);
+        append_bool(json, "mageblood_elixir", b.mageblood_elixir, first);
+        append_bool(json, "greater_mageblood_elixir", b.greater_mageblood_elixir, first);
         append_bool(json, "brilliant_wizard_oil", b.brilliant_wizard_oil, first);
         append_bool(json, "use_mana_potions", b.use_mana_potions, first);
         append_bool(json, "use_demonic_runes", b.use_demonic_runes, first);

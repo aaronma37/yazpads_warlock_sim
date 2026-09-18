@@ -26,7 +26,8 @@ TEST_CASE(SpellStats, DirectSpellInvariants) {
 
     const SpellCombatStats& sb = res.spell_stats[static_cast<size_t>(SpellID::SHADOW_BOLT)];
     CHECK(sb.casts > 0);
-    CHECK_EQ(sb.hits + sb.misses, sb.casts); // every completed cast resolves as hit or miss
+    CHECK(sb.hits + sb.misses <= sb.casts); // completed casts resolve as hit or miss (in-flight cast at fight end does not land)
+    CHECK(sb.hits + sb.misses > 0);
     CHECK(sb.crits <= sb.hits);
     CHECK(sb.damage > 0.0);
     CHECK_EQ(res.dmg_shadow_bolt, sb.damage); // per-spell damage matches the legacy bucket

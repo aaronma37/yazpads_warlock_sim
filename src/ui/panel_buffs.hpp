@@ -13,9 +13,17 @@ inline void render_panel_buffs(WarlockSimulator& sim) {
     if (ImGui::CollapsingHeader("Consumables & Elixirs", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent(8.0f);
         ImGui::Checkbox("Flask of Supreme Power (+150 Spell Power)", &buffs.flask_of_supreme_power);
+        ImGui::Checkbox("Flask of Distilled Wisdom (+2000 Mana)", &buffs.flask_of_distilled_wisdom);
+        ImGui::Checkbox("Flask of the Titans (+1200 Health)", &buffs.flask_of_the_titans);
+        ImGui::Separator();
         ImGui::Checkbox("Greater Arcane Elixir (+35 Spell Power)", &buffs.greater_arcane_elixir);
         ImGui::Checkbox("Elixir of Shadow Power (+40 Shadow Power)", &buffs.elixir_of_shadow_power);
         ImGui::Checkbox("Elixir of Greater Firepower (+40 Fire Power)", &buffs.elixir_of_greater_firepower);
+        ImGui::Checkbox("Elixir of the Owl (+25 Int, +2% Spell Crit)", &buffs.elixir_of_the_owl);
+        ImGui::Checkbox("Elixir of the Sages (+18 Int, +18 Spirit)", &buffs.elixir_of_the_sages);
+        ImGui::Checkbox("Greater Mageblood Elixir (+20 MP5)", &buffs.greater_mageblood_elixir);
+        ImGui::Checkbox("Mageblood Elixir (+12 MP5)", &buffs.mageblood_elixir);
+        ImGui::Separator();
         ImGui::Checkbox("Brilliant Wizard Oil (+36 Spell Power, +1% Crit)", &buffs.brilliant_wizard_oil);
         ImGui::Checkbox("Use Major Mana Potions (~1800 Mana)", &buffs.use_mana_potions);
         ImGui::Checkbox("Use Demonic / Dark Runes (~1200 Mana)", &buffs.use_demonic_runes);

@@ -22,6 +22,8 @@ TEST_CASE(Buffs, ConsumablesSpellPower) {
     buffs.nightfall_axe = false;
     buffs.sacrifice_imp = false;
     buffs.sacrifice_succubus = false;
+    buffs.elixir_of_the_owl = false;
+    buffs.elixir_of_the_sages = false;
 
     buffs.flask_of_supreme_power = true; // +150 SP
     buffs.greater_arcane_elixir = true;  // +35 SP
@@ -42,6 +44,8 @@ TEST_CASE(Buffs, WorldBuffCritAndDamage) {
     buffs.flask_of_supreme_power = false;
     buffs.greater_arcane_elixir = false;
     buffs.elixir_of_shadow_power = false;
+    buffs.elixir_of_the_owl = false;
+    buffs.elixir_of_the_sages = false;
     buffs.brilliant_wizard_oil = false;
     buffs.arcane_intellect = false;
     buffs.blessing_of_kings = false;
@@ -122,6 +126,49 @@ TEST_CASE(Buffs, PersonalShadowWeavingMechanic) {
     Stats stats_shared;
     buffs.apply_to_stats(stats_shared, base, true, false);
     CHECK_NEAR(stats_shared.shadow_multiplier, 1.15, 0.001);
+}
+
+TEST_CASE(Buffs, WowForeverAlchemyConsumables) {
+    BuffConfig buffs;
+    buffs.arcane_intellect = false;
+    buffs.blessing_of_kings = false;
+    buffs.blessing_of_wisdom = false;
+    buffs.mark_of_the_wild = false;
+    buffs.rallying_cry = false;
+    buffs.songflower = false;
+    buffs.spirit_of_zandalar = false;
+    buffs.warchiefs_blessing = false;
+    buffs.sayges_fortune = false;
+    buffs.shadow_weaving = false;
+    buffs.curse_of_shadows = false;
+    buffs.curse_of_elements = false;
+    buffs.nightfall_axe = false;
+    buffs.sacrifice_imp = false;
+    buffs.sacrifice_succubus = false;
+    buffs.flask_of_supreme_power = false;
+    buffs.greater_arcane_elixir = false;
+    buffs.elixir_of_shadow_power = false;
+    buffs.elixir_of_greater_firepower = false;
+    buffs.elixir_of_the_sages = false;
+    buffs.brilliant_wizard_oil = false;
+
+    buffs.elixir_of_the_owl = true; // +25 Int, +2% Crit
+    buffs.greater_mageblood_elixir = true; // +20 MP5
+    buffs.flask_of_distilled_wisdom = true; // +2000 Max Mana
+
+    Stats stats;
+    BaseAttributes base;
+    base.intellect = 100.0;
+    base.base_mana = 1000.0;
+
+    buffs.apply_to_stats(stats, base, true);
+
+    // Intellect should be 100 + 25 = 125
+    CHECK_NEAR(stats.intellect, 125.0, 0.001);
+    // Mana: base 1000 + 125*15 (1875) + 2000 = 4875
+    CHECK_NEAR(stats.max_mana, 4875.0, 0.001);
+    CHECK_NEAR(stats.spell_crit_percent, 2.0, 0.001);
+    CHECK_NEAR(stats.mp5, 20.0, 0.001);
 }
 
 

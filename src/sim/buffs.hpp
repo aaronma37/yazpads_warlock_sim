@@ -5,21 +5,27 @@
 namespace warlock {
 
 struct BuffConfig {
-    // Raid Buffs
-    bool arcane_intellect = true;     // +31 Intellect
-    bool blessing_of_kings = true;    // +10% all base attributes
-    bool blessing_of_wisdom = true;   // +30 MP5
-    bool mark_of_the_wild = true;     // +12 all attributes
-    bool judgement_of_wisdom = true;  // 50% chance on spell hit to restore 59 mana
+    // Raid Buffs (Default Off)
+    bool arcane_intellect = false;     // +31 Intellect
+    bool blessing_of_kings = false;    // +10% all base attributes
+    bool blessing_of_wisdom = false;   // +30 MP5
+    bool mark_of_the_wild = false;     // +12 all attributes
+    bool judgement_of_wisdom = false;  // 50% chance on spell hit to restore 59 mana
 
-    // Consumables
-    bool flask_of_supreme_power = true; // +150 Spell Power
-    bool greater_arcane_elixir = true;  // +35 Spell Power
-    bool elixir_of_shadow_power = true; // +40 Shadow Spell Power
-    bool elixir_of_greater_firepower = true; // +40 Fire Spell Power
-    bool brilliant_wizard_oil = true;   // +36 Spell Power, +1% Spell Crit
-    bool use_mana_potions = true;       // Major Mana Potion (~1800 mana, 120s cd)
-    bool use_demonic_runes = true;      // Demonic / Dark Rune (~1200 mana, 120s cd)
+    // Consumables (Alchemy & Oils) (Default Off)
+    bool flask_of_supreme_power = false; // +150 Spell Power (2 hr)
+    bool flask_of_distilled_wisdom = false; // +2000 Max Mana (2 hr)
+    bool flask_of_the_titans = false;   // +1200 Max Health (2 hr)
+    bool greater_arcane_elixir = false;  // +35 Spell Power (1 hr)
+    bool elixir_of_shadow_power = false; // +40 Shadow Spell Power (30 min)
+    bool elixir_of_greater_firepower = false; // +40 Fire Spell Power (30 min)
+    bool elixir_of_the_owl = false;      // WoW Forever: +25 Intellect, +2% Spell Crit (30 min)
+    bool elixir_of_the_sages = false;    // +18 Intellect, +18 Spirit (1 hr)
+    bool mageblood_elixir = false;      // +12 MP5 (1 hr)
+    bool greater_mageblood_elixir = false; // WoW Forever: +20 MP5 (30 min)
+    bool brilliant_wizard_oil = false;   // +36 Spell Power, +1% Spell Crit (30 min)
+    bool use_mana_potions = false;       // Major Mana Potion (~1800 mana, 120s cd)
+    bool use_demonic_runes = false;      // Demonic / Dark Rune (~1200 mana, 120s cd)
 
     // World Buffs (Default Off)
     bool rallying_cry = false;          // Dragonslayer: +10% Spell Crit
@@ -62,6 +68,13 @@ struct BuffConfig {
             bonus_stam += 15.0;
             bonus_spr += 15.0;
         }
+        if (elixir_of_the_owl) {
+            bonus_int += 25.0;
+        }
+        if (elixir_of_the_sages) {
+            bonus_int += 18.0;
+            bonus_spr += 18.0;
+        }
 
         stats.intellect = (base.intellect + stats.intellect + bonus_int) * stat_multiplier;
         stats.stamina = (base.stamina + stats.stamina + bonus_stam) * stat_multiplier;
@@ -70,12 +83,15 @@ struct BuffConfig {
         // Health & Mana pools (1 Int = 15 Mana, 1 Stam = 10 HP)
         stats.max_mana = base.base_mana + stats.intellect * 15.0;
         stats.max_health = base.base_health + stats.stamina * 10.0;
+        if (flask_of_distilled_wisdom) stats.max_mana += 2000.0;
+        if (flask_of_the_titans) stats.max_health += 1200.0;
 
         // Consumables spell power
         if (flask_of_supreme_power) stats.spell_power += 150.0;
         if (greater_arcane_elixir) stats.spell_power += 35.0;
         if (elixir_of_shadow_power) stats.shadow_power += 40.0;
         if (elixir_of_greater_firepower) stats.fire_power += 40.0;
+        if (elixir_of_the_owl) stats.spell_crit_percent += 2.0; // WoW Forever Owl adds +2% Crit
         if (brilliant_wizard_oil) {
             stats.spell_power += 36.0;
             stats.spell_crit_percent += 1.0;
@@ -88,6 +104,11 @@ struct BuffConfig {
         // MP5
         if (blessing_of_wisdom) stats.mp5 += 30.0;
         if (warchiefs_blessing) stats.mp5 += 10.0;
+        if (greater_mageblood_elixir) {
+            stats.mp5 += 20.0;
+        } else if (mageblood_elixir) {
+            stats.mp5 += 12.0;
+        }
 
         // Damage multipliers
         if (sayges_fortune) stats.all_damage_multiplier *= 1.10;
