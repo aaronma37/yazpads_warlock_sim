@@ -66,6 +66,8 @@ inline const std::vector<SpecPreset>& standard_spec_presets() {
             &Talents::create_forever_nf_ds_ruin, RotationChoice::SHADOW_DESTRO, PetChoice::NONE, false, true, true},
         {"nf_af", "23/10/18 NF/AF", "NF/AF",
             &Talents::create_forever_nf_af, RotationChoice::SM_RUIN, PetChoice::IMP, false, false, true},
+        {"aff_incinerate", "13/7/31 Aff Incinerate", "Aff Incinerate",
+            &Talents::create_forever_aff_incinerate, RotationChoice::FIRE_DESTRO, PetChoice::SUCCUBUS, false, false, true},
     };
     return presets;
 }

@@ -5,7 +5,7 @@ using namespace warlock;
 
 TEST_CASE(SpecPresets, CountAndUniqueNames) {
     const auto& presets = standard_spec_presets();
-    CHECK_EQ(presets.size(), (size_t)18);
+    CHECK_EQ(presets.size(), (size_t)19);
     for (size_t i = 0; i < presets.size(); ++i) {
         CHECK(presets[i].display_name != nullptr && std::string(presets[i].display_name).size() > 0);
         CHECK(presets[i].short_label != nullptr && std::string(presets[i].short_label).size() > 0);
@@ -245,5 +245,39 @@ TEST_CASE(SpecPresets, DeepAfflictionImp) {
     apply_spec_preset(sim, *p);
     CHECK(sim.policy.rotation == RotationChoice::DEEP_AFFLICTION_SB);
     CHECK(sim.policy.pet == PetChoice::IMP);
+    CHECK(sim.buffs.sacrifice_imp == false);
+}
+
+TEST_CASE(SpecPresets, AffIncinerate) {
+    const SpecPreset* p = find_spec_preset("aff_incinerate");
+    CHECK(p != nullptr);
+    CHECK(std::string(p->display_name) == "13/7/31 Aff Incinerate");
+    CHECK(p->rotation == RotationChoice::FIRE_DESTRO);
+    CHECK(p->pet == PetChoice::SUCCUBUS);
+    CHECK(p->sac_succubus == false);
+    CHECK(p->sac_imp == false);
+    CHECK(p->maintain_immolate == true);
+
+    Talents t = p->make_talents();
+    CHECK_EQ(t.aff.total_points(), 13);
+    CHECK_EQ(t.demo.total_points(), 7);
+    CHECK_EQ(t.destro.total_points(), 31);
+    CHECK_EQ(t.total_points(), 51);
+    CHECK(t.is_valid());
+    CHECK_EQ(t.aff.suppression, 5);
+    CHECK_EQ(t.aff.improved_corruption, 2);
+    CHECK_EQ(t.aff.amplify_curse, 1);
+    CHECK_EQ(t.demo.unholy_power, 4);
+    CHECK_EQ(t.destro.bane, 5);
+    CHECK_EQ(t.destro.cataclysm, 3);
+    CHECK_EQ(t.destro.aftermath, 3);
+    CHECK_EQ(t.destro.ruin, 5);
+    CHECK_EQ(t.destro.incinerate, 1);
+
+    WarlockSimulator sim;
+    apply_spec_preset(sim, *p);
+    CHECK(sim.policy.rotation == RotationChoice::FIRE_DESTRO);
+    CHECK(sim.policy.pet == PetChoice::SUCCUBUS);
+    CHECK(sim.buffs.sacrifice_succubus == false);
     CHECK(sim.buffs.sacrifice_imp == false);
 }

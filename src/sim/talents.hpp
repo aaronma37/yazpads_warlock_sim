@@ -908,6 +908,37 @@ struct Talents {
         return t;
     }
 
+    // 7. Forever Aff Incinerate (13/7/31)
+    static Talents create_forever_aff_incinerate() {
+        Talents t;
+        // Affliction: 13 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 2;
+        t.aff.malediction = 1;
+        t.aff.improved_bane_of_agony = 2;
+        t.aff.amplify_curse = 1;
+
+        // Demonology: 7 points
+        t.demo.improved_imp = 1;
+        t.demo.unholy_power = 4;
+        t.demo.fel_vitality = 2;
+
+        // Destruction: 31 points
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        t.destro.aftermath = 3;
+        t.destro.ruin = 5;
+        t.destro.shadowburn = 1;
+        t.destro.agonizing_flames = 3;
+        t.destro.conflagrate = 1;
+        t.destro.bane_of_havoc = 1;
+        t.destro.fire_and_brimstone = 3;
+        t.destro.shadow_and_flame = 5;
+        t.destro.incinerate = 1;
+        return t;
+    }
+
     // Compatibility aliases and standard methods
     static Talents create_forever_ds_af() { return create_forever_shadow_destro(); }
     static Talents create_forever_dp_af_shadow() { return create_forever_demonic_pact(); }
