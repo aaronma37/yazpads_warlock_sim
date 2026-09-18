@@ -123,3 +123,64 @@ TEST_CASE(GeneticOptimizer, EnforceConstraintsTest) {
         CHECK(graph.is_valid(vec, 51));
     }
 }
+
+TEST_CASE(GeneticOptimizer, DemonicSacrificeTalentRequirement) {
+    // Tests that Genetic Optimizer never allows Sac-Imp or Sac-Succubus when Demonic Sacrifice is missing
+    WarlockSimulator sim;
+    GeneticOptimizerConfig cfg;
+    cfg.population_size = 20;
+    cfg.generations = 4;
+    cfg.screening_sims = 50;
+    cfg.final_sims = 100;
+    cfg.offspring_pool_size = 30;
+    cfg.simulated_offspring_per_gen = 10;
+    cfg.seed_with_presets = true;
+
+    auto summary = GeneticOptimizer::run(sim, cfg, nullptr);
+    CHECK(!summary.top_candidates.empty());
+
+    for (const auto& cand : summary.top_candidates) {
+        bool has_ds = (cand.talents.demo.demonic_sacrifice > 0);
+        bool has_dp = (cand.talents.demo.demonic_pact > 0);
+        if (!has_ds && !has_dp) {
+            CHECK_EQ(cand.buffs.sacrifice_imp, false);
+            CHECK_EQ(cand.buffs.sacrifice_succubus, false);
+        }
+    }
+
+    for (const auto& cand : summary.diverse_peaks) {
+        bool has_ds = (cand.talents.demo.demonic_sacrifice > 0);
+        bool has_dp = (cand.talents.demo.demonic_pact > 0);
+        if (!has_ds && !has_dp) {
+            CHECK_EQ(cand.buffs.sacrifice_imp, false);
+            CHECK_EQ(cand.buffs.sacrifice_succubus, false);
+        }
+    }
+
+    // Direct simulation check: Setting sacrifice_imp = true on non-DS warlock must not grant +15% Shadow
+    FastRNG rng1(42), rng2(42);
+    WarlockSimulator non_ds_sim;
+    non_ds_sim.talents = Talents(); // 0 points in demo
+    non_ds_sim.buffs.sacrifice_imp = true;
+    non_ds_sim.use_raw_stats = true;
+    non_ds_sim.raw_stats.max_mana = 5000.0;
+    non_ds_sim.raw_stats.max_health = 4000.0;
+    non_ds_sim.raw_stats.spell_power = 500.0;
+    non_ds_sim.raw_stats.spell_hit_percent = 100.0;
+    non_ds_sim.raw_stats.spell_crit_percent = 0.0;
+    non_ds_sim.mechanics.partial_resists_enabled = false;
+    non_ds_sim.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    non_ds_sim.fight_duration = 5.0; // 1 SB cast (3.0s cast + 1.25s projectile travel)
+
+    SimResult res_no_ds = non_ds_sim.run_single_simulation(rng1);
+
+    WarlockSimulator clean_sim = non_ds_sim;
+    clean_sim.buffs.sacrifice_imp = false;
+    SimResult res_clean = clean_sim.run_single_simulation(rng2);
+
+    CHECK(res_no_ds.dmg_shadow_bolt > 0.0);
+    // Erroneous +15% shadow multiplier from sac_imp without DS talent must be blocked
+    CHECK_NEAR(res_no_ds.dmg_shadow_bolt, res_clean.dmg_shadow_bolt, 0.0001);
+}
+
+

@@ -120,7 +120,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
     // Compute base stats from gear & buffs (or raw manual stats)
     Stats stats = use_raw_stats ? raw_stats : gear.calculate_stats();
-    buffs.apply_to_stats(stats, base_attrs, true, mechanics.personal_shadow_weaving); // true = WoW Forever mechanics
+
+    // Demonic Sacrifice buffs require the Demonic Sacrifice talent (or Demonic Pact)
+    BuffConfig active_buffs = buffs;
+    if (talents.demo.demonic_sacrifice == 0 && talents.demo.demonic_pact == 0) {
+        active_buffs.sacrifice_imp = false;
+        active_buffs.sacrifice_succubus = false;
+    }
+    active_buffs.apply_to_stats(stats, base_attrs, true, mechanics.personal_shadow_weaving); // true = WoW Forever mechanics
 
     // Gnome Expansive Mind (+5% Mana)
     if (race == Race::GNOME) {
@@ -136,11 +143,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     // In WoW Forever, Demonic Pact (Demo Capstone) allows Demonic Sacrifice to persist
     // while summoning a DIFFERENT demon pet.
     PetChoice active_pet = policy.pet;
-    if (buffs.sacrifice_succubus || buffs.sacrifice_imp) {
+    if (active_buffs.sacrifice_succubus || active_buffs.sacrifice_imp) {
         if (talents.demo.demonic_pact > 0) {
-            if (buffs.sacrifice_imp && policy.pet == PetChoice::IMP) {
+            if (active_buffs.sacrifice_imp && policy.pet == PetChoice::IMP) {
                 active_pet = PetChoice::NONE;
-            } else if (buffs.sacrifice_succubus && policy.pet == PetChoice::SUCCUBUS) {
+            } else if (active_buffs.sacrifice_succubus && policy.pet == PetChoice::SUCCUBUS) {
                 active_pet = PetChoice::NONE;
             } else {
                 active_pet = policy.pet;

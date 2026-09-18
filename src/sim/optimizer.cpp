@@ -636,6 +636,7 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
     const std::vector<int>& required_talents,
     int forced_race,
     int forced_rotation,
+    int num_threads,
     std::function<void(float progress, const std::string& current_name)> callback,
     std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback,
     const std::atomic<bool>* should_stop
@@ -653,6 +654,7 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
     cfg.required_talent_indices = required_talents;
     cfg.forced_race = forced_race;
     cfg.forced_rotation = forced_rotation;
+    cfg.num_threads = num_threads;
     cfg.offspring_pool_size = std::max(100, population_size * 3);
     cfg.simulated_offspring_per_gen = std::max(20, population_size / 2);
 

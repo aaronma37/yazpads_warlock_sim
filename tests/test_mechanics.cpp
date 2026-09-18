@@ -425,3 +425,125 @@ TEST_CASE(Mechanics, LifeTapSpiritScaling) {
     CHECK_EQ(res.life_taps, 1);
     CHECK_NEAR(res.mana_gained, expected_mana_per_tap, 0.01);
 }
+
+TEST_CASE(Mechanics, WrackShadowDotAmplification) {
+    // Tests that Wrack (+10% Shadow DoT amplification for 6.0s):
+    // 1. Amplifies Corruption, Siphon Life, and Bane of Agony ticks that land inside its 6.0s window by exactly +10%
+    // 2. Does NOT amplify itself (Wrack ticks)
+    // 3. Does NOT amplify Fire DoTs (Immolate)
+    FastRNG rng1(42);
+    FastRNG rng2(42);
+
+    BuffConfig clean_buffs{};
+    clean_buffs.flask_of_supreme_power = false;
+    clean_buffs.greater_arcane_elixir = false;
+    clean_buffs.elixir_of_shadow_power = false;
+    clean_buffs.elixir_of_greater_firepower = false;
+    clean_buffs.brilliant_wizard_oil = false;
+    clean_buffs.curse_of_shadows = false;
+    clean_buffs.curse_of_elements = false;
+    clean_buffs.sacrifice_imp = false;
+    clean_buffs.sacrifice_succubus = false;
+    clean_buffs.shadow_weaving = false;
+    clean_buffs.use_mana_potions = false;
+    clean_buffs.use_demonic_runes = false;
+
+    auto make_sim = [&](bool with_wrack) {
+        WarlockSimulator sim;
+        sim.buffs = clean_buffs;
+        sim.talents = Talents();
+        sim.talents.aff.improved_corruption = 5; // Instant cast Corruption
+        sim.talents.aff.siphon_life = 1;
+        sim.use_raw_stats = true;
+        sim.raw_stats.max_mana = 5000.0;
+        sim.raw_stats.max_health = 4000.0;
+        sim.raw_stats.spell_power = 600.0;
+        sim.raw_stats.spell_hit_percent = 100.0; // 100% hit rate
+        sim.raw_stats.spell_crit_percent = 0.0;  // 0% crit to avoid variance
+        sim.mechanics.partial_resists_enabled = false;
+        sim.mechanics.instant_drain_hope = true;  // Instant cast Wrack
+        sim.policy.use_trinkets_on_cooldown = false;
+        sim.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
+        sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+        sim.policy.corruption = DotPolicy::ALWAYS;
+        sim.policy.pet = PetChoice::NONE;
+
+        if (with_wrack) {
+            sim.talents.aff.drain_hope = 1;
+        }
+        return sim;
+    };
+
+    // Cast sequence in Deep Affliction:
+    // t=0.0: Corruption (ticks at t=3.0, 6.0)
+    // t=1.5: Bane of Agony (ticks at t=3.5, 5.5)
+    // t=3.0: Siphon Life (ticks at t=6.0)
+    // t=4.5: Wrack (active window: [4.5, 10.5])
+    //
+    // Ticks occurring inside Wrack window [4.5, 10.5]:
+    // - Corruption tick 2 at t=6.0 (amplified by 1.10)
+    // - Siphon Life tick 1 at t=6.0 (amplified by 1.10)
+    // - Bane of Agony tick 2 at t=5.5 (amplified by 1.10)
+
+    // 1. Corruption & Siphon Life amplification test over 6.5s fight:
+    {
+        WarlockSimulator sim_no_wrack = make_sim(false);
+        sim_no_wrack.fight_duration = 6.5;
+        SimResult res_no_wrack = sim_no_wrack.run_single_simulation(rng1);
+
+        WarlockSimulator sim_wrack = make_sim(true);
+        sim_wrack.fight_duration = 6.5;
+        SimResult res_wrack = sim_wrack.run_single_simulation(rng2);
+
+        // Corruption:
+        // Baseline: 2 ticks of 212.3 = 424.6
+        // With Wrack: Tick 1 (t=3.0) is 212.3, Tick 2 (t=6.0) is 212.3 * 1.10 = 233.53. Total = 445.83.
+        CHECK_NEAR(res_no_wrack.dmg_corruption, 424.6, 0.01);
+        CHECK_NEAR(res_wrack.dmg_corruption, 212.3 + 212.3 * 1.10, 0.01);
+        CHECK_NEAR(res_wrack.dmg_corruption - res_no_wrack.dmg_corruption, 212.3 * 0.10, 0.01);
+
+        // Siphon Life:
+        // Baseline: 1 tick of 71.0 (at t=6.0)
+        // With Wrack: 1 tick of 71.0 * 1.10 = 78.1
+        CHECK_NEAR(res_no_wrack.dmg_siphon_life, 71.0, 0.01);
+        CHECK_NEAR(res_wrack.dmg_siphon_life, 78.1, 0.01);
+        CHECK_NEAR(res_wrack.dmg_siphon_life / res_no_wrack.dmg_siphon_life, 1.10, 0.0001);
+
+        // Bane of Agony:
+        // With Wrack, tick at t=5.5 is amplified by 1.10, increasing total Agony damage
+        CHECK(res_wrack.dmg_agony > res_no_wrack.dmg_agony);
+    }
+
+    // 2. Wrack Self-Damage Test (does not amplify itself):
+    // Cast at t=4.5, all 6 ticks land at t=5.5, 6.5, 7.5, 8.5, 9.5, 10.5
+    // 6 ticks of (212 / 6) + (1.0 / 6) * 600 = 212 + 600 = 812 total (135.333/tick)
+    {
+        WarlockSimulator sim_wrack = make_sim(true);
+        sim_wrack.fight_duration = 11.0;
+        SimResult res_wrack = sim_wrack.run_single_simulation(rng1);
+
+        CHECK_NEAR(res_wrack.dmg_drain_hope, 812.0, 0.01);
+    }
+
+    // 3. Fire DoT (Immolate) Excluded from Shadow DoT amp:
+    // Immolate periodic tick is Fire damage, so it must not gain the 1.10x shadow DoT multiplier.
+    {
+        WarlockSimulator sim_no_wrack = make_sim(false);
+        sim_no_wrack.policy.rotation = RotationChoice::FIRE_DESTRO_NO_CORRUPTION;
+        sim_no_wrack.policy.maintain_immolate = true;
+        sim_no_wrack.policy.use_conflagrate = false;
+        sim_no_wrack.fight_duration = 6.0;
+        SimResult res_no_wrack = sim_no_wrack.run_single_simulation(rng1);
+
+        WarlockSimulator sim_wrack = make_sim(true);
+        sim_wrack.policy.rotation = RotationChoice::FIRE_DESTRO_NO_CORRUPTION;
+        sim_wrack.policy.maintain_immolate = true;
+        sim_wrack.policy.use_conflagrate = false;
+        sim_wrack.fight_duration = 6.0;
+        SimResult res_wrack = sim_wrack.run_single_simulation(rng2);
+
+        CHECK(res_no_wrack.dmg_immolate > 0.0);
+        CHECK_NEAR(res_no_wrack.dmg_immolate, res_wrack.dmg_immolate, 0.01);
+    }
+}
+

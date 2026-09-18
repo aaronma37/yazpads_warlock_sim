@@ -16,6 +16,7 @@ struct GeneticOptimizerConfig {
     int final_sims = 2500;
     int offspring_pool_size = 150;
     int simulated_offspring_per_gen = 30;
+    int num_threads = 0;                    // 0 = Auto (std::thread::hardware_concurrency)
     double mutation_rate = 0.45;
     double crossover_rate = 0.70;
     double initial_exploration_rate = 0.50; // High exploration in early generations

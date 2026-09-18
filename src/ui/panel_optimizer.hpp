@@ -61,11 +61,11 @@ inline void render_panel_optimizer(
     }
 
     static int opt_mode = 1; // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
-    ImGui::RadioButton("🏆 Standard Specs Benchmark", &opt_mode, 1);
+    ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
     ImGui::SameLine();
-    ImGui::RadioButton("🧬 Genetic AI + Regression Solver", &opt_mode, 0);
+    ImGui::RadioButton("Genetic AI Solver", &opt_mode, 0);
     ImGui::SameLine();
-    ImGui::RadioButton("🎲 Perturb Active Preset", &opt_mode, 2);
+    ImGui::RadioButton("Perturb Active Preset", &opt_mode, 2);
 
     ImGui::Spacing();
 
@@ -84,6 +84,7 @@ inline void render_panel_optimizer(
     static int ga_req_talent3 = -1;
     static int ga_forced_race = -1;
     static int ga_forced_rotation = -1;
+    static int ga_threads = static_cast<int>(std::thread::hardware_concurrency());
 
     static int iters_per_candidate = 3000;
     static bool compare_all_races = false;
@@ -109,16 +110,22 @@ inline void render_panel_optimizer(
         if (ImGui::InputInt("Final Precision", &ga_final_sims)) {
             if (ga_final_sims < 10) ga_final_sims = 10;
         }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100);
+        int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+        if (ImGui::SliderInt("Threads", &ga_threads, 1, max_threads, "%d")) {
+            if (ga_threads < 1) ga_threads = 1;
+        }
 
         ImGui::Spacing();
-        ImGui::Checkbox("Seed with standard presets (uncheck to start from pure scratch)", &ga_seed_presets);
+        ImGui::Checkbox("Seed with standard presets", &ga_seed_presets);
         ImGui::SameLine(460);
-        ImGui::Checkbox("Optimize Race (Evolve and test all races)", &ga_optimize_race);
+        ImGui::Checkbox("Optimize Race", &ga_optimize_race);
         ImGui::SameLine(750);
-        ImGui::Checkbox("⚙ Advanced Convergence Tuning", &show_advanced_tuning);
+        ImGui::Checkbox("Advanced Convergence Tuning", &show_advanced_tuning);
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f), "Build Constraints (Optional):");
+        ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f), "Build Constraints:");
 
         // Helper lambda for talent selection combo
         auto render_talent_combo = [](const char* label, int& selected_idx) {
@@ -206,9 +213,9 @@ inline void render_panel_optimizer(
         ImGui::SetNextItemWidth(200);
         ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
         ImGui::SameLine(340);
-        ImGui::Checkbox("Compare across all races (Undead, Orc, Troll, Human, Gnome)", &compare_all_races);
+        ImGui::Checkbox("Compare across all races", &compare_all_races);
         ImGui::SameLine();
-        ImGui::Checkbox("Calculate Stat Weights (DPS per +1 stat)", &calculate_stat_weights);
+        ImGui::Checkbox("Calculate Stat Weights", &calculate_stat_weights);
     } else {
         ImGui::SetNextItemWidth(200);
         ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
@@ -218,7 +225,7 @@ inline void render_panel_optimizer(
 
     if (opt_mode == 0) {
         if (!worker.is_running.load()) {
-            if (ImGui::Button("🚀 Run AI Genetic Optimization (Live)", ImVec2(260, 28))) {
+            if (ImGui::Button("Run AI Genetic Optimization", ImVec2(260, 28))) {
                 if (worker.worker.joinable()) worker.worker.join();
                 worker.is_running = true;
                 worker.stop_requested = false;
@@ -245,10 +252,11 @@ inline void render_panel_optimizer(
                 if (ga_req_talent3 >= 0 && ga_req_talent3 != ga_req_talent1 && ga_req_talent3 != ga_req_talent2) req_talents.push_back(ga_req_talent3);
                 int forced_r = ga_forced_race;
                 int forced_rot = ga_forced_rotation;
+                int th_count = ga_threads;
 
                 worker.worker = std::thread([sim_copy, pop_sz, gens, screen_sims, fn_sims,
                                              seed_pre, opt_race, mut_rate, init_exp, min_exp,
-                                             req_talents, forced_r, forced_rot]() {
+                                             req_talents, forced_r, forced_rot, th_count]() {
                     auto& w = get_opt_worker_state();
                     auto results = Optimizer::optimize_genetic_ai(
                         sim_copy,
@@ -264,6 +272,7 @@ inline void render_panel_optimizer(
                         req_talents,
                         forced_r,
                         forced_rot,
+                        th_count,
                         [&](float p, const std::string& name) {
                             w.progress = p;
                             std::lock_guard<std::mutex> lk(w.mtx);
@@ -307,22 +316,12 @@ inline void render_panel_optimizer(
         if (is_optimizing) ImGui::EndDisabled();
     } else {
         if (is_optimizing) ImGui::BeginDisabled();
-        if (ImGui::Button("Perturb & Mutate Active Preset", ImVec2(240, 28))) {
-            is_optimizing = true;
-            opt_progress = 0.0f;
-            optimizer_results = Optimizer::perturb_preset(sim, iters_per_candidate, [&](float p, const std::string& name) {
-                opt_progress = p;
-                current_opt_target = name;
-            });
-            is_optimizing = false;
-            opt_progress = 1.0f;
-        }
         if (is_optimizing) ImGui::EndDisabled();
     }
 
     if (is_optimizing) {
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Optimizing (Live): %s", current_opt_target.c_str());
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Optimizing: %s", current_opt_target.c_str());
         ImGui::ProgressBar(opt_progress, ImVec2(-1, 8));
     }
 

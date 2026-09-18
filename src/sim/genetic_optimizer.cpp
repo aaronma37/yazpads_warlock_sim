@@ -147,8 +147,12 @@ WarlockSimulator individual_to_sim(const WarlockSimulator& base_sim, const Indiv
     sim.race = ind.race;
     sim.base_attrs = get_base_attributes_for_race(ind.race);
     sim.talents = TalentGraph::get().to_talents(ind.talents);
-    sim.buffs.sacrifice_imp = ind.sac_imp;
-    sim.buffs.sacrifice_succubus = ind.sac_succubus;
+
+    bool has_ds = (sim.talents.demo.demonic_sacrifice > 0);
+    bool has_dp = (sim.talents.demo.demonic_pact > 0);
+    sim.buffs.sacrifice_imp = (has_ds || has_dp) && ind.sac_imp;
+    sim.buffs.sacrifice_succubus = (has_ds || has_dp) && ind.sac_succubus;
+
     sim.policy.pet = ind.pet;
     sim.policy.rotation = ind.rotation;
     sim.policy.maintain_immolate = ind.maintain_immolate;
@@ -162,6 +166,27 @@ WarlockSimulator individual_to_sim(const WarlockSimulator& base_sim, const Indiv
 // Enforce talent constraints, locked race, and locked rotation
 void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, FastRNG& rng) {
     const auto& graph = TalentGraph::get();
+
+    // 0. Enforce Demonic Sacrifice validity: cannot sacrifice pets without Demonic Sacrifice or Demonic Pact
+    bool has_ds = (ind.talents[AFFLICTION_NODE_COUNT + 9] > 0);
+    bool has_dp = (ind.talents[AFFLICTION_NODE_COUNT + 18] > 0);
+
+    if (!has_ds && !has_dp) {
+        if (ind.sac_imp || ind.sac_succubus) {
+            ind.sac_imp = false;
+            ind.sac_succubus = false;
+            if (ind.pet == PetChoice::NONE) {
+                int demo_pts = graph.count_tree_points(ind.talents, 1);
+                if (demo_pts >= 15 || ind.talents[AFFLICTION_NODE_COUNT + 17] > 0) {
+                    ind.pet = (rng.next_u64() % 2 == 0) ? PetChoice::SUCCUBUS : PetChoice::IMP;
+                } else {
+                    ind.pet = PetChoice::IMP;
+                }
+            }
+        }
+    } else if (!has_dp && (ind.sac_imp || ind.sac_succubus)) {
+        ind.pet = PetChoice::NONE;
+    }
 
     // 1. Lock race if requested
     if (config.forced_race >= 0) {
@@ -373,26 +398,51 @@ std::string format_build_name(const Individual& ind) {
     std::ostringstream ss;
     ss << a << "/" << d << "/" << x << " ";
 
-    if (ind.sac_imp) ss << "[DS-Imp] ";
-    else if (ind.sac_succubus) ss << "[DS-Succ] ";
-    else if (ind.pet == PetChoice::IMP) ss << "[Imp] ";
-    else if (ind.pet == PetChoice::SUCCUBUS) ss << "[Succ] ";
-
-    if (ind.rotation == RotationChoice::FIRE_DESTRO || ind.rotation == RotationChoice::FIRE_DESTRO_NO_CORRUPTION) {
-        ss << "Fire Destro";
-    } else if (ind.rotation == RotationChoice::SHADOW_DESTRO || ind.rotation == RotationChoice::SHADOW_DESTRO_2) {
-        ss << "Shadow Destro";
-    } else if (ind.rotation == RotationChoice::DP_AF_SHADOW) {
-        ss << "DP/AF Shadow";
-    } else if (ind.rotation == RotationChoice::DEEP_AFFLICTION || ind.rotation == RotationChoice::DEEP_AFFLICTION_SB) {
-        ss << "Deep Affliction";
-    } else if (ind.rotation == RotationChoice::SM_RUIN) {
-        ss << "SM/Ruin";
-    } else {
-        ss << "Hybrid";
+    switch (ind.rotation) {
+        case RotationChoice::FIRE_DESTRO:
+        case RotationChoice::FIRE_DESTRO_NO_CORRUPTION:
+            ss << "Fire Destro";
+            break;
+        case RotationChoice::SHADOW_DESTRO:
+        case RotationChoice::SHADOW_DESTRO_2:
+            ss << "Shadow Destro";
+            break;
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_2:
+        case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE:
+            ss << "Shadow & Flame Fire";
+            break;
+        case RotationChoice::DP_AF_SHADOW:
+        case RotationChoice::DP_AF_SHADOW_NO_CORRUPTION:
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE:
+        case RotationChoice::DP_AF_SHADOW_NO_BANE:
+        case RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE:
+            ss << "DP/AF Shadow";
+            break;
+        case RotationChoice::DP_RUIN_FIRE:
+            ss << "DP/AF Fire";
+            break;
+        case RotationChoice::DEEP_AFFLICTION:
+        case RotationChoice::DEEP_AFFLICTION_SB:
+        case RotationChoice::DEEP_AFFLICTION_SB_NO_SL:
+            ss << "Deep Affliction";
+            break;
+        case RotationChoice::SM_RUIN:
+            ss << "SM/Ruin";
+            break;
+        case RotationChoice::DEMONOLOGY_EXECUTE:
+            ss << "Demo Execute";
+            break;
+        case RotationChoice::PURE_SHADOW_BOLT:
+            ss << "Pure Shadow Bolt";
+            break;
+        case RotationChoice::AFFLICTION_HYBRID_DOTS:
+            ss << "Affliction Hybrid";
+            break;
+        default:
+            ss << "Hybrid";
+            break;
     }
 
-    ss << " (" << race_to_string(ind.race) << ")";
     return ss.str();
 }
 
@@ -520,7 +570,7 @@ GeneticOptimizationSummary GeneticOptimizer::run(
         if (should_stop && should_stop->load()) break;
         if (!population[i].evaluated) {
             WarlockSimulator sim = individual_to_sim(base_sim, population[i]);
-            population[i].batch = ParallelSimRunner::run_batch(sim, config.screening_sims);
+            population[i].batch = ParallelSimRunner::run_batch(sim, config.screening_sims, config.num_threads);
             population[i].fitness = population[i].batch.mean_dps;
             population[i].evaluated = true;
             summary.total_evaluations++;
@@ -665,7 +715,7 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             Individual ind = candidate_pool[cand_idx];
 
             WarlockSimulator sim = individual_to_sim(base_sim, ind);
-            ind.batch = ParallelSimRunner::run_batch(sim, config.screening_sims);
+            ind.batch = ParallelSimRunner::run_batch(sim, config.screening_sims, config.num_threads);
             ind.fitness = ind.batch.mean_dps;
             ind.evaluated = true;
             summary.total_evaluations++;
@@ -816,7 +866,7 @@ GeneticOptimizationSummary GeneticOptimizer::run(
     for (size_t i = 0; i < diverse_pool.size(); ++i) {
         if (should_stop && should_stop->load()) break;
         WarlockSimulator sim = individual_to_sim(base_sim, diverse_pool[i].ind);
-        BatchSimResult batch = ParallelSimRunner::run_batch(sim, config.final_sims);
+        BatchSimResult batch = ParallelSimRunner::run_batch(sim, config.final_sims, config.num_threads);
 
         CandidateResult res;
         res.name = format_build_name(diverse_pool[i].ind);
