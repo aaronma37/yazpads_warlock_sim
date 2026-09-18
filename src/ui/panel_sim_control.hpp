@@ -50,14 +50,16 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
 
   // Encounter & Simulation Parameters
   ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Encounter & Simulation Parameters:");
-  ImGui::SliderFloat("Fight Duration (s)", (float*)&sim.fight_duration, 10.0f, 600.0f, "%.0f seconds");
+  double dur_min = 10.0, dur_max = 600.0;
+  ImGui::SliderScalar("Fight Duration (s)", ImGuiDataType_Double, &sim.fight_duration, &dur_min, &dur_max, "%.0f seconds");
 
   ImGui::Checkbox("Randomize Fight Duration", &sim.randomize_duration);
   if (sim.randomize_duration)
   {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(140);
-    ImGui::SliderFloat("Variance (+/- s)", (float*)&sim.duration_variance, 1.0f, 60.0f, "+/- %.0fs");
+    double var_min = 1.0, var_max = 60.0;
+    ImGui::SliderScalar("Variance (+/- s)", ImGuiDataType_Double, &sim.duration_variance, &var_min, &var_max, "+/- %.0fs");
   }
 
   // Target Level & Type

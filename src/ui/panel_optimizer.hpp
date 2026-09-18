@@ -599,7 +599,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     ImGui::SameLine();
     if (sim.randomize_duration && sim.duration_variance > 0.0)
     {
-      ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.45f, 1.0f), "Fight: %.0fs +/- %.0fs", sim.fight_duration, sim.duration_variance);
+      ImGui::TextColored(
+          ImVec4(0.95f, 0.75f, 0.45f, 1.0f), "Fight: %.0fs +/- %.0fs", sim.fight_duration, sim.duration_variance);
       if (ImGui::IsItemHovered())
       {
         ImGui::SetTooltip("Simulated fight duration: %.0fs to %.0fs (mean %.0fs)",
@@ -1061,7 +1062,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       const auto& sel = optimizer_results[selected_candidate_idx];
       ImGui::Spacing();
       ImGui::Separator();
-      ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "CANDIDATE INSPECTOR: #%d %s", sel.rank, sel.name.c_str());
+      ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "#%d %s", sel.rank, sel.name.c_str());
       ImGui::SameLine();
       ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
                          "[%.1f Mean DPS | Median: %.1f | P5-P95: %.1f - %.1f]",
@@ -1130,9 +1131,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 
       // 1. Opener Sequence Badges (First 16-24 Spells Cast)
       int opener_count = (int)std::min(seq.size(), (size_t)16);
-      ImGui::TextColored(
-          ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Sequence (First %d Spells Cast in Fight):", opener_count);
-      ImGui::BeginChild("OpenerSequenceBox", ImVec2(-1, 56), true, ImGuiWindowFlags_HorizontalScrollbar);
+      ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Sequence (First %d Spells):", opener_count);
+      ImGui::BeginChild("OpenerSequenceBox", ImVec2(-1, 64), true, ImGuiWindowFlags_HorizontalScrollbar);
       for (size_t i = 0; i < std::min(seq.size(), (size_t)24); ++i)
       {
         const auto& cast = seq[i];
