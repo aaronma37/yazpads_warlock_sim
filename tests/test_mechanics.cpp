@@ -583,6 +583,21 @@ TEST_CASE(Mechanics, ISBShadowDoTAmplification) {
     CHECK(res_isb.dmg_corruption > res_no_isb.dmg_corruption);
     CHECK(res_isb.dmg_agony > res_no_isb.dmg_agony);
     CHECK(res_isb.dmg_siphon_life > res_no_isb.dmg_siphon_life);
+
+    // Curse of Doom test (65s fight)
+    WarlockSimulator doom_no_isb = make_sim(0);
+    doom_no_isb.fight_duration = 65.0;
+    doom_no_isb.policy.curse = CurseChoice::CURSE_OF_DOOM;
+    SimResult doom_res_no_isb = doom_no_isb.run_single_simulation(rng1);
+
+    WarlockSimulator doom_isb = make_sim(5);
+    doom_isb.fight_duration = 65.0;
+    doom_isb.policy.curse = CurseChoice::CURSE_OF_DOOM;
+    SimResult doom_res_isb = doom_isb.run_single_simulation(rng2);
+
+    CHECK(doom_res_no_isb.dmg_doom > 0.0);
+    CHECK(doom_res_isb.dmg_doom > doom_res_no_isb.dmg_doom);
 }
+
 
 

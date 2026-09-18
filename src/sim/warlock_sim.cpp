@@ -1881,7 +1881,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 1742.0 + 4.0 * sp;
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * target_states[t_idx].dot_agony.tick_multiplier;
+                    double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
+                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * target_states[t_idx].dot_agony.tick_multiplier * drain_hope_mult;
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                     if (is_crit) {
                         result.total_damage_crits++;
@@ -1889,6 +1890,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double pand_crit_mult = 1.0 + 0.50 * (1.0 + talents.aff.pandemic * 0.33333333);
                         dmg *= pand_crit_mult;
                     }
+
+                    if (target.consume_isb_charge(current_time)) {
+                        dmg *= (1.0 + target.isb_bonus);
+                        result.isb_consumed++;
+                    }
+
+                    dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_doom += dmg;
                     result.dmg_curse += dmg;
