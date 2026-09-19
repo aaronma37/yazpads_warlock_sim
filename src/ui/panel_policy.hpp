@@ -199,7 +199,8 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     const char* racial_names[] = {
         "Execute Phase (<35% HP) — Save for execute abilities burst",
         "On Cooldown (Opener) — Fire at combat start and on CD",
-        "Smart Execute Alignment — Opener if fight length allows recast in execute, else <35% HP"};
+        "Smart Execute Alignment — Opener if fight length allows recast in execute, else <35% HP",
+        "Align with Curse of Doom — Pop 0-6s before Doom tick, else Execute/CD"};
     ImGui::SetNextItemWidth(450);
     if (ImGui::Combo("##RacialPolicyCombo", &racial_idx, racial_names, IM_ARRAYSIZE(racial_names)))
     {

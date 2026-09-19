@@ -225,6 +225,38 @@ TEST_CASE(Races, GnomeEurekaExecutePhaseTrigger) {
     CHECK(res.dmg_soul_fire > 0.0);
 }
 
+TEST_CASE(Races, GnomeEurekaCurseOfDoomAlignment) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.race = Race::GNOME;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.policy.curse = CurseChoice::CURSE_OF_DOOM;
+    sim.policy.racial_policy = RacialPolicy::ALIGN_DOOM;
+    sim.fight_duration = 75.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+
+    double doom_cast_time = -1.0;
+    double eureka_cast_time = -1.0;
+    for (const auto& c : res.cast_sequence) {
+        if (c.spell_id == SpellID::CURSE_OF_DOOM && doom_cast_time < 0.0) {
+            doom_cast_time = c.time;
+        }
+        if (c.spell_id == SpellID::RACIAL_EUREKA && eureka_cast_time < 0.0) {
+            eureka_cast_time = c.time;
+        }
+    }
+
+    CHECK(doom_cast_time >= 0.0);
+    CHECK(eureka_cast_time >= 0.0);
+    double doom_tick_time = doom_cast_time + 60.0;
+    // Eureka popped 0-6s before the Doom damage tick
+    double time_before_tick = doom_tick_time - eureka_cast_time;
+    CHECK(time_before_tick >= 0.0 && time_before_tick <= 6.0);
+    CHECK(res.dmg_doom > 0.0);
+}
+
 
 
 

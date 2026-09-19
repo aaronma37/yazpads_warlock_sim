@@ -53,7 +53,8 @@ enum class RacialPolicy : uint8_t
 {
   EXECUTE_ONLY = 0,  // Trigger during execute phase (<35% target HP)
   ON_COOLDOWN,       // Trigger on cooldown (immediately at combat start)
-  ALIGN_EXECUTE      // Trigger on opener if fight duration allows recast in execute, else hold for <35% HP
+  ALIGN_EXECUTE,     // Trigger on opener if fight duration allows recast in execute, else hold for <35% HP
+  ALIGN_DOOM         // Pop 0-6s before Curse/Bane of Doom ticks, else execute/cooldown
 };
 
 inline const char* racial_policy_to_string(RacialPolicy p)
@@ -66,6 +67,8 @@ inline const char* racial_policy_to_string(RacialPolicy p)
       return "On Cooldown (Opener)";
     case RacialPolicy::ALIGN_EXECUTE:
       return "Smart Execute Alignment";
+    case RacialPolicy::ALIGN_DOOM:
+      return "Align with Curse of Doom (0-6s before tick)";
     default:
       return "Execute Phase";
   }
@@ -387,12 +390,15 @@ struct PolicyConfig
     {
       std::string cond_summary = (racial_policy == RacialPolicy::EXECUTE_ONLY) ? "Target <35% HP (Execute) & CD Ready"
                                  : (racial_policy == RacialPolicy::ALIGN_EXECUTE) ? "Smart Execute & CD Ready"
+                                 : (racial_policy == RacialPolicy::ALIGN_DOOM)    ? "Align 0-6s Before Doom Tick"
                                                                                   : "CD Ready (120s)";
       std::string trigger_cond =
           (racial_policy == RacialPolicy::EXECUTE_ONLY)
               ? "Trigger when: Target is below 35% HP (Execute phase) and racial cooldown is ready."
           : (racial_policy == RacialPolicy::ALIGN_EXECUTE)
               ? "Trigger when: Opener (if fight length allows recast in execute) or Target <35% HP."
+          : (racial_policy == RacialPolicy::ALIGN_DOOM)
+              ? "Trigger when: 0-6s before Curse of Doom damage tick, or during Execute."
               : "Trigger when: Racial cooldown is ready.";
       if (race == Race::GNOME)
       {
@@ -401,8 +407,8 @@ struct PolicyConfig
                          "Eureka! (Gnome)",
                          cond_summary + " & Gnome",
                          trigger_cond + " (120s CD).",
-                         "Instant off-GCD ability. Your next 3 damaging abilities have their Mana cost reduced by 50% "
-                         "and deal 10% more damage."});
+                         "Instant off-GCD ability. Increases all damage dealt by 10% and reduces spell mana cost by 50% "
+                         "for your next 3 spell casts."});
       }
       else if (race == Race::ORC)
       {
