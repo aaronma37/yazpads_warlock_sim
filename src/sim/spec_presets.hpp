@@ -44,6 +44,8 @@ inline const std::vector<SpecPreset>& standard_spec_presets() {
             &Talents::create_forever_dp_af_shadow, RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true, true},
         {"dp_shadow_corr", "2/31/18 DP/AF Shadow Corruption", "DP/AF Corruption",
             &Talents::create_forever_dp_af_shadow_corruption, RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true, true},
+        {"aff_dp", "12/31/8 Aff/DP", "Aff/DP",
+            &Talents::create_forever_aff_dp, RotationChoice::DP_AF_SHADOW, PetChoice::SUCCUBUS, false, true, false},
         {"dp_fire", "0/31/20 DP/AF Fire", "DP/AF Fire",
             &Talents::create_forever_dp_af_fire, RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false, true},
         {"deep_aff", "40/11/0 Deep Affliction DS-Imp", "Deep Affliction",

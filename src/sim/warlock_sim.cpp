@@ -354,9 +354,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         if (now < shadow_and_flame_shadow_expire && talents.destro.shadow_and_flame > 0) {
             mult *= (1.0 + talents.destro.shadow_and_flame * 0.02); // up to +10%
         }
-        if (race == Race::GNOME && eureka_charges > 0) {
-            mult *= 1.10;
-        }
         return mult;
     };
 
@@ -364,9 +361,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         double mult = fire_multiplier;
         if (now < shadow_and_flame_fire_expire && talents.destro.shadow_and_flame > 0) {
             mult *= (1.0 + talents.destro.shadow_and_flame * 0.02); // up to +10%
-        }
-        if (race == Race::GNOME && eureka_charges > 0) {
-            mult *= 1.10;
         }
         return mult;
     };
@@ -438,14 +432,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
             }
 
-            if (race == Race::GNOME && (doom_active || will_cast_doom || policy.racial_policy == RacialPolicy::ALIGN_DOOM)) {
+            if ((race == Race::GNOME || race == Race::ORC) && (doom_active || will_cast_doom || policy.racial_policy == RacialPolicy::ALIGN_DOOM)) {
+                double doom_window = (race == Race::ORC) ? 14.0 : 6.0;
                 if (doom_active && (fight_duration - now >= time_to_doom)) {
-                    // Pop 0-6 seconds before the Doom damage tick
-                    if (time_to_doom <= 6.0 && time_to_doom >= 0.0) {
+                    // Pop before the Doom damage tick
+                    if (time_to_doom <= doom_window && time_to_doom >= 0.0) {
                         should_trigger_racial = true;
                     }
                 } else if (!doom_active && will_cast_doom && (fight_duration - now >= 60.0)) {
-                    // Hold Eureka to align with the upcoming Doom tick
+                    // Hold racial to align with the upcoming Doom tick
                     should_trigger_racial = false;
                 } else if (policy.racial_policy == RacialPolicy::ON_COOLDOWN) {
                     should_trigger_racial = true;
@@ -478,7 +473,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 racial_expire_time = now + 15.0;
                 racial_cd_ready = now + 120.0;
                 if (record_timeline) {
-                    result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, execute_phase ? "Blood Fury (Execute Phase)" : "Racial Cooldown"});
+                    bool doom_active = (doom_tick_time > now);
+                    double time_to_doom = doom_active ? (doom_tick_time - now) : 999.0;
+                    std::string note = (time_to_doom <= 14.0 && time_to_doom >= 0.0) ? "Blood Fury (Aligned with Curse of Doom)" : (execute_phase ? "Blood Fury (Execute Phase)" : "Blood Fury (+10% SP for 15s)");
+                    result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, note});
                 }
             } else if (race == Race::TROLL) {
                 racial_expire_time = now + 10.0;
@@ -596,7 +594,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 case PriorityAction::LIFE_TAP: {
                     double mana_pct = (player_mana / stats.max_mana) * 100.0;
-                    if (mana_pct <= policy.life_tap_threshold_pct && player_health > 600.0) {
+                    bool gnome_last_charge_tap = (race == Race::GNOME && eureka_charges == 1 && mana_pct < 70.0);
+                    if ((mana_pct <= policy.life_tap_threshold_pct || gnome_last_charge_tap) && player_health > 600.0) {
                         double health_cost = 430.0;
                         double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
                         player_mana = std::min(stats.max_mana, player_mana + mana_gained);
@@ -615,7 +614,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         if (record_timeline) {
                             result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
-                            result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
+                            std::string note = gnome_last_charge_tap ? "Life Tap (Gnome Eureka Prep <70% Mana)" : "Mana Tap";
+                            result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, note});
                         }
                         return;
                     }
@@ -910,7 +910,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
 
                                 dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
-                                if (race == Race::GNOME && eureka_active && eureka_charges == 0) { dmg *= 1.10; }
+                                if (race == Race::GNOME && eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                                 result.dmg_conflagrate += dmg;
                                 result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
@@ -991,7 +991,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
 
                                 dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
-                                if (race == Race::GNOME && eureka_active && eureka_charges == 0) { dmg *= 1.10; }
+                                if (race == Race::GNOME && eureka_active) { dmg *= 1.10; }
                                 if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                                 result.dmg_shadowburn += dmg;
                                 result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
@@ -1308,7 +1308,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                        if (race == Race::GNOME && eureka_active && eureka_charges == 0) { dmg *= 1.10; }
+                        if (race == Race::GNOME && eureka_active) { dmg *= 1.10; }
                         if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                         result.dmg_immolate += dmg;
@@ -1416,7 +1416,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (resist_mult < 1.0) result.partial_resists++;
                     dmg *= resist_mult;
 
-                    if (race == Race::GNOME && ev.sub_id == 1 && eureka_charges == 0) { dmg *= 1.10; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                     // Judgement of Wisdom
@@ -1478,7 +1478,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    if (race == Race::GNOME && ev.sub_id == 1 && eureka_charges == 0) { dmg *= 1.10; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
@@ -1548,7 +1548,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         demonic_brand_expire = current_time + 10.0;
                     }
 
-                    if (race == Race::GNOME && ev.sub_id == 1 && eureka_charges == 0) { dmg *= 1.10; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
@@ -1603,7 +1603,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    if (race == Race::GNOME && ev.sub_id == 1 && eureka_charges == 0) { dmg *= 1.10; }
+                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                     if (buffs.judgement_of_wisdom && rng.chance(0.50)) {
@@ -1968,6 +1968,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
+                    if (race == Race::GNOME && eureka_charges > 0) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
                     result.dmg_doom += dmg;
                     result.dmg_curse += dmg;
@@ -1980,7 +1981,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (record_timeline) {
                         result.timeline.push_back({current_time, dmg, SpellID::CURSE_OF_DOOM, is_crit, false, player_mana, target.isb_charges});
                         bool eureka_buffed = (race == Race::GNOME && eureka_charges > 0);
-                        std::string tick_note = eureka_buffed ? "Doom Tick (+10% Eureka!)" : "Doom Tick";
+                        bool orc_buffed = (race == Race::ORC && current_time < racial_expire_time);
+                        std::string tick_note = eureka_buffed ? "Doom Tick (+10% Eureka!)" : (orc_buffed ? "Doom Tick (+10% Blood Fury)" : "Doom Tick");
                         result.cast_sequence.push_back({current_time, SpellID::CURSE_OF_DOOM, dmg, is_crit, false, 0.0, tick_note});
                     }
                 }

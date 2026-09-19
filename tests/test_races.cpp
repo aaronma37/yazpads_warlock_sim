@@ -186,6 +186,9 @@ TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     CHECK_NEAR(res_gnome.mana_spent, 570.0, 0.01);
     CHECK_NEAR(res_human.mana_spent, 1140.0, 0.01);
 
+    // Damage bonus: all 3 Gnome SB casts get +10% Eureka damage bonus
+    CHECK_NEAR(res_gnome.dmg_shadow_bolt, res_human.dmg_shadow_bolt * 1.10, 0.01);
+
     // For 4 casts (duration 13.0s):
     sim_gnome.fight_duration = 13.0;
     sim_human.fight_duration = 13.0;
@@ -198,6 +201,29 @@ TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     // 3 discounted (190 * 3 = 570) + 1 regular (380) = 950
     CHECK_NEAR(res_gnome4.mana_spent, 950.0, 0.01);
     CHECK_NEAR(res_human4.mana_spent, 1520.0, 0.01);
+}
+
+TEST_CASE(Races, GnomeEurekaLifeTapPriorityBeforeLastCharge) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.race = Race::GNOME;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    sim.policy.racial_policy = RacialPolicy::EXECUTE_ONLY;
+    sim.policy.life_tap_threshold_pct = 20.0; // Normal life tap threshold is 20%
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    SimResult res = sim.run_single_simulation(rng);
+
+    bool found_gnome_prep_tap = false;
+    for (const auto& c : res.cast_sequence) {
+        if (c.spell_id == SpellID::LIFE_TAP && c.tag.find("Gnome Eureka Prep") != std::string::npos) {
+            found_gnome_prep_tap = true;
+            break;
+        }
+    }
+    CHECK(found_gnome_prep_tap);
 }
 
 TEST_CASE(Races, GnomeEurekaExecutePhaseTrigger) {
@@ -257,6 +283,34 @@ TEST_CASE(Races, GnomeEurekaCurseOfDoomAlignment) {
     CHECK(res.dmg_doom > 0.0);
 }
 
+TEST_CASE(Races, OrcBloodFuryCurseOfDoomAlignment) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.race = Race::ORC;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.policy.curse = CurseChoice::CURSE_OF_DOOM;
+    sim.policy.racial_policy = RacialPolicy::ALIGN_DOOM;
+    sim.fight_duration = 75.0;
+    sim.record_timeline = true;
 
+    SimResult res = sim.run_single_simulation(rng);
 
+    double doom_cast_time = -1.0;
+    double blood_fury_cast_time = -1.0;
+    for (const auto& c : res.cast_sequence) {
+        if (c.spell_id == SpellID::CURSE_OF_DOOM && doom_cast_time < 0.0) {
+            doom_cast_time = c.time;
+        }
+        if (c.spell_id == SpellID::RACIAL_BLOOD_FURY && blood_fury_cast_time < 0.0) {
+            blood_fury_cast_time = c.time;
+        }
+    }
 
+    CHECK(doom_cast_time >= 0.0);
+    CHECK(blood_fury_cast_time >= 0.0);
+    double doom_tick_time = doom_cast_time + 60.0;
+    // Blood Fury popped within 14s before the Doom damage tick
+    double time_before_tick = doom_tick_time - blood_fury_cast_time;
+    CHECK(time_before_tick >= 0.0 && time_before_tick <= 14.0);
+    CHECK(res.dmg_doom > 0.0);
+}

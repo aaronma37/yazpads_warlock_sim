@@ -939,7 +939,37 @@ struct Talents {
         return t;
     }
 
+    // 8. 12/31/8 Aff/DP (12 Aff / 31 Demo / 8 Destro)
+    static Talents create_forever_aff_dp() {
+        Talents t;
+        // Affliction: 12 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 4;
+        t.aff.amplify_curse = 1;
+
+        // Demonology: 31 points (Capstone: Demonic Pact!)
+        t.demo.demonic_embrace = 5;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 2;
+        t.demo.improved_sayaad = 3;
+        t.demo.demonic_sacrifice = 1;
+        t.demo.master_summoner = 2;
+        t.demo.decimation = 2;
+        t.demo.fel_domination = 1;
+        t.demo.soul_link = 1;
+        t.demo.demonic_knowledge = 3;
+        t.demo.master_demonologist = 5;
+        t.demo.demonic_pact = 1;
+
+        // Destruction: 8 points
+        t.destro.improved_shadow_bolt = 3;
+        t.destro.bane = 5;
+        return t;
+    }
+
     // Compatibility aliases and standard methods
+    static Talents create_aff_dp() { return create_forever_aff_dp(); }
     static Talents create_forever_ds_af() { return create_forever_shadow_destro(); }
     static Talents create_forever_dp_af_shadow() { return create_forever_demonic_pact(); }
     static Talents create_forever_dp_af_fire() { return create_forever_demonic_pact_fire(); }
