@@ -266,7 +266,7 @@ public:
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 240.0;
-        s.cooldown = 20.0;
+        s.cooldown = 0.0;
         s.is_channeled = false;
         s.is_dot = true;
         s.dot_duration = 6.0;

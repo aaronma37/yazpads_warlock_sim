@@ -249,12 +249,12 @@ inline const char* rotation_choice_description(RotationChoice r)
              "Energies.";
     case RotationChoice::DEEP_AFFLICTION:
       return "Maintains Corruption and Bane of Agony (CoA) on top priority for Nightfall procs and Pandemic crits, "
-             "casts Wrack on 20s CD for +10% DoT amplification, with Drain Soul as filler.";
+             "maintains Wrack for +10% DoT amplification, with Drain Soul as filler.";
     case RotationChoice::DEEP_AFFLICTION_SB:
-      return "Maintains Corruption, Bane of Agony (CoA), and Siphon Life, casts Wrack on 20s CD for +10% DoT "
+      return "Maintains Corruption, Bane of Agony (CoA), and Siphon Life, maintains Wrack for +10% DoT "
              "amplification, with Shadow Bolt as filler.";
     case RotationChoice::DEEP_AFFLICTION_SB_NO_SL:
-      return "Maintains Corruption and Bane of Agony (CoA), casts Wrack on 20s CD for +10% DoT amplification, with "
+      return "Maintains Corruption and Bane of Agony (CoA), maintains Wrack for +10% DoT amplification, with "
              "Shadow Bolt as filler (skipping Siphon Life).";
     case RotationChoice::SM_RUIN:
       return "Shadow Mastery / Agonizing Flames (32/0/19): Maintains Corruption and Bane of Agony (CoA) for Nightfall "
@@ -541,13 +541,13 @@ struct PolicyConfig
 
     auto add_drain_hope = [&]()
     {
-      if (talents.aff.drain_hope > 0)
+      if (talents.aff.drain_hope > 0 && channel_drain_hope)
       {
         rules.push_back({PriorityAction::DRAIN_HOPE,
                          SpellID::DRAIN_HOPE,
                          "Wrack",
-                         "CD Ready (20s) & Talented",
-                         "Trigger when: Wrack cooldown is ready (20s).",
+                         "DoT Expired / Missing",
+                         "Trigger when: Wrack is not active on target (refreshed every 6s).",
                          "Tears the target apart from within, dealing ticking Shadow damage and increasing the damage "
                          "they take from your other Shadow damage over time effects by 10%."});
       }

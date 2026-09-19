@@ -980,11 +980,11 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         candidates.push_back({label, base_sim.talents, p, base_sim.buffs});
     }
 
-    // F. Drain Hope Channeled
+    // F. Drain Hope / Wrack
     if (base_sim.talents.aff.drain_hope > 0) {
         auto p = base_sim.policy;
         p.channel_drain_hope = !p.channel_drain_hope;
-        std::string label = p.channel_drain_hope ? "[APL] Channel Drain Hope on CD" : "[APL] Skip Drain Hope (Shadow Bolt Filler)";
+        std::string label = p.channel_drain_hope ? "[APL] Maintain Wrack" : "[APL] Skip Wrack (Shadow Bolt Filler)";
         candidates.push_back({label, base_sim.talents, p, base_sim.buffs});
     }
 

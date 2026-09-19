@@ -814,7 +814,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::DRAIN_HOPE: {
-                    if (talents.aff.drain_hope > 0 && now >= drain_hope_cd_ready) {
+                    if (talents.aff.drain_hope > 0 && now >= drain_hope_channel_end) {
                         double dh_mana = 240.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= dh_mana) {
                             player_mana -= dh_mana;
@@ -822,8 +822,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.total_casts++;
                             result.record_spell_cast(SpellID::DRAIN_HOPE);
                             apply_touch_of_the_grave(now);
-                            drain_hope_cd_ready = now + 20.0;
                             drain_hope_channel_end = now + 6.0;
+                            drain_hope_cd_ready = now + 6.0;
                             if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
                             if (mechanics.instant_drain_hope) {
@@ -840,6 +840,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 double haste = get_haste_mult(now);
                                 double total_channel_time = 6.0 * haste;
                                 double tick_interval = 1.0 * haste;
+                                drain_hope_channel_end = now + total_channel_time;
+                                drain_hope_cd_ready = now + total_channel_time;
 
                                 gcd_ready_time = now + std::max(mechanics.base_gcd, total_channel_time);
 

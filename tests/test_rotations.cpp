@@ -179,8 +179,12 @@ TEST_CASE(Rotations, DeepAfflictionDeterministicRun) {
     CHECK(res.dmg_corruption > 0.0);
     CHECK(res.dmg_curse > 0.0); // Bane of Agony
     CHECK(res.dmg_drain_hope > 0.0);
-    CHECK(res.dmg_drain_soul > 0.0); // Drain Soul as filler
     CHECK_EQ(res.dmg_immolate, 0.0); // No Immolate in Deep Affliction
+
+    // When Wrack is disabled, Drain Soul is used as filler
+    sim.policy.channel_drain_hope = false;
+    SimResult res_no_dh = sim.run_single_simulation(rng);
+    CHECK(res_no_dh.dmg_drain_soul > 0.0);
 }
 
 TEST_CASE(Rotations, DeepAfflictionSBFillerDeterministicRun) {
@@ -199,9 +203,13 @@ TEST_CASE(Rotations, DeepAfflictionSBFillerDeterministicRun) {
     CHECK(res.dmg_curse > 0.0); // Bane of Agony
     CHECK(res.dmg_drain_hope > 0.0);
     CHECK_EQ(res.dmg_drain_soul, 0.0); // No Drain Soul
-    CHECK(res.shadow_bolt_casts > 0);   // Shadow Bolt filler
-    CHECK(res.dmg_shadow_bolt > 0.0);
     CHECK_EQ(res.dmg_immolate, 0.0);   // No Immolate
+
+    // When Wrack is disabled, Shadow Bolt is used as filler
+    sim.policy.channel_drain_hope = false;
+    SimResult res_sb = sim.run_single_simulation(rng);
+    CHECK(res_sb.shadow_bolt_casts > 0);
+    CHECK(res_sb.dmg_shadow_bolt > 0.0);
 }
 
 TEST_CASE(Rotations, DeepAfflictionSBFillerNoSLDeterministicRun) {
@@ -221,9 +229,13 @@ TEST_CASE(Rotations, DeepAfflictionSBFillerNoSLDeterministicRun) {
     CHECK(res.dmg_drain_hope > 0.0);    // Wrack
     CHECK_EQ(res.dmg_siphon_life, 0.0); // No Siphon Life
     CHECK_EQ(res.dmg_drain_soul, 0.0);  // No Drain Soul
-    CHECK(res.shadow_bolt_casts > 0);   // Shadow Bolt filler
-    CHECK(res.dmg_shadow_bolt > 0.0);
     CHECK_EQ(res.dmg_immolate, 0.0);    // No Immolate
+
+    // When Wrack is disabled, Shadow Bolt is used as filler
+    sim.policy.channel_drain_hope = false;
+    SimResult res_sb = sim.run_single_simulation(rng);
+    CHECK(res_sb.shadow_bolt_casts > 0);
+    CHECK(res_sb.dmg_shadow_bolt > 0.0);
 }
 
 TEST_CASE(Rotations, SMRuinDeterministicRun) {
