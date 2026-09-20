@@ -67,6 +67,10 @@ class WarlockSimApp
   std::string character_name = "Grimmortis";
   int selected_model_idx = 3;  // 3 = Human (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
 
+  std::string priest_character_name = "Benedictus";
+  int priest_model_idx = 0;  // 0 = Human (0 = Human, 1 = Dwarf, 2 = Night Elf, 3 = Undead, 4 = Troll)
+  float priest_build_copied_timer = 0.0f;
+
   // Priest simulator instance & state
   priest::PriestSimulator priest_sim;
   priest::BatchSimResult priest_last_result;
@@ -420,19 +424,12 @@ class WarlockSimApp
   void render_priest_view(float full_height)
   {
     // Ensure base_attrs is synced to priest_sim.race
-    priest_sim.base_attrs = get_base_attributes_for_race(priest_sim.race);
+    priest_sim.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, priest_sim.race);
 
     // Compute player stats from gear or raw manual stats
     Stats priest_stats = priest_sim.use_raw_stats ? priest_sim.raw_stats : priest_sim.gear.calculate_stats();
     priest_sim.buffs.apply_to_stats(
         priest_stats, priest_sim.base_attrs, true, priest_sim.mechanics.shadow_weaving_personal);
-
-    // 5SR Mana Regen calculations
-    double spirit_tick = sim::ManaRegenCalculator::calculate_spirit_regen_per_tick(
-        priest_stats.intellect, priest_stats.spirit, sim::PlayerClass::PRIEST);
-    double outside_5sr = spirit_tick / 2.0;
-    double inside_5sr = (spirit_tick * priest_sim.mechanics.meditation_casting_regen_ratio) / 2.0;
-    double mp5_mps = priest_stats.mp5 / 5.0;
 
     if (ImGui::BeginTabBar("PriestTopLayerTabs", ImGuiTabBarFlags_None))
     {
@@ -448,99 +445,10 @@ class WarlockSimApp
             const float pane2_w = 830.0f;
             const float pane_height = full_height - 35.0f;
 
-            // Pane 1: Stats & Race
+            // Pane 1: Gear & Direct Stats
             ImGui::BeginChild("PriestPane_Stats", ImVec2(pane1_w, pane_height), true);
-            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Priest Character & Stats");
-            ImGui::Separator();
-
-            // Race selection
-            const char* race_names[] = { "Human", "Dwarf", "Night Elf", "Undead", "Troll" };
-            const Race race_values[] = { Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::UNDEAD, Race::TROLL };
-            int cur_race_idx = 0;
-            for (int r = 0; r < 5; ++r) {
-                if (priest_sim.race == race_values[r]) { cur_race_idx = r; break; }
-            }
-            if (ImGui::Combo("Race", &cur_race_idx, race_names, 5)) {
-                priest_sim.race = race_values[cur_race_idx];
-                priest_sim.base_attrs = get_base_attributes_for_race(priest_sim.race);
-            }
-
-            ImGui::Spacing();
-            ImGui::Text("Stat Presets:");
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Pre-Raid##Priest")) {
-                priest_sim.raw_stats = Stats();
-                priest_sim.raw_stats.spell_power = 300.0;
-                priest_sim.raw_stats.shadow_power = 80.0;
-                priest_sim.raw_stats.spell_hit_percent = 3.0;
-                priest_sim.raw_stats.spell_crit_percent = 5.0;
-                priest_sim.raw_stats.intellect = 140.0;
-                priest_sim.raw_stats.spirit = 180.0;
-                priest_sim.raw_stats.stamina = 120.0;
-                priest_sim.raw_stats.mp5 = 15.0;
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Phase 3/4##Priest")) {
-                priest_sim.raw_stats = Stats();
-                priest_sim.raw_stats.spell_power = 500.0;
-                priest_sim.raw_stats.shadow_power = 120.0;
-                priest_sim.raw_stats.spell_hit_percent = 6.0;
-                priest_sim.raw_stats.spell_crit_percent = 10.0;
-                priest_sim.raw_stats.intellect = 180.0;
-                priest_sim.raw_stats.spirit = 240.0;
-                priest_sim.raw_stats.stamina = 150.0;
-                priest_sim.raw_stats.mp5 = 30.0;
-            }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Phase 6 BiS##Priest")) {
-                priest_sim.raw_stats = Stats();
-                priest_sim.raw_stats.spell_power = 750.0;
-                priest_sim.raw_stats.shadow_power = 150.0;
-                priest_sim.raw_stats.spell_hit_percent = 16.0;
-                priest_sim.raw_stats.spell_crit_percent = 16.0;
-                priest_sim.raw_stats.spell_haste_percent = 6.0;
-                priest_sim.raw_stats.intellect = 220.0;
-                priest_sim.raw_stats.spirit = 300.0;
-                priest_sim.raw_stats.stamina = 180.0;
-                priest_sim.raw_stats.mp5 = 45.0;
-            }
-
-            ImGui::Separator();
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Spell Power##PRaw", &priest_sim.raw_stats.spell_power, 10.0, 50.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Shadow Power##PRaw", &priest_sim.raw_stats.shadow_power, 10.0, 50.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Holy Power##PRaw", &priest_sim.raw_stats.holy_power, 10.0, 50.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Spell Hit %##PRaw", &priest_sim.raw_stats.spell_hit_percent, 1.0, 2.0, "%.1f%%");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Spell Crit %##PRaw", &priest_sim.raw_stats.spell_crit_percent, 1.0, 2.0, "%.1f%%");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Spell Haste %##PRaw", &priest_sim.raw_stats.spell_haste_percent, 1.0, 2.0, "%.1f%%");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("MP5##PRaw", &priest_sim.raw_stats.mp5, 5.0, 10.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Intellect##PRaw", &priest_sim.raw_stats.intellect, 10.0, 25.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Stamina##PRaw", &priest_sim.raw_stats.stamina, 10.0, 25.0, "%.0f");
-            ImGui::SetNextItemWidth(100);
-            ImGui::InputDouble("Spirit##PRaw", &priest_sim.raw_stats.spirit, 10.0, 25.0, "%.0f");
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Priest Combat Stats Summary:");
-            ImGui::Text("Shadow SP: %.0f", priest_stats.effective_shadow_power());
-            ImGui::Text("Holy SP: %.0f", priest_stats.effective_holy_power());
-            ImGui::Text("Spell Hit: %.1f%% (Cap: 16%%)", priest_stats.spell_hit_percent);
-            ImGui::Text("Spell Crit: %.2f%%", priest_stats.total_spell_crit(priest_sim.base_attrs.base_spell_crit));
-            ImGui::Text("Max Mana: %.0f", priest_stats.max_mana);
-            ImGui::Text("Max Health: %.0f", priest_stats.max_health);
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "5-Second Rule Mana Regeneration:");
-            ImGui::Text("Outside 5SR: %.1f mps (%.0f / 5s)", outside_5sr + mp5_mps, (outside_5sr + mp5_mps) * 5.0);
-            ImGui::Text("Inside 5SR (Meditation): %.1f mps (%.0f / 5s)", inside_5sr + mp5_mps, (inside_5sr + mp5_mps) * 5.0);
-            ImGui::Text("MP5 Contribution: %.1f mps", mp5_mps);
+            render_armory_panel(
+                priest_sim, priest_stats, priest_sim.base_attrs, priest_character_name, priest_model_idx, priest_build_copied_timer, sim::PlayerClass::PRIEST);
             ImGui::EndChild();
 
             ImGui::SameLine();

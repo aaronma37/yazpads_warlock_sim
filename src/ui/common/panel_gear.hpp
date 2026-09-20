@@ -6,6 +6,8 @@
 #include "src/sim/gear.hpp"
 #include "src/sim/stats.hpp"
 #include "src/sim/warlock_sim.hpp"
+#include "src/sim/common/mana_regen.hpp"
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -138,12 +140,14 @@ inline void render_gear_dropdown_table(GearLoadout& gear)
   }
 }
 
-inline void render_armory_panel(WarlockSimulator& sim,
+template <typename SimType>
+inline void render_armory_panel(SimType& sim,
                                 const Stats& total_stats,
                                 const BaseAttributes& base_attrs,
                                 std::string& character_name,
                                 int& selected_model_idx,
-                                float& build_copied_timer)
+                                float& build_copied_timer,
+                                sim::PlayerClass player_class = sim::PlayerClass::WARLOCK)
 {
   GearLoadout& gear = sim.gear;
 
@@ -154,12 +158,30 @@ inline void render_armory_panel(WarlockSimulator& sim,
   ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "Race:");
   ImGui::SameLine();
 
-  const char* race_names[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
-  int current_race_idx = static_cast<int>(sim.race);
-  ImGui::SetNextItemWidth(140);
-  if (ImGui::Combo("##RaceSelectCombo", &current_race_idx, race_names, IM_ARRAYSIZE(race_names)))
+  const char* warlock_races[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
+  const Race warlock_race_vals[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};
+
+  const char* priest_races[] = {"Human", "Dwarf", "Night Elf", "Undead", "Troll"};
+  const Race priest_race_vals[] = {Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::UNDEAD, Race::TROLL};
+
+  const char** race_names = (player_class == sim::PlayerClass::PRIEST) ? priest_races : warlock_races;
+  const Race* race_vals = (player_class == sim::PlayerClass::PRIEST) ? priest_race_vals : warlock_race_vals;
+  int num_races = 5;
+
+  int current_race_idx = 0;
+  for (int i = 0; i < num_races; ++i)
   {
-    sim.race = static_cast<Race>(current_race_idx);
+    if (sim.race == race_vals[i])
+    {
+      current_race_idx = i;
+      break;
+    }
+  }
+
+  ImGui::SetNextItemWidth(140);
+  if (ImGui::Combo("##RaceSelectCombo", &current_race_idx, race_names, num_races))
+  {
+    sim.race = race_vals[current_race_idx];
     selected_model_idx = current_race_idx;
     sim.base_attrs = get_base_attributes_for_race(sim.race);
   }
@@ -278,35 +300,78 @@ inline void render_armory_panel(WarlockSimulator& sim,
     if (ImGui::SmallButton("Pre-Raid"))
     {
       sim.raw_stats = Stats();
-      sim.raw_stats.spell_power = 320.0;
-      sim.raw_stats.spell_hit_percent = 3.0;
-      sim.raw_stats.spell_crit_percent = 4.0;
-      sim.raw_stats.intellect = 110.0;
-      sim.raw_stats.stamina = 130.0;
-      sim.raw_stats.spirit = 50.0;
+      if (player_class == sim::PlayerClass::PRIEST)
+      {
+        sim.raw_stats.spell_power = 300.0;
+        sim.raw_stats.shadow_power = 80.0;
+        sim.raw_stats.spell_hit_percent = 3.0;
+        sim.raw_stats.spell_crit_percent = 5.0;
+        sim.raw_stats.intellect = 140.0;
+        sim.raw_stats.spirit = 180.0;
+        sim.raw_stats.stamina = 120.0;
+        sim.raw_stats.mp5 = 15.0;
+      }
+      else
+      {
+        sim.raw_stats.spell_power = 320.0;
+        sim.raw_stats.spell_hit_percent = 3.0;
+        sim.raw_stats.spell_crit_percent = 4.0;
+        sim.raw_stats.intellect = 110.0;
+        sim.raw_stats.stamina = 130.0;
+        sim.raw_stats.spirit = 50.0;
+      }
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Phase 3/4"))
     {
       sim.raw_stats = Stats();
-      sim.raw_stats.spell_power = 520.0;
-      sim.raw_stats.spell_hit_percent = 8.0;
-      sim.raw_stats.spell_crit_percent = 10.0;
-      sim.raw_stats.intellect = 140.0;
-      sim.raw_stats.stamina = 160.0;
-      sim.raw_stats.spirit = 60.0;
+      if (player_class == sim::PlayerClass::PRIEST)
+      {
+        sim.raw_stats.spell_power = 500.0;
+        sim.raw_stats.shadow_power = 120.0;
+        sim.raw_stats.spell_hit_percent = 6.0;
+        sim.raw_stats.spell_crit_percent = 10.0;
+        sim.raw_stats.intellect = 180.0;
+        sim.raw_stats.spirit = 240.0;
+        sim.raw_stats.stamina = 150.0;
+        sim.raw_stats.mp5 = 30.0;
+      }
+      else
+      {
+        sim.raw_stats.spell_power = 520.0;
+        sim.raw_stats.spell_hit_percent = 8.0;
+        sim.raw_stats.spell_crit_percent = 10.0;
+        sim.raw_stats.intellect = 140.0;
+        sim.raw_stats.stamina = 160.0;
+        sim.raw_stats.spirit = 60.0;
+      }
     }
     ImGui::SameLine();
     if (ImGui::SmallButton("Phase 6 BiS"))
     {
       sim.raw_stats = Stats();
-      sim.raw_stats.spell_power = 780.0;
-      sim.raw_stats.spell_hit_percent = 16.0;
-      sim.raw_stats.spell_crit_percent = 18.0;
-      sim.raw_stats.spell_haste_percent = 8.0;
-      sim.raw_stats.intellect = 180.0;
-      sim.raw_stats.stamina = 200.0;
-      sim.raw_stats.spirit = 75.0;
+      if (player_class == sim::PlayerClass::PRIEST)
+      {
+        sim.raw_stats.spell_power = 750.0;
+        sim.raw_stats.shadow_power = 150.0;
+        sim.raw_stats.spell_hit_percent = 16.0;
+        sim.raw_stats.spell_crit_percent = 16.0;
+        sim.raw_stats.spell_haste_percent = 6.0;
+        sim.raw_stats.intellect = 220.0;
+        sim.raw_stats.spirit = 300.0;
+        sim.raw_stats.stamina = 180.0;
+        sim.raw_stats.mp5 = 45.0;
+      }
+      else
+      {
+        sim.raw_stats.spell_power = 780.0;
+        sim.raw_stats.spell_hit_percent = 16.0;
+        sim.raw_stats.spell_crit_percent = 18.0;
+        sim.raw_stats.spell_haste_percent = 8.0;
+        sim.raw_stats.intellect = 180.0;
+        sim.raw_stats.stamina = 200.0;
+        sim.raw_stats.spirit = 75.0;
+      }
     }
 
     if (ImGui::Button("Import From Gear", ImVec2(130, 22)))
@@ -324,8 +389,16 @@ inline void render_armory_panel(WarlockSimulator& sim,
     ImGui::InputDouble("Spell Power##Raw", &sim.raw_stats.spell_power, 10.0, 50.0, "%.0f");
     ImGui::SetNextItemWidth(100);
     ImGui::InputDouble("Shadow Power##Raw", &sim.raw_stats.shadow_power, 10.0, 50.0, "%.0f");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Fire Power##Raw", &sim.raw_stats.fire_power, 10.0, 50.0, "%.0f");
+    if (player_class == sim::PlayerClass::PRIEST)
+    {
+      ImGui::SetNextItemWidth(100);
+      ImGui::InputDouble("Holy Power##Raw", &sim.raw_stats.holy_power, 10.0, 50.0, "%.0f");
+    }
+    else
+    {
+      ImGui::SetNextItemWidth(100);
+      ImGui::InputDouble("Fire Power##Raw", &sim.raw_stats.fire_power, 10.0, 50.0, "%.0f");
+    }
     ImGui::SetNextItemWidth(100);
     ImGui::InputDouble("Spell Hit %##Raw", &sim.raw_stats.spell_hit_percent, 1.0, 2.0, "%.1f%%");
     ImGui::SetNextItemWidth(100);
@@ -348,7 +421,14 @@ inline void render_armory_panel(WarlockSimulator& sim,
   ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Combat Stats Summary:");
 
   ImGui::Text("Shadow SP: %.0f", total_stats.effective_shadow_power());
-  ImGui::Text("Fire SP: %.0f", total_stats.effective_fire_power());
+  if (player_class == sim::PlayerClass::PRIEST)
+  {
+    ImGui::Text("Holy SP: %.0f", total_stats.effective_holy_power());
+  }
+  else
+  {
+    ImGui::Text("Fire SP: %.0f", total_stats.effective_fire_power());
+  }
   ImGui::Text("Spell Hit: %.1f%% (Cap: 16%%)", total_stats.spell_hit_percent);
   ImGui::Text("Spell Crit: %.2f%%", total_stats.total_spell_crit(base_attrs.base_spell_crit));
   ImGui::Text("Max Mana: %.0f", total_stats.max_mana);
@@ -358,7 +438,31 @@ inline void render_armory_panel(WarlockSimulator& sim,
   ImGui::Text("Stamina: %.0f", total_stats.stamina);
   ImGui::Text("Spirit: %.0f", total_stats.spirit);
   ImGui::Text("Shadow Mult: %.3fx", total_stats.shadow_multiplier * total_stats.all_damage_multiplier);
-  ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
+  if (player_class == sim::PlayerClass::PRIEST)
+  {
+    ImGui::Text("Holy Mult: %.3fx", total_stats.holy_multiplier * total_stats.all_damage_multiplier);
+
+    // 5SR Mana Regen breakdown for Priest
+    double spirit_tick = sim::ManaRegenCalculator::calculate_spirit_regen_per_tick(
+        total_stats.intellect, total_stats.spirit, sim::PlayerClass::PRIEST);
+    double outside_5sr = spirit_tick / 2.0;
+    double med_ratio = 0.15;
+    if constexpr (requires { sim.mechanics.meditation_casting_regen_ratio; }) {
+      med_ratio = sim.mechanics.meditation_casting_regen_ratio;
+    }
+    double inside_5sr = (spirit_tick * med_ratio) / 2.0;
+    double mp5_mps = total_stats.mp5 / 5.0;
+
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "5-Second Rule Mana Regeneration:");
+    ImGui::Text("Outside 5SR: %.1f mps (%.0f / 5s)", outside_5sr + mp5_mps, (outside_5sr + mp5_mps) * 5.0);
+    ImGui::Text("Inside 5SR (Meditation): %.1f mps (%.0f / 5s)", inside_5sr + mp5_mps, (inside_5sr + mp5_mps) * 5.0);
+    ImGui::Text("MP5 Contribution: %.1f mps", mp5_mps);
+  }
+  else
+  {
+    ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
+  }
 
   ImGui::Spacing();
   ImGui::Separator();
@@ -367,8 +471,23 @@ inline void render_armory_panel(WarlockSimulator& sim,
   float avail_btn_w = ImGui::GetContentRegionAvail().x;
   if (ImGui::Button("Copy Build to Clipboard", ImVec2(avail_btn_w, 26)))
   {
-    ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
-    build_copied_timer = 3.0f;
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+    {
+      ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
+      build_copied_timer = 3.0f;
+    }
+    else
+    {
+      std::ostringstream json;
+      json << "{\n";
+      json << "  \"format\": \"priest-build/1\",\n";
+      json << "  \"race\": \"" << race_to_string(sim.race) << "\",\n";
+      json << "  \"fight_duration\": " << sim.fight_duration << ",\n";
+      json << "  \"stats_mode\": \"" << (sim.use_raw_stats ? "raw" : "gear") << "\"\n";
+      json << "}\n";
+      ImGui::SetClipboardText(json.str().c_str());
+      build_copied_timer = 3.0f;
+    }
   }
   if (build_copied_timer > 0.0f)
   {
