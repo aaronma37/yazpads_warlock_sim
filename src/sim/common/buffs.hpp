@@ -2,7 +2,7 @@
 #include <string>
 #include "stats.hpp"
 
-namespace warlock {
+namespace sim {
 
 struct BuffConfig {
     // Raid Buffs (Default Off)
@@ -127,4 +127,9 @@ struct BuffConfig {
     }
 };
 
-} // namespace warlock
+} // namespace sim
+
+namespace warlock {
+    using sim::BuffConfig;
+}
+

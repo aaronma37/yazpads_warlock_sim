@@ -20,9 +20,11 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/common
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/warlock
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/priest
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/common
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/warlock
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/priest
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/implot
@@ -35,6 +37,8 @@ set(SIM_SOURCES
     src/sim/warlock/parallel_runner.cpp
     src/sim/warlock/optimizer.cpp
     src/sim/warlock/genetic_optimizer.cpp
+    src/sim/priest/priest_sim.cpp
+    src/sim/priest/parallel_runner.cpp
 )
 
 set(UI_SOURCES
@@ -83,6 +87,7 @@ set(TEST_SOURCES
     tests/test_build_export.cpp
     tests/test_genetic_optimizer.cpp
     tests/test_mana_regen.cpp
+    tests/test_priest_sim.cpp
 )
 
 add_executable(sim_tests

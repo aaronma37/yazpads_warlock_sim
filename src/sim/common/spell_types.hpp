@@ -87,14 +87,3 @@ inline double spell_avg_hit(const BatchSpellStats& s) {
 }
 
 } // namespace sim
-
-namespace warlock {
-    using sim::School;
-    using sim::school_to_string;
-    using sim::SpellDefinition;
-    using sim::SpellCombatStats;
-    using sim::BatchSpellStats;
-    using sim::spell_crit_pct;
-    using sim::spell_miss_pct;
-    using sim::spell_avg_hit;
-}

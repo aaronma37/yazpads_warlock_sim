@@ -6,7 +6,7 @@
 #include <array>
 #include <cassert>
 
-namespace warlock {
+namespace sim {
 
 enum class EventType : uint8_t {
     NONE = 0,
@@ -201,4 +201,13 @@ public:
     }
 };
 
-} // namespace warlock
+} // namespace sim
+
+namespace warlock {
+    using sim::EventType;
+    using sim::event_type_to_string;
+    using sim::Event;
+    using sim::FastEventQueue;
+    using sim::FastRNG;
+}
+

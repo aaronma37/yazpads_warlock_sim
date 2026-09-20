@@ -5,7 +5,7 @@
 #include <memory>
 #include "stats.hpp"
 
-namespace warlock {
+namespace sim {
 
 enum class Slot : uint8_t {
     HEAD = 0,
@@ -208,4 +208,15 @@ struct GearLoadout {
     static GearLoadout create_phase6_bis(); // Naxxramas BiS
 };
 
-} // namespace warlock
+} // namespace sim
+
+namespace warlock {
+    using sim::Slot;
+    using sim::slot_to_name;
+    using sim::ItemQuality;
+    using sim::Item;
+    using sim::get_default_slot_icon;
+    using sim::ItemDatabase;
+    using sim::GearLoadout;
+}
+

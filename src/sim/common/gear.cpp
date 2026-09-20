@@ -1,7 +1,7 @@
 #include "gear.hpp"
 #include <unordered_map>
 
-namespace warlock {
+namespace sim {
 
 const std::vector<Item>& ItemDatabase::all_items() {
     static const std::vector<Item> db = {
@@ -226,4 +226,4 @@ GearLoadout GearLoadout::create_phase6_bis() {
     return g;
 }
 
-} // namespace warlock
+} // namespace sim

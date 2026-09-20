@@ -6,9 +6,7 @@
 
 namespace warlock {
 
-inline void render_panel_buffs(WarlockSimulator& sim) {
-    BuffConfig& buffs = sim.buffs;
-
+inline void render_panel_buffs(BuffConfig& buffs) {
     // 1. Consumables (Default Collapsed)
     if (ImGui::CollapsingHeader("Consumables & Elixirs", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent(8.0f);
@@ -61,6 +59,11 @@ inline void render_panel_buffs(WarlockSimulator& sim) {
         ImGui::Checkbox("Nightfall 2H Axe Proc (+15% Spell Damage Taken)", &buffs.nightfall_axe);
         ImGui::Unindent(8.0f);
     }
+}
+
+inline void render_panel_buffs(WarlockSimulator& sim) {
+    BuffConfig& buffs = sim.buffs;
+    render_panel_buffs(buffs);
 
     // 5. Active Demon Pet (collapsible one-of checkboxes above Demonic Sacrifice)
     if (ImGui::CollapsingHeader("Active Demon Pet", ImGuiTreeNodeFlags_None)) {
