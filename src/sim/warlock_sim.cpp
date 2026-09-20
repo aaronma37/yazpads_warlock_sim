@@ -756,6 +756,26 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     break;
                 }
 
+                case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: {
+                    if (talents.demo.demonic_brand > 0 && (demonic_brand_charges == 0 || now >= demonic_brand_expire)) {
+                        double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
+                        if (player_mana >= sp_mana) {
+                            double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
+                            is_casting = true;
+                            current_casting_spell = SpellID::SEARING_PAIN;
+                            cast_finish_time = now + cast_time;
+                            queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SEARING_PAIN));
+                            gcd_ready_time = now + mechanics.base_gcd;
+                            queue.push(gcd_ready_time, EventType::GCD_READY);
+                            if (record_timeline) {
+                                result.cast_sequence.push_back({now, SpellID::SEARING_PAIN, 0.0, false, false, cast_time, "Demonic Brand"});
+                            }
+                            return;
+                        }
+                    }
+                    break;
+                }
+
                 case PriorityAction::DECIMATION_SOUL_FIRE: {
                     if (execute_phase && talents.demo.decimation > 0 && now < decimation_buff_expire && now >= soul_fire_cd_ready) {
                         double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
@@ -1841,15 +1861,22 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         int tick_index = 12 - cur_agony.ticks_remaining;
                         double ramp = (tick_index <= 4) ? 0.50 : (tick_index <= 8 ? 1.0 : 1.50);
 
-                        double base_tick = cur_agony.tick_damage;
-                        if (!mechanics.snapshot_dots) {
-                            double sp = get_current_sp(School::SHADOW, current_time);
-                            base_tick = (552.0 / 12.0) + (sp * 1.596 / 12.0);
+                        double base_tick_portion = (552.0 / 12.0);
+                        if (cur_agony.amplified) {
+                            base_tick_portion *= 1.50;
                         }
+                        double sp_tick_portion = 0.0;
+                        if (mechanics.snapshot_dots) {
+                            // cur_agony.tick_damage stored (552.0 / 12.0) + (sp * 1.596 / 12.0)
+                            sp_tick_portion = cur_agony.tick_damage - (552.0 / 12.0);
+                        } else {
+                            double sp = get_current_sp(School::SHADOW, current_time);
+                            sp_tick_portion = (sp * 1.596 / 12.0);
+                        }
+                        double total_tick_before_ramp = base_tick_portion + sp_tick_portion;
 
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                        double amp_mult = cur_agony.amplified ? 1.50 : 1.0;
-                        double dmg = base_tick * ramp * amp_mult * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                        double dmg = total_tick_before_ramp * ramp * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));

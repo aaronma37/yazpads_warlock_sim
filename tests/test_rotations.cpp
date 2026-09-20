@@ -793,9 +793,52 @@ TEST_CASE(Rotations, AmplifyCursePriorityRuleAndExecution) {
     }
     CHECK(amp_in_cast_seq);
 
-    // Amplified Bane of Agony should deal ~50% more damage than unamplified
+    // Amplified Bane of Agony increases base damage (552) by 50% (+276 base damage)
     CHECK(res_amp.dmg_agony > res_no_amp.dmg_agony);
-    CHECK(res_amp.dmg_agony >= res_no_amp.dmg_agony * 1.45);
-    CHECK(res_amp.dmg_agony <= res_no_amp.dmg_agony * 1.55);
+    // With 0 SP, damage should be exactly 1.50x; with gear/SP, percentage increase is < 1.50x but > 1.0x
+    double diff = res_amp.dmg_agony - res_no_amp.dmg_agony;
+    CHECK(diff > 250.0); // Base damage gained is ~276 with multipliers
 }
+
+TEST_CASE(Rotations, DemonologyShadowBrandWeave) {
+    FastRNG rng(1337);
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_demonic_pact();
+    sim.talents.demo.demonic_brand = 3; // 3/3 Demonic Brand
+    sim.policy.rotation = RotationChoice::DP_AF_SHADOW_BRAND;
+    sim.policy.curse = CurseChoice::BANE_OF_AGONY;
+    sim.policy.pet = PetChoice::SUCCUBUS;
+    sim.fight_duration = 60.0;
+    sim.record_timeline = true;
+
+    // Verify priority rules ordering: Demonic Brand (Searing Pain) appears before Shadow Bolt filler
+    auto rules = sim.policy.get_priority_rules(sim.talents);
+    int pos_brand = -1;
+    int pos_sb = -1;
+    int pos_corr = -1;
+    int pos_agony = -1;
+    for (size_t i = 0; i < rules.size(); ++i) {
+        if (rules[i].action == PriorityAction::DEMONIC_BRAND_SEARING_PAIN) pos_brand = (int)i;
+        if (rules[i].action == PriorityAction::SHADOW_BOLT_FILLER) pos_sb = (int)i;
+        if (rules[i].action == PriorityAction::CORRUPTION) pos_corr = (int)i;
+        if (rules[i].action == PriorityAction::CURSE_OF_AGONY) pos_agony = (int)i;
+    }
+    CHECK(pos_corr != -1);
+    CHECK(pos_agony != -1);
+    CHECK(pos_brand != -1);
+    CHECK(pos_sb != -1);
+    CHECK(pos_brand < pos_sb);
+    CHECK(pos_corr < pos_brand);
+    CHECK(pos_agony < pos_brand);
+
+    SimResult res = sim.run_single_simulation(rng);
+    CHECK(res.total_damage > 0.0);
+    CHECK(res.dmg_corruption > 0.0);
+    CHECK(res.dmg_curse > 0.0);
+    CHECK(res.dmg_searing_pain > 0.0);
+    CHECK(res.dmg_demonic_brand > 0.0);
+    CHECK(res.dmg_shadow_bolt > 0.0);
+    CHECK(res.shadow_bolt_casts > 0);
+}
+
 

@@ -968,8 +968,39 @@ struct Talents {
         return t;
     }
 
+    // 9. 12/31/8 Aff/DP Brand (12 Aff / 31 Demo / 8 Destro with Demonic Brand)
+    static Talents create_forever_aff_dp_brand() {
+        Talents t;
+        // Affliction: 12 points
+        t.aff.improved_life_tap = 2;
+        t.aff.suppression = 5;
+        t.aff.improved_corruption = 3;
+        t.aff.malediction = 1;
+        t.aff.amplify_curse = 1;
+
+        // Demonology: 31 points
+        t.demo.improved_imp = 2;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.improved_sayaad = 3;
+        t.demo.demonic_sacrifice = 1;
+        t.demo.master_summoner = 2;
+        t.demo.decimation = 2;
+        t.demo.demonic_brand = 3;
+        t.demo.soul_link = 1;
+        t.demo.demonic_knowledge = 3;
+        t.demo.master_demonologist = 5;
+        t.demo.demonic_pact = 1;
+
+        // Destruction: 8 points
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        return t;
+    }
+
     // Compatibility aliases and standard methods
     static Talents create_aff_dp() { return create_forever_aff_dp(); }
+    static Talents create_aff_dp_brand() { return create_forever_aff_dp_brand(); }
     static Talents create_forever_ds_af() { return create_forever_shadow_destro(); }
     static Talents create_forever_dp_af_shadow() { return create_forever_demonic_pact(); }
     static Talents create_forever_dp_af_fire() { return create_forever_demonic_pact_fire(); }

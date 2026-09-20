@@ -69,6 +69,12 @@ inline void render_priority_chain_subpane(const std::vector<PriorityRule>& rules
         bg_col = IM_COL32(89, 64, 20, 240);
         border_col = IM_COL32(255, 204, 51, 230);
       }
+      else if (rule.action == PriorityAction::DECIMATION_SEARING_PAIN ||
+               rule.action == PriorityAction::DEMONIC_BRAND_SEARING_PAIN)
+      {
+        bg_col = IM_COL32(90, 45, 65, 240);
+        border_col = IM_COL32(230, 90, 150, 230);
+      }
       else if (rule.action == PriorityAction::CONFLAGRATE || rule.action == PriorityAction::INCINERATE_FILLER)
       {
         bg_col = IM_COL32(82, 46, 25, 240);
@@ -174,6 +180,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
       "Deep Affliction - Wrack (SB Filler)",                          // 16 DEEP_AFFLICTION_SB
       "Deep Affliction - Wrack (SB Filler, No Siphon Life)",          // 17 DEEP_AFFLICTION_SB_NO_SL
       "Shadow & Flame Fire - Incinerate + Conflag + Bane",            // 18 SHADOW_AND_FLAME_FIRE_BANE
+      "Demonology Shadow - Demonic Brand Weave",                      // 19 DP_AF_SHADOW_BRAND
   };
   ImGui::SetNextItemWidth(450);
   if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names)))

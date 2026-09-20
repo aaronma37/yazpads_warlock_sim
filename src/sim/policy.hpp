@@ -172,6 +172,7 @@ enum class RotationChoice : uint8_t
                                // Nightfall + SB filler
   SHADOW_AND_FLAME_FIRE_BANE,  // Shadow & Flame Fire (with Bane): Immolate + Conflag + Corruption + Bane of Doom/Agony
                                // + SBurn + Incinerate
+  DP_AF_SHADOW_BRAND,          // Demonology Shadow (Demonic Brand): Corruption + Bane + Searing Pain (Demonic Brand weave) + SB filler
 
   // Backward compatibility aliases
   SHADOW_BOLT_PRIMARY = SHADOW_DESTRO,
@@ -220,6 +221,8 @@ inline const char* rotation_choice_to_string(RotationChoice r)
       return "Deep Affliction - Wrack (SB Filler, No Siphon Life)";
     case RotationChoice::SHADOW_AND_FLAME_FIRE_BANE:
       return "Shadow & Flame Fire - Incinerate + Conflag + Bane";
+    case RotationChoice::DP_AF_SHADOW_BRAND:
+      return "Demonology Shadow - Corruption + Bane + Demonic Brand + SB";
     default:
       return "Shadow Destro";
   }
@@ -295,6 +298,10 @@ inline const char* rotation_choice_description(RotationChoice r)
       return "Demonology Shadow variant without Bane of Agony or Soul Fire execute. Maintains only Corruption and "
              "spams Shadow Bolt as filler - a pure single-DoT Shadow Bolt spam for highly constrained debuff "
              "environments.";
+    case RotationChoice::DP_AF_SHADOW_BRAND:
+      return "Demonology Shadow Demonic Brand variant: Maintains Corruption and Bane of Agony (CoA), casts Searing "
+             "Pain whenever the Demonic Brand buff/charges are down to brand the target for pet bonus damage, and "
+             "spams Shadow Bolt as filler.";
     default:
       return "";
   }
@@ -313,6 +320,7 @@ enum class PriorityAction : uint8_t
   NIGHTFALL_SHADOW_BOLT,
   DECIMATION_SEARING_PAIN,
   DECIMATION_SOUL_FIRE,
+  DEMONIC_BRAND_SEARING_PAIN,
   CORRUPTION,
   SIPHON_LIFE,
   DRAIN_HOPE,
@@ -504,7 +512,7 @@ struct PolicyConfig
                "Amplify Curse",
                "CD Ready (180s) & Agony Cast",
                "Trigger when: Amplify Curse cooldown is ready (180s) and Bane of Agony is about to be cast.",
-               "Instant off-GCD ability. Increases the damage of your next Bane of Agony by 50%."});
+               "Instant off-GCD ability. Increases the base damage of your next Bane of Agony by 50%."});
         }
         rules.push_back({PriorityAction::CURSE_OF_AGONY,
                          SpellID::CURSE_OF_AGONY,
@@ -588,6 +596,20 @@ struct PolicyConfig
                              ? "Trigger when: Shadowburn cooldown is ready (8s)."
                              : "Trigger when: Target HP < 20% AND Shadowburn cooldown is ready (8s).",
                          "Instant Shadow burst damage. Consumes ISB charges and triggers Destruction crit bonuses."});
+      }
+    };
+
+    auto add_demonic_brand = [&]()
+    {
+      if (talents.demo.demonic_brand > 0)
+      {
+        rules.push_back({PriorityAction::DEMONIC_BRAND_SEARING_PAIN,
+                         SpellID::SEARING_PAIN,
+                         "Demonic Brand (Searing Pain)",
+                         "Demonic Brand Down / Expired",
+                         "Trigger when: Target is not branded by Demonic Brand (or charges depleted), casting Searing "
+                         "Pain to brand the target for pet bonus damage.",
+                         "Maintains Demonic Brand debuff to empower pet attacks with high-threat bonus Fire/Shadow damage."});
       }
     };
 
@@ -862,6 +884,16 @@ struct PolicyConfig
         // Corruption only + SB filler; no Bane of Agony, no Soul Fire execute
         add_racial();
         add_corruption();
+        add_sb_filler();
+        break;
+
+      case RotationChoice::DP_AF_SHADOW_BRAND:
+        // Demonic Brand weave variant: maintains Corruption and Bane, weaves Searing Pain when Demonic Brand is down, spams Shadow Bolt
+        add_racial();
+        add_decimation(false);
+        add_corruption();
+        add_agony();
+        add_demonic_brand();
         add_sb_filler();
         break;
     }

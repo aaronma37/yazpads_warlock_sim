@@ -210,7 +210,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       {
         ga_forced_rotation = -1;
       }
-      for (int r = 0; r <= static_cast<int>(RotationChoice::SHADOW_AND_FLAME_FIRE_BANE); ++r)
+      for (int r = 0; r <= static_cast<int>(RotationChoice::DP_AF_SHADOW_BRAND); ++r)
       {
         RotationChoice rc = static_cast<RotationChoice>(r);
         const char* r_str = rotation_choice_to_string(rc);

@@ -5,7 +5,7 @@ using namespace warlock;
 
 TEST_CASE(SpecPresets, CountAndUniqueNames) {
     const auto& presets = standard_spec_presets();
-    CHECK_EQ(presets.size(), (size_t)20);
+    CHECK_EQ(presets.size(), (size_t)21);
     for (size_t i = 0; i < presets.size(); ++i) {
         CHECK(presets[i].display_name != nullptr && std::string(presets[i].display_name).size() > 0);
         CHECK(presets[i].short_label != nullptr && std::string(presets[i].short_label).size() > 0);
@@ -320,6 +320,51 @@ TEST_CASE(SpecPresets, AffDp) {
     WarlockSimulator sim;
     apply_spec_preset(sim, *p);
     CHECK(sim.policy.rotation == RotationChoice::DP_AF_SHADOW);
+    CHECK(sim.policy.pet == PetChoice::SUCCUBUS);
+    CHECK(sim.buffs.sacrifice_imp == true);
+    CHECK(sim.buffs.sacrifice_succubus == false);
+    CHECK(sim.policy.maintain_immolate == false);
+}
+
+TEST_CASE(SpecPresets, AffDpBrand) {
+    const SpecPreset* p = find_spec_preset("aff_dp_brand");
+    CHECK(p != nullptr);
+    CHECK(std::string(p->display_name) == "12/31/8 Aff/DP Brand");
+    CHECK(p->rotation == RotationChoice::DP_AF_SHADOW_BRAND);
+    CHECK(p->pet == PetChoice::SUCCUBUS);
+    CHECK(p->sac_succubus == false);
+    CHECK(p->sac_imp == true);
+    CHECK(p->maintain_immolate == false);
+
+    Talents t = p->make_talents();
+    CHECK_EQ(t.aff.total_points(), 12);
+    CHECK_EQ(t.demo.total_points(), 31);
+    CHECK_EQ(t.destro.total_points(), 8);
+    CHECK_EQ(t.total_points(), 51);
+    CHECK(t.is_valid());
+    CHECK_EQ(t.aff.improved_life_tap, 2);
+    CHECK_EQ(t.aff.suppression, 5);
+    CHECK_EQ(t.aff.improved_corruption, 3);
+    CHECK_EQ(t.aff.malediction, 1);
+    CHECK_EQ(t.aff.amplify_curse, 1);
+    CHECK_EQ(t.demo.improved_imp, 2);
+    CHECK_EQ(t.demo.unholy_power, 5);
+    CHECK_EQ(t.demo.fel_vitality, 3);
+    CHECK_EQ(t.demo.improved_sayaad, 3);
+    CHECK_EQ(t.demo.demonic_sacrifice, 1);
+    CHECK_EQ(t.demo.master_summoner, 2);
+    CHECK_EQ(t.demo.decimation, 2);
+    CHECK_EQ(t.demo.demonic_brand, 3);
+    CHECK_EQ(t.demo.soul_link, 1);
+    CHECK_EQ(t.demo.demonic_knowledge, 3);
+    CHECK_EQ(t.demo.master_demonologist, 5);
+    CHECK_EQ(t.demo.demonic_pact, 1);
+    CHECK_EQ(t.destro.bane, 5);
+    CHECK_EQ(t.destro.cataclysm, 3);
+
+    WarlockSimulator sim;
+    apply_spec_preset(sim, *p);
+    CHECK(sim.policy.rotation == RotationChoice::DP_AF_SHADOW_BRAND);
     CHECK(sim.policy.pet == PetChoice::SUCCUBUS);
     CHECK(sim.buffs.sacrifice_imp == true);
     CHECK(sim.buffs.sacrifice_succubus == false);

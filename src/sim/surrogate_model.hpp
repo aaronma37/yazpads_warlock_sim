@@ -73,7 +73,8 @@ public:
                             rotation == RotationChoice::AFFLICTION_HYBRID_DOTS);
         bool is_demo = (rotation == RotationChoice::DP_AF_SHADOW ||
                         rotation == RotationChoice::DP_AF_SHADOW_NO_CORRUPTION ||
-                        rotation == RotationChoice::DEMONOLOGY_EXECUTE);
+                        rotation == RotationChoice::DEMONOLOGY_EXECUTE ||
+                        rotation == RotationChoice::DP_AF_SHADOW_BRAND);
 
         x[idx++] = is_fire ? 1.0 : 0.0;
         x[idx++] = is_deep_aff ? 1.0 : 0.0;
