@@ -39,6 +39,8 @@
 #include "src/ui/priest/panel_mechanics.hpp"
 #include "src/ui/priest/panel_sim_control.hpp"
 #include "src/ui/priest/panel_results.hpp"
+#include "src/sim/priest/optimizer.hpp"
+#include "src/ui/priest/panel_optimizer.hpp"
 
 namespace warlock
 {
@@ -79,6 +81,12 @@ class WarlockSimApp
   int priest_iterations = 10000;
   bool is_priest_sim_running = false;
   float priest_sim_progress = 0.0f;
+
+  std::vector<priest::CandidateResult> priest_optimizer_results;
+  bool is_priest_optimizing = false;
+  float priest_opt_progress = 0.0f;
+  std::string priest_opt_task_name;
+  bool request_priest_switch_to_preset = false;
 
   WarlockSimApp()
   {
@@ -435,11 +443,28 @@ class WarlockSimApp
     priest_sim.buffs.apply_to_stats(
         priest_stats, priest_sim.base_attrs, true, priest_sim.mechanics.shadow_weaving_personal);
 
+    // If candidate configuration was applied from optimizer, refresh baseline
+    if (request_priest_switch_to_preset)
+    {
+      priest_last_result = priest::ParallelSimRunner::run_batch(priest_sim, 2500, thread_count);
+    }
+
     if (ImGui::BeginTabBar("PriestTopLayerTabs", ImGuiTabBarFlags_None))
     {
       // 1. Presets / Configuration
-      if (ImGui::BeginTabItem("  Presets  "))
+      ImGuiTabItemFlags preset_flags = 0;
+      if (request_priest_switch_to_preset)
       {
+        preset_flags |= ImGuiTabItemFlags_SetSelected;
+      }
+
+      if (ImGui::BeginTabItem("  Presets  ", nullptr, preset_flags))
+      {
+        if (request_priest_switch_to_preset)
+        {
+          request_priest_switch_to_preset = false;
+        }
+
         if (ImGui::BeginTabBar("PriestPresetSubTabs", ImGuiTabBarFlags_None))
         {
           // SubTab 1: Build Configuration
@@ -499,7 +524,16 @@ class WarlockSimApp
         ImGui::EndTabItem();
       }
 
-      // 2. Abilities (Spellbook)
+      // 2. Simulate (Optimizer)
+      if (ImGui::BeginTabItem("  Simulate  "))
+      {
+        ImGui::Spacing();
+        priest::render_priest_panel_optimizer(
+            priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset);
+        ImGui::EndTabItem();
+      }
+
+      // 3. Abilities (Spellbook)
       if (ImGui::BeginTabItem("  Abilities  "))
       {
         ImGui::Spacing();

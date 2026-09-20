@@ -4,6 +4,7 @@
 #include "src/sim/priest/talent_graph.hpp"
 #include "src/sim/priest/spells.hpp"
 #include "src/sim/priest/spec_presets.hpp"
+#include "src/sim/priest/optimizer.hpp"
 
 using namespace priest;
 
@@ -66,3 +67,38 @@ TEST_CASE(PriestSim, SmiteSimulation) {
     CHECK(res.dps > 100.0);
     CHECK(res.dmg_smite > 0.0);
 }
+
+TEST_CASE(PriestSim, OptimizerBenchmark) {
+    PriestSimulator sim;
+    sim.fight_duration = 30.0;
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_power = 400.0;
+    sim.raw_stats.shadow_power = 100.0;
+    sim.raw_stats.intellect = 200.0;
+    sim.raw_stats.spirit = 200.0;
+    sim.raw_stats.max_mana = 4500.0;
+
+    auto results = Optimizer::optimize_talents(sim, 20, nullptr, false);
+    CHECK_EQ(results.size(), (size_t)4);
+    CHECK_EQ(results[0].rank, 1);
+    CHECK(results[0].mean_dps >= results[1].mean_dps);
+    CHECK(results[0].mean_dps > 50.0);
+}
+
+TEST_CASE(PriestSim, OptimizerGeneticAI) {
+    PriestSimulator sim;
+    sim.fight_duration = 30.0;
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_power = 400.0;
+    sim.raw_stats.shadow_power = 100.0;
+    sim.raw_stats.intellect = 200.0;
+    sim.raw_stats.spirit = 200.0;
+    sim.raw_stats.max_mana = 4500.0;
+
+    auto results = Optimizer::optimize_genetic_ai(sim, 6, 2, 15, 25, true, false);
+    CHECK(!results.empty());
+    CHECK_EQ(results[0].rank, 1);
+    CHECK(results[0].mean_dps > 50.0);
+    CHECK_EQ(results[0].talents.total_points(), 51);
+}
+

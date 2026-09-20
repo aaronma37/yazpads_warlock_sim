@@ -2,16 +2,20 @@
 #include "imgui.h"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/warlock_sim.hpp"
+#include <thread>
+#include <algorithm>
 
 namespace warlock
 {
 
-inline void render_panel_sim_control(WarlockSimulator& sim,
-                                     int& iterations,
-                                     int& thread_count,
-                                     BatchSimResult& last_result,
-                                     bool& is_running,
-                                     float& progress)
+template <typename SimType, typename BatchResultType, typename RunnerType>
+inline void render_common_sim_control(SimType& sim,
+                                      int& iterations,
+                                      int& thread_count,
+                                      BatchResultType& last_result,
+                                      bool& is_running,
+                                      float& progress,
+                                      const char* button_text = ">>> RUN DES SIMULATION <<<")
 {
   // Big prominent RUN button
   ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.15f, 0.65f, 1.0f));
@@ -20,11 +24,11 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
 
   if (is_running)
     ImGui::BeginDisabled();
-  if (ImGui::Button(">>> RUN DES SIMULATION <<<", ImVec2(-1, 38)))
+  if (ImGui::Button(button_text, ImVec2(-1, 38)))
   {
     is_running = true;
     progress = 0.0f;
-    last_result = ParallelSimRunner::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+    last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
     is_running = false;
     progress = 1.0f;
   }
@@ -82,8 +86,8 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
   ImGui::SetNextItemWidth(180);
   if (ImGui::Combo("Target Type", &current_type_idx, creature_types, IM_ARRAYSIZE(creature_types)))
   {
-    sim.target_config.creature_type = static_cast<CreatureType>(current_type_idx);
-    sim.target_config.is_beast = (sim.target_config.creature_type == CreatureType::BEAST);
+    sim.target_config.creature_type = static_cast<sim::CreatureType>(current_type_idx);
+    sim.target_config.is_beast = (sim.target_config.creature_type == sim::CreatureType::BEAST);
   }
 
   ImGui::SliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
@@ -92,6 +96,17 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
   if (max_threads <= 0)
     max_threads = 4;
   ImGui::SliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
+}
+
+inline void render_panel_sim_control(WarlockSimulator& sim,
+                                     int& iterations,
+                                     int& thread_count,
+                                     BatchSimResult& last_result,
+                                     bool& is_running,
+                                     float& progress)
+{
+  render_common_sim_control<WarlockSimulator, BatchSimResult, ParallelSimRunner>(
+      sim, iterations, thread_count, last_result, is_running, progress, ">>> RUN DES SIMULATION <<<");
 }
 
 }  // namespace warlock

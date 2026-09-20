@@ -39,6 +39,7 @@ set(SIM_SOURCES
     src/sim/warlock/genetic_optimizer.cpp
     src/sim/priest/priest_sim.cpp
     src/sim/priest/parallel_runner.cpp
+    src/sim/priest/optimizer.cpp
 )
 
 set(UI_SOURCES
