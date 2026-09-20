@@ -153,7 +153,7 @@ inline void render_armory_panel(SimType& sim,
 
   // --- CHARACTER RACE SELECTION (SINGLE DROPDOWN) ---
   ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.10f, 0.16f, 0.90f));
-  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 80), true);
+  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 105), true);
 
   ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "Race:");
   ImGui::SameLine();
@@ -161,12 +161,12 @@ inline void render_armory_panel(SimType& sim,
   const char* warlock_races[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
   const Race warlock_race_vals[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};
 
-  const char* priest_races[] = {"Human", "Dwarf", "Night Elf", "Undead", "Troll"};
-  const Race priest_race_vals[] = {Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::UNDEAD, Race::TROLL};
+  const char* priest_races[] = {"Human", "Dwarf", "Night Elf", "Gnome", "Undead", "Troll"};
+  const Race priest_race_vals[] = {Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::GNOME, Race::UNDEAD, Race::TROLL};
 
   const char** race_names = (player_class == sim::PlayerClass::PRIEST) ? priest_races : warlock_races;
   const Race* race_vals = (player_class == sim::PlayerClass::PRIEST) ? priest_race_vals : warlock_race_vals;
-  int num_races = 5;
+  int num_races = (player_class == sim::PlayerClass::PRIEST) ? 6 : 5;
 
   int current_race_idx = 0;
   for (int i = 0; i < num_races; ++i)
@@ -183,38 +183,79 @@ inline void render_armory_panel(SimType& sim,
   {
     sim.race = race_vals[current_race_idx];
     selected_model_idx = current_race_idx;
-    sim.base_attrs = get_base_attributes_for_race(sim.race);
+    sim.base_attrs = sim::get_base_attributes_for_class_and_race(player_class, sim.race);
   }
 
-  switch (sim.race)
+  if (player_class == sim::PlayerClass::PRIEST)
   {
-    case Race::HUMAN:
-      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Sword Spec (+2%% Crit w/ Swords)");
-      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Spirit (+5%%)");
-      break;
-    case Race::GNOME:
-      ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana)");
-      ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Eureka! (-50%% Mana, +10%% Dmg 3 casts)");
-      break;
-    case Race::ORC:
-      ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.30f, 1.0f), "Blood Fury (+10%% SP for 15s)");
-      break;
-    case Race::UNDEAD:
-      ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f),
-                         "Touch of the Grave (10%% chance to drain up to 5%% Max HP)");
-      break;
-    case Race::TROLL:
-      ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
-      ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
-      break;
-    case Race::DWARF:
-      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
-      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Frost Resistance (+10)");
-      break;
-    case Race::NIGHT_ELF:
-      ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Quickness (+1%% Dodge)");
-      ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth)");
-      break;
+    switch (sim.race)
+    {
+      case Race::HUMAN:
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "The Human Spirit (+5%% Spirit)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Divine Grace (Emergency Heal <50%% HP)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Feedback (Anti-Magic Mana Burn & Dmg)");
+        break;
+      case Race::DWARF:
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Chastise (272-306 Holy Dmg, 2s Immobilize)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Desperate Prayer (Instant self-heal 1285-1513)");
+        break;
+      case Race::NIGHT_ELF:
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Starshards (1800 Arcane Dmg over 6s - 30s CD)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Elune's Grace (-50%% Attack Hit Chance 15s)");
+        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth) | Quickness (+1%% Dodge)");
+        break;
+      case Race::GNOME:
+        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Contingency Plan (Emergency Shield & Heal)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Confounding Flash (AoE Confuse 5 Enemies 3s)");
+        break;
+      case Race::UNDEAD:
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Dark Sacrifice (Cannibalize 1600 HP -> 1600 Mana)");
+        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Touch of the Grave (Drain up to 5%% Max HP)");
+        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Will of the Forsaken (Charm/Fear/Sleep Immune)");
+        break;
+      case Race::TROLL:
+        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
+        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Shadowguard (3 Charges: 96 Shadow Dmg Retaliation)");
+        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
+        break;
+      default:
+        break;
+    }
+  }
+  else
+  {
+    switch (sim.race)
+    {
+      case Race::HUMAN:
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Sword Spec (+2%% Crit w/ Swords)");
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Spirit (+5%%)");
+        break;
+      case Race::GNOME:
+        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana)");
+        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Eureka! (-50%% Mana, +10%% Dmg 3 casts)");
+        break;
+      case Race::ORC:
+        ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.30f, 1.0f), "Blood Fury (+10%% SP for 15s)");
+        break;
+      case Race::UNDEAD:
+        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f),
+                           "Touch of the Grave (10%% chance to drain up to 5%% Max HP)");
+        break;
+      case Race::TROLL:
+        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
+        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
+        break;
+      case Race::DWARF:
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
+        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Frost Resistance (+10)");
+        break;
+      case Race::NIGHT_ELF:
+        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Quickness (+1%% Dodge)");
+        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth)");
+        break;
+    }
   }
 
   ImGui::EndChild();

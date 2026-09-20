@@ -159,6 +159,13 @@ inline BaseAttributes get_base_attributes_for_class_and_race(PlayerClass c, Race
             b.spirit = 140.0;
             b.base_health = 1394.0;
             break;
+        case Race::GNOME:
+            b.stamina = 118.0;
+            b.intellect = 142.0;
+            b.spirit = 139.0;
+            b.base_mana = 1529.0; // +5% Mana from Expansive Mind
+            b.base_health = 1394.0;
+            break;
         case Race::UNDEAD:
             b.stamina = 120.0;
             b.intellect = 135.0;
