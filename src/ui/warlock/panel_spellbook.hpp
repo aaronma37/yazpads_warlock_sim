@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "src/sim/spells.hpp"
 #include "src/sim/talents.hpp"
+#include "src/ui/common/panel_spellbook.hpp"
 #include <string>
 #include <vector>
 
@@ -219,122 +220,23 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries()
 
 inline void render_panel_spellbook()
 {
-  ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Warlock Spellbook & Base Spell Data");
-
-  ImGui::Spacing();
-  ImGui::Separator();
-  ImGui::Spacing();
-
   static char search_filter[64] = "";
-  ImGui::SetNextItemWidth(300);
-  ImGui::InputTextWithHint(
-      "##SpellSearch", "Search Spells (e.g. Shadow Bolt, Fire)...", search_filter, sizeof(search_filter));
-  ImGui::SameLine();
-  if (ImGui::Button("Clear"))
+  static std::vector<CommonSpellBookEntry> common_entries;
+  if (common_entries.empty())
   {
-    search_filter[0] = '\0';
-  }
-
-  ImGui::Spacing();
-
-  const auto& entries = get_all_spellbook_entries();
-
-  ImGuiTableFlags flags =
-      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
-  if (ImGui::BeginTable("SpellbookTable", 8, flags, ImVec2(0, 0)))
-  {
-    ImGui::TableSetupColumn("Spell", ImGuiTableColumnFlags_WidthFixed, 180.0f);
-    ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 70.0f);
-    ImGui::TableSetupColumn("School", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-    ImGui::TableSetupColumn("Cast Time", ImGuiTableColumnFlags_WidthFixed, 105.0f);
-    ImGui::TableSetupColumn("Mana Cost", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-    ImGui::TableSetupColumn("Base Damage / Effect", ImGuiTableColumnFlags_WidthFixed, 260.0f);
-    ImGui::TableSetupColumn("SP Coefficient", ImGuiTableColumnFlags_WidthFixed, 115.0f);
-    ImGui::TableSetupColumn("Formula", ImGuiTableColumnFlags_WidthStretch);
-    ImGui::TableHeadersRow();
-
-    std::string query = search_filter;
-    std::transform(query.begin(), query.end(), query.begin(), ::tolower);
-
-    for (const auto& sp : entries)
+    for (const auto& e : get_all_spellbook_entries())
     {
-      std::string name_lower = sp.name;
-      std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
-      std::string school_lower = sp.school_str;
-      std::transform(school_lower.begin(), school_lower.end(), school_lower.begin(), ::tolower);
-
-      if (!query.empty() && name_lower.find(query) == std::string::npos &&
-          school_lower.find(query) == std::string::npos)
-      {
-        continue;
-      }
-
-      ImGui::TableNextRow();
-
-      // Col 0: Icon + Name
-      ImGui::TableSetColumnIndex(0);
-      Texture2D icon = AssetManager::get().get_icon(sp.icon_name);
-      ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(20, 20));
-      ImGui::SameLine(0, 6);
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(1.0f, 0.95f, 0.70f, 1.0f), "%s", sp.name.c_str());
-
-      // Col 1: Rank
-      ImGui::TableSetColumnIndex(1);
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.80f, 1.0f), "%s", sp.rank.c_str());
-
-      // Col 2: School
-      ImGui::TableSetColumnIndex(2);
-      ImGui::AlignTextToFramePadding();
-      if (sp.school_str == "Shadow")
-      {
-        ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "Shadow");
-      }
-      else if (sp.school_str == "Fire")
-      {
-        ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.20f, 1.0f), "Fire");
-      }
-      else
-      {
-        ImGui::TextColored(ImVec4(0.80f, 0.80f, 0.80f, 1.0f), "%s", sp.school_str.c_str());
-      }
-
-      // Col 3: Cast Time
-      ImGui::TableSetColumnIndex(3);
-      ImGui::AlignTextToFramePadding();
-      ImGui::Text("%s", sp.base_cast_str.c_str());
-
-      // Col 4: Mana Cost
-      ImGui::TableSetColumnIndex(4);
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(0.40f, 0.75f, 1.0f, 1.0f), "%s", sp.base_mana_str.c_str());
-
-      // Col 5: Base Damage
-      ImGui::TableSetColumnIndex(5);
-      ImGui::AlignTextToFramePadding();
-      if (sp.direct_dmg_str != "None")
-      {
-        ImGui::Text("%s", sp.direct_dmg_str.c_str());
-      }
-      if (sp.dot_dmg_str != "None")
-      {
-        ImGui::TextColored(ImVec4(0.50f, 0.90f, 0.50f, 1.0f), "%s", sp.dot_dmg_str.c_str());
-      }
-
-      // Col 6: SP Coefficient
-      ImGui::TableSetColumnIndex(6);
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.40f, 1.0f), "%s", sp.coeff_str.c_str());
-
-      // Col 7: Formula
-      ImGui::TableSetColumnIndex(7);
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "%s", sp.sim_formula.c_str());
+      common_entries.push_back({e.name, e.rank, e.school_str, e.base_cast_str,
+                                e.base_mana_str, e.direct_dmg_str, e.dot_dmg_str,
+                                e.coeff_str, e.sim_formula, e.icon_name});
     }
-
-    ImGui::EndTable();
   }
+
+  render_unified_spellbook_table("SpellbookTable",
+                                 "Warlock Spellbook & Base Spell Data",
+                                 "Search Spells (e.g. Shadow Bolt, Fire)...",
+                                 search_filter, sizeof(search_filter),
+                                 common_entries);
 }
 
 }  // namespace warlock

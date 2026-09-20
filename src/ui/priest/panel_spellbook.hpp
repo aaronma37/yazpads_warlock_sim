@@ -1,202 +1,183 @@
 #pragma once
 #include "imgui.h"
 #include "src/ui/asset_manager.hpp"
+#include "src/ui/common/panel_spellbook.hpp"
 #include <string>
 #include <vector>
-#include <algorithm>
 
-namespace priest {
+namespace priest
+{
 
-struct SpellBookEntry {
-    std::string name;
-    std::string rank;
-    std::string school;
-    std::string cast_time;
-    std::string mana_cost;
-    std::string effect;
-    std::string sp_coeff;
-    std::string formula_or_note;
-    std::string icon_name;
-};
-
-inline const std::vector<SpellBookEntry>& get_all_priest_spellbook_entries() {
-    static const std::vector<SpellBookEntry> entries = {
-        { "Power Word: Fortitude", "Rank 6", "Discipline", "Instant", "1695 Mana", "Power infuses the target, increasing their Stamina by 70 for 1 hr.", "—", "70 instead of 54, 1 hr instead of 30 min", "spell_holy_wordfortitude" },
-        { "Power Word: Shield", "Rank 10", "Discipline", "Instant (4 sec cooldown)", "500 Mana", "Draws on the soul of the party member to shield them, absorbing 928 damage. Lasts 30 sec. While the shield holds, spellcasting will not be interrupted by damage. Once shielded, the target cannot be shielded again for 15 sec.", "10.0%", "928 instead of 942", "spell_holy_powerwordshield" },
-        { "Confounding Flash", "—", "Discipline", "0.5 sec cast (2 min cooldown)", "3% of base mana", "Confuses up to 5 enemies within 8 yds for 3 sec. Any damage taken will break the effect.", "—", "Confuses up to 5 enemies within 8 yds for 3 sec. Any damage taken will break the effect.", "ability_paladin_blindinglight2" },
-        { "Starshards", "Rank 7", "Arcane", "Channeled (30 sec cooldown)", "350 Mana", "Rains starshards down on the enemy target's head, causing 1800 Arcane damage over 6 sec.", "16.7% instead of 15.4%", "Cooldown 30 sec instead of none; 1800 instead of 936", "spell_arcane_starfire" },
-        { "Inner Fire", "Rank 6", "Discipline", "Instant", "315 Mana", "A burst of Holy energy fills the caster, increasing armor by 1395. Each melee or ranged damage hit against the priest will remove one charge. Lasts 10 min or until 20 charges are used.", "—", "A burst of Holy energy fills the caster, increasing armor by 1395. Each melee or ranged damage hit against the priest wi", "spell_holy_innerfire" },
-        { "Dispel Magic", "Rank 2", "Discipline", "Instant", "18% of base mana", "Dispels magic on the target, removing 2 harmful spells from a friend or 2 beneficial spells from an enemy.", "—", "Dispels magic on the target, removing 2 harmful spells from a friend or 2 beneficial spells from an enemy.", "spell_holy_dispelmagic" },
-        { "Contingency Plan", "Rank 5", "Discipline", "Instant (10 min cooldown)", "", "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing ? damage and begin healing for ? Health over 15 sec. A target may be affected by only one Contingency Plan.", "—", "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will", "ability_priest_soulwarding" },
-        { "Elune's Grace", "—", "Discipline", "Instant (5 min cooldown)", "3% of base mana", "Reduces the chance you'll be hit by melee and ranged attacks by 50% for 15 sec or until you are missed 3 times.", "—", "Costs 3% of base mana instead of 60 Mana; Tooltip rewritten", "spell_holy_elunesgrace" },
-        { "Feedback", "Rank 5", "Discipline", "Instant (3 min cooldown)", "230 Mana", "The priest becomes surrounded with anti-magic energy. Any successful spell cast against the priest will burn 105 of the attacker's Mana, causing 1 Shadow damage for each point of Mana burned. Lasts 15 sec.", "—", "Costs 230 Mana instead of 580 Mana", "spell_shadow_ritualofsacrifice" },
-        { "Shackle Undead", "Rank 3", "Discipline", "1.5 sec cast", "150 Mana", "Shackles the target undead enemy for up to 50 sec. The shackled unit is unable to move, attack or cast spells. Any damage caused will release the target. Only one target can be shackled at a time.", "—", "Shackles the target undead enemy for up to 50 sec. The shackled unit is unable to move, attack or cast spells. Any damag", "spell_nature_slow" },
-        { "Mana Burn", "Rank 5", "Discipline", "3 sec cast", "270 Mana", "Drains 738 to 780 mana from a target. For each mana drained in this way, the target takes 0.5 Shadow damage.", "—", "Drains 738 to 780 mana from a target. For each mana drained in this way, the target takes 0.5 Shadow damage.", "spell_shadow_manaburn" },
-        { "Divine Spirit", "Rank 4", "Discipline", "Instant", "970 Mana", "Holy power infuses the target, increasing their Spirit by 40 for 1 hr.", "—", "1 hr instead of 30 min", "spell_holy_divinespirit" },
-        { "Penance", "Rank 4", "Discipline", "Channeled (12 sec cooldown)", "355 Mana", "Launches a volley of holy light at the target, causing 131 Holy damage to an enemy, or 673 healing to an ally, instantly and every 1 sec for 2 sec.", "75.0%", "Launches a volley of holy light at the target, causing 131 Holy damage to an enemy, or 673 healing to an ally, instantly", "spell_holy_penance" },
-        { "Levitate", "—", "Discipline", "Instant", "100 Mana", "Allows the caster to levitate, floating a few feet above the ground. While levitating, you will fall at a reduced speed and travel over water-like surfaces. Mounting or any damage taken will cancel the effect. Lasts 2 min.", "—", "Same numbers, reworded", "spell_holy_layonhands" },
-        { "Prayer of Fortitude", "Rank 2", "Discipline", "Instant", "3400 Mana", "Power infuses all party and raid members, increasing their Stamina by 70 for 1 hr.", "—", "Tooltip rewritten", "spell_holy_prayeroffortitude" },
-        { "Prayer of Spirit", "—", "Discipline", "Instant", "1940 Mana", "Power infuses all party and raid members, increasing their Spirit by 40 for 1 hr.", "—", "Tooltip rewritten", "spell_holy_prayerofspirit" },
-        { "Lesser Heal", "Rank 3", "Holy", "2.5 sec cast", "75 Mana", "Heal your target for 130 to 152.", "71.4% instead of 44.6%", "130 to 152 instead of 135 to 157; Spell power bonus 71.4% instead of 44.6%", "spell_holy_lesserheal" },
-        { "Smite", "Rank 8", "Holy", "2.5 sec cast", "280 Mana", "Smite an enemy for 160 to 180 Holy damage.", "71.4% instead of 55.4%", "160 to 180 instead of 371 to 415", "spell_holy_holysmite" },
-        { "Renew", "Rank 10", "Holy", "Instant", "410 Mana", "Heals the target of 830 damage over 15 sec.", "20% instead of 15.5%", "830 instead of 970", "spell_holy_renew" },
-        { "Desperate Prayer", "Rank 7", "Holy", "Instant (10 min cooldown)", "", "Instantly heals the caster for 1269 to 1497.", "42.9% instead of 39.6%", "1269 to 1497 instead of 1324 to 1562", "spell_holy_restoration" },
-        { "Divine Grace", "Rank 7", "Holy", "Instant (10 min cooldown)", "", "Instantly heals a friendly target below 50% Health for 1269 to 1497 and removes Weakened Soul from that target. Cannot be cast on self.", "—", "Instantly heals a friendly target below 50% Health for 1269 to 1497 and removes Weakened Soul from that target. Cannot b", "ability_priest_savinggrace" },
-        { "Resurrection", "Rank 5", "Holy", "10 sec cast", "75% of base mana", "Brings a dead player back to life with 750 health and 1000 mana. Cannot be cast when in combat.", "—", "Brings a dead player back to life with 750 health and 1000 mana. Cannot be cast when in combat.", "spell_holy_resurrection" },
-        { "Cure Disease", "—", "Holy", "Instant", "15% of base mana", "Removes 1 disease from the friendly target.", "—", "Removes 1 disease from the friendly target.", "spell_holy_nullifydisease" },
-        { "Heal", "Rank 4", "Holy", "3 sec cast", "305 Mana", "Heal your target for 611 to 691.", "85.7% instead of 72.9%", "611 to 691 instead of 712 to 804", "spell_holy_heal02" },
-        { "Chastise", "Rank 5", "Holy", "Instant (2 min cooldown)", "225 Mana", "Chastise the target, causing 272 to 306 Holy damage and Immobilizing them for up to 2 sec. Only works against Humanoids. This spell causes very low threat", "—", "Chastise the target, causing 272 to 306 Holy damage and Immobilizing them for up to 2 sec. Only works against Humanoids.", "spell_holy_chastise" },
-        { "Fear Ward", "—", "Holy", "Instant (3 min cooldown)", "100 Mana", "Wards the friendly target against Fear. The next Fear effect used against the target will fail, using up the ward. Lasts 3 min.", "—", "Cooldown 3 min instead of 30 sec; 3 min instead of 10 min", "spell_holy_excorcism" },
-        { "Flash Heal", "Rank 7", "Holy", "1.5 sec cast", "380 Mana", "Heals a friendly target for 757 to 893.", "85.7%", "757 to 893 instead of 812 to 958", "spell_holy_flashheal" },
-        { "Holy Fire", "Rank 8", "Holy", "3.5 sec cast", "255 Mana", "Consumes the enemy in holy flames that cause 184 to 232 Holy damage and an additional 75 Holy damage over 10 sec.", "75% + 25%", "184 to 232 instead of 355 to 449, 75 instead of 145", "spell_holy_searinglight" },
-        { "Holy Nova", "Rank 6", "Holy", "Instant", "750 Mana", "Causes an explosion of holy light around the caster, causing 174 to 200 Holy damage to all enemy targets within 10 yards and healing all party members within 10 yards for 288 to 334. These effects cause no threat.  Each time Holy Fire deals damage, you have a 5% chance for your next Holy Nova to cost no Mana.", "—", "Numbers and wording changed", "spell_holy_holynova" },
-        { "Binding Heal", "Rank 6", "Holy", "1.5 sec cast", "380 Mana", "Heals a friendly target and the caster for 757 to 893. Low threat.", "—", "Heals a friendly target and the caster for 757 to 893. Low threat.", "spell_holy_blindingheal" },
-        { "Prayer of Healing", "Rank 5", "Holy", "3 sec cast", "1070 Mana", "A powerful prayer that heals the target and their party for 631 to 667. Party members must be within 40 yards of target.", "300.0% (total)", "Range 40 yd instead of none; Tooltip rewritten", "spell_holy_prayerofhealing02" },
-        { "Abolish Disease", "—", "Holy", "Instant", "15% of base mana", "Attempts to cure 1 disease effect on the target, and 1 more disease effect every 5 seconds for 20 sec.", "—", "Attempts to cure 1 disease effect on the target, and 1 more disease effect every 5 seconds for 20 sec.", "spell_nature_nullifydisease" },
-        { "Greater Heal", "Rank 5", "Holy", "3 sec cast", "710 Mana", "A slow casting spell that heals a single target for 1853 to 2067.", "85.7%", "1853 to 2067 instead of 1966 to 2194", "spell_holy_greaterheal" },
-        { "Lightwell", "Rank 3", "Holy", "1.5 sec cast (10 min cooldown)", "365 Mana", "Creates a holy Lightwell near the priest. Members of your raid or party can click the Lightwell to restore 1600 health over 10 sec. Being attacked cancels the effect. Lightwell lasts for 3 min or 5 charges.", "—", "Creates a holy Lightwell near the priest. Members of your raid or party can click the Lightwell to restore 1600 health o", "spell_holy_summonlightwell" },
-        { "Lightwell Renew", "Rank 3", "Holy", "Instant", "", "", "—", "", "spell_holy_summonlightwell" },
-        { "Prayer of Mending", "Rank 3", "Holy", "Instant (10 sec cooldown)", "390 Mana", "Places a spell on the target that heals them for 413 the next time they take damage or receive non-periodic healing. When the heal occurs, Prayer of Mending jumps to a party or raid member within 20 yards. Jumps up to 5 times and lasts 30 sec after each jump. This spell can only be placed on one target at a time per caster.", "—", "Places a spell on the target that heals them for 413 the next time they take damage or receive non-periodic healing. Whe", "spell_holy_prayerofmendingtga" },
-        { "Shadow Word: Pain", "Rank 8", "Shadow", "Instant", "470 Mana", "A word of darkness that causes 762 Shadow damage over 18 sec.", "20% instead of 16.7%", "762 instead of 852; Spell power bonus 20% instead of 16.7%", "spell_shadow_shadowwordpain" },
-        { "Fade", "Rank 6", "Shadow", "Instant (30 sec cooldown)", "275 Mana", "Fade out, discouraging enemies from attacking you for 10 sec. More effective than Fade (rank 5).", "—", "Fade out, discouraging enemies from attacking you for 10 sec. More effective than Fade (rank 5).", "spell_magic_lesserinvisibilty" },
-        { "Hex of Weakness", "Rank 6", "Shadow", "Instant", "240 Mana", "Weakens the target enemy, reducing melee attack power by 204 and reducing the effectiveness of any healing by 20%. Lasts 2 min", "—", "204 instead of 20, reworded", "spell_shadow_fingerofdeath" },
-        { "Mind Blast", "Rank 9", "Shadow", "1.5 sec cast (8 sec cooldown)", "350 Mana", "Blasts the target for 472 to 498 Shadow damage, but causes a high amount of threat.", "42.9% instead of 36.4%", "472 to 498 instead of 503 to 531", "spell_shadow_unholyfrenzy" },
-        { "Touch of Weakness", "Rank 6", "Shadow", "Instant", "195 Mana", "The next melee attack on the caster will cause 56 Shadow damage and reduce the attacker's melee attack power by the attacker by 204 for 2 min.", "—", "56 instead of 64, 204 instead of 20, reworded", "spell_shadow_deadofnight" },
-        { "Psychic Scream", "Rank 4", "Shadow", "Instant (30 sec cooldown)", "210 Mana", "The caster lets out a psychic scream, causing 5 enemies within 8 yards to flee for 8 sec. Damage caused may interrupt the effect.", "—", "The caster lets out a psychic scream, causing 5 enemies within 8 yards to flee for 8 sec. Damage caused may interrupt th", "spell_shadow_psychicscream" },
-        { "Dark Sacrifice", "Rank 5", "Shadow", "Instant (10 min cooldown)", "", "Cannibalize 1600 of your own Health over 15 sec to gain 1600 Mana.", "—", "Cannibalize 1600 of your own Health over 15 sec to gain 1600 Mana.", "spell_holy_powerinfusion_shadow" },
-        { "Devouring Plague", "Rank 6", "Shadow", "Instant (1 min cooldown)", "985 Mana", "Afflicts the target with a disease that causes 848 Shadow damage over 24 sec. Damage caused by the Devouring Plague heals the caster.", "80.0%", "Cooldown 1 min instead of 3 min; 848 instead of 904", "spell_shadow_devouringplague" },
-        { "Mind Flay", "Rank 6", "Shadow", "Channeled", "205 Mana", "Assault the target's mind with Shadow energy, causing 390 Shadow damage over 3 sec and slowing their movement speed by 50%.", "16.7% instead of 15%", "390 instead of 426; Spell power bonus 16.7% instead of 15%", "spell_shadow_siphonmana" },
-        { "Mind Soothe", "Rank 3", "Shadow", "Instant", "90 Mana", "Soothes the target, reducing the range at which it will attack you by 10 yards. Only affects Humanoid targets level 70 or lower. Lasts 15 sec.", "—", "Soothes the target, reducing the range at which it will attack you by 10 yards. Only affects Humanoid targets level 70 o", "spell_holy_mindsooth" },
-        { "Shadowguard", "Rank 6", "Shadow", "Instant", "250 Mana", "The caster is surrounded by shadows. When a spell, melee or ranged attack hits the caster, the attacker will be struck for 96 Shadow damage. Attackers can only be damaged once every few seconds. This damage causes no threat. 3 charges. Lasts 10 min.", "80.0%", "96 instead of 116", "spell_nature_lightningshield" },
-        { "Mind Vision", "Rank 2", "Shadow", "Channeled", "150 Mana", "Allows the caster to see through the target's eyes for 1 min. Will not work if the target is in another instance or on another continent.", "—", "Allows the caster to see through the target's eyes for 1 min. Will not work if the target is in another instance or on a", "spell_holy_mindvision" },
-        { "Mind Control", "Rank 3", "Shadow", "Channeled", "750 Mana", "Controls a humanoid mind up to level 62, but increases the time between attacks by 25%. Lasts up to 1 min.", "—", "Controls a humanoid mind up to level 62, but increases the time between attacks by 25%. Lasts up to 1 min.", "spell_shadow_shadowworddominate" },
-        { "Shadow Protection", "Rank 3", "Shadow", "Instant", "650 Mana", "Increases the target's resistance to Shadow spells by 60 for 10 min.", "—", "Increases the target's resistance to Shadow spells by 60 for 10 min.", "spell_shadow_antishadow" },
-        { "Shadow Word: Death", "Rank 4", "Shadow", "Instant (15 sec cooldown)", "340 Mana", "A word of dark binding that inflicts 434 to 462 Shadow damage to the target. If your target is not killed by Shadow Word: Death, you take backlash damage equal to 10% of your maximum health.", "42.9%", "A word of dark binding that inflicts 434 to 462 Shadow damage to the target. If your target is not killed by Shadow Word", "spell_shadow_demonicfortitude" },
-        { "Prayer of Shadow Protection", "—", "Shadow", "Instant", "1300 Mana", "Power infuses all party and raid members, increasing their Shadow resistance by 60 for 20 min.", "—", "Tooltip rewritten", "spell_holy_prayerofshadowprotection" },
-    };
-    return entries;
+inline const std::vector<warlock::CommonSpellBookEntry>& get_all_priest_spellbook_entries()
+{
+  static const std::vector<warlock::CommonSpellBookEntry> entries = {
+      {"Power Word: Fortitude", "Rank 6", "Discipline", "Instant", "1,695 Mana",
+       "Increases party/target Stamina by 70 for 1 hr", "None", "—",
+       "Stamina +70 (Forever buff: 70 instead of 54, 1 hr duration)", "spell_holy_wordfortitude"},
+      {"Power Word: Shield", "Rank 10", "Discipline", "Instant (4s CD)", "500 Mana",
+       "Absorbs 928 damage (lasts 30s)", "None", "10.0%",
+       "Absorb = 928.0 + Healing * 0.10 * Multipliers (Weakened Soul: 15s)", "spell_holy_powerwordshield"},
+      {"Confounding Flash", "—", "Discipline", "0.5s (2m CD)", "3% base",
+       "Confuses up to 5 enemies within 8 yds for 3 sec", "None", "—",
+       "Crowd Control: Breaks on any damage taken", "ability_paladin_blindinglight2"},
+      {"Starshards", "Rank 7", "Arcane", "Channeled (30s CD)", "350 Mana",
+       "None", "1,800 Base Arcane DoT over 6s (6 ticks of 300.0 every 1s)", "100.0%",
+       "Tick = (300.0 + ArcaneSP * 0.1667) * Multipliers [Forever: 100% SP, 30s CD]", "spell_arcane_starfire"},
+      {"Inner Fire", "Rank 6", "Discipline", "Instant", "315 Mana",
+       "Increases Armor by 1,395 (20 charges, 10 min)", "None", "—",
+       "Armor +1395 (Consumes 1 charge per melee/ranged hit taken)", "spell_holy_innerfire"},
+      {"Dispel Magic", "Rank 2", "Discipline", "Instant", "18% base",
+       "Dispels 2 harmful (friendly) or 2 beneficial (enemy) effects", "None", "—",
+       "Magic Purge / Cleanse (up to 2 effects per cast)", "spell_holy_dispelmagic"},
+      {"Contingency Plan", "Rank 5", "Discipline", "Instant (10m CD)", "0 Mana",
+       "Ward ally for 30s: if HP < 35%, gains shield & heal over 15s", "None", "—",
+       "Emergency Cheat-Death Ward (1 target per caster, 10 min CD)", "ability_priest_soulwarding"},
+      {"Elune's Grace", "—", "Discipline", "Instant (5m CD)", "3% base",
+       "Reduces chance to be hit by melee/ranged by 50% (15s or 3 misses)", "None", "—",
+       "Defensive: 50% evasion vs melee/ranged attacks (Forever: 3% base mana)", "spell_holy_elunesgrace"},
+      {"Feedback", "Rank 5", "Discipline", "Instant (3m CD)", "230 Mana",
+       "Burns 105 attacker Mana & deals 105 Shadow Dmg on hostile cast (15s)", "None", "—",
+       "Anti-Magic Shield: 105 Mana Burn + 1:1 Shadow Damage on spell hit", "spell_shadow_ritualofsacrifice"},
+      {"Shackle Undead", "Rank 3", "Discipline", "1.5s", "150 Mana",
+       "Shackles target undead enemy for up to 50 sec", "None", "—",
+       "Crowd Control: Undead incapacitated (breaks on damage)", "spell_nature_slow"},
+      {"Mana Burn", "Rank 5", "Discipline", "3.0s", "270 Mana",
+       "Drains 738 - 780 Mana from target", "Deals 50% of Mana drained as Shadow damage (369 - 390)", "—",
+       "Mana Drained = Roll(738, 780) | Shadow Damage = Mana Drained * 0.50", "spell_shadow_manaburn"},
+      {"Divine Spirit", "Rank 4", "Discipline", "Instant", "970 Mana",
+       "Increases target Spirit by 40 for 1 hr", "None", "—",
+       "Spirit +40 (Forever buff: 1 hr duration)", "spell_holy_divinespirit"},
+      {"Penance", "Rank 4", "Discipline", "Channeled (12s CD)", "355 Mana",
+       "131 Holy Damage or 673 Healing per tick (3 ticks over 2s)", "None", "75.0%",
+       "Damage = 131 + SP * 0.25/sec | Heal = 673 + Healing * 0.25/sec", "spell_holy_penance"},
+      {"Levitate", "—", "Discipline", "Instant", "100 Mana",
+       "Slow fall and water walking for 2 min (requires Light Feather)", "None", "—",
+       "Utility: Reduced falling speed and liquid walking", "spell_holy_layonhands"},
+      {"Prayer of Fortitude", "Rank 2", "Discipline", "Instant", "3,400 Mana",
+       "Party/Raid: Increases Stamina by 70 for 1 hr", "None", "—",
+       "Party Stamina +70 (Forever buff: 70 instead of 54, 1 hr duration)", "spell_holy_prayeroffortitude"},
+      {"Prayer of Spirit", "—", "Discipline", "Instant", "1,940 Mana",
+       "Party/Raid: Increases Spirit by 40 for 1 hr", "None", "—",
+       "Party Spirit +40 (Forever buff: 1 hr duration)", "spell_holy_prayerofspirit"},
+      {"Lesser Heal", "Rank 3", "Holy", "2.5s", "75 Mana",
+       "130 - 152 Direct Healing", "None", "71.43%",
+       "Heal = Roll(130, 152) + Healing * 0.71429 * Multipliers", "spell_holy_lesserheal"},
+      {"Smite", "Rank 8", "Holy", "2.5s", "280 Mana",
+       "160 - 180 Direct Holy Damage", "None", "71.43%",
+       "Damage = Roll(160, 180) + HolySP * 0.71429 * Multipliers [Forever: 71.4% SP]", "spell_holy_holysmite"},
+      {"Renew", "Rank 10", "Holy", "Instant", "410 Mana",
+       "None", "830 Base Healing over 15s (5 ticks of 166.0 every 3s)", "100.0%",
+       "Tick = (166.0 + Healing * 0.20) * Multipliers [Forever: 20%/tick = 100% total]", "spell_holy_renew"},
+      {"Desperate Prayer", "Rank 7", "Holy", "Instant (10m CD)", "0 Mana",
+       "1,269 - 1,497 Direct Self-Healing", "None", "42.86%",
+       "Heal = Roll(1269, 1497) + Healing * 0.42857 * Multipliers", "spell_holy_restoration"},
+      {"Divine Grace", "Rank 7", "Holy", "Instant (10m CD)", "0 Mana",
+       "1,269 - 1,497 Direct Healing (<50% HP ally) + removes Weakened Soul", "None", "42.86%",
+       "Heal = Roll(1269, 1497) + Healing * 0.42857 | Clears Weakened Soul", "ability_priest_savinggrace"},
+      {"Resurrection", "Rank 5", "Holy", "10.0s", "75% base",
+       "Revives dead player with 750 HP and 1,000 Mana (Out of Combat)", "None", "—",
+       "Resurrection: 750 HP + 1000 Mana restore", "spell_holy_resurrection"},
+      {"Cure Disease", "—", "Holy", "Instant", "15% base",
+       "Removes 1 disease effect from friendly target", "None", "—",
+       "Dispel: 1 disease aura", "spell_holy_nullifydisease"},
+      {"Heal", "Rank 4", "Holy", "3.0s", "305 Mana",
+       "611 - 691 Direct Healing", "None", "85.71%",
+       "Heal = Roll(611, 691) + Healing * 0.85714 * Multipliers", "spell_holy_heal02"},
+      {"Chastise", "Rank 5", "Holy", "Instant (2m CD)", "225 Mana",
+       "272 - 306 Holy Damage (Immobilizes Humanoid 2s, low threat)", "None", "42.86%",
+       "Damage = Roll(272, 306) + HolySP * 0.42857 * Multipliers", "spell_holy_chastise"},
+      {"Fear Ward", "—", "Holy", "Instant (3m CD)", "100 Mana",
+       "Wards friendly target against next Fear effect (lasts 3 min)", "None", "—",
+       "Fear Immunity Ward (Forever: 3 min CD, 3 min duration)", "spell_holy_excorcism"},
+      {"Flash Heal", "Rank 7", "Holy", "1.5s", "380 Mana",
+       "757 - 893 Direct Healing", "None", "85.71%",
+       "Heal = Roll(757, 893) + Healing * 0.85714 * Multipliers", "spell_holy_flashheal"},
+      {"Holy Fire", "Rank 8", "Holy", "3.5s", "255 Mana",
+       "184 - 232 Initial Holy Damage", "75 Base DoT over 10s (5 ticks of 15.0 every 2s, 259 - 307 Total)", "100.0%",
+       "Direct = Roll(184, 232) + SP * 0.75 | Dot = 75 + SP * 0.25 (100% total)", "spell_holy_searinglight"},
+      {"Holy Nova", "Rank 6", "Holy", "Instant", "750 Mana",
+       "174 - 200 Holy Dmg (enemies <=10y) / 288 - 334 Healing (allies <=10y)", "None", "16.1% / 30.3%",
+       "Damage = Roll(174, 200) + SP * 0.161 | Heal = Roll(288, 334) + Healing * 0.303", "spell_holy_holynova"},
+      {"Binding Heal", "Rank 6", "Holy", "1.5s", "380 Mana",
+       "757 - 893 Direct Healing to target and caster (low threat)", "None", "85.71%",
+       "Heal = Roll(757, 893) + Healing * 0.85714 (Heals ally + self)", "spell_holy_blindingheal"},
+      {"Prayer of Healing", "Rank 5", "Holy", "3.0s", "1,070 Mana",
+       "631 - 667 Healing to party members within 40 yds", "None", "300.0%",
+       "Heal = Roll(631, 667) + Healing * 0.60 per member (300% total party coeff)", "spell_holy_prayerofhealing02"},
+      {"Abolish Disease", "—", "Holy", "Instant", "15% base",
+       "Cures 1 disease effect instantly and 1 every 5s for 20s", "None", "—",
+       "Periodic Cleanse: Up to 5 disease dispels over 20s", "spell_nature_nullifydisease"},
+      {"Greater Heal", "Rank 5", "Holy", "3.0s", "710 Mana",
+       "1,853 - 2,067 Direct Healing", "None", "85.71%",
+       "Heal = Roll(1853, 2067) + Healing * 0.85714 * Multipliers", "spell_holy_greaterheal"},
+      {"Lightwell", "Rank 3", "Holy", "1.5s (10m CD)", "365 Mana",
+       "Creates Lightwell (3 min, 5 charges): click restores 1,600 HP over 10s", "None", "—",
+       "Interactive Healing Beacon (5 clicks, cancel on damage)", "spell_holy_summonlightwell"},
+      {"Prayer of Mending", "Rank 3", "Holy", "Instant (10s CD)", "390 Mana",
+       "Heals 413 on damage taken, jumps to ally <=20 yds up to 5 times", "None", "42.86%",
+       "Heal = 413 + Healing * 0.42857 per jump (5 jumps max, lasts 30s)", "spell_holy_prayerofmendingtga"},
+      {"Shadow Word: Pain", "Rank 8", "Shadow", "Instant", "470 Mana",
+       "None", "762 Base Shadow DoT over 18s (6 ticks of 127.0 every 3s)", "120.0%",
+       "Tick = (127.0 + ShadowSP * 0.20) * Multipliers [Forever: 120.0% SP total]", "spell_shadow_shadowwordpain"},
+      {"Fade", "Rank 6", "Shadow", "Instant (30s CD)", "275 Mana",
+       "Temporarily reduces priest's threat for 10 sec", "None", "—",
+       "Temporary Threat Drop: Threat returns after 10s expires", "spell_magic_lesserinvisibilty"},
+      {"Hex of Weakness", "Rank 6", "Shadow", "Instant", "240 Mana",
+       "Target Melee Attack Power -204 and Healing Received -20% (2 min)", "None", "—",
+       "Debuff: -204 AP and -20% healing received (lasts 2 min)", "spell_shadow_fingerofdeath"},
+      {"Mind Blast", "Rank 9", "Shadow", "1.5s (8s CD)", "350 Mana",
+       "472 - 498 Direct Shadow Damage (High Threat)", "None", "42.86%",
+       "Damage = Roll(472, 498) + ShadowSP * 0.42857 * Multipliers [Forever: 42.9% SP]", "spell_shadow_unholyfrenzy"},
+      {"Touch of Weakness", "Rank 6", "Shadow", "Instant", "195 Mana",
+       "56 Shadow Damage on next melee hit taken & -204 attacker AP (2 min)", "None", "10.0%",
+       "Retaliation Damage = 56.0 + ShadowSP * 0.10 | Debuff: -204 AP", "spell_shadow_deadofnight"},
+      {"Psychic Scream", "Rank 4", "Shadow", "Instant (30s CD)", "210 Mana",
+       "Causes up to 5 enemies within 8 yds to flee for 8 sec", "None", "—",
+       "AoE Fear: Breaks on damage taken", "spell_shadow_psychicscream"},
+      {"Dark Sacrifice", "Rank 5", "Shadow", "Instant (10m CD)", "0 Mana",
+       "Cannibalizes 1,600 Health over 15s to gain 1,600 Mana", "None", "—",
+       "Mana Conversion: Transfers 1600 HP into 1600 Mana over 15s", "spell_holy_powerinfusion_shadow"},
+      {"Devouring Plague", "Rank 6", "Shadow", "Instant (1m CD)", "985 Mana",
+       "None", "848 Base Shadow DoT over 24s (8 ticks of 106.0 every 3s, heals caster)", "80.0%",
+       "Tick = (106.0 + ShadowSP * 0.10) * Multipliers [Forever: 80.0% SP, 1 min CD]", "spell_shadow_devouringplague"},
+      {"Mind Flay", "Rank 6", "Shadow", "Channeled 3.0s", "205 Mana",
+       "None", "390 Base Shadow Damage over 3s (3 ticks of 130.0 every 1s, 50% slow)", "50.0%",
+       "Tick = (130.0 + ShadowSP * 0.1667) * Multipliers [Forever: 50.0% SP total]", "spell_shadow_siphonmana"},
+      {"Mind Soothe", "Rank 3", "Shadow", "Instant", "90 Mana",
+       "Reduces aggro radius of Humanoid target (<= lvl 70) by 10 yds (15s)", "None", "—",
+       "Aggro Radius Reduction: -10 yds for 15s", "spell_holy_mindsooth"},
+      {"Shadowguard", "Rank 6", "Shadow", "Instant", "250 Mana",
+       "Attacker struck for 96 Shadow Damage on hit (3 charges, lasts 10 min)", "None", "80.0%",
+       "Damage = 96.0 + ShadowSP * 0.2667 per charge (80% total coeff, low threat)", "spell_nature_lightningshield"},
+      {"Mind Vision", "Rank 2", "Shadow", "Channeled 1.0m", "150 Mana",
+       "Allows caster to see through target's eyes for 1 min", "None", "—",
+       "Target Scouting Vision (Same continent/instance)", "spell_holy_mindvision"},
+      {"Mind Control", "Rank 3", "Shadow", "Channeled 1.0m", "750 Mana",
+       "Controls humanoid mind up to lvl 62 for up to 1 min (+25% attack speed)", "None", "—",
+       "Channeled Mind Control: Increases time between attacks by 25%", "spell_shadow_shadowworddominate"},
+      {"Shadow Protection", "Rank 3", "Shadow", "Instant", "650 Mana",
+       "Increases target's Shadow Resistance by 60 for 10 min", "None", "—",
+       "Shadow Resistance +60 (10 min duration)", "spell_shadow_antishadow"},
+      {"Shadow Word: Death", "Rank 4", "Shadow", "Instant (15s CD)", "340 Mana",
+       "434 - 462 Direct Shadow Damage (Backlash: 10% max HP if survives)", "None", "42.86%",
+       "Damage = Roll(434, 462) + ShadowSP * 0.42857 * Multipliers [Forever Rank 4]", "spell_shadow_demonicfortitude"},
+      {"Prayer of Shadow Protection", "—", "Shadow", "Instant", "1,300 Mana",
+       "Party/Raid: Increases Shadow Resistance by 60 for 20 min", "None", "—",
+       "Party Shadow Resistance +60 (20 min duration)", "spell_holy_prayerofshadowprotection"},
+  };
+  return entries;
 }
 
-inline void render_priest_spellbook_panel() {
-    static char search_filter[128] = "";
-    static int selected_school_filter = 0; // 0 = All, 1 = Shadow, 2 = Holy, 3 = Discipline, 4 = Arcane
+inline void render_priest_spellbook_panel()
+{
+  static char search_filter[64] = "";
+  const auto& entries = get_all_priest_spellbook_entries();
 
-    ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Priest Spellbook & Base Coefficients (WoW Forever Beta Client)");
-    ImGui::TextDisabled("Extracted directly from client data (52 spells across Discipline, Holy, and Shadow Magic)");
-    ImGui::Spacing();
-
-    // Search and Filters
-    ImGui::SetNextItemWidth(260);
-    ImGui::InputTextWithHint("##PriestSpellSearch", "Search spells by name or school...", search_filter, sizeof(search_filter));
-    ImGui::SameLine();
-
-    const char* filter_labels[] = { "All (52)", "Shadow (16)", "Holy (20)", "Discipline (15)", "Arcane (1)" };
-    for (int i = 0; i < 5; ++i) {
-        if (i > 0) ImGui::SameLine();
-        if (selected_school_filter == i) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.50f, 1.0f));
-        } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.20f, 0.8f));
-        }
-        if (ImGui::Button(filter_labels[i])) {
-            selected_school_filter = i;
-        }
-        ImGui::PopStyleColor();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    const auto& entries = get_all_priest_spellbook_entries();
-
-    if (ImGui::BeginTable("PriestSpellbookTable", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY, ImVec2(0, 0))) {
-        ImGui::TableSetupColumn("Spell / Ability", ImGuiTableColumnFlags_WidthFixed, 220.0f);
-        ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 70.0f);
-        ImGui::TableSetupColumn("School", ImGuiTableColumnFlags_WidthFixed, 85.0f);
-        ImGui::TableSetupColumn("Cast Time & CD", ImGuiTableColumnFlags_WidthFixed, 170.0f);
-        ImGui::TableSetupColumn("Mana Cost", ImGuiTableColumnFlags_WidthFixed, 110.0f);
-        ImGui::TableSetupColumn("Base Damage / Effect", ImGuiTableColumnFlags_WidthFixed, 280.0f);
-        ImGui::TableSetupColumn("SP Coeff", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-        ImGui::TableSetupColumn("WoW Forever Diffs & Notes", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableHeadersRow();
-
-        std::string query = search_filter;
-        std::transform(query.begin(), query.end(), query.begin(), ::tolower);
-
-        for (const auto& sp : entries) {
-            std::string name_lower = sp.name;
-            std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
-            std::string school_lower = sp.school;
-            std::transform(school_lower.begin(), school_lower.end(), school_lower.begin(), ::tolower);
-
-            // Filter check
-            if (!query.empty() && name_lower.find(query) == std::string::npos && school_lower.find(query) == std::string::npos) {
-                continue;
-            }
-            if (selected_school_filter == 1 && sp.school != "Shadow") continue;
-            if (selected_school_filter == 2 && sp.school != "Holy") continue;
-            if (selected_school_filter == 3 && sp.school != "Discipline") continue;
-            if (selected_school_filter == 4 && sp.school != "Arcane") continue;
-
-            ImGui::TableNextRow();
-
-            // Col 0: Icon + Name
-            ImGui::TableSetColumnIndex(0);
-            const Texture2D& icon = warlock::AssetManager::get().get_icon(sp.icon_name);
-            if (icon.id > 0) {
-                ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(22, 22));
-                ImGui::SameLine(0, 6);
-            }
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ImVec4(1.0f, 0.95f, 0.70f, 1.0f), "%s", sp.name.c_str());
-
-            // Col 1: Rank
-            ImGui::TableSetColumnIndex(1);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.80f, 1.0f), "%s", sp.rank.c_str());
-
-            // Col 2: School
-            ImGui::TableSetColumnIndex(2);
-            ImGui::AlignTextToFramePadding();
-            if (sp.school == "Shadow") {
-                ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "Shadow");
-            } else if (sp.school == "Holy") {
-                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.30f, 1.0f), "Holy");
-            } else if (sp.school == "Arcane") {
-                ImGui::TextColored(ImVec4(0.40f, 0.80f, 1.0f, 1.0f), "Arcane");
-            } else {
-                ImGui::TextColored(ImVec4(0.80f, 0.85f, 1.0f, 1.0f), "%s", sp.school.c_str());
-            }
-
-            // Col 3: Cast Time & CD
-            ImGui::TableSetColumnIndex(3);
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("%s", sp.cast_time.c_str());
-
-            // Col 4: Mana Cost
-            ImGui::TableSetColumnIndex(4);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ImVec4(0.40f, 0.75f, 1.0f, 1.0f), "%s", sp.mana_cost.c_str());
-
-            // Col 5: Base Damage / Effect
-            ImGui::TableSetColumnIndex(5);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextWrapped("%s", sp.effect.c_str());
-
-            // Col 6: SP Coefficient
-            ImGui::TableSetColumnIndex(6);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.40f, 1.0f), "%s", sp.sp_coeff.c_str());
-
-            // Col 7: Forever Diffs & Notes
-            ImGui::TableSetColumnIndex(7);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextColored(ImVec4(0.40f, 0.90f, 0.60f, 1.0f), "%s", sp.formula_or_note.c_str());
-        }
-
-        ImGui::EndTable();
-    }
+  warlock::render_unified_spellbook_table("PriestSpellbookTable",
+                                          "Priest Spellbook & Base Spell Data",
+                                          "Search Spells (e.g. Shadow Word, Holy)...",
+                                          search_filter, sizeof(search_filter),
+                                          entries);
 }
 
-} // namespace priest
+}  // namespace priest
