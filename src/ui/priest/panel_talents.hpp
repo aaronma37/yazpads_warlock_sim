@@ -341,6 +341,8 @@ inline void render_priest_tree_column(const char* tree_name,
                                                        : IM_COL32(160, 160, 160, 200);
 
       draw_list->AddText(ImVec2(win_pos.x + badge_x, win_pos.y + badge_y), text_col, pt_buf);
+
+      ImGui::PopID();
     }
   }
 
@@ -412,7 +414,7 @@ inline void render_priest_talents_panel(Talents& talents)
   // Column 1: Discipline
   render_priest_tree_column(
       "Discipline",
-      "discipline_bg.jpg",
+      "discipline_bg.png",
       ImVec4(1.0f, 0.90f, 0.50f, 1.0f),
       get_disc_nodes(),
       [&](size_t i) { return talents.disc.get_points_by_index(i); },
@@ -428,7 +430,7 @@ inline void render_priest_talents_panel(Talents& talents)
   // Column 2: Holy
   render_priest_tree_column(
       "Holy",
-      "holy_bg.jpg",
+      "holy_bg.png",
       ImVec4(1.0f, 0.85f, 0.40f, 1.0f),
       get_holy_nodes(),
       [&](size_t i) { return talents.holy.get_points_by_index(i); },
@@ -444,7 +446,7 @@ inline void render_priest_talents_panel(Talents& talents)
   // Column 3: Shadow
   render_priest_tree_column(
       "Shadow",
-      "shadow_bg.jpg",
+      "shadow_bg.png",
       ImVec4(0.75f, 0.55f, 1.0f, 1.0f),
       get_shadow_nodes(),
       [&](size_t i) { return talents.shadow.get_points_by_index(i); },
