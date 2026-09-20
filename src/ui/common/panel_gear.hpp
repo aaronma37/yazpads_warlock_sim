@@ -185,6 +185,14 @@ inline void render_armory_panel(WarlockSimulator& sim,
       ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
       ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
       break;
+    case Race::DWARF:
+      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
+      ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Frost Resistance (+10)");
+      break;
+    case Race::NIGHT_ELF:
+      ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Quickness (+1%% Dodge)");
+      ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth)");
+      break;
   }
 
   ImGui::EndChild();

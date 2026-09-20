@@ -82,6 +82,7 @@ set(TEST_SOURCES
     tests/test_isb_analysis.cpp
     tests/test_build_export.cpp
     tests/test_genetic_optimizer.cpp
+    tests/test_mana_regen.cpp
 )
 
 add_executable(sim_tests

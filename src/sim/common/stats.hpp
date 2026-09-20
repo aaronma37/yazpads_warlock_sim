@@ -3,15 +3,18 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include "player_class.hpp"
 
-namespace warlock {
+namespace sim {
 
 enum class Race : uint8_t {
     UNDEAD = 0,
     ORC = 1,
     TROLL = 2,
     HUMAN = 3,
-    GNOME = 4
+    GNOME = 4,
+    DWARF = 5,
+    NIGHT_ELF = 6
 };
 
 inline const char* race_to_string(Race r) {
@@ -21,6 +24,8 @@ inline const char* race_to_string(Race r) {
         case Race::TROLL: return "Troll";
         case Race::HUMAN: return "Human";
         case Race::GNOME: return "Gnome";
+        case Race::DWARF: return "Dwarf";
+        case Race::NIGHT_ELF: return "Night Elf";
         default: return "Undead";
     }
 }
@@ -29,6 +34,8 @@ inline const char* race_faction(Race r) {
     switch (r) {
         case Race::HUMAN:
         case Race::GNOME:
+        case Race::DWARF:
+        case Race::NIGHT_ELF:
             return "Alliance";
         default:
             return "Horde";
@@ -43,11 +50,13 @@ inline const char* race_to_icon(Race r) {
         case Race::TROLL: return "Achievement_Character_Troll_Male.png";
         case Race::HUMAN: return "Achievement_Character_Human_Male.png";
         case Race::GNOME: return "Achievement_Character_Gnome_Female.png";
+        case Race::DWARF: return "Achievement_Character_Dwarf_Male.png";
+        case Race::NIGHT_ELF: return "Achievement_Character_Nightelf_Female.png";
         default: return "INV_Misc_Head_Undead_01.png";
     }
 }
 
-// Character baseline attributes (Classic Level 60 Undead/Gnome/Orc/Human/Troll Warlock)
+// Character baseline attributes (Classic Level 60 Attributes)
 struct BaseAttributes {
     double stamina = 120.0;
     double intellect = 135.0;
@@ -57,6 +66,7 @@ struct BaseAttributes {
     double base_spell_crit = 1.70; // Base warlock spell crit % at 60 (without intellect)
 };
 
+// Returns baseline attributes for Warlock at Level 60
 inline BaseAttributes get_base_attributes_for_race(Race r) {
     BaseAttributes b;
     switch (r) {
@@ -100,6 +110,69 @@ inline BaseAttributes get_base_attributes_for_race(Race r) {
             b.base_health = 1394.0;
             b.base_spell_crit = 1.70;
             break;
+        case Race::DWARF:
+            b.stamina = 123.0;
+            b.intellect = 129.0;
+            b.spirit = 139.0;
+            b.base_mana = 1393.0;
+            b.base_health = 1424.0;
+            b.base_spell_crit = 1.70;
+            break;
+        case Race::NIGHT_ELF:
+            b.stamina = 119.0;
+            b.intellect = 130.0;
+            b.spirit = 140.0;
+            b.base_mana = 1393.0;
+            b.base_health = 1404.0;
+            b.base_spell_crit = 1.70;
+            break;
+    }
+    return b;
+}
+
+// Class-aware attribute lookup supporting Warlock, Priest, and other classes
+inline BaseAttributes get_base_attributes_for_class_and_race(PlayerClass c, Race r) {
+    if (c == PlayerClass::WARLOCK) {
+        return get_base_attributes_for_race(r);
+    }
+    BaseAttributes b;
+    // Level 60 Priest baseline attributes (1456 base mana, 1.24% base crit)
+    b.base_spell_crit = 1.24;
+    b.base_mana = 1456.0;
+
+    switch (r) {
+        case Race::HUMAN:
+            b.stamina = 119.0;
+            b.intellect = 136.0;
+            b.spirit = 147.0; // +5% Spirit
+            b.base_health = 1404.0;
+            break;
+        case Race::DWARF:
+            b.stamina = 123.0;
+            b.intellect = 129.0;
+            b.spirit = 139.0;
+            b.base_health = 1424.0;
+            break;
+        case Race::NIGHT_ELF:
+            b.stamina = 119.0;
+            b.intellect = 130.0;
+            b.spirit = 140.0;
+            b.base_health = 1394.0;
+            break;
+        case Race::UNDEAD:
+            b.stamina = 120.0;
+            b.intellect = 135.0;
+            b.spirit = 140.0;
+            b.base_health = 1414.0;
+            break;
+        case Race::TROLL:
+            b.stamina = 120.0;
+            b.intellect = 132.0;
+            b.spirit = 140.0;
+            b.base_health = 1414.0;
+            break;
+        default:
+            return get_base_attributes_for_race(r);
     }
     return b;
 }
@@ -116,6 +189,10 @@ struct Stats {
     double spell_power = 0.0;       // Generic +damage and healing
     double shadow_power = 0.0;      // +Shadow spell damage
     double fire_power = 0.0;        // +Fire spell damage
+    double holy_power = 0.0;        // +Holy spell damage
+    double frost_power = 0.0;       // +Frost spell damage
+    double arcane_power = 0.0;      // +Arcane spell damage
+    double nature_power = 0.0;      // +Nature spell damage
 
     double spell_hit_percent = 0.0; // Extra spell hit % from gear/talents/buffs
     double spell_crit_percent = 0.0;// Extra spell crit % from gear/buffs
@@ -124,10 +201,12 @@ struct Stats {
 
     double shadow_multiplier = 1.0; // Global multiplier for shadow damage (e.g. SM +10%, DS +15%, etc.)
     double fire_multiplier = 1.0;   // Global multiplier for fire damage
+    double holy_multiplier = 1.0;   // Global multiplier for holy damage
     double all_damage_multiplier = 1.0;
 
     double shadow_crit_bonus_multiplier = 1.5; // Base 1.5x, Ruin talent increases bonus to 2.0x
     double fire_crit_bonus_multiplier = 1.5;
+    double holy_crit_bonus_multiplier = 1.5;
 
     // Computed effective values
     double effective_shadow_power() const {
@@ -138,9 +217,13 @@ struct Stats {
         return spell_power + fire_power;
     }
 
-    // Classic Warlock: 60.6 Intellect = 1% Spell Crit
-    double total_spell_crit(double base_crit = 1.70) const {
-        return base_crit + (intellect / 60.6) + spell_crit_percent;
+    double effective_holy_power() const {
+        return spell_power + holy_power;
+    }
+
+    // Classic Warlock: 60.6 Intellect = 1% Spell Crit (Priest is 59.2)
+    double total_spell_crit(double base_crit = 1.70, double int_per_crit = 60.6) const {
+        return base_crit + (intellect / int_per_crit) + spell_crit_percent;
     }
 };
 
@@ -231,4 +314,18 @@ struct TargetConfig {
     }
 };
 
-} // namespace warlock
+} // namespace sim
+
+namespace warlock {
+    using sim::Race;
+    using sim::race_to_string;
+    using sim::race_faction;
+    using sim::race_to_icon;
+    using sim::BaseAttributes;
+    using sim::get_base_attributes_for_race;
+    using sim::get_base_attributes_for_class_and_race;
+    using sim::Stats;
+    using sim::CreatureType;
+    using sim::creature_type_to_string;
+    using sim::TargetConfig;
+}
