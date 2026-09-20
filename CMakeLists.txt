@@ -17,6 +17,12 @@ endif()
 # Include directories
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/warlock
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/warlock
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/raylib/src
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui
     ${CMAKE_CURRENT_SOURCE_DIR}/third_party/implot
@@ -24,11 +30,11 @@ include_directories(
 )
 
 set(SIM_SOURCES
-    src/sim/gear.cpp
-    src/sim/warlock_sim.cpp
-    src/sim/parallel_runner.cpp
-    src/sim/optimizer.cpp
-    src/sim/genetic_optimizer.cpp
+    src/sim/common/gear.cpp
+    src/sim/warlock/warlock_sim.cpp
+    src/sim/warlock/parallel_runner.cpp
+    src/sim/warlock/optimizer.cpp
+    src/sim/warlock/genetic_optimizer.cpp
 )
 
 set(UI_SOURCES
