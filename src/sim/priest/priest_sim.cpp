@@ -24,7 +24,7 @@ double PriestSimulator::calculate_hit_chance(sim::School school) const {
 
     double extra_hit = (use_raw_stats ? raw_stats.spell_hit_percent : gear.calculate_stats().spell_hit_percent);
     if (school == sim::School::SHADOW) {
-        extra_hit += talents.shadow.shadow_magic * 1.0; // +1% per point (up to 5%)
+        extra_hit += talents.shadow.shadow_focus * 1.0; // Shadow Focus (+1% hit per point)
     } else if (school == sim::School::HOLY) {
         extra_hit += talents.disc.holy_precision * 6.0; // +6% per point (up to 18%)
     }
