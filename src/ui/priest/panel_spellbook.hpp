@@ -27,13 +27,17 @@ inline void render_priest_spellbook_panel() {
         ImGui::Spacing();
     };
 
-    render_spell_entry("Shadow Word: Pain (Rank 8)", SpellBook::shadow_word_pain_rank8(), "Base 18s duration (6 ticks), extended to 24s (8 ticks) by Imp SW:P");
-    render_spell_entry("Mind Flay (Rank 6)", SpellBook::mind_flay_rank6(), "3-second channeled spell with 1-second tick intervals");
-    render_spell_entry("Mind Blast (Rank 9)", SpellBook::mind_blast_rank9(), "Direct shadow nuke with 8.0s CD, reduced to 5.5s by Imp Mind Blast");
-    render_spell_entry("Shadow Word: Death (Rank 1)", SpellBook::shadow_word_death_rank1(), "Instant finisher on 12s CD, +30% crit below 20% HP with Early Demise");
-    render_spell_entry("Devouring Plague (Rank 6)", SpellBook::devouring_plague_rank6(), "24s disease DoT, mana cost reduced by 50% with Devouring Contagion");
+    render_spell_entry("Shadow Word: Pain (Rank 8)", SpellBook::shadow_word_pain_rank8(), "Base 18s duration (6 ticks), 20% SP coeff/tick (120% total over 18s)");
+    render_spell_entry("Mind Flay (Rank 6)", SpellBook::mind_flay_rank6(), "3-second channeled spell, 16.7% SP coeff/tick (50% total over 3s)");
+    render_spell_entry("Mind Blast (Rank 9)", SpellBook::mind_blast_rank9(), "Direct shadow nuke on 8.0s CD, reduced to 5.5s by Imp Mind Blast");
+    render_spell_entry("Shadow Word: Death (Rank 4)", SpellBook::shadow_word_death_rank4(), "Instant finisher on 15s CD, +30% crit below 20% HP with Early Demise");
+    render_spell_entry("Devouring Plague (Rank 6)", SpellBook::devouring_plague_rank6(), "24s disease DoT on 1 min CD (down from 3 min), mana reduced by Devouring Contagion");
     render_spell_entry("Smite (Rank 8)", SpellBook::smite_rank8(), "Direct Holy damage spell with 2.5s base cast time (2.0s with Divine Fury)");
-    render_spell_entry("Holy Fire (Rank 8)", SpellBook::holy_fire_rank8(), "Direct Holy damage + 10-second burning DoT");
+    render_spell_entry("Holy Fire (Rank 8)", SpellBook::holy_fire_rank8(), "Direct Holy damage + 10-second burning DoT (75% direct / 25% dot coeff)");
+    render_spell_entry("Starshards (Rank 7)", SpellBook::starshards_rank7(), "Night Elf Racial: 1800 Arcane damage channeled over 6s on 30s CD (100% SP coeff)");
+    render_spell_entry("Penance (Rank 4)", SpellBook::penance_rank4(), "Discipline 31-pt Talent: 3 holy light volleys channeled over 2s on 12s CD");
+    render_spell_entry("Chastise (Rank 5)", SpellBook::chastise_rank5(), "Dwarf Racial: 272-306 Holy damage & 2s immobilize on 2 min CD");
+    render_spell_entry("Shadowguard (Rank 6)", SpellBook::shadowguard_rank6(), "Troll Racial: 3 charges of 96 Shadow damage retaliation");
 
     ImGui::EndChild();
 }

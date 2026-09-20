@@ -326,7 +326,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             // 3. Shadow Word: Death
             bool execute_ok = !policy.execute_sw_death_only || ((duration - current_time) / duration <= 0.20);
             if (policy.cast_sw_death && execute_ok && current_time >= cd_sw_death_ready) {
-                auto swd_def = SpellBook::shadow_word_death_rank1();
+                auto swd_def = SpellBook::shadow_word_death_rank4();
                 double cost = swd_def.mana_cost;
                 if (in_shadowform) cost *= (1.0 - mechanics.shadowform_mana_cost_reduction);
                 if (inner_focus_active) { cost = 0.0; inner_focus_active = false; }
