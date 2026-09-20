@@ -3,6 +3,7 @@
 #include "asset_manager.hpp"
 #include "src/sim/buffs.hpp"
 #include "src/sim/warlock_sim.hpp"
+#include "src/sim/priest/priest_sim.hpp"
 
 namespace warlock {
 
@@ -91,6 +92,30 @@ inline void render_panel_buffs(WarlockSimulator& sim) {
         ImGui::Indent(8.0f);
         ImGui::Checkbox("Sacrifice Imp (+15% Shadow Damage in Forever)", &buffs.sacrifice_imp);
         ImGui::Checkbox("Sacrifice Succubus (+15% Fire Damage in Forever)", &buffs.sacrifice_succubus);
+        ImGui::Unindent(8.0f);
+    }
+}
+
+inline void render_panel_buffs(priest::PriestSimulator& sim) {
+    sim::BuffConfig& buffs = sim.buffs;
+    render_panel_buffs(buffs);
+
+    // 5. Priest Self-Buffs & Shields (Collapsing Header)
+    if (ImGui::CollapsingHeader("Priest Self-Buffs & Protective Magic", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Inner Fire (+1395 Armor, 20 charges)", &buffs.inner_fire);
+        ImGui::Checkbox("Power Word: Fortitude (+70 Stamina)", &buffs.power_word_fortitude);
+        ImGui::Checkbox("Divine Spirit (+40 Spirit)", &buffs.divine_spirit);
+        ImGui::Checkbox("Shadow Protection (+60 Shadow Resistance)", &buffs.shadow_protection);
+        ImGui::Unindent(8.0f);
+    }
+
+    // 6. Priest Stances, Forms & Power (Collapsing Header)
+    if (ImGui::CollapsingHeader("Priest Stances & Spell Forms", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent(8.0f);
+        ImGui::Checkbox("Shadowform (+15% Shadow Dmg, -50% Mana cost, 2.0x Crit)", &sim.mechanics.shadowform_enabled);
+        ImGui::Checkbox("Maintain Vampiric Embrace (20% Shadow Dmg heals party)", &sim.policy.cast_vampiric_embrace);
+        ImGui::Checkbox("Use Power Infusion on Cooldown (+20% Spell Dmg & Haste)", &sim.policy.use_power_infusion);
         ImGui::Unindent(8.0f);
     }
 }

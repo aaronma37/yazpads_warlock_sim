@@ -3,6 +3,7 @@
 #include "rlImGui.h"
 #include "src/sim/priest/talents.hpp"
 #include "src/sim/priest/spec_presets.hpp"
+#include "src/sim/priest/priest_sim.hpp"
 #include "src/ui/common/asset_manager.hpp"
 #include <algorithm>
 #include <array>
@@ -11,6 +12,25 @@
 #include <string>
 
 namespace priest {
+
+// Encodes talent points into a talentsforever.com URL segment.
+template <size_t N>
+inline std::string encode_tree_url(const std::array<TalentNodeDef, N>& nodes, auto get_pts_func)
+{
+  std::string s;
+  s.reserve(N);
+  for (size_t i = 0; i < N; ++i)
+    s += static_cast<char>('0' + std::min(get_pts_func(i), 9));
+  return s;
+}
+
+inline std::string talents_to_url(const Talents& t)
+{
+  std::string disc = encode_tree_url(get_disc_nodes(), [&](size_t i) { return t.disc.get_points_by_index(i); });
+  std::string holy = encode_tree_url(get_holy_nodes(), [&](size_t i) { return t.holy.get_points_by_index(i); });
+  std::string shadow = encode_tree_url(get_shadow_nodes(), [&](size_t i) { return t.shadow.get_points_by_index(i); });
+  return "https://talentsforever.com/priest/60/" + disc + "-" + holy + "-" + shadow;
+}
 
 // Prerequisite check helper
 template <size_t N>
@@ -368,27 +388,79 @@ inline void render_priest_tree_column(const char* tree_name,
   ImGui::PopStyleVar(2);
 }
 
-inline void render_priest_talents_panel(Talents& talents)
+inline void render_priest_talents_panel(PriestSimulator& sim)
 {
-  int total_pts = talents.total_points();
-  int remaining = 51 - total_pts;
+  int total_pts = sim.talents.total_points();
 
-  // Preset Buttons and Points counter
-  ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Presets:");
-  ImGui::SameLine();
-  if (ImGui::SmallButton("Shadow (14/0/37)"))
+  // Preset Dropdown Combo
+  static int preset_idx = -1;
+  const auto& presets = standard_spec_presets();
+  const char* preview = (preset_idx >= 0 && preset_idx < (int)presets.size())
+      ? presets[preset_idx].display_name
+      : "-- Select a preset --";
+
+  ImGui::SetNextItemWidth(340);
+  if (ImGui::BeginCombo("##PriestPresetCombo", preview))
   {
-    talents = Talents::create_forever_shadow();
+    for (int i = 0; i < (int)presets.size(); ++i)
+    {
+      bool selected = (preset_idx == i);
+      if (ImGui::Selectable(presets[i].display_name, selected))
+      {
+        preset_idx = i;
+        sim.talents = presets[i].make_talents();
+        sim.policy.rotation = presets[i].rotation;
+        sim.mechanics.shadowform_enabled = presets[i].shadowform;
+      }
+      if (selected)
+        ImGui::SetItemDefaultFocus();
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::BeginTooltip();
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", presets[i].display_name);
+        ImGui::TextDisabled("Rotation: %s", rotation_choice_to_string(presets[i].rotation));
+        ImGui::EndTooltip();
+      }
+    }
+    ImGui::EndCombo();
   }
-  ImGui::SameLine();
-  if (ImGui::SmallButton("Smite (14/37/0)"))
-  {
-    talents = Talents::create_forever_smite();
-  }
+
   ImGui::SameLine();
   if (ImGui::SmallButton("Reset All"))
   {
-    talents = Talents();
+    sim.talents = Talents();
+    preset_idx = -1;
+  }
+  ImGui::SameLine();
+  ImGui::TextDisabled("|");
+  ImGui::SameLine();
+
+  static bool url_copied = false;
+  static float url_copied_timer = 0.0f;
+  if (ImGui::SmallButton("Copy URL"))
+  {
+    std::string url = talents_to_url(sim.talents);
+    ImGui::SetClipboardText(url.c_str());
+    url_copied = true;
+    url_copied_timer = 2.5f;
+  }
+  if (ImGui::IsItemHovered())
+  {
+    ImGui::SetTooltip("Copy a talentsforever.com link for the current talent build to clipboard");
+  }
+  if (url_copied)
+  {
+    url_copied_timer -= ImGui::GetIO().DeltaTime;
+    if (url_copied_timer <= 0.0f)
+    {
+      url_copied = false;
+    }
+    else
+    {
+      float alpha = std::min(1.0f, url_copied_timer);
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.5f, alpha), "✓ Copied!");
+    }
   }
 
   ImGui::SameLine();
@@ -396,8 +468,6 @@ inline void render_priest_talents_panel(Talents& talents)
   ImGui::SameLine();
   ImVec4 pt_color = (total_pts == 51) ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
   ImGui::TextColored(pt_color, "%d / 51", total_pts);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(Left-click learn, Right-click unlearn)");
 
   ImGui::Separator();
   ImGui::Spacing();
@@ -417,10 +487,10 @@ inline void render_priest_talents_panel(Talents& talents)
       "discipline_bg.png",
       ImVec4(1.0f, 0.90f, 0.50f, 1.0f),
       get_disc_nodes(),
-      [&](size_t i) { return talents.disc.get_points_by_index(i); },
-      [&](size_t i) -> int& { return talents.disc.get_points_by_index(i); },
-      [&]() { talents.disc = DisciplineTalents(); },
-      talents.disc.total_points(),
+      [&](size_t i) { return sim.talents.disc.get_points_by_index(i); },
+      [&](size_t i) -> int& { return sim.talents.disc.get_points_by_index(i); },
+      [&]() { sim.talents.disc = DisciplineTalents(); },
+      sim.talents.disc.total_points(),
       total_pts,
       col_w,
       col_h);
@@ -433,10 +503,10 @@ inline void render_priest_talents_panel(Talents& talents)
       "holy_bg.png",
       ImVec4(1.0f, 0.85f, 0.40f, 1.0f),
       get_holy_nodes(),
-      [&](size_t i) { return talents.holy.get_points_by_index(i); },
-      [&](size_t i) -> int& { return talents.holy.get_points_by_index(i); },
-      [&]() { talents.holy = HolyTalents(); },
-      talents.holy.total_points(),
+      [&](size_t i) { return sim.talents.holy.get_points_by_index(i); },
+      [&](size_t i) -> int& { return sim.talents.holy.get_points_by_index(i); },
+      [&]() { sim.talents.holy = HolyTalents(); },
+      sim.talents.holy.total_points(),
       total_pts,
       col_w,
       col_h);
@@ -449,13 +519,21 @@ inline void render_priest_talents_panel(Talents& talents)
       "shadow_bg.png",
       ImVec4(0.75f, 0.55f, 1.0f, 1.0f),
       get_shadow_nodes(),
-      [&](size_t i) { return talents.shadow.get_points_by_index(i); },
-      [&](size_t i) -> int& { return talents.shadow.get_points_by_index(i); },
-      [&]() { talents.shadow = ShadowTalents(); },
-      talents.shadow.total_points(),
+      [&](size_t i) { return sim.talents.shadow.get_points_by_index(i); },
+      [&](size_t i) -> int& { return sim.talents.shadow.get_points_by_index(i); },
+      [&]() { sim.talents.shadow = ShadowTalents(); },
+      sim.talents.shadow.total_points(),
       total_pts,
       col_w,
       col_h);
+}
+
+inline void render_priest_talents_panel(Talents& talents)
+{
+  PriestSimulator temp_sim;
+  temp_sim.talents = talents;
+  render_priest_talents_panel(temp_sim);
+  talents = temp_sim.talents;
 }
 
 } // namespace priest

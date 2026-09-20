@@ -37,6 +37,8 @@
 #include "src/ui/priest/panel_policy.hpp"
 #include "src/ui/priest/panel_spellbook.hpp"
 #include "src/ui/priest/panel_mechanics.hpp"
+#include "src/ui/priest/panel_sim_control.hpp"
+#include "src/ui/priest/panel_results.hpp"
 
 namespace warlock
 {
@@ -75,6 +77,8 @@ class WarlockSimApp
   priest::PriestSimulator priest_sim;
   priest::BatchSimResult priest_last_result;
   int priest_iterations = 10000;
+  bool is_priest_sim_running = false;
+  float priest_sim_progress = 0.0f;
 
   WarlockSimApp()
   {
@@ -454,22 +458,23 @@ class WarlockSimApp
             ImGui::SameLine();
 
             // Pane 2: Priest Talents
-            ImGui::BeginChild("PriestPane_Talents", ImVec2(pane2_w, pane_height), true);
-            priest::render_priest_talents_panel(priest_sim.talents);
+            ImGui::BeginChild(
+                "PriestPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
+            priest::render_priest_talents_panel(priest_sim);
             ImGui::EndChild();
 
             ImGui::SameLine();
 
             // Pane 3: Policy, Target, Buffs, Mechanics
             ImGui::BeginChild("PriestPane_BuffsPolicy", ImVec2(0, pane_height), true);
-            priest::render_priest_policy_panel(priest_sim.policy);
+            priest::render_priest_policy_panel(priest_sim.policy, priest_sim.talents, priest_sim.race);
             ImGui::Spacing();
             ImGui::Separator();
             render_panel_target(
                 priest_sim.target_config, priest_sim.fight_duration, priest_sim.randomize_duration, priest_sim.duration_variance);
             ImGui::Spacing();
             ImGui::Separator();
-            render_panel_buffs(priest_sim.buffs);
+            render_panel_buffs(priest_sim);
             ImGui::Spacing();
             ImGui::Separator();
             priest::render_priest_mechanics_panel(priest_sim.mechanics);
@@ -482,71 +487,10 @@ class WarlockSimApp
           if (ImGui::BeginTabItem("  Combat Simulation & Results  "))
           {
             ImGui::Spacing();
-            // Controls
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.20f, 0.50f, 0.30f, 1.0f));
-            if (ImGui::Button("RUN PRIEST SIMULATION", ImVec2(220, 36))) {
-                priest_last_result = priest::ParallelSimRunner::run_batch(priest_sim, priest_iterations, thread_count);
-            }
-            ImGui::PopStyleColor();
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(160);
-            ImGui::SliderInt("Iterations##Priest", &priest_iterations, 1000, 50000);
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(140);
-            float p_dur = static_cast<float>(priest_sim.fight_duration);
-            if (ImGui::SliderFloat("Duration (s)##Priest", &p_dur, 30.0f, 300.0f, "%.0fs")) {
-                priest_sim.fight_duration = p_dur;
-            }
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(120);
-            ImGui::SliderInt("Threads##Priest", &thread_count, 1, 32);
-
+            priest::render_priest_sim_control(
+                priest_sim, priest_iterations, thread_count, priest_last_result, is_priest_sim_running, priest_sim_progress);
             ImGui::Separator();
-            ImGui::Spacing();
-
-            // Results Card
-            ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Priest Simulation Results (%d iterations):", priest_last_result.total_iterations);
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "MEAN DPS: %.1f", priest_last_result.mean_dps);
-            ImGui::SameLine(250);
-            ImGui::Text("Min: %.1f | Max: %.1f | StdDev: %.1f", priest_last_result.min_dps, priest_last_result.max_dps, priest_last_result.std_dev_dps);
-            ImGui::Text("p5: %.1f | Median (p50): %.1f | p95: %.1f", priest_last_result.p5_dps, priest_last_result.p50_dps, priest_last_result.p95_dps);
-            ImGui::Text("Shadow Weaving Mean Procs: %.1f | Mana Spent: %.0f | Mana Gained: %.0f",
-                priest_last_result.mean_sw_weaving_procs, priest_last_result.mean_mana_spent, priest_last_result.mean_mana_gained);
-
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Damage Breakdown:");
-
-            if (ImGui::BeginTable("PriestDmgBreakdown", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-            {
-                ImGui::TableSetupColumn("Spell / Ability", ImGuiTableColumnFlags_WidthFixed, 220);
-                ImGui::TableSetupColumn("Damage Share (%)", ImGuiTableColumnFlags_WidthFixed, 140);
-                ImGui::TableSetupColumn("Visual Bar", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableHeadersRow();
-
-                auto add_breakdown_row = [](const char* name, double pct) {
-                    if (pct <= 0.0) return;
-                    ImGui::TableNextRow();
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::TextUnformatted(name);
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%.2f%%", pct * 100.0);
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::ProgressBar(static_cast<float>(pct), ImVec2(-1, 16));
-                };
-
-                add_breakdown_row("Shadow Word: Pain", priest_last_result.pct_sw_pain);
-                add_breakdown_row("Mind Flay", priest_last_result.pct_mind_flay);
-                add_breakdown_row("Mind Blast", priest_last_result.pct_mind_blast);
-                add_breakdown_row("Shadow Word: Death", priest_last_result.pct_sw_death);
-                add_breakdown_row("Devouring Plague", priest_last_result.pct_devouring_plague);
-                add_breakdown_row("Smite", priest_last_result.pct_smite);
-                add_breakdown_row("Holy Fire", priest_last_result.pct_holy_fire);
-
-                ImGui::EndTable();
-            }
-
+            priest::render_priest_panel_results(priest_last_result);
             ImGui::EndTabItem();
           }
 

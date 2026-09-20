@@ -46,6 +46,12 @@ struct BuffConfig {
     bool sacrifice_succubus = false;     
     bool sacrifice_imp = true;          
 
+    // Priest Specific Buffs (Default Off)
+    bool inner_fire = false;            // +1395 Armor (Rank 6)
+    bool power_word_fortitude = false;  // +70 Stamina (Rank 6)
+    bool divine_spirit = false;         // +40 Spirit (Rank 4)
+    bool shadow_protection = false;     // +60 Shadow Resistance (Rank 3)          
+
     // Applies static stat and multiplier contributions
     void apply_to_stats(Stats& stats, const BaseAttributes& base, bool wow_forever = true, bool personal_shadow_weaving = true) const {
         // Base attributes modification
@@ -74,6 +80,12 @@ struct BuffConfig {
         if (elixir_of_the_sages) {
             bonus_int += 18.0;
             bonus_spr += 18.0;
+        }
+        if (power_word_fortitude) {
+            bonus_stam += 70.0;
+        }
+        if (divine_spirit) {
+            bonus_spr += 40.0;
         }
 
         stats.intellect = (base.intellect + stats.intellect + bonus_int) * stat_multiplier;

@@ -56,6 +56,32 @@ inline const char* spell_id_to_string(SpellID id) {
     }
 }
 
+inline const char* spell_id_to_icon(SpellID id) {
+    switch (id) {
+        case SpellID::SHADOW_WORD_PAIN: return "spell_shadow_shadowwordpain";
+        case SpellID::MIND_FLAY:        return "spell_shadow_siphonmana";
+        case SpellID::MIND_BLAST:       return "spell_shadow_unholyfrenzy";
+        case SpellID::SHADOW_WORD_DEATH:return "spell_shadow_demonicfortitude";
+        case SpellID::DEVOURING_PLAGUE: return "spell_shadow_devouringplague";
+        case SpellID::VAMPIRIC_EMBRACE: return "spell_shadow_unsummonbuilding";
+        case SpellID::SHADOWFORM:       return "spell_shadow_shadowform";
+        case SpellID::INNER_FOCUS:      return "spell_frost_windwalkon";
+        case SpellID::POWER_INFUSION:   return "spell_holy_powerinfusion";
+        case SpellID::SMITE:            return "spell_holy_holysmite";
+        case SpellID::HOLY_FIRE:        return "spell_holy_searinglight";
+        case SpellID::HOLY_NOVA:        return "spell_holy_holynova";
+        case SpellID::PENANCE:          return "spell_holy_penance";
+        case SpellID::STARSHARDS:       return "spell_arcane_starfire";
+        case SpellID::CHASTISE:         return "spell_holy_chastise";
+        case SpellID::SHADOWGUARD:      return "spell_nature_lightningshield";
+        case SpellID::POTION_MANA:      return "inv_potion_76";
+        case SpellID::DEMONIC_RUNE:     return "inv_misc_gem_pearl_03";
+        case SpellID::TRINKET_USE:      return "inv_misc_gem_pearl_04";
+        case SpellID::RACIAL_BERSERKING:return "racial_troll_berserk";
+        default:                        return "";
+    }
+}
+
 class SpellBook {
 public:
     // Shadow Word: Pain (Rank 8: 18s duration base, 6 ticks, 3s tick interval, 762 base damage)

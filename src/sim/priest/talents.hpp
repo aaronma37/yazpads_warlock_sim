@@ -344,6 +344,57 @@ struct Talents {
         t.holy.blessed_recovery = 1;
         return t;
     }
+
+    static Talents create_forever_pi_smite() {
+        Talents t;
+        // 21/30/0 Power Infusion Smite DPS - 51 points
+        t.disc.power_in_light = 5;
+        t.disc.twin_disciplines = 5;
+        t.disc.inner_focus = 1;
+        t.disc.meditation = 3;
+        t.disc.mental_agility = 1;
+        t.disc.mental_strength = 5;
+        t.disc.penance = 1;
+        t.disc.power_infusion = 1;
+
+        t.holy.twilight_focus = 3;
+        t.holy.holy_specialization = 5;
+        t.holy.divine_fury = 5;
+        t.holy.holy_reach = 2;
+        t.holy.searing_light = 2;
+        t.holy.spiritual_guidance = 5;
+        t.holy.improved_renew = 3;
+        t.holy.improved_healing = 3;
+        t.holy.holy_nova = 1;
+        t.holy.spiritual_healing = 1;
+        return t;
+    }
+
+    static Talents create_forever_deep_shadow() {
+        Talents t;
+        // 10/0/41 Deep Shadow - 51 points
+        t.disc.twin_disciplines = 5;
+        t.disc.silent_resolve = 2;
+        t.disc.improved_power_word_shield = 3;
+
+        t.shadow.shadow_focus = 5;
+        t.shadow.spirit_tap = 5;
+        t.shadow.blackout = 3;
+        t.shadow.improved_shadow_word_pain = 2;
+        t.shadow.shadow_reach = 2;
+        t.shadow.improved_mind_blast = 5;
+        t.shadow.mind_flay = 1;
+        t.shadow.improved_mind_flay = 2;
+        t.shadow.vampiric_embrace = 1;
+        t.shadow.shadow_weaving = 3;
+        t.shadow.silence = 1;
+        t.shadow.devouring_contagion = 2;
+        t.shadow.early_demise = 2;
+        t.shadow.darkness = 5;
+        t.shadow.shadowform = 1;
+        t.shadow.shadow_affinity = 1;
+        return t;
+    }
 };
 
 inline const std::array<TalentNodeDef, 18>& get_disc_nodes() {
