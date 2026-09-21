@@ -6,6 +6,37 @@
 
 namespace priest {
 
+namespace {
+
+std::string format_priest_build_name(const Talents& t) {
+    int disc = t.disc.total_points();
+    int holy = t.holy.total_points();
+    int shadow = t.shadow.total_points();
+
+    std::string nums = std::to_string(disc) + "/" + std::to_string(holy) + "/" + std::to_string(shadow);
+
+    std::string tag;
+    if (t.shadow.shadowform > 0) {
+        tag = (t.disc.inner_focus > 0) ? "Shadow" : "Deep Shadow";
+    } else if (t.disc.power_infusion > 0) {
+        tag = (t.holy.searing_light > 0) ? "PI Smite" : "PI Disc";
+    } else if (t.disc.penance > 0) {
+        tag = "Penance";
+    } else if (t.holy.searing_light > 0 || t.holy.holy_specialization > 0) {
+        tag = "Smite DPS";
+    } else if (shadow >= 20) {
+        tag = "Shadow";
+    } else if (holy >= 20) {
+        tag = "Holy";
+    } else {
+        tag = "Discipline";
+    }
+
+    return nums + " " + tag;
+}
+
+} // anonymous namespace
+
 std::vector<CandidateResult> Optimizer::optimize_talents(
     const PriestSimulator& base_sim,
     int iterations_per_candidate,
@@ -113,10 +144,19 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
     int final_sims,
     bool seed_with_presets,
     bool optimize_race,
+    double mutation_rate,
+    double initial_explore,
+    double min_explore,
+    const std::vector<int>& req_talents,
+    int forced_race,
+    int forced_rotation,
+    int thread_count,
     std::function<void(float progress, const std::string& current_name)> callback,
     std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback,
     const std::atomic<bool>* should_stop
 ) {
+    (void)initial_explore;
+    (void)min_explore;
     const auto& graph = TalentGraph::get();
     std::mt19937_64 rng(42);
 
@@ -136,64 +176,50 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
         BatchSimResult batch;
     };
 
-    auto repair_genome = [&](std::vector<int>& v) {
-        // Enforce max points and validity
-        int total = graph.count_total_points(v);
-        // If over 51, subtract from highest rows down
-        while (total > 51) {
-            for (int r = (int)v.size() - 1; r >= 0 && total > 51; --r) {
-                if (v[r] > 0) {
-                    v[r]--;
-                    total--;
-                }
-            }
-        }
-        // If under 51, add to valid available nodes
-        std::uniform_int_distribution<size_t> dist(0, v.size() - 1);
-        int attempts = 0;
-        while (total < 51 && attempts < 200) {
-            attempts++;
-            size_t idx = dist(rng);
-            if (v[idx] < graph.nodes()[idx].max_rank) {
-                v[idx]++;
-                if (graph.is_valid(v, 51)) {
-                    total++;
-                } else {
-                    v[idx]--;
-                }
-            }
-        }
-    };
-
     std::vector<Genome> pop;
     pop.reserve(population_size);
 
-    // Seed presets
+    // Seed presets if requested
     if (seed_with_presets) {
         for (const auto& p : standard_spec_presets()) {
             Genome g;
             g.genes = graph.to_vector(p.make_talents());
-            g.race = base_sim.race;
-            g.rotation = p.rotation;
+            g.race = (forced_race >= 0) ? static_cast<sim::Race>(forced_race) : base_sim.race;
+            g.rotation = (forced_rotation >= 0) ? static_cast<RotationChoice>(forced_rotation) : p.rotation;
+            graph.repair(g.genes, rng, req_talents);
             pop.push_back(g);
         }
     }
 
-    // Fill remainder with variations
+    // Fill remainder with diverse valid builds
     while (pop.size() < static_cast<size_t>(population_size)) {
         Genome g;
-        // Start from standard shadow preset and perturb
-        g.genes = graph.to_vector(Talents::create_forever_shadow());
-        g.race = optimize_race ? allowed_races[rng() % allowed_races.size()] : base_sim.race;
-        // Mutate a few points
-        for (int m = 0; m < 5; ++m) {
-            size_t idx = rng() % g.genes.size();
-            if (g.genes[idx] > 0) g.genes[idx]--;
+        if (pop.empty() || (rng() % 3 == 0)) {
+            g.genes = graph.generate_random_valid(rng, 51, req_talents);
+        } else {
+            const auto& presets = standard_spec_presets();
+            const auto& p = presets[rng() % presets.size()];
+            g.genes = graph.to_vector(p.make_talents());
+            for (int m = 0; m < 5; ++m) {
+                size_t idx = rng() % g.genes.size();
+                if (g.genes[idx] > 0 && (rng() % 2 == 0)) g.genes[idx]--;
+                else g.genes[idx]++;
+            }
+            graph.repair(g.genes, rng, req_talents);
         }
-        repair_genome(g.genes);
-        // Choose rotation based on shadowform / shadow talents
-        Talents t = graph.to_talents(g.genes);
-        g.rotation = (t.shadow.shadowform > 0 || t.shadow.mind_flay > 0) ? RotationChoice::SHADOW_PRIEST : RotationChoice::SMITE_PRIEST;
+
+        if (forced_race >= 0) {
+            g.race = static_cast<sim::Race>(forced_race);
+        } else {
+            g.race = optimize_race ? allowed_races[rng() % allowed_races.size()] : base_sim.race;
+        }
+
+        if (forced_rotation >= 0) {
+            g.rotation = static_cast<RotationChoice>(forced_rotation);
+        } else {
+            Talents t = graph.to_talents(g.genes);
+            g.rotation = (t.shadow.shadowform > 0 || t.shadow.mind_flay > 0) ? RotationChoice::SHADOW_PRIEST : RotationChoice::SMITE_PRIEST;
+        }
         pop.push_back(g);
     }
 
@@ -208,14 +234,14 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
 
         // Evaluate fitness
         for (auto& ind : pop) {
-            if (ind.fitness > 0.0) continue; // Already evaluated
+            if (ind.fitness > 0.0) continue;
             PriestSimulator sim = base_sim;
             sim.race = ind.race;
             sim.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, ind.race);
             sim.talents = graph.to_talents(ind.genes);
             sim.policy.rotation = ind.rotation;
 
-            ind.batch = ParallelSimRunner::run_batch(sim, screening_sims);
+            ind.batch = ParallelSimRunner::run_batch(sim, screening_sims, thread_count);
             ind.fitness = ind.batch.mean_dps;
         }
 
@@ -230,7 +256,8 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
             for (size_t i = 0; i < std::min((size_t)5, pop.size()); ++i) {
                 CandidateResult c;
                 c.rank = static_cast<int>(i + 1);
-                c.name = "Gen " + std::to_string(gen + 1) + " Elite #" + std::to_string(i + 1);
+                c.talents = graph.to_talents(pop[i].genes);
+                c.name = format_priest_build_name(c.talents);
                 c.category = "Genetic AI";
                 c.race = pop[i].race;
                 c.mean_dps = pop[i].fitness;
@@ -273,16 +300,26 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
                 child.genes[k] = parent2.genes[k];
             }
             // Mutation
-            if (rng() % 100 < 40) {
+            int mut_chance = static_cast<int>(mutation_rate * 100.0);
+            if (rng() % 100 < mut_chance) {
                 size_t m_idx = rng() % child.genes.size();
                 if (child.genes[m_idx] > 0 && rng() % 2 == 0) child.genes[m_idx]--;
                 else child.genes[m_idx]++;
             }
-            repair_genome(child.genes);
+            graph.repair(child.genes, rng, req_talents);
 
-            child.race = (optimize_race && rng() % 2 == 0) ? parent2.race : parent1.race;
-            Talents t = graph.to_talents(child.genes);
-            child.rotation = (t.shadow.shadowform > 0 || t.shadow.mind_flay > 0) ? RotationChoice::SHADOW_PRIEST : RotationChoice::SMITE_PRIEST;
+            if (forced_race >= 0) {
+                child.race = static_cast<sim::Race>(forced_race);
+            } else {
+                child.race = (optimize_race && rng() % 2 == 0) ? parent2.race : parent1.race;
+            }
+
+            if (forced_rotation >= 0) {
+                child.rotation = static_cast<RotationChoice>(forced_rotation);
+            } else {
+                Talents t = graph.to_talents(child.genes);
+                child.rotation = (t.shadow.shadowform > 0 || t.shadow.mind_flay > 0) ? RotationChoice::SHADOW_PRIEST : RotationChoice::SMITE_PRIEST;
+            }
             child.fitness = 0.0;
             next_pop.push_back(child);
         }
@@ -308,10 +345,10 @@ std::vector<CandidateResult> Optimizer::optimize_genetic_ai(
         sim.policy.rotation = ind.rotation;
         sim.record_timeline = true;
 
-        BatchSimResult batch = ParallelSimRunner::run_batch(sim, final_sims);
+        BatchSimResult batch = ParallelSimRunner::run_batch(sim, final_sims, thread_count);
 
         CandidateResult res;
-        res.name = "AI Evolved Build #" + std::to_string(i + 1);
+        res.name = format_priest_build_name(sim.talents);
         res.category = "Genetic AI";
         res.race = ind.race;
         res.mean_dps = batch.mean_dps;

@@ -228,6 +228,10 @@ struct Stats {
         return spell_power + holy_power;
     }
 
+    double effective_arcane_power() const {
+        return spell_power + arcane_power;
+    }
+
     // Classic Warlock: 60.6 Intellect = 1% Spell Crit (Priest is 59.2)
     double total_spell_crit(double base_crit = 1.70, double int_per_crit = 60.6) const {
         return base_crit + (intellect / int_per_crit) + spell_crit_percent;

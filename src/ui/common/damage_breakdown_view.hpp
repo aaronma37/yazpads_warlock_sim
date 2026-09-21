@@ -106,3 +106,86 @@ inline void render_damage_breakdown_bars(const BatchSimResult& batch, float bar_
 }
 
 } // namespace warlock
+
+#include "src/sim/priest/parallel_runner.hpp"
+#include "src/sim/priest/spells.hpp"
+
+namespace priest {
+
+struct PriestDamageBreakdownEntry {
+    const char* name;
+    double pct;
+    ImVec4 color;
+    SpellID id;
+};
+
+inline ImVec4 get_priest_spell_breakdown_color(SpellID id) {
+    switch (id) {
+        // Shadow
+        case SpellID::SHADOW_WORD_PAIN:   return ImVec4(0.55f, 0.35f, 0.95f, 1.0f);
+        case SpellID::MIND_FLAY:          return ImVec4(0.65f, 0.45f, 0.95f, 1.0f);
+        case SpellID::MIND_BLAST:         return ImVec4(0.80f, 0.25f, 0.90f, 1.0f);
+        case SpellID::SHADOW_WORD_DEATH:  return ImVec4(0.95f, 0.30f, 0.40f, 1.0f);
+        case SpellID::DEVOURING_PLAGUE:   return ImVec4(0.40f, 0.85f, 0.50f, 1.0f);
+        case SpellID::SHADOWGUARD:        return ImVec4(0.70f, 0.50f, 0.85f, 1.0f);
+        case SpellID::TOUCH_OF_THE_GRAVE: return ImVec4(0.70f, 0.90f, 0.60f, 1.0f);
+
+        // Holy
+        case SpellID::SMITE:              return ImVec4(1.00f, 0.85f, 0.30f, 1.0f);
+        case SpellID::HOLY_FIRE:          return ImVec4(1.00f, 0.65f, 0.20f, 1.0f);
+        case SpellID::PENANCE:            return ImVec4(1.00f, 0.92f, 0.50f, 1.0f);
+        case SpellID::HOLY_NOVA:          return ImVec4(0.95f, 0.80f, 0.40f, 1.0f);
+        case SpellID::CHASTISE:           return ImVec4(0.85f, 0.75f, 0.35f, 1.0f);
+
+        // Arcane
+        case SpellID::STARSHARDS:         return ImVec4(0.35f, 0.75f, 0.95f, 1.0f);
+
+        default:                          return ImVec4(0.60f, 0.60f, 0.70f, 1.0f);
+    }
+}
+
+inline void render_priest_damage_breakdown_bars(const BatchSimResult& batch, float bar_width = 180.0f, float label_offset = 130.0f) {
+    const PriestDamageBreakdownEntry all_entries[] = {
+        {"SW: Pain",          batch.pct_sw_pain,          get_priest_spell_breakdown_color(SpellID::SHADOW_WORD_PAIN),   SpellID::SHADOW_WORD_PAIN},
+        {"Mind Flay",         batch.pct_mind_flay,        get_priest_spell_breakdown_color(SpellID::MIND_FLAY),          SpellID::MIND_FLAY},
+        {"Mind Blast",        batch.pct_mind_blast,       get_priest_spell_breakdown_color(SpellID::MIND_BLAST),         SpellID::MIND_BLAST},
+        {"SW: Death",         batch.pct_sw_death,         get_priest_spell_breakdown_color(SpellID::SHADOW_WORD_DEATH),  SpellID::SHADOW_WORD_DEATH},
+        {"Devouring Plague",  batch.pct_devouring_plague, get_priest_spell_breakdown_color(SpellID::DEVOURING_PLAGUE),   SpellID::DEVOURING_PLAGUE},
+        {"Smite",             batch.pct_smite,            get_priest_spell_breakdown_color(SpellID::SMITE),              SpellID::SMITE},
+        {"Holy Fire",         batch.pct_holy_fire,        get_priest_spell_breakdown_color(SpellID::HOLY_FIRE),          SpellID::HOLY_FIRE},
+        {"Penance",           batch.pct_penance,          get_priest_spell_breakdown_color(SpellID::PENANCE),            SpellID::PENANCE},
+        {"Holy Nova",         batch.pct_holy_nova,        get_priest_spell_breakdown_color(SpellID::HOLY_NOVA),          SpellID::HOLY_NOVA},
+        {"Starshards",        batch.pct_starshards,       get_priest_spell_breakdown_color(SpellID::STARSHARDS),         SpellID::STARSHARDS},
+        {"Chastise",          batch.pct_chastise,         get_priest_spell_breakdown_color(SpellID::CHASTISE),           SpellID::CHASTISE},
+        {"Shadowguard",       batch.pct_shadowguard,      get_priest_spell_breakdown_color(SpellID::SHADOWGUARD),        SpellID::SHADOWGUARD},
+        {"Touch of Grave",    batch.pct_touch_of_the_grave, get_priest_spell_breakdown_color(SpellID::TOUCH_OF_THE_GRAVE), SpellID::TOUCH_OF_THE_GRAVE},
+    };
+
+    auto draw_dmg_bar = [&](const char* name, double pct, const ImVec4& col, SpellID id) {
+        if (pct > 0.05) {
+            ImGui::Text("%-14s:", name);
+            ImGui::SameLine(label_offset);
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, col);
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%.1f%% (%.0f)", pct, pct * 0.01 * batch.mean_dps);
+            ImGui::ProgressBar(static_cast<float>(pct / 100.0), ImVec2(bar_width, 15), buf);
+            ImGui::PopStyleColor();
+
+            if (id != SpellID::NONE && ImGui::IsItemHovered()) {
+                const auto& st = batch.spell_stats[static_cast<size_t>(id)];
+                ImGui::BeginTooltip();
+                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", name);
+                ImGui::Separator();
+                ImGui::Text("Avg casts: %.1f | Avg hits: %.1f | Avg hit: %.0f", st.mean_casts, st.mean_hits, sim::spell_avg_hit(st));
+                ImGui::Text("Crit: %.1f%% | Miss: %.1f%%", sim::spell_crit_pct(st), sim::spell_miss_pct(st));
+                ImGui::EndTooltip();
+            }
+        }
+    };
+
+    for (const auto& entry : all_entries) {
+        draw_dmg_bar(entry.name, entry.pct, entry.color, entry.id);
+    }
+}
+
+} // namespace priest

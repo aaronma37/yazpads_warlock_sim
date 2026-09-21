@@ -27,6 +27,8 @@ enum class SpellID : uint8_t {
     DEMONIC_RUNE,
     TRINKET_USE,
     RACIAL_BERSERKING,
+    DARK_SACRIFICE,
+    TOUCH_OF_THE_GRAVE,
     COUNT
 };
 
@@ -52,8 +54,14 @@ inline const char* spell_id_to_string(SpellID id) {
         case SpellID::DEMONIC_RUNE:     return "Demonic Rune";
         case SpellID::TRINKET_USE:      return "Trinket Use";
         case SpellID::RACIAL_BERSERKING:return "Berserking";
+        case SpellID::DARK_SACRIFICE:   return "Dark Sacrifice";
+        case SpellID::TOUCH_OF_THE_GRAVE: return "Touch of the Grave";
         default:                        return "None";
     }
+}
+
+inline const char* spell_id_to_name(SpellID id) {
+    return spell_id_to_string(id);
 }
 
 inline const char* spell_id_to_icon(SpellID id) {
@@ -78,6 +86,8 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::DEMONIC_RUNE:     return "inv_misc_gem_pearl_03";
         case SpellID::TRINKET_USE:      return "inv_misc_gem_pearl_04";
         case SpellID::RACIAL_BERSERKING:return "racial_troll_berserk";
+        case SpellID::DARK_SACRIFICE:   return "spell_holy_powerinfusion_shadow";
+        case SpellID::TOUCH_OF_THE_GRAVE: return "spell_shadow_chilltouch";
         default:                        return "";
     }
 }
@@ -218,6 +228,20 @@ public:
         return s;
     }
 
+    // Holy Nova (Rank 6: Level 60, Instant, 750 Mana, 174 to 200 Holy damage, 10yd radius)
+    static inline sim::SpellDefinition holy_nova_rank6() {
+        sim::SpellDefinition s;
+        s.id = static_cast<uint8_t>(SpellID::HOLY_NOVA);
+        s.name = "Holy Nova";
+        s.school = sim::School::HOLY;
+        s.base_cast_time = 0.0;
+        s.mana_cost = 750.0;
+        s.min_dmg = 174.0;
+        s.max_dmg = 200.0;
+        s.direct_coefficient = 0.107; // ~10.7% SP
+        return s;
+    }
+
     // Penance (Rank 4: 2s Channeled, 12s CD, 131 Holy damage per tick, 3 ticks)
     static inline sim::SpellDefinition penance_rank4() {
         sim::SpellDefinition s;
@@ -232,7 +256,7 @@ public:
         s.dot_tick_interval = 1.0;
         s.num_ticks = 3;
         s.dot_base_dmg_per_tick = 131.0;
-        s.dot_coeff_per_tick = 0.25;
+        s.dot_coeff_per_tick = 0.285; // 28.5% SP per tick as per Forever tooltip
         return s;
     }
 

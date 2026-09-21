@@ -31,6 +31,10 @@ struct BatchSimResult {
     double mean_sw_weaving_procs = 0.0;
     double mean_mana_spent = 0.0;
     double mean_mana_gained = 0.0;
+    double crit_percent = 0.0;
+    double miss_percent = 0.0;
+    double mean_crits = 0.0;
+    double mean_casts = 0.0;
 
     // Damage Breakdown
     double pct_sw_pain = 0.0;
@@ -40,6 +44,12 @@ struct BatchSimResult {
     double pct_devouring_plague = 0.0;
     double pct_smite = 0.0;
     double pct_holy_fire = 0.0;
+    double pct_penance = 0.0;
+    double pct_holy_nova = 0.0;
+    double pct_starshards = 0.0;
+    double pct_chastise = 0.0;
+    double pct_shadowguard = 0.0;
+    double pct_touch_of_the_grave = 0.0;
 
     std::array<sim::BatchSpellStats, static_cast<size_t>(SpellID::COUNT)> spell_stats{};
     std::vector<HistogramBin> histogram;

@@ -68,10 +68,8 @@ class WarlockSimApp
 
   float build_copied_timer = 0.0f;
 
-  std::string character_name = "Grimmortis";
   int selected_model_idx = 3;  // 3 = Human (0 = Undead, 1 = Orc, 2 = Troll, 3 = Human, 4 = Gnome)
 
-  std::string priest_character_name = "Benedictus";
   int priest_model_idx = 0;  // 0 = Human (0 = Human, 1 = Dwarf, 2 = Night Elf, 3 = Undead, 4 = Troll)
   float priest_build_copied_timer = 0.0f;
 
@@ -139,7 +137,13 @@ class WarlockSimApp
         // -------------------------------------------------------------------------
         // Top Header Bar: Class Switcher & Character Profile
         // -------------------------------------------------------------------------
+        // Class switcher: icon buttons using the per-class icons from player_class_to_icon().
+        const Texture2D& warlock_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::WARLOCK));
+        const Texture2D& priest_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::PRIEST));
+        constexpr float kClassIconSize = 36.0f;
+
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
         if (active_class == sim::PlayerClass::WARLOCK)
         {
           ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.65f, 1.0f));
@@ -152,10 +156,12 @@ class WarlockSimApp
           ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
           ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
         }
-        if (ImGui::Button("WARLOCK", ImVec2(120, 26)))
+        if (rlImGuiImageButtonSize("##ClassWarlock", &warlock_icon, Vector2{kClassIconSize, kClassIconSize}))
         {
           active_class = sim::PlayerClass::WARLOCK;
         }
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Warlock");
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
 
@@ -164,37 +170,27 @@ class WarlockSimApp
         if (active_class == sim::PlayerClass::PRIEST)
         {
           ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.90f, 0.90f, 0.95f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.10f, 0.10f, 0.15f, 1.0f));
           ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
           ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
         }
         else
         {
           ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.90f, 1.0f));
           ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
           ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
         }
-        if (ImGui::Button("PRIEST", ImVec2(120, 26)))
+        if (rlImGuiImageButtonSize("##ClassPriest", &priest_icon, Vector2{kClassIconSize, kClassIconSize}))
         {
           active_class = sim::PlayerClass::PRIEST;
         }
+        if (ImGui::IsItemHovered())
+          ImGui::SetTooltip("Priest");
         ImGui::PopStyleVar();
-        ImGui::PopStyleColor(3);
+        ImGui::PopStyleColor(2);
 
-        ImGui::PopStyleVar();  // FrameRounding
+        ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
         ImGui::SameLine();
-        ImGui::TextDisabled("|");
-        ImGui::SameLine();
-        if (active_class == sim::PlayerClass::WARLOCK)
-        {
-          ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Class: Warlock (%s)", character_name.c_str());
-        }
-        else
-        {
-          ImGui::TextColored(ImVec4(1.0f, 0.95f, 0.80f, 1.0f), "Class: Priest (WoW Forever / Hyjal)");
-        }
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -357,7 +353,7 @@ class WarlockSimApp
             // Pane 1: Gear & Direct Stats
             ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
             render_armory_panel(
-                sim, player_stats, sim.base_attrs, character_name, selected_model_idx, build_copied_timer);
+                sim, player_stats, sim.base_attrs, selected_model_idx, build_copied_timer);
             ImGui::EndChild();
 
             ImGui::SameLine();
@@ -477,7 +473,7 @@ class WarlockSimApp
             // Pane 1: Gear & Direct Stats
             ImGui::BeginChild("PriestPane_Stats", ImVec2(pane1_w, pane_height), true);
             render_armory_panel(
-                priest_sim, priest_stats, priest_sim.base_attrs, priest_character_name, priest_model_idx, priest_build_copied_timer, sim::PlayerClass::PRIEST);
+                priest_sim, priest_stats, priest_sim.base_attrs, priest_model_idx, priest_build_copied_timer, sim::PlayerClass::PRIEST);
             ImGui::EndChild();
 
             ImGui::SameLine();

@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "implot.h"
 #include "src/ui/common/asset_manager.hpp"
+#include "src/ui/common/damage_breakdown_view.hpp"
 #include "src/sim/priest/parallel_runner.hpp"
 #include <vector>
 #include <algorithm>
@@ -30,14 +31,14 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
     ImGui::TextDisabled("[%.1f - %.1f]", batch.p5_dps, batch.p95_dps);
     ImGui::NextColumn();
 
-    ImGui::TextDisabled("SHADOW WEAVING PROCS");
-    ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "%.1f", batch.mean_sw_weaving_procs);
+    ImGui::TextDisabled("SHADOW WEAVING");
+    ImGui::TextColored(ImVec4(0.8f, 0.5f, 1.0f, 1.0f), "%.1f procs", batch.mean_sw_weaving_procs);
     ImGui::TextDisabled("Mean Procs / Fight");
     ImGui::NextColumn();
 
-    ImGui::TextDisabled("MANA SPENT / GAINED");
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%.0f / %.0f", batch.mean_mana_spent, batch.mean_mana_gained);
-    ImGui::TextDisabled("Fight Mana Averages");
+    ImGui::TextDisabled("CRIT / MISS RATE");
+    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), "%.1f%% Crit", batch.crit_percent);
+    ImGui::TextDisabled("%.1f%% Missed", batch.miss_percent);
     ImGui::NextColumn();
 
     ImGui::Columns(1);
@@ -106,90 +107,36 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
             ImGui::EndTabItem();
         }
 
-        // Tab 3: Damage Breakdown
+        // Tab 3: Damage Breakdown (Styled matching golden standard)
         if (ImGui::BeginTabItem("Damage Breakdown")) {
-            ImGui::Text("Spell Damage Contribution (%% of Total Damage & Breakdown):");
+            ImGui::Text("Spell Damage Contribution (%% of Total + DPS):");
             ImGui::Separator();
 
-            struct PriestSpellRow {
-                const char* name;
-                const char* icon_name;
-                double pct;
-                SpellID id;
-            };
+            render_priest_damage_breakdown_bars(batch, 240.0f, 180.0f);
 
-            std::vector<PriestSpellRow> rows = {
-                { "Shadow Word: Pain", "spell_shadow_shadowwordpain", batch.pct_sw_pain, SpellID::SHADOW_WORD_PAIN },
-                { "Mind Flay", "spell_shadow_siphonmana", batch.pct_mind_flay, SpellID::MIND_FLAY },
-                { "Mind Blast", "spell_shadow_unholyfrenzy", batch.pct_mind_blast, SpellID::MIND_BLAST },
-                { "Shadow Word: Death", "spell_shadow_demonicfortitude", batch.pct_sw_death, SpellID::SHADOW_WORD_DEATH },
-                { "Devouring Plague", "spell_shadow_devouringplague", batch.pct_devouring_plague, SpellID::DEVOURING_PLAGUE },
-                { "Smite", "spell_holy_holysmite", batch.pct_smite, SpellID::SMITE },
-                { "Holy Fire", "spell_holy_searinglight", batch.pct_holy_fire, SpellID::HOLY_FIRE },
-            };
-
-            // Sort descending by share %
-            std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) {
-                return a.pct > b.pct;
-            });
-
-            if (ImGui::BeginTable("PriestFullDmgBreakdown", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Spell / Ability", ImGuiTableColumnFlags_WidthFixed, 220);
-                ImGui::TableSetupColumn("Damage Share (%)", ImGuiTableColumnFlags_WidthFixed, 130);
-                ImGui::TableSetupColumn("Visual Contribution", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Mean Casts", ImGuiTableColumnFlags_WidthFixed, 100);
-                ImGui::TableSetupColumn("Mean Hits", ImGuiTableColumnFlags_WidthFixed, 100);
-                ImGui::TableSetupColumn("Crit %", ImGuiTableColumnFlags_WidthFixed, 90);
-                ImGui::TableHeadersRow();
-
-                for (const auto& r : rows) {
-                    if (r.pct <= 0.0001) continue;
-
-                    ImGui::TableNextRow();
-
-                    // Col 0: Icon + Name
-                    ImGui::TableSetColumnIndex(0);
-                    Texture2D icon = warlock::AssetManager::get().get_icon(r.icon_name);
-                    if (icon.id > 0) {
-                        ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(20, 20));
-                        ImGui::SameLine(0, 6);
-                    }
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextColored(ImVec4(1.0f, 0.95f, 0.70f, 1.0f), "%s", r.name);
-
-                    // Col 1: Share %
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.2f%%", r.pct * 100.0);
-
-                    // Col 2: Progress Bar
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::ProgressBar(static_cast<float>(r.pct), ImVec2(-1, 16));
-
-                    // Spell stats if recorded
-                    size_t idx = static_cast<size_t>(r.id);
-                    if (idx < batch.spell_stats.size()) {
-                        const auto& st = batch.spell_stats[idx];
-                        ImGui::TableSetColumnIndex(3);
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::Text("%.1f", st.mean_casts);
-
-                        ImGui::TableSetColumnIndex(4);
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::Text("%.1f", st.mean_hits);
-
-                        ImGui::TableSetColumnIndex(5);
-                        ImGui::AlignTextToFramePadding();
-                        double crit_pct = (st.mean_hits > 0.0) ? (st.mean_crits / st.mean_hits * 100.0) : 0.0;
-                        ImGui::Text("%.1f%%", crit_pct);
-                    } else {
-                        ImGui::TableSetColumnIndex(3); ImGui::Text("-");
-                        ImGui::TableSetColumnIndex(4); ImGui::Text("-");
-                        ImGui::TableSetColumnIndex(5); ImGui::Text("-");
-                    }
-                }
-
-                ImGui::EndTable();
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Fight Averages:");
+            if (batch.spell_stats[static_cast<size_t>(SpellID::SHADOW_WORD_PAIN)].mean_casts > 0.05)
+                ImGui::BulletText("Shadow Word: Pain Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::SHADOW_WORD_PAIN)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::MIND_FLAY)].mean_hits > 0.05)
+                ImGui::BulletText("Mind Flay Ticks: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::MIND_FLAY)].mean_hits);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::MIND_BLAST)].mean_casts > 0.05)
+                ImGui::BulletText("Mind Blast Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::MIND_BLAST)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::SHADOW_WORD_DEATH)].mean_casts > 0.05)
+                ImGui::BulletText("Shadow Word: Death Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::SHADOW_WORD_DEATH)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::DEVOURING_PLAGUE)].mean_casts > 0.05)
+                ImGui::BulletText("Devouring Plague Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::DEVOURING_PLAGUE)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::SMITE)].mean_casts > 0.05)
+                ImGui::BulletText("Smite Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::SMITE)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::HOLY_FIRE)].mean_casts > 0.05)
+                ImGui::BulletText("Holy Fire Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::HOLY_FIRE)].mean_casts);
+            if (batch.spell_stats[static_cast<size_t>(SpellID::PENANCE)].mean_casts > 0.05)
+                ImGui::BulletText("Penance Casts: %.1f", batch.spell_stats[static_cast<size_t>(SpellID::PENANCE)].mean_casts);
+            ImGui::BulletText("Shadow Weaving Procs: %.1f", batch.mean_sw_weaving_procs);
+            ImGui::BulletText("Mana Consumed: %.0f", batch.mean_mana_spent);
+            if (batch.mean_mana_gained > 0.0) {
+                ImGui::BulletText("Mana Gained / Regenerated: %.0f", batch.mean_mana_gained);
             }
 
             ImGui::EndTabItem();
@@ -350,9 +297,9 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                         ImGui::TableSetColumnIndex(4);
                         if (cast.damage > 0.0) {
                             if (cast.is_crit) {
-                                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%.0f (CRIT)", cast.damage);
+                                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%.0f CRIT!", cast.damage);
                             } else {
-                                ImGui::Text("%.0f", cast.damage);
+                                ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%.0f Hit", cast.damage);
                             }
                         } else if (cast.is_miss) {
                             ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "MISS");
@@ -362,7 +309,7 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
 
                         // Col 5: Tag
                         ImGui::TableSetColumnIndex(5);
-                        ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%s", cast.tag.c_str());
+                        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "%s", cast.tag.c_str());
                     }
 
                     ImGui::EndTable();

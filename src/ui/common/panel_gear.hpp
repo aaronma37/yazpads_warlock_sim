@@ -144,19 +144,17 @@ template <typename SimType>
 inline void render_armory_panel(SimType& sim,
                                 const Stats& total_stats,
                                 const BaseAttributes& base_attrs,
-                                std::string& character_name,
                                 int& selected_model_idx,
                                 float& build_copied_timer,
                                 sim::PlayerClass player_class = sim::PlayerClass::WARLOCK)
 {
   GearLoadout& gear = sim.gear;
 
-  // --- CHARACTER RACE SELECTION (SINGLE DROPDOWN) ---
+  // --- CHARACTER RACE SELECTION (ICON BUTTONS) ---
   ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.10f, 0.16f, 0.90f));
-  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 105), true);
+  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 112), true);
 
-  ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "Race:");
-  ImGui::SameLine();
+  //ImGui::SameLine();
 
   const char* warlock_races[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
   const Race warlock_race_vals[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};
@@ -168,23 +166,37 @@ inline void render_armory_panel(SimType& sim,
   const Race* race_vals = (player_class == sim::PlayerClass::PRIEST) ? priest_race_vals : warlock_race_vals;
   int num_races = (player_class == sim::PlayerClass::PRIEST) ? 6 : 5;
 
-  int current_race_idx = 0;
+  constexpr float kRaceIconSize = 28.0f;
+  ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
   for (int i = 0; i < num_races; ++i)
   {
+    if (i > 0)
+      ImGui::SameLine();
     if (sim.race == race_vals[i])
     {
-      current_race_idx = i;
-      break;
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.65f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.80f, 0.50f, 1.0f, 1.0f));
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
     }
+    else
+    {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+    }
+    const Texture2D& race_tex = AssetManager::get().get_icon(race_to_icon(race_vals[i]));
+    const std::string race_btn_id = std::string("##Race_") + race_names[i];
+    if (rlImGuiImageButtonSize(race_btn_id.c_str(), &race_tex, Vector2{kRaceIconSize, kRaceIconSize}))
+    {
+      sim.race = race_vals[i];
+      selected_model_idx = i;
+      sim.base_attrs = sim::get_base_attributes_for_class_and_race(player_class, sim.race);
+    }
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(2);
   }
-
-  ImGui::SetNextItemWidth(140);
-  if (ImGui::Combo("##RaceSelectCombo", &current_race_idx, race_names, num_races))
-  {
-    sim.race = race_vals[current_race_idx];
-    selected_model_idx = current_race_idx;
-    sim.base_attrs = sim::get_base_attributes_for_class_and_race(player_class, sim.race);
-  }
+  ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
   if (player_class == sim::PlayerClass::PRIEST)
   {
@@ -427,33 +439,33 @@ inline void render_armory_panel(SimType& sim,
 
     ImGui::Separator();
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Power##Raw", &sim.raw_stats.spell_power, 10.0, 50.0, "%.0f");
+    ImGui::InputDouble("Spell Power##Raw", &sim.raw_stats.spell_power, 0.0, 0.0, "%.0f");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Shadow Power##Raw", &sim.raw_stats.shadow_power, 10.0, 50.0, "%.0f");
+    ImGui::InputDouble("Shadow Power##Raw", &sim.raw_stats.shadow_power, 0.0, 0.0, "%.0f");
     if (player_class == sim::PlayerClass::PRIEST)
     {
       ImGui::SetNextItemWidth(100);
-      ImGui::InputDouble("Holy Power##Raw", &sim.raw_stats.holy_power, 10.0, 50.0, "%.0f");
+      ImGui::InputDouble("Holy Power##Raw", &sim.raw_stats.holy_power, 0.0, 0.0, "%.0f");
     }
     else
     {
       ImGui::SetNextItemWidth(100);
-      ImGui::InputDouble("Fire Power##Raw", &sim.raw_stats.fire_power, 10.0, 50.0, "%.0f");
+      ImGui::InputDouble("Fire Power##Raw", &sim.raw_stats.fire_power, 0.0, 0.0, "%.0f");
     }
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Hit %##Raw", &sim.raw_stats.spell_hit_percent, 1.0, 2.0, "%.1f%%");
+    ImGui::InputDouble("Spell Hit %##Raw", &sim.raw_stats.spell_hit_percent, 0.0, 0.0, "%.1f%%");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Crit %##Raw", &sim.raw_stats.spell_crit_percent, 1.0, 2.0, "%.1f%%");
+    ImGui::InputDouble("Spell Crit %##Raw", &sim.raw_stats.spell_crit_percent, 0.0, 0.0, "%.1f%%");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Haste %##Raw", &sim.raw_stats.spell_haste_percent, 1.0, 2.0, "%.1f%%");
+    ImGui::InputDouble("Spell Haste %##Raw", &sim.raw_stats.spell_haste_percent, 0.0, 0.0, "%.1f%%");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("MP5##Raw", &sim.raw_stats.mp5, 5.0, 10.0, "%.0f");
+    ImGui::InputDouble("MP5##Raw", &sim.raw_stats.mp5, 0.0, 0.0, "%.0f");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Intellect##Raw", &sim.raw_stats.intellect, 10.0, 25.0, "%.0f");
+    ImGui::InputDouble("Intellect##Raw", &sim.raw_stats.intellect, 0.0, 0.0, "%.0f");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Stamina##Raw", &sim.raw_stats.stamina, 10.0, 25.0, "%.0f");
+    ImGui::InputDouble("Stamina##Raw", &sim.raw_stats.stamina, 0.0, 0.0, "%.0f");
     ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spirit##Raw", &sim.raw_stats.spirit, 10.0, 25.0, "%.0f");
+    ImGui::InputDouble("Spirit##Raw", &sim.raw_stats.spirit, 0.0, 0.0, "%.0f");
   }
 
   // Character Attributes & Spell Stats Summary

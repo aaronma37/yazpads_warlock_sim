@@ -185,6 +185,10 @@ public:
         return result;
     }
 
+    inline uint64_t operator()() {
+        return next_u64();
+    }
+
     // Returns a uniform float in [0.0, 1.0)
     inline double next_double() {
         return (next_u64() >> 11) * (1.0 / 9007199254740992.0);

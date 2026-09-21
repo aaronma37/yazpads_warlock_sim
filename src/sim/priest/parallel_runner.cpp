@@ -30,6 +30,10 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_mana_spent = 0.0;
         double sum_mana_gained = 0.0;
         int sum_sw_procs = 0;
+        int sum_total_casts = 0;
+        int sum_total_damage_events = 0;
+        int sum_total_crits = 0;
+        int sum_total_misses = 0;
 
         double sum_dmg_swp = 0.0;
         double sum_dmg_mf = 0.0;
@@ -38,6 +42,12 @@ BatchSimResult ParallelSimRunner::run_batch(
         double sum_dmg_dp = 0.0;
         double sum_dmg_smite = 0.0;
         double sum_dmg_hf = 0.0;
+        double sum_dmg_penance = 0.0;
+        double sum_dmg_holy_nova = 0.0;
+        double sum_dmg_starshards = 0.0;
+        double sum_dmg_chastise = 0.0;
+        double sum_dmg_shadowguard = 0.0;
+        double sum_dmg_touch_of_the_grave = 0.0;
         double sum_dmg_total = 0.0;
 
         std::array<sim::SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> sum_spell{};
@@ -70,6 +80,10 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_mana_spent += res.mana_spent;
                 out.sum_mana_gained += res.mana_gained;
                 out.sum_sw_procs += res.shadow_weaving_procs;
+                out.sum_total_casts += res.total_casts;
+                out.sum_total_damage_events += res.total_damage_events;
+                out.sum_total_crits += res.total_damage_crits;
+                out.sum_total_misses += res.misses;
 
                 out.sum_dmg_swp += res.dmg_sw_pain;
                 out.sum_dmg_mf += res.dmg_mind_flay;
@@ -78,6 +92,12 @@ BatchSimResult ParallelSimRunner::run_batch(
                 out.sum_dmg_dp += res.dmg_devouring_plague;
                 out.sum_dmg_smite += res.dmg_smite;
                 out.sum_dmg_hf += res.dmg_holy_fire;
+                out.sum_dmg_penance += res.dmg_penance;
+                out.sum_dmg_holy_nova += res.dmg_holy_nova;
+                out.sum_dmg_starshards += res.dmg_starshards;
+                out.sum_dmg_chastise += res.dmg_chastise;
+                out.sum_dmg_shadowguard += res.dmg_shadowguard;
+                out.sum_dmg_touch_of_the_grave += res.dmg_touch_of_the_grave;
                 out.sum_dmg_total += res.total_damage;
 
                 for (size_t s = 0; s < static_cast<size_t>(SpellID::COUNT); ++s) {
@@ -120,6 +140,17 @@ BatchSimResult ParallelSimRunner::run_batch(
     double grand_dmg_dp = 0.0;
     double grand_dmg_smite = 0.0;
     double grand_dmg_hf = 0.0;
+    double grand_dmg_penance = 0.0;
+    double grand_dmg_holy_nova = 0.0;
+    double grand_dmg_starshards = 0.0;
+    double grand_dmg_chastise = 0.0;
+    double grand_dmg_shadowguard = 0.0;
+    double grand_dmg_touch_of_the_grave = 0.0;
+
+    int grand_casts = 0;
+    int grand_damage_events = 0;
+    int grand_crits = 0;
+    int grand_misses = 0;
 
     for (const auto& out : thread_outputs) {
         all_dps.insert(all_dps.end(), out.dps_list.begin(), out.dps_list.end());
@@ -133,6 +164,17 @@ BatchSimResult ParallelSimRunner::run_batch(
         grand_dmg_dp += out.sum_dmg_dp;
         grand_dmg_smite += out.sum_dmg_smite;
         grand_dmg_hf += out.sum_dmg_hf;
+        grand_dmg_penance += out.sum_dmg_penance;
+        grand_dmg_holy_nova += out.sum_dmg_holy_nova;
+        grand_dmg_starshards += out.sum_dmg_starshards;
+        grand_dmg_chastise += out.sum_dmg_chastise;
+        grand_dmg_shadowguard += out.sum_dmg_shadowguard;
+        grand_dmg_touch_of_the_grave += out.sum_dmg_touch_of_the_grave;
+        grand_casts += out.sum_total_casts;
+        grand_damage_events += out.sum_total_damage_events;
+        grand_crits += out.sum_total_crits;
+        grand_misses += out.sum_total_misses;
+
         batch.mean_mana_spent += out.sum_mana_spent;
         batch.mean_mana_gained += out.sum_mana_gained;
         batch.mean_sw_weaving_procs += out.sum_sw_procs;
@@ -153,6 +195,11 @@ BatchSimResult ParallelSimRunner::run_batch(
     batch.mean_mana_gained /= iterations;
     batch.mean_sw_weaving_procs /= iterations;
 
+    batch.crit_percent = (grand_damage_events > 0) ? (static_cast<double>(grand_crits) / grand_damage_events) * 100.0 : 0.0;
+    batch.miss_percent = (grand_casts > 0) ? (static_cast<double>(grand_misses) / grand_casts) * 100.0 : 0.0;
+    batch.mean_crits = static_cast<double>(grand_crits) / iterations;
+    batch.mean_casts = static_cast<double>(grand_casts) / iterations;
+
     for (size_t s = 0; s < static_cast<size_t>(SpellID::COUNT); ++s) {
         batch.spell_stats[s].mean_casts /= iterations;
         batch.spell_stats[s].mean_hits /= iterations;
@@ -169,6 +216,12 @@ BatchSimResult ParallelSimRunner::run_batch(
         batch.pct_devouring_plague = (grand_dmg_dp / grand_dmg_total) * 100.0;
         batch.pct_smite = (grand_dmg_smite / grand_dmg_total) * 100.0;
         batch.pct_holy_fire = (grand_dmg_hf / grand_dmg_total) * 100.0;
+        batch.pct_penance = (grand_dmg_penance / grand_dmg_total) * 100.0;
+        batch.pct_holy_nova = (grand_dmg_holy_nova / grand_dmg_total) * 100.0;
+        batch.pct_starshards = (grand_dmg_starshards / grand_dmg_total) * 100.0;
+        batch.pct_chastise = (grand_dmg_chastise / grand_dmg_total) * 100.0;
+        batch.pct_shadowguard = (grand_dmg_shadowguard / grand_dmg_total) * 100.0;
+        batch.pct_touch_of_the_grave = (grand_dmg_touch_of_the_grave / grand_dmg_total) * 100.0;
     }
 
     std::sort(all_dps.begin(), all_dps.end());

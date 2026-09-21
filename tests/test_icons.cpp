@@ -1,4 +1,5 @@
 #include "test_framework.hpp"
+#include "src/sim/common/player_class.hpp"
 #include "src/sim/stats.hpp"
 #include "src/sim/policy.hpp"
 #include <string>
@@ -23,6 +24,25 @@ TEST_CASE(Icons, RaceToIconCoversAllRaces) {
         seen.insert(icon);
     }
     CHECK_EQ(seen.size(), (size_t)5);
+}
+
+TEST_CASE(Icons, PlayerClassToIcon) {
+    // Top-bar class switcher buttons resolve through this mapping; each class needs a distinct icon file.
+    CHECK_EQ(std::string(player_class_to_icon(PlayerClass::WARLOCK)), std::string("Class_Warlock.png"));
+    CHECK_EQ(std::string(player_class_to_icon(PlayerClass::PRIEST)), std::string("Class_Priest.png"));
+}
+
+TEST_CASE(Icons, RaceToIconCoversAllSelectableRaces) {
+    // The race selector shows every playable race as an icon button; each needs a distinct icon file.
+    Race all_races[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME, Race::DWARF, Race::NIGHT_ELF};
+    std::set<std::string> seen;
+    for (Race r : all_races) {
+        std::string icon = race_to_icon(r);
+        CHECK(!icon.empty());
+        CHECK(seen.find(icon) == seen.end());
+        seen.insert(icon);
+    }
+    CHECK_EQ(seen.size(), (size_t)7);
 }
 
 TEST_CASE(Icons, PetChoiceToIcon) {

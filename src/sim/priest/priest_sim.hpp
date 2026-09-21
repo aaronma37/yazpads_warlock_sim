@@ -42,14 +42,24 @@ struct SimResult {
 
     std::array<sim::SpellCombatStats, static_cast<size_t>(SpellID::COUNT)> spell_stats{};
 
-    void record_spell_cast(SpellID id) { spell_stats[static_cast<size_t>(id)].casts++; }
+    void record_spell_cast(SpellID id) {
+        spell_stats[static_cast<size_t>(id)].casts++;
+        total_casts++;
+    }
     void record_spell_hit(SpellID id, double dmg, bool crit) {
         sim::SpellCombatStats& s = spell_stats[static_cast<size_t>(id)];
         s.hits++;
         s.damage += dmg;
-        if (crit) s.crits++;
+        total_damage_events++;
+        if (crit) {
+            s.crits++;
+            total_damage_crits++;
+        }
     }
-    void record_spell_miss(SpellID id) { spell_stats[static_cast<size_t>(id)].misses++; }
+    void record_spell_miss(SpellID id) {
+        spell_stats[static_cast<size_t>(id)].misses++;
+        misses++;
+    }
 
     int total_casts = 0;
     int total_damage_events = 0;
@@ -71,6 +81,17 @@ struct SimResult {
     double dmg_smite = 0.0;
     double dmg_holy_fire = 0.0;
     double dmg_penance = 0.0;
+    double dmg_holy_nova = 0.0;
+    double dmg_starshards = 0.0;
+    double dmg_chastise = 0.0;
+    double dmg_shadowguard = 0.0;
+    double dmg_touch_of_the_grave = 0.0;
+    int touch_of_the_grave_procs = 0;
+
+    double healing_vampiric_embrace = 0.0;
+    double healing_devouring_plague = 0.0;
+    double self_damage_sw_death = 0.0;
+    int clearcast_holy_nova_procs = 0;
 
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;
