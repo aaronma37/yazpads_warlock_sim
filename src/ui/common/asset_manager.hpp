@@ -36,6 +36,7 @@ private:
         // Candidate search paths
         std::vector<std::string> candidates = {
             "assets",
+            "/assets",
             "../assets",
             "/home/deck/warlock_sim/assets"
         };

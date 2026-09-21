@@ -5,6 +5,8 @@
 #include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
 #include "src/sim/talent_graph.hpp"
+#include "src/sim/warlock/genetic_optimizer.hpp"
+#include "src/sim/warlock/surrogate_evaluator.hpp"
 #include <algorithm>
 #include <atomic>
 #include <mutex>
@@ -14,6 +16,14 @@
 
 namespace warlock
 {
+
+#if defined(__EMSCRIPTEN__)
+inline GeneticOptimizerSession& get_emscripten_ga_session()
+{
+  static GeneticOptimizerSession session;
+  return session;
+}
+#endif
 
 // Background worker state for live asynchronous optimization
 struct OptimizerWorkerState
@@ -41,6 +51,38 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
                                    std::string& current_opt_target,
                                    bool* request_switch_to_preset = nullptr)
 {
+#if defined(__EMSCRIPTEN__)
+  auto& em_session = get_emscripten_ga_session();
+  if (em_session.is_running())
+  {
+    is_optimizing = true;
+    std::vector<CandidateResult> step_elites;
+    float step_progress = 0.0f;
+    std::string step_status;
+    bool more = em_session.step(step_elites, step_progress, step_status);
+    if (!step_elites.empty())
+    {
+      optimizer_results = step_elites;
+    }
+    opt_progress = step_progress;
+    current_opt_target = step_status;
+
+    if (!more)
+    {
+      optimizer_results = em_session.finish([&](float p, const std::string& status) {
+        opt_progress = p;
+        current_opt_target = status;
+      });
+      is_optimizing = false;
+      opt_progress = 1.0f;
+    }
+  }
+  else if (is_optimizing && em_session.is_finished())
+  {
+    is_optimizing = false;
+    opt_progress = 1.0f;
+  }
+#else
   auto& worker = get_opt_worker_state();
 
   // Check if background worker has new live generation results
@@ -67,6 +109,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
     }
   }
+#endif
 
   static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
   ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
@@ -91,7 +134,11 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   static int ga_forced_race = -1;
   static int ga_forced_rotation = -1;
   static int ga_forced_pet_mode = -1;
+#if defined(__EMSCRIPTEN__)
+  static int ga_threads = 1;
+#else
   static int ga_threads = static_cast<int>(std::thread::hardware_concurrency());
+#endif
 
   static int iters_per_candidate = 3000;
   static bool compare_all_races = false;
@@ -126,6 +173,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       if (ga_final_sims < 10)
         ga_final_sims = 10;
     }
+#if !defined(__EMSCRIPTEN__)
     ImGui::SameLine();
     ImGui::SetNextItemWidth(100);
     int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
@@ -134,6 +182,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       if (ga_threads < 1)
         ga_threads = 1;
     }
+#endif
 
     ImGui::Spacing();
     ImGui::Checkbox("Seed with standard presets", &ga_seed_presets);
@@ -292,20 +341,15 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 
   if (opt_mode == 0)
   {
-    if (!worker.is_running.load())
+#if defined(__EMSCRIPTEN__)
+    bool is_busy = em_session.is_running();
+#else
+    bool is_busy = worker.is_running.load();
+#endif
+    if (!is_busy)
     {
       if (ImGui::Button("Run AI Genetic Optimization", ImVec2(260, 28)))
       {
-        if (worker.worker.joinable())
-          worker.worker.join();
-        worker.is_running = true;
-        worker.stop_requested = false;
-        worker.progress = 0.0f;
-        worker.current_status = "Initializing Population...";
-        is_optimizing = true;
-        opt_progress = 0.0f;
-        current_opt_target = worker.current_status;
-
         WarlockSimulator sim_copy = sim;
         int pop_sz = ga_pop_size;
         int gens = ga_generations;
@@ -327,7 +371,42 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         int forced_r = ga_forced_race;
         int forced_rot = ga_forced_rotation;
         int forced_pet = ga_forced_pet_mode;
+
+#if defined(__EMSCRIPTEN__)
+        GeneticOptimizerConfig cfg;
+        cfg.population_size = pop_sz;
+        cfg.generations = gens;
+        cfg.screening_sims = screen_sims;
+        cfg.final_sims = fn_sims;
+        cfg.seed_with_presets = seed_pre;
+        cfg.optimize_race = opt_race;
+        cfg.mutation_rate = mut_rate;
+        cfg.initial_exploration_rate = init_exp;
+        cfg.min_exploration_rate = min_exp;
+        cfg.required_talent_indices = req_talents;
+        cfg.forced_race = forced_r;
+        cfg.forced_rotation = forced_rot;
+        cfg.forced_pet_mode = forced_pet;
+        cfg.num_threads = 1;
+
+        em_session.start(sim_copy, cfg);
+        is_optimizing = true;
+        opt_progress = 0.001f;
+        current_opt_target = "Gen 0: Initializing Population...";
+        optimizer_results = em_session.get_elites();
+#else
+        auto& w = get_opt_worker_state();
+        w.is_running = true;
+        w.stop_requested = false;
+        w.progress = 0.0f;
+        w.current_status = "Initializing Population...";
+        is_optimizing = true;
+        opt_progress = 0.0f;
+        current_opt_target = w.current_status;
         int th_count = ga_threads;
+
+        if (worker.worker.joinable())
+          worker.worker.join();
 
         worker.worker = std::thread(
             [sim_copy,
@@ -384,6 +463,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
                 w.is_running = false;
               }
             });
+#endif
       }
     }
     else
@@ -391,7 +471,15 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
       if (ImGui::Button("🛑 Stop Search & Keep Best", ImVec2(220, 28)))
       {
+#if defined(__EMSCRIPTEN__)
+        em_session.stop();
+        optimizer_results = em_session.finish();
+        is_optimizing = false;
+        opt_progress = 1.0f;
+        current_opt_target = "Stopped by user";
+#else
         worker.stop_requested = true;
+#endif
       }
       ImGui::PopStyleColor();
     }
@@ -419,6 +507,58 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     }
     if (is_optimizing)
       ImGui::EndDisabled();
+
+    if (SurrogateEvaluator::get().is_loaded())
+    {
+      ImGui::SameLine();
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.45f, 0.70f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.58f, 0.88f, 1.0f));
+      if (ImGui::Button("⚡ Instant ML Inference (All Specs)", ImVec2(240, 28)))
+      {
+        optimizer_results.clear();
+        const auto& all_presets = standard_spec_presets();
+        for (size_t p_idx = 0; p_idx < all_presets.size(); ++p_idx)
+        {
+          const auto& preset = all_presets[p_idx];
+          WarlockSimulator s = sim;
+          s.talents = preset.make_talents();
+          s.policy.rotation = preset.rotation;
+          s.policy.pet = preset.pet;
+          s.buffs.sacrifice_succubus = preset.sac_succubus;
+          s.buffs.sacrifice_imp = preset.sac_imp;
+          s.policy.maintain_immolate = preset.maintain_immolate;
+
+          double pred_dps = SurrogateEvaluator::get().predict_from_sim(s, static_cast<int>(p_idx));
+
+          CandidateResult res;
+          res.name = preset.display_name;
+          res.category = "Talents";
+          res.race = s.race;
+          res.mean_dps = pred_dps;
+          res.inferred_dps = pred_dps;
+          res.talents = s.talents;
+          res.gear = s.gear;
+          res.buffs = s.buffs;
+          res.policy = s.policy;
+          res.mechanics = s.mechanics;
+          optimizer_results.push_back(res);
+        }
+
+        std::sort(optimizer_results.begin(), optimizer_results.end(), [](const CandidateResult& a, const CandidateResult& b) {
+          return a.inferred_dps > b.inferred_dps;
+        });
+        for (size_t idx = 0; idx < optimizer_results.size(); ++idx) {
+          optimizer_results[idx].rank = static_cast<int>(idx + 1);
+        }
+      }
+      ImGui::PopStyleColor(2);
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::BeginTooltip();
+        ImGui::Text("Evaluate all standard specs instantly using the trained LightGBM surrogate model (< 0.1 ms)");
+        ImGui::EndTooltip();
+      }
+    }
   }
   else
   {
@@ -503,7 +643,10 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
     }
 
+    bool has_surrogate = SurrogateEvaluator::get().is_loaded();
     int num_cols = show_stat_weights ? 14 : 8;
+    if (has_surrogate)
+      num_cols += 1;
     static bool show_std_dev = false;
     if (!show_std_dev)
       num_cols -= 1;  // hide +/- StdDev column
@@ -637,6 +780,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
       ImGui::TableSetupColumn("Damage Split", ImGuiTableColumnFlags_WidthFixed, 150);
       ImGui::TableSetupColumn(show_pct_from_leader ? "% vs Leader" : "Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
+      if (has_surrogate)
+        ImGui::TableSetupColumn("Inferred DPS", ImGuiTableColumnFlags_WidthFixed, 85);
       if (show_std_dev)
         ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 75);
       if (show_stat_weights)
@@ -992,6 +1137,34 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         else
         {
           ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.1f", r.mean_dps);
+        }
+
+        if (has_surrogate)
+        {
+          ImGui::TableNextColumn();
+          if (r.inferred_dps > 0.0)
+          {
+            ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "%.1f", r.inferred_dps);
+            if (ImGui::IsItemHovered())
+            {
+              ImGui::BeginTooltip();
+              ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "LightGBM GBDT Surrogate Prediction");
+              ImGui::Separator();
+              ImGui::Text("Inferred:  %.2f DPS", r.inferred_dps);
+              if (r.mean_dps > 0.0)
+              {
+                double delta = r.inferred_dps - r.mean_dps;
+                double pct = (delta / r.mean_dps) * 100.0;
+                ImGui::Text("Simulated: %.2f DPS", r.mean_dps);
+                ImGui::Text("Delta:     %+.2f DPS (%+.2f%%)", delta, pct);
+              }
+              ImGui::EndTooltip();
+            }
+          }
+          else
+          {
+            ImGui::TextDisabled("--");
+          }
         }
 
         if (show_std_dev)

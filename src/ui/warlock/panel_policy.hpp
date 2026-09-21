@@ -97,13 +97,13 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
       "Shadow & Flame Fire - Incinerate + Conflag + Bane",            // 18 SHADOW_AND_FLAME_FIRE_BANE
       "Demonology Shadow - Demonic Brand Weave",                      // 19 DP_AF_SHADOW_BRAND
   };
-  ImGui::SetNextItemWidth(450);
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
   if (ImGui::Combo("##RotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names)))
   {
     policy.rotation = static_cast<RotationChoice>(rot_idx);
   }
 
-  ImGui::TextDisabled("%s", rotation_choice_description(policy.rotation));
+  ImGui::TextWrapped("%s", rotation_choice_description(policy.rotation));
 
   ImGui::Spacing();
 
@@ -123,7 +123,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "On Cooldown (Opener) — Fire at combat start and on CD",
         "Smart Execute Alignment — Opener if fight length allows recast in execute, else <35% HP",
         "Align with Curse of Doom — Pop 0-6s before Doom tick, else Execute/CD"};
-    ImGui::SetNextItemWidth(450);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##RacialPolicyCombo", &racial_idx, racial_names, IM_ARRAYSIZE(racial_names)))
     {
       policy.racial_policy = static_cast<RacialPolicy>(racial_idx);
@@ -140,7 +140,6 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
   {
     ImGui::SetTooltip("When talented and Immolate is active, casts Conflagrate on 10s cooldown.");
   }
-  ImGui::SameLine(0, 16);
   ImGui::Checkbox("Decimation Soul Fire (<35% HP)##Policy", &policy.use_decimation_soul_fire);
   if (ImGui::IsItemHovered())
   {
@@ -157,7 +156,6 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
   {
     ImGui::SetTooltip("When 2+ targets are configured, automatically maintains Corruption on secondary targets.");
   }
-  ImGui::SameLine(0, 16);
   ImGui::Checkbox("Auto-Apply Bane of Havoc##Policy", &policy.auto_bane_of_havoc);
   if (ImGui::IsItemHovered())
   {

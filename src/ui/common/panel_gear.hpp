@@ -467,11 +467,28 @@ inline void render_armory_panel(SimType& sim,
     ImGui::SetNextItemWidth(100);
     ImGui::InputDouble("Spirit##Raw", &sim.raw_stats.spirit, 0.0, 0.0, "%.0f");
   }
+}
 
-  // Character Attributes & Spell Stats Summary
-  ImGui::Spacing();
-  ImGui::Separator();
+template <typename SimType>
+inline void render_armory_panel(SimType& sim,
+                                int& selected_model_idx,
+                                sim::PlayerClass player_class = sim::PlayerClass::WARLOCK)
+{
+  float dummy_timer = 0.0f;
+  Stats dummy_stats;
+  BaseAttributes dummy_attrs;
+  render_armory_panel(sim, dummy_stats, dummy_attrs, selected_model_idx, dummy_timer, player_class);
+}
+
+template <typename SimType>
+inline void render_combat_stats_summary(SimType& sim,
+                                        const Stats& total_stats,
+                                        const BaseAttributes& base_attrs,
+                                        float& build_copied_timer,
+                                        sim::PlayerClass player_class = sim::PlayerClass::WARLOCK)
+{
   ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Combat Stats Summary:");
+  ImGui::Separator();
 
   ImGui::Text("Shadow SP: %.0f", total_stats.effective_shadow_power());
   if (player_class == sim::PlayerClass::PRIEST)
@@ -484,6 +501,10 @@ inline void render_armory_panel(SimType& sim,
   }
   ImGui::Text("Spell Hit: %.1f%% (Cap: 16%%)", total_stats.spell_hit_percent);
   ImGui::Text("Spell Crit: %.2f%%", total_stats.total_spell_crit(base_attrs.base_spell_crit));
+  if (total_stats.spell_haste_percent > 0.0)
+  {
+    ImGui::Text("Spell Haste: %.1f%%", total_stats.spell_haste_percent);
+  }
   ImGui::Text("Max Mana: %.0f", total_stats.max_mana);
   ImGui::Text("Max Health: %.0f", total_stats.max_health);
   ImGui::Text("MP5: %.0f", total_stats.mp5);

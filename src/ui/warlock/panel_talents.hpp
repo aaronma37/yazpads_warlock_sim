@@ -5,6 +5,8 @@
 #include "src/sim/talents.hpp"
 #include "src/ui/asset_manager.hpp"
 #include "src/ui/common/cover_uv.hpp"
+#include "src/ui/panel_buffs.hpp"
+#include "src/ui/panel_mechanics.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -525,7 +527,7 @@ inline void render_panel_talents(WarlockSimulator& sim)
 
   float avail_h = ImGui::GetContentRegionAvail().y;
   constexpr float kBelowPanelH = 240.0f;
-  float col_h = std::max(530.0f, avail_h - kBelowPanelH - 16.0f);
+  float col_h = std::clamp(avail_h - kBelowPanelH - 16.0f, 530.0f, 580.0f);
 
   // --- Column 1: Affliction Tree ---
   render_tree_column(
@@ -573,9 +575,14 @@ inline void render_panel_talents(WarlockSimulator& sim)
       col_w,
       col_h);
 
-  // Blank panel below the talent trees (reserved space for future content).
+  // Panel below the talent trees: Consumables & Elixirs, Raid Buffs, World Buffs, Target Raid Debuffs, Demonic Sacrifice, Game Mechanics
   ImGui::Spacing();
-  ImGui::BeginChild("WarlockBelowTalents", ImVec2(0, kBelowPanelH), true);
+  if (ImGui::BeginChild("WarlockBelowTalents", ImVec2(0, 0), true))
+  {
+    render_panel_buffs(sim);
+    ImGui::Spacing();
+    render_panel_mechanics(sim.mechanics);
+  }
   ImGui::EndChild();
 }
 

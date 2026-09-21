@@ -14,11 +14,15 @@ BatchSimResult ParallelSimRunner::run_batch(
     uint64_t base_seed
 ) {
     if (iterations <= 0) iterations = 1;
+#if defined(__EMSCRIPTEN__)
+    num_threads = 1;
+#else
     if (num_threads <= 0) {
         num_threads = static_cast<int>(std::thread::hardware_concurrency());
         if (num_threads <= 0) num_threads = 4;
     }
     if (num_threads > iterations) num_threads = iterations;
+#endif
 
     auto start_time = std::chrono::high_resolution_clock::now();
     uint64_t initial_seed = (base_seed != 0) ? base_seed : (0x1337BEEFULL + static_cast<uint64_t>(start_time.time_since_epoch().count()));
@@ -56,68 +60,75 @@ BatchSimResult ParallelSimRunner::run_batch(
     std::vector<ThreadOutput> thread_outputs(num_threads);
     std::atomic<int> completed_iterations(0);
     std::vector<std::thread> workers;
-    workers.reserve(num_threads);
 
-    int iters_per_thread = iterations / num_threads;
-    int remainder = iterations % num_threads;
+    auto run_worker = [&](int t, int count, uint64_t seed) {
+        sim::FastRNG rng(seed);
+        PriestSimulator local_sim = base_sim;
+        local_sim.record_timeline = false;
+        auto& out = thread_outputs[t];
+        out.dps_list.reserve(count);
 
-    for (int t = 0; t < num_threads; ++t) {
-        int count = iters_per_thread + (t < remainder ? 1 : 0);
-        uint64_t seed = initial_seed + t * 99991ULL;
+        for (int i = 0; i < count; ++i) {
+            SimResult res = local_sim.run_single_simulation(rng);
+            out.dps_list.push_back(res.dps);
+            out.sum_dps += res.dps;
+            out.sum_dps_sq += res.dps * res.dps;
+            out.sum_mana_spent += res.mana_spent;
+            out.sum_mana_gained += res.mana_gained;
+            out.sum_sw_procs += res.shadow_weaving_procs;
+            out.sum_total_casts += res.total_casts;
+            out.sum_total_damage_events += res.total_damage_events;
+            out.sum_total_crits += res.total_damage_crits;
+            out.sum_total_misses += res.misses;
 
-        workers.emplace_back([&, t, count, seed]() {
-            sim::FastRNG rng(seed);
-            PriestSimulator local_sim = base_sim;
-            local_sim.record_timeline = false;
-            auto& out = thread_outputs[t];
-            out.dps_list.reserve(count);
+            out.sum_dmg_swp += res.dmg_sw_pain;
+            out.sum_dmg_mf += res.dmg_mind_flay;
+            out.sum_dmg_mb += res.dmg_mind_blast;
+            out.sum_dmg_swd += res.dmg_sw_death;
+            out.sum_dmg_dp += res.dmg_devouring_plague;
+            out.sum_dmg_smite += res.dmg_smite;
+            out.sum_dmg_hf += res.dmg_holy_fire;
+            out.sum_dmg_penance += res.dmg_penance;
+            out.sum_dmg_holy_nova += res.dmg_holy_nova;
+            out.sum_dmg_starshards += res.dmg_starshards;
+            out.sum_dmg_chastise += res.dmg_chastise;
+            out.sum_dmg_shadowguard += res.dmg_shadowguard;
+            out.sum_dmg_touch_of_the_grave += res.dmg_touch_of_the_grave;
+            out.sum_dmg_total += res.total_damage;
 
-            for (int i = 0; i < count; ++i) {
-                SimResult res = local_sim.run_single_simulation(rng);
-                out.dps_list.push_back(res.dps);
-                out.sum_dps += res.dps;
-                out.sum_dps_sq += res.dps * res.dps;
-                out.sum_mana_spent += res.mana_spent;
-                out.sum_mana_gained += res.mana_gained;
-                out.sum_sw_procs += res.shadow_weaving_procs;
-                out.sum_total_casts += res.total_casts;
-                out.sum_total_damage_events += res.total_damage_events;
-                out.sum_total_crits += res.total_damage_crits;
-                out.sum_total_misses += res.misses;
-
-                out.sum_dmg_swp += res.dmg_sw_pain;
-                out.sum_dmg_mf += res.dmg_mind_flay;
-                out.sum_dmg_mb += res.dmg_mind_blast;
-                out.sum_dmg_swd += res.dmg_sw_death;
-                out.sum_dmg_dp += res.dmg_devouring_plague;
-                out.sum_dmg_smite += res.dmg_smite;
-                out.sum_dmg_hf += res.dmg_holy_fire;
-                out.sum_dmg_penance += res.dmg_penance;
-                out.sum_dmg_holy_nova += res.dmg_holy_nova;
-                out.sum_dmg_starshards += res.dmg_starshards;
-                out.sum_dmg_chastise += res.dmg_chastise;
-                out.sum_dmg_shadowguard += res.dmg_shadowguard;
-                out.sum_dmg_touch_of_the_grave += res.dmg_touch_of_the_grave;
-                out.sum_dmg_total += res.total_damage;
-
-                for (size_t s = 0; s < static_cast<size_t>(SpellID::COUNT); ++s) {
-                    out.sum_spell[s].casts += res.spell_stats[s].casts;
-                    out.sum_spell[s].hits += res.spell_stats[s].hits;
-                    out.sum_spell[s].crits += res.spell_stats[s].crits;
-                    out.sum_spell[s].misses += res.spell_stats[s].misses;
-                    out.sum_spell[s].damage += res.spell_stats[s].damage;
-                }
-
-                int prev = completed_iterations.fetch_add(1, std::memory_order_relaxed);
-                if (progress_callback && (prev % 500 == 0 || prev == iterations - 1)) {
-                    progress_callback(static_cast<float>(prev + 1) / static_cast<float>(iterations));
-                }
+            for (size_t s = 0; s < static_cast<size_t>(SpellID::COUNT); ++s) {
+                out.sum_spell[s].casts += res.spell_stats[s].casts;
+                out.sum_spell[s].hits += res.spell_stats[s].hits;
+                out.sum_spell[s].crits += res.spell_stats[s].crits;
+                out.sum_spell[s].misses += res.spell_stats[s].misses;
+                out.sum_spell[s].damage += res.spell_stats[s].damage;
             }
-        });
-    }
 
-    for (auto& w : workers) {
-        if (w.joinable()) w.join();
+            int prev = completed_iterations.fetch_add(1, std::memory_order_relaxed);
+            if (progress_callback && (prev % 500 == 0 || prev == iterations - 1)) {
+                progress_callback(static_cast<float>(prev + 1) / static_cast<float>(iterations));
+            }
+        }
+    };
+
+    if (num_threads == 1) {
+        run_worker(0, iterations, initial_seed);
+    } else {
+        workers.reserve(num_threads);
+        int iters_per_thread = iterations / num_threads;
+        int remainder = iterations % num_threads;
+
+        for (int t = 0; t < num_threads; ++t) {
+            int count = iters_per_thread + (t < remainder ? 1 : 0);
+            uint64_t seed = initial_seed + t * 99991ULL;
+            workers.emplace_back([=]() {
+                run_worker(t, count, seed);
+            });
+        }
+
+        for (auto& w : workers) {
+            if (w.joinable()) w.join();
+        }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();

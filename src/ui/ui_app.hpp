@@ -3,6 +3,9 @@
 #include "implot.h"
 #include "raylib.h"
 #include "rlImGui.h"
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 
 #include "asset_manager.hpp"
 #include "panel_buffs.hpp"
@@ -88,9 +91,13 @@ class WarlockSimApp
 
   WarlockSimApp()
   {
+#if defined(__EMSCRIPTEN__)
+    thread_count = 1;
+#else
     thread_count = static_cast<int>(std::thread::hardware_concurrency());
     if (thread_count <= 0)
       thread_count = 4;
+#endif
     sim.fight_duration = 180.0;
     sim.randomize_duration = true;
     sim.duration_variance = 30.0;
@@ -100,10 +107,126 @@ class WarlockSimApp
     priest_sim.duration_variance = 30.0;
   }
 
+  void render_frame()
+  {
+#if defined(__EMSCRIPTEN__)
+    int cur_w = EM_ASM_INT( return window.innerWidth; );
+    int cur_h = EM_ASM_INT( return window.innerHeight; );
+    if (cur_w > 0 && cur_h > 0 && (cur_w != GetScreenWidth() || cur_h != GetScreenHeight()))
+    {
+      SetWindowSize(cur_w, cur_h);
+    }
+#endif
+
+    BeginDrawing();
+    ClearBackground(Color{14, 12, 18, 255});
+
+    rlImGuiBegin();
+
+    // Fixed Fullscreen Canvas (No floating / draggable windows!)
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())));
+    ImGuiWindowFlags root_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
+
+    if (ImGui::Begin("RootFixedCanvas", nullptr, root_flags))
+    {
+      // -------------------------------------------------------------------------
+      // Top Header Bar: Class Switcher & Character Profile
+      // -------------------------------------------------------------------------
+      const Texture2D& warlock_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::WARLOCK));
+      const Texture2D& priest_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::PRIEST));
+      constexpr float kClassIconSize = 36.0f;
+
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
+      if (active_class == sim::PlayerClass::WARLOCK)
+      {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.65f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.80f, 0.50f, 1.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+      }
+      else
+      {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+      }
+      if (rlImGuiImageButtonSize("##ClassWarlock", &warlock_icon, Vector2{kClassIconSize, kClassIconSize}))
+      {
+        active_class = sim::PlayerClass::WARLOCK;
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Warlock");
+      ImGui::PopStyleVar();
+      ImGui::PopStyleColor(2);
+
+      ImGui::SameLine();
+
+      if (active_class == sim::PlayerClass::PRIEST)
+      {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.90f, 0.90f, 0.95f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+      }
+      else
+      {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+      }
+      if (rlImGuiImageButtonSize("##ClassPriest", &priest_icon, Vector2{kClassIconSize, kClassIconSize}))
+      {
+        active_class = sim::PlayerClass::PRIEST;
+      }
+      if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Priest");
+      ImGui::PopStyleVar();
+      ImGui::PopStyleColor(2);
+
+      ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
+
+      ImGui::SameLine();
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      const float full_height = ImGui::GetContentRegionAvail().y;
+
+      if (active_class == sim::PlayerClass::WARLOCK)
+      {
+        render_warlock_view(full_height);
+      }
+      else
+      {
+        render_priest_view(full_height);
+      }
+
+      ImGui::End();
+    }
+    ImGui::PopStyleVar(3);
+
+    rlImGuiEnd();
+    EndDrawing();
+  }
+
   void run_gui()
   {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
+#if defined(__EMSCRIPTEN__)
+    int init_w = EM_ASM_INT( return window.innerWidth; );
+    int init_h = EM_ASM_INT( return window.innerHeight; );
+    if (init_w <= 0) init_w = 1650;
+    if (init_h <= 0) init_h = 960;
+    InitWindow(init_w, init_h, "Classic WoW Warlock DES Simulator & Multi-Threaded Armory");
+#else
     InitWindow(1650, 960, "Classic WoW Warlock DES Simulator & Multi-Threaded Armory");
+#endif
     SetTargetFPS(60);
 
     rlImGuiSetup(true);
@@ -112,113 +235,24 @@ class WarlockSimApp
     apply_warlock_theme();
 
     // Initial baseline runs
-    last_result = ParallelSimRunner::run_batch(sim, 5000, thread_count);
-    priest_last_result = priest::ParallelSimRunner::run_batch(priest_sim, 2000, thread_count);
+    last_result = ParallelSimRunner::run_batch(sim, 2000, thread_count);
+    priest_last_result = priest::ParallelSimRunner::run_batch(priest_sim, 1000, thread_count);
 
+#if defined(__EMSCRIPTEN__)
+    emscripten_set_main_loop_arg([](void* arg) {
+      static_cast<WarlockSimApp*>(arg)->render_frame();
+    }, this, 0, 1);
+#else
     while (!WindowShouldClose())
     {
-      BeginDrawing();
-      ClearBackground(Color{14, 12, 18, 255});
-
-      rlImGuiBegin();
-
-      // Fixed Fullscreen Canvas (No floating / draggable windows!)
-      ImGui::SetNextWindowPos(ImVec2(0, 0));
-      ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())));
-      ImGuiWindowFlags root_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                    ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
-
-      if (ImGui::Begin("RootFixedCanvas", nullptr, root_flags))
-      {
-        // -------------------------------------------------------------------------
-        // Top Header Bar: Class Switcher & Character Profile
-        // -------------------------------------------------------------------------
-        // Class switcher: icon buttons using the per-class icons from player_class_to_icon().
-        const Texture2D& warlock_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::WARLOCK));
-        const Texture2D& priest_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::PRIEST));
-        constexpr float kClassIconSize = 36.0f;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
-        if (active_class == sim::PlayerClass::WARLOCK)
-        {
-          ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.65f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.80f, 0.50f, 1.0f, 1.0f));
-          ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-        }
-        else
-        {
-          ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
-          ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-        }
-        if (rlImGuiImageButtonSize("##ClassWarlock", &warlock_icon, Vector2{kClassIconSize, kClassIconSize}))
-        {
-          active_class = sim::PlayerClass::WARLOCK;
-        }
-        if (ImGui::IsItemHovered())
-          ImGui::SetTooltip("Warlock");
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(2);
-
-        ImGui::SameLine();
-
-        if (active_class == sim::PlayerClass::PRIEST)
-        {
-          ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.90f, 0.90f, 0.95f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-          ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-        }
-        else
-        {
-          ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
-          ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
-          ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-        }
-        if (rlImGuiImageButtonSize("##ClassPriest", &priest_icon, Vector2{kClassIconSize, kClassIconSize}))
-        {
-          active_class = sim::PlayerClass::PRIEST;
-        }
-        if (ImGui::IsItemHovered())
-          ImGui::SetTooltip("Priest");
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(2);
-
-        ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
-
-        ImGui::SameLine();
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        const float full_height = ImGui::GetContentRegionAvail().y;
-
-        if (active_class == sim::PlayerClass::WARLOCK)
-        {
-          render_warlock_view(full_height);
-        }
-        else
-        {
-          render_priest_view(full_height);
-        }
-
-        ImGui::End();
-      }
-      ImGui::PopStyleVar(3);
-
-      rlImGuiEnd();
-      EndDrawing();
+      render_frame();
     }
 
     AssetManager::get().shutdown();
     ImPlot::DestroyContext();
     rlImGuiShutdown();
     CloseWindow();
+#endif
   }
 
   void render_warlock_view(float full_height)
@@ -346,19 +380,25 @@ class WarlockSimApp
           // SUBTAB 1: BUILD CONFIGURATION (Gear, Talents, Buffs, Rotation)
           if (ImGui::BeginTabItem("  Build Configuration  "))
           {
-            const float pane1_w = 320.0f;                   // Gear & Direct Stats
-            const float pane2_w = 830.0f;                   // Talents Tree (51 Points - All 3 Trees Visible)
+            const float pane1_w = 340.0f;                   // Gear, Direct Stats, Policy, Pet
+            const float pane2_w = 830.0f;                   // Talents Tree (51 Points) & Below Panel
             const float pane_height = full_height - 35.0f;  // Available content height
 
-            // Pane 1: Gear & Direct Stats
+            // Pane 1: Gear & Direct Stats, Combat Policy, Active Pet
             ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
             render_armory_panel(
-                sim, player_stats, sim.base_attrs, selected_model_idx, build_copied_timer);
+                sim, selected_model_idx, sim::PlayerClass::WARLOCK);
+            ImGui::Spacing();
+            ImGui::Separator();
+            render_panel_policy(sim);
+            ImGui::Spacing();
+            ImGui::Separator();
+            render_panel_active_pet(sim);
             ImGui::EndChild();
 
             ImGui::SameLine();
 
-            // Pane 2: Talent Tree (51 Points)
+            // Pane 2: Talent Tree (51 Points) & Below Panel (Buffs, Debuffs, Mechanics)
             ImGui::BeginChild(
                 "PresetPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
             render_panel_talents(sim);
@@ -366,19 +406,15 @@ class WarlockSimApp
 
             ImGui::SameLine();
 
-            // Pane 3: Rotation Policy, Target Encounter, Consumables & Buffs, Mechanics
-            ImGui::BeginChild("PresetPane_BuffsPolicy", ImVec2(0, pane_height), true);
-            render_panel_policy(sim);
+            // Pane 3: Right Panel: Combat Stats Summary & Target Encounter
+            ImGui::BeginChild("PresetPane_Right", ImVec2(0, pane_height), true);
+            render_combat_stats_summary(
+                sim, player_stats, sim.base_attrs, build_copied_timer, sim::PlayerClass::WARLOCK);
             ImGui::Spacing();
             ImGui::Separator();
+            ImGui::Spacing();
             render_panel_target(
                 sim.target_config, sim.fight_duration, sim.randomize_duration, sim.duration_variance);
-            ImGui::Spacing();
-            ImGui::Separator();
-            render_panel_buffs(sim);
-            ImGui::Spacing();
-            ImGui::Separator();
-            render_panel_mechanics(sim.mechanics);
             ImGui::EndChild();
 
             ImGui::EndTabItem();
@@ -466,19 +502,22 @@ class WarlockSimApp
           // SubTab 1: Build Configuration
           if (ImGui::BeginTabItem("  Build Configuration  "))
           {
-            const float pane1_w = 320.0f;
+            const float pane1_w = 340.0f;
             const float pane2_w = 830.0f;
             const float pane_height = full_height - 35.0f;
 
-            // Pane 1: Gear & Direct Stats
+            // Pane 1: Gear, Direct Stats, Combat Policy
             ImGui::BeginChild("PriestPane_Stats", ImVec2(pane1_w, pane_height), true);
             render_armory_panel(
-                priest_sim, priest_stats, priest_sim.base_attrs, priest_model_idx, priest_build_copied_timer, sim::PlayerClass::PRIEST);
+                priest_sim, priest_model_idx, sim::PlayerClass::PRIEST);
+            ImGui::Spacing();
+            ImGui::Separator();
+            priest::render_priest_policy_panel(priest_sim.policy, priest_sim.talents, priest_sim.race);
             ImGui::EndChild();
 
             ImGui::SameLine();
 
-            // Pane 2: Priest Talents
+            // Pane 2: Priest Talents & Below Panel (Buffs, Debuffs, Mechanics)
             ImGui::BeginChild(
                 "PriestPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
             priest::render_priest_talents_panel(priest_sim);
@@ -486,19 +525,15 @@ class WarlockSimApp
 
             ImGui::SameLine();
 
-            // Pane 3: Policy, Target, Buffs, Mechanics
-            ImGui::BeginChild("PriestPane_BuffsPolicy", ImVec2(0, pane_height), true);
-            priest::render_priest_policy_panel(priest_sim.policy, priest_sim.talents, priest_sim.race);
+            // Pane 3: Right Panel: Combat Stats Summary & Target Encounter
+            ImGui::BeginChild("PriestPane_Right", ImVec2(0, pane_height), true);
+            render_combat_stats_summary(
+                priest_sim, priest_stats, priest_sim.base_attrs, priest_build_copied_timer, sim::PlayerClass::PRIEST);
             ImGui::Spacing();
             ImGui::Separator();
+            ImGui::Spacing();
             render_panel_target(
                 priest_sim.target_config, priest_sim.fight_duration, priest_sim.randomize_duration, priest_sim.duration_variance);
-            ImGui::Spacing();
-            ImGui::Separator();
-            render_panel_buffs(priest_sim);
-            ImGui::Spacing();
-            ImGui::Separator();
-            priest::render_priest_mechanics_panel(priest_sim.mechanics);
             ImGui::EndChild();
 
             ImGui::EndTabItem();

@@ -65,11 +65,11 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
         "Holy Fire Weaving (Holy Fire -> SW:P -> Smite)",
         "Inquisitor (Holy Fire -> SW:P -> SW:D -> Smite)"
     };
-    ImGui::SetNextItemWidth(450);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##PriestRotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {
         policy.rotation = static_cast<RotationChoice>(rot_idx);
     }
-    ImGui::TextDisabled("%s", rotation_choice_description(policy.rotation));
+    ImGui::TextWrapped("%s", rotation_choice_description(policy.rotation));
 
     ImGui::Spacing();
 
@@ -169,6 +169,32 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
         }
     }
 
+    if (talents.shadow.vampiric_embrace > 0) {
+        ImGui::Checkbox("Maintain Vampiric Embrace##Policy", &policy.cast_vampiric_embrace);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Casts Vampiric Embrace every 30s to heal the party for 20%% of Shadow spell damage.");
+        }
+    }
+
+    if (policy.rotation == RotationChoice::SMITE_PRIEST || policy.rotation == RotationChoice::PURE_SMITE) {
+        ImGui::Checkbox("Cast Free Holy Nova on Clearcast Proc##Policy", &policy.cast_holy_nova_on_proc);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Consumes Searing Light clearcast procs with an instant free Holy Nova.");
+        }
+    }
+
+    if (race == sim::Race::NIGHT_ELF) {
+        ImGui::Checkbox("Cast Starshards on Cooldown (Night Elf)##Policy", &policy.cast_starshards);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Channels racial Starshards on 30s cooldown for heavy Arcane damage.");
+        }
+    } else if (race == sim::Race::DWARF) {
+        ImGui::Checkbox("Cast Chastise on Cooldown (Dwarf)##Policy", &policy.cast_chastise);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Casts racial Chastise on 2 min cooldown for instant Holy damage.");
+        }
+    }
+
     ImGui::Spacing();
     ImGui::Separator();
 
@@ -182,6 +208,20 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
     ImGui::Checkbox("Use Power Infusion on Cooldown##Policy", &policy.use_power_infusion);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Pops Power Infusion for +20%% spell damage and haste for 15 sec.");
+    }
+
+    if (race == sim::Race::UNDEAD) {
+        ImGui::SameLine(0, 16);
+        ImGui::Checkbox("Dark Sacrifice (<60% Mana)##Policy", &policy.use_dark_sacrifice);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Cannibalizes 1600 HP over 15s to restore 1600 Mana when under 60%% Mana.");
+        }
+    } else if (race == sim::Race::TROLL) {
+        ImGui::SameLine(0, 16);
+        ImGui::Checkbox("Berserking on Cooldown##Policy", &policy.use_berserking);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Pops Troll racial Berserking on 3 min cooldown.");
+        }
     }
 
     ImGui::SetNextItemWidth(200);

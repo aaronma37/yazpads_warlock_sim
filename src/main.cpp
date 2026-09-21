@@ -8,6 +8,7 @@
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/optimizer.hpp"
+#include "src/sim/warlock/surrogate_dataset_generator.hpp"
 #include "src/ui/ui_app.hpp"
 
 using namespace warlock;
@@ -32,6 +33,9 @@ void print_help() {
               << "  --optimize-policy              Run brute-force rotation policy optimizer\n"
               << "  --snapshotting-study           Run comparative snapshotting impact study\n"
               << "  --json <file>                  Export batch summary to JSON\n"
+              << "  --generate-surrogate-dataset <file> Generate Monte-Carlo ML training dataset\n"
+              << "  --samples <N>                  Number of parameter samples for ML dataset (default: 2500)\n"
+              << "  --sample-iters <M>             DES sims per sample point (default: 500)\n"
               << "  --help                         Show this help message\n";
 }
 
@@ -160,6 +164,31 @@ int run_headless(int argc, char* argv[]) {
             return 0;
         } else if (arg == "--json" && i + 1 < argc) {
             json_output = argv[++i];
+        } else if (arg == "--generate-surrogate-dataset" || arg == "--generate-dataset") {
+            SurrogateConfig cfg;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                cfg.output_path = argv[++i];
+            }
+            cfg.num_samples = 2500;
+            cfg.iters_per_sample = 500;
+            cfg.num_threads = threads;
+            for (int j = 1; j < argc; ++j) {
+                std::string sarg = argv[j];
+                if (sarg == "--samples" && j + 1 < argc) cfg.num_samples = std::stoi(argv[++j]);
+                if (sarg == "--sample-iters" && j + 1 < argc) cfg.iters_per_sample = std::stoi(argv[++j]);
+            }
+            std::cout << "========================================================================\n"
+                      << "       WOW FOREVER WARLOCK SURROGATE DATASET GENERATOR                  \n"
+                      << "========================================================================\n"
+                      << "Output CSV:        " << cfg.output_path << "\n"
+                      << "Parameter Samples: " << cfg.num_samples << "\n"
+                      << "Sims Per Sample:   " << cfg.iters_per_sample << "\n"
+                      << "Total Simulations: " << (cfg.num_samples * cfg.iters_per_sample) << "\n"
+                      << "Worker Threads:    " << cfg.num_threads << "\n\n";
+            SurrogateDatasetGenerator::generate_dataset(cfg, [](int cur, int tot) {
+                std::cout << "  [" << (cur * 100 / tot) << "%] Generated " << cur << " / " << tot << " samples...\r" << std::flush;
+            });
+            return 0;
         }
     }
 
@@ -177,8 +206,11 @@ int run_headless(int argc, char* argv[]) {
         std::cout << "\n\n--- TALENT SWEEP LEADERBOARD ---" << std::endl;
         for (const auto& r : results) {
             std::cout << "Rank #" << r.rank << " " << std::left << std::setw(44) << r.name
-                      << " -> Mean DPS: " << std::fixed << std::setprecision(1) << r.mean_dps
-                      << " +/- " << r.std_dev_dps << " (ISB: " << r.isb_uptime << "%)\n";
+                      << " -> Mean DPS: " << std::fixed << std::setprecision(1) << r.mean_dps;
+            if (r.inferred_dps > 0.0) {
+                std::cout << " | Inferred: " << std::setprecision(1) << r.inferred_dps << " (" << std::showpos << std::setprecision(1) << (r.inferred_dps - r.mean_dps) << std::noshowpos << ")";
+            }
+            std::cout << " +/- " << r.std_dev_dps << " (ISB: " << r.isb_uptime << "%)\n";
         }
         return 0;
     }
@@ -279,14 +311,18 @@ int run_headless(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     bool headless = false;
     for (int i = 1; i < argc; ++i) {
-        if (std::strcmp(argv[i], "--headless") == 0) headless = true;
+        if (std::strcmp(argv[i], "--headless") == 0 ||
+            std::strcmp(argv[i], "--generate-surrogate-dataset") == 0 ||
+            std::strcmp(argv[i], "--generate-dataset") == 0) {
+            headless = true;
+        }
         if (std::strcmp(argv[i], "--help") == 0 || std::strcmp(argv[i], "-h") == 0) {
             print_help();
             return 0;
         }
     }
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     // Check if running in headless environment (e.g. DISPLAY not set)
     if (!headless && getenv("DISPLAY") == nullptr && getenv("WAYLAND_DISPLAY") == nullptr) {
         std::cout << "No graphical display detected ($DISPLAY / $WAYLAND_DISPLAY unset). Defaulting to headless CLI mode.\n"

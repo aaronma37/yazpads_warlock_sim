@@ -23,6 +23,7 @@ struct CandidateResult {
     std::string category; // "Talents", "Gear", "Policy", "Snapshotting"
     Race race = Race::HUMAN;
     double mean_dps = 0.0;
+    double inferred_dps = 0.0;
     double std_dev_dps = 0.0;
     double min_dps = 0.0;
     double max_dps = 0.0;

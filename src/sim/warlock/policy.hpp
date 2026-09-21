@@ -563,12 +563,15 @@ struct PolicyConfig
 
     auto add_immolate = [&]()
     {
-      rules.push_back({PriorityAction::IMMOLATE,
-                       SpellID::IMMOLATE,
-                       "Immolate",
-                       "DoT Expired / Missing",
-                       "Trigger when: Immolate DoT is not active on target.",
-                       "Maintains Immolate to enable Conflagrate casts and deal periodic Fire damage."});
+      if (maintain_immolate)
+      {
+        rules.push_back({PriorityAction::IMMOLATE,
+                         SpellID::IMMOLATE,
+                         "Immolate",
+                         "DoT Expired / Missing",
+                         "Trigger when: Immolate DoT is not active on target.",
+                         "Maintains Immolate to enable Conflagrate casts and deal periodic Fire damage."});
+      }
     };
 
     auto add_conflagrate = [&]()

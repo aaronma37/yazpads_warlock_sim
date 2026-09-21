@@ -44,6 +44,43 @@ inline void render_unified_spellbook_table(const char* table_id,
     search_filter[0] = '\0';
   }
 
+  static int selected_school_idx = 0;
+  static std::string last_table_id = "";
+  if (last_table_id != table_id)
+  {
+    last_table_id = table_id;
+    selected_school_idx = 0;
+  }
+
+  std::vector<std::string> schools;
+  schools.push_back("All");
+  for (const auto& sp : entries)
+  {
+    if (!sp.school_str.empty())
+    {
+      if (std::find(schools.begin(), schools.end(), sp.school_str) == schools.end())
+      {
+        schools.push_back(sp.school_str);
+      }
+    }
+  }
+
+  for (size_t i = 0; i < schools.size(); ++i)
+  {
+    ImGui::SameLine();
+    bool is_sel = (selected_school_idx == static_cast<int>(i));
+    if (is_sel)
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.50f, 1.0f));
+    else
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.22f, 0.8f));
+
+    if (ImGui::Button(schools[i].c_str()))
+    {
+      selected_school_idx = static_cast<int>(i);
+    }
+    ImGui::PopStyleColor();
+  }
+
   ImGui::Spacing();
 
   ImGuiTableFlags flags =
@@ -65,6 +102,12 @@ inline void render_unified_spellbook_table(const char* table_id,
 
     for (const auto& sp : entries)
     {
+      if (selected_school_idx > 0 && selected_school_idx < static_cast<int>(schools.size()))
+      {
+        if (sp.school_str != schools[selected_school_idx])
+          continue;
+      }
+
       std::string name_lower = sp.name;
       std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
       std::string school_lower = sp.school_str;

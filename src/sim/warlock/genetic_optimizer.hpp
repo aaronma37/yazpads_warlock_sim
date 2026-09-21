@@ -41,6 +41,30 @@ struct GeneticOptimizationSummary {
     int total_evaluations = 0;
 };
 
+class GeneticOptimizerSession {
+public:
+    GeneticOptimizerSession();
+    ~GeneticOptimizerSession();
+    GeneticOptimizerSession(GeneticOptimizerSession&&) noexcept;
+    GeneticOptimizerSession& operator=(GeneticOptimizerSession&&) noexcept;
+
+    void start(const WarlockSimulator& base_sim, const GeneticOptimizerConfig& config);
+    bool step(std::vector<CandidateResult>& current_elites, float& progress, std::string& status);
+    std::vector<CandidateResult> finish(std::function<void(float, const std::string&)> callback = nullptr);
+    void stop();
+
+    bool is_running() const;
+    bool is_finished() const;
+    float progress() const;
+    const std::string& current_status() const;
+    const std::vector<CandidateResult>& get_elites() const;
+    const GeneticOptimizationSummary& get_summary() const;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 class GeneticOptimizer {
 public:
     static GeneticOptimizationSummary run(

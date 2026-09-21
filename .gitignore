@@ -1,5 +1,7 @@
 # Build directories & artifacts
 build/
+build-web/
+assets_web/
 bin/
 out/
 cmake-build-*/

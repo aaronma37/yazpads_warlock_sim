@@ -16,6 +16,13 @@
 
 namespace priest {
 
+#if defined(__EMSCRIPTEN__)
+inline PriestGeneticOptimizerSession& get_emscripten_priest_ga_session() {
+    static PriestGeneticOptimizerSession session;
+    return session;
+}
+#endif
+
 // Background worker state for live asynchronous optimization
 struct PriestOptimizerWorkerState {
     std::thread worker;
@@ -41,6 +48,33 @@ inline void render_priest_panel_optimizer(
     std::string& current_opt_target,
     bool* request_switch_to_preset = nullptr
 ) {
+#if defined(__EMSCRIPTEN__)
+    auto& em_session = get_emscripten_priest_ga_session();
+    if (em_session.is_running()) {
+        is_optimizing = true;
+        std::vector<CandidateResult> step_elites;
+        float step_progress = 0.0f;
+        std::string step_status;
+        bool more = em_session.step(step_elites, step_progress, step_status);
+        if (!step_elites.empty()) {
+            optimizer_results = step_elites;
+        }
+        opt_progress = step_progress;
+        current_opt_target = step_status;
+
+        if (!more) {
+            optimizer_results = em_session.finish([&](float p, const std::string& status) {
+                opt_progress = p;
+                current_opt_target = status;
+            });
+            is_optimizing = false;
+            opt_progress = 1.0f;
+        }
+    } else if (is_optimizing && em_session.is_finished()) {
+        is_optimizing = false;
+        opt_progress = 1.0f;
+    }
+#else
     auto& worker = get_priest_opt_worker_state();
 
     // Check if background worker has new live generation results
@@ -62,6 +96,7 @@ inline void render_priest_panel_optimizer(
             }
         }
     }
+#endif
 
     static int opt_mode = 1; // 0 = Genetic Search, 1 = Standard Presets Benchmark
     ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
@@ -85,7 +120,11 @@ inline void render_priest_panel_optimizer(
     static int ga_req_talent3 = -1;
     static int ga_forced_race = -1;
     static int ga_forced_rotation = -1;
+#if defined(__EMSCRIPTEN__)
+    static int ga_threads = 1;
+#else
     static int ga_threads = static_cast<int>(std::thread::hardware_concurrency());
+#endif
 
     static int iters_per_candidate = 3000;
     static bool compare_all_races = false;
@@ -110,12 +149,14 @@ inline void render_priest_panel_optimizer(
         if (ImGui::InputInt("Final Precision", &ga_final_sims)) {
             if (ga_final_sims < 10) ga_final_sims = 10;
         }
+#if !defined(__EMSCRIPTEN__)
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
         int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
         if (ImGui::SliderInt("Threads", &ga_threads, 1, max_threads, "%d")) {
             if (ga_threads < 1) ga_threads = 1;
         }
+#endif
 
         ImGui::Spacing();
         ImGui::Checkbox("Seed with standard presets", &ga_seed_presets);
@@ -229,17 +270,13 @@ inline void render_priest_panel_optimizer(
 
     // Run / Cancel Buttons
     if (opt_mode == 0) {
-        if (!worker.is_running.load()) {
+#if defined(__EMSCRIPTEN__)
+        bool is_busy = em_session.is_running();
+#else
+        bool is_busy = worker.is_running.load();
+#endif
+        if (!is_busy) {
             if (ImGui::Button("Run AI Genetic Optimization", ImVec2(260, 28))) {
-                if (worker.worker.joinable()) worker.worker.join();
-                worker.is_running = true;
-                worker.stop_requested = false;
-                worker.progress = 0.0f;
-                worker.current_status = "Initializing Population...";
-                is_optimizing = true;
-                opt_progress = 0.0f;
-                current_opt_target = worker.current_status;
-
                 PriestSimulator sim_copy = sim;
                 int pop_sz = ga_pop_size;
                 int gens = ga_generations;
@@ -257,7 +294,38 @@ inline void render_priest_panel_optimizer(
                 if (ga_req_talent3 >= 0 && ga_req_talent3 != ga_req_talent1 && ga_req_talent3 != ga_req_talent2) req_talents.push_back(ga_req_talent3);
                 int forced_r = ga_forced_race;
                 int forced_rot = ga_forced_rotation;
+
+#if defined(__EMSCRIPTEN__)
+                em_session.start(
+                    sim_copy,
+                    pop_sz,
+                    gens,
+                    screen_sims,
+                    fn_sims,
+                    seed_pre,
+                    opt_race,
+                    mut_rate,
+                    req_talents,
+                    forced_r,
+                    forced_rot,
+                    1
+                );
+                is_optimizing = true;
+                opt_progress = 0.001f;
+                current_opt_target = "Gen 0: Initializing Population...";
+                optimizer_results = em_session.get_elites();
+#else
+                auto& w = get_priest_opt_worker_state();
+                w.is_running = true;
+                w.stop_requested = false;
+                w.progress = 0.0f;
+                w.current_status = "Initializing Population...";
+                is_optimizing = true;
+                opt_progress = 0.0f;
+                current_opt_target = w.current_status;
                 int th_count = ga_threads;
+
+                if (worker.worker.joinable()) worker.worker.join();
 
                 worker.worker = std::thread([sim_copy, pop_sz, gens, screen_sims, fn_sims, seed_pre, opt_race,
                                              mut_rate, init_exp, min_exp, req_talents, forced_r, forced_rot, th_count]() {
@@ -297,11 +365,20 @@ inline void render_priest_panel_optimizer(
                         w.is_running = false;
                     }
                 });
+#endif
             }
         } else {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
             if (ImGui::Button("🛑 Stop Search & Keep Best", ImVec2(220, 28))) {
+#if defined(__EMSCRIPTEN__)
+                em_session.stop();
+                optimizer_results = em_session.finish();
+                is_optimizing = false;
+                opt_progress = 1.0f;
+                current_opt_target = "Stopped by user";
+#else
                 worker.stop_requested = true;
+#endif
             }
             ImGui::PopStyleColor();
         }

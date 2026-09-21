@@ -6,6 +6,8 @@
 #include "src/sim/priest/priest_sim.hpp"
 #include "src/ui/common/asset_manager.hpp"
 #include "src/ui/common/cover_uv.hpp"
+#include "src/ui/panel_buffs.hpp"
+#include "src/ui/priest/panel_mechanics.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -481,13 +483,13 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
 
   float avail_h = ImGui::GetContentRegionAvail().y;
   constexpr float kBelowPanelH = 240.0f;
-  float col_h = std::max(530.0f, avail_h - kBelowPanelH - 16.0f);
+  float col_h = std::clamp(avail_h - kBelowPanelH - 16.0f, 530.0f, 580.0f);
 
   // Column 1: Discipline
   render_priest_tree_column(
       "Discipline",
       "discipline_bg.png",
-      ImVec4(1.0f, 0.90f, 0.50f, 1.0f),
+      ImVec4(0.85f, 0.70f, 0.95f, 1.0f),
       get_disc_nodes(),
       [&](size_t i) { return sim.talents.disc.get_points_by_index(i); },
       [&](size_t i) -> int& { return sim.talents.disc.get_points_by_index(i); },
@@ -529,9 +531,14 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
       col_w,
       col_h);
 
-  // Blank panel below the talent trees (reserved space for future content).
+  // Panel below the talent trees: Consumables & Elixirs, Raid Buffs, World Buffs, Target Raid Debuffs, Priest Self-Buffs, Stances, Game Mechanics
   ImGui::Spacing();
-  ImGui::BeginChild("PriestBelowTalents", ImVec2(0, kBelowPanelH), true);
+  if (ImGui::BeginChild("PriestBelowTalents", ImVec2(0, 0), true))
+  {
+    warlock::render_panel_buffs(sim);
+    ImGui::Spacing();
+    priest::render_priest_mechanics_panel(sim.mechanics);
+  }
   ImGui::EndChild();
 }
 

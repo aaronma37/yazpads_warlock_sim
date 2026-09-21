@@ -92,10 +92,12 @@ inline void render_common_sim_control(SimType& sim,
 
   ImGui::SliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
 
+#if !defined(__EMSCRIPTEN__)
   int max_threads = static_cast<int>(std::thread::hardware_concurrency());
   if (max_threads <= 0)
     max_threads = 4;
   ImGui::SliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
+#endif
 }
 
 inline void render_panel_sim_control(WarlockSimulator& sim,

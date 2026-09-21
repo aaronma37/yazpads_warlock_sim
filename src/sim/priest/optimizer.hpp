@@ -64,4 +64,41 @@ public:
     );
 };
 
+class PriestGeneticOptimizerSession {
+public:
+    PriestGeneticOptimizerSession();
+    ~PriestGeneticOptimizerSession();
+    PriestGeneticOptimizerSession(PriestGeneticOptimizerSession&&) noexcept;
+    PriestGeneticOptimizerSession& operator=(PriestGeneticOptimizerSession&&) noexcept;
+
+    void start(
+        const PriestSimulator& base_sim,
+        int population_size = 50,
+        int generations = 400,
+        int screening_sims = 400,
+        int final_sims = 2500,
+        bool seed_with_presets = false,
+        bool optimize_race = true,
+        double mutation_rate = 0.45,
+        const std::vector<int>& req_talents = {},
+        int forced_race = -1,
+        int forced_rotation = -1,
+        int thread_count = 0
+    );
+
+    bool step(std::vector<CandidateResult>& current_elites, float& progress, std::string& status);
+    std::vector<CandidateResult> finish(std::function<void(float, const std::string&)> callback = nullptr);
+    void stop();
+
+    bool is_running() const;
+    bool is_finished() const;
+    float progress() const;
+    const std::string& current_status() const;
+    const std::vector<CandidateResult>& get_elites() const;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 } // namespace priest

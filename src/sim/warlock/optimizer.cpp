@@ -1,6 +1,7 @@
 #include "optimizer.hpp"
 #include "spec_presets.hpp"
 #include "genetic_optimizer.hpp"
+#include "surrogate_evaluator.hpp"
 #include <algorithm>
 
 namespace warlock {
@@ -92,17 +93,20 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
         bool sac_succubus;
         bool sac_imp;
         bool maintain_immolate;
+        int spec_idx = 0;
     };
 
     // Spec names, talents, and policies come from the central registry in
     // spec_presets.hpp so a rename there propagates to every consumer.
     std::vector<Candidate> candidates;
-    candidates.reserve(standard_spec_presets().size());
-    for (const auto& preset : standard_spec_presets()) {
+    const auto& all_presets = standard_spec_presets();
+    candidates.reserve(all_presets.size());
+    for (size_t p_idx = 0; p_idx < all_presets.size(); ++p_idx) {
+        const auto& preset = all_presets[p_idx];
         candidates.push_back({preset.display_name, preset.make_talents(),
                               preset.rotation, preset.pet,
                               preset.sac_succubus, preset.sac_imp,
-                              preset.maintain_immolate});
+                              preset.maintain_immolate, static_cast<int>(p_idx)});
     }
 
     std::vector<Race> races_to_test = compare_all_races
@@ -142,6 +146,7 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             res.race = r;
             res.category = "Talents";
             res.mean_dps = batch.mean_dps;
+            res.inferred_dps = SurrogateEvaluator::get().predict_from_sim(sim, cand.spec_idx);
             res.std_dev_dps = batch.std_dev_dps;
             res.min_dps = batch.min_dps;
             res.max_dps = batch.max_dps;

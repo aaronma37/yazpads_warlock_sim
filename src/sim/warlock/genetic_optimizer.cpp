@@ -517,50 +517,50 @@ std::string format_build_name(const Individual& ind) {
 
 } // anonymous namespace
 
-GeneticOptimizationSummary GeneticOptimizer::run(
-    const WarlockSimulator& base_sim,
-    const GeneticOptimizerConfig& config,
-    std::function<void(float progress, const std::string& current_name)> callback,
-    std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback,
-    const std::atomic<bool>* should_stop
-) {
+struct GeneticOptimizerSession::Impl {
+    WarlockSimulator base_sim;
+    GeneticOptimizerConfig config;
     GeneticOptimizationSummary summary;
-    FastRNG rng(0xDEADBEEF4242ULL);
-    const auto& graph = TalentGraph::get();
-
+    FastRNG rng{0xDEADBEEF4242ULL};
     std::vector<Individual> population;
-    population.reserve(config.population_size);
+    using MapGridType = std::array<std::array<std::array<MapElitesCell, MAP_PET_BINS>, MAP_V_BINS>, MAP_U_BINS>;
+    std::unique_ptr<MapGridType> map_grid_ptr;
+    int gen = 0;
+    int total_steps = 0;
+    bool is_running = false;
+    bool is_finished = false;
+    bool stop_requested = false;
+    float current_progress = 0.0f;
+    std::string current_status;
+    std::vector<CandidateResult> live_elites;
 
-    // MAP-Elites Grid (256 niches across Aff/Destro balance, Demo depth, and Pet mode)
-    std::array<std::array<std::array<MapElitesCell, MAP_PET_BINS>, MAP_V_BINS>, MAP_U_BINS> map_grid{};
-
-    auto add_to_map_elites = [&](const Individual& ind) {
+    void add_to_map_elites(const Individual& ind) {
         size_t u, v, p;
         get_map_elites_coord(ind, u, v, p);
-        auto& cell = map_grid[u][v][p];
+        auto& cell = (*map_grid_ptr)[u][v][p];
         if (!cell.occupied || ind.fitness > cell.max_fitness) {
             cell.occupied = true;
             cell.max_fitness = ind.fitness;
             cell.elite = ind;
         }
-    };
+    }
 
-    auto get_occupied_elites = [&]() -> std::vector<Individual> {
+    std::vector<Individual> get_occupied_elites() {
         std::vector<Individual> elites;
         for (size_t u = 0; u < MAP_U_BINS; ++u) {
             for (size_t v = 0; v < MAP_V_BINS; ++v) {
                 for (size_t p = 0; p < MAP_PET_BINS; ++p) {
-                    if (map_grid[u][v][p].occupied) {
-                        elites.push_back(map_grid[u][v][p].elite);
+                    if ((*map_grid_ptr)[u][v][p].occupied) {
+                        elites.push_back((*map_grid_ptr)[u][v][p].elite);
                     }
                 }
             }
         }
         return elites;
-    };
+    }
 
-    // Helper to format live candidate result list from current individuals
-    auto make_candidate_results = [&](const std::vector<Individual>& inds) -> std::vector<CandidateResult> {
+    std::vector<CandidateResult> make_candidate_results(const std::vector<Individual>& inds) {
+        const auto& graph = TalentGraph::get();
         std::vector<CandidateResult> res_list;
         res_list.reserve(inds.size());
         for (size_t i = 0; i < inds.size(); ++i) {
@@ -604,96 +604,112 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             res_list.push_back(res);
         }
         return res_list;
-    };
+    }
 
-    // 1. Initialize population
-    if (config.seed_with_presets) {
-        for (const auto& p : standard_spec_presets()) {
+    void start(const WarlockSimulator& sim, const GeneticOptimizerConfig& cfg) {
+        const auto& graph = TalentGraph::get();
+        base_sim = sim;
+        config = cfg;
+        summary = GeneticOptimizationSummary{};
+        rng = FastRNG(0xDEADBEEF4242ULL);
+        population.clear();
+        population.reserve(config.population_size);
+        map_grid_ptr = std::make_unique<MapGridType>();
+        gen = 0;
+        total_steps = config.generations + 1;
+        stop_requested = false;
+        is_finished = false;
+
+        // 1. Initialize population
+        if (config.seed_with_presets) {
+            for (const auto& p : standard_spec_presets()) {
+                Individual ind;
+                ind.talents = graph.to_vector(p.make_talents());
+                ind.pet = p.pet;
+                ind.sac_imp = p.sac_imp;
+                ind.sac_succubus = p.sac_succubus;
+                ind.rotation = p.rotation;
+                ind.maintain_immolate = p.maintain_immolate;
+                ind.race = config.optimize_race ? static_cast<Race>(rng.next_u64() % 5) : base_sim.race;
+                enforce_constraints(ind, config, rng);
+                population.push_back(ind);
+                if (population.size() >= static_cast<size_t>(config.population_size / 2)) break;
+            }
+        }
+
+        while (population.size() < static_cast<size_t>(config.population_size)) {
             Individual ind;
-            ind.talents = graph.to_vector(p.make_talents());
-            ind.pet = p.pet;
-            ind.sac_imp = p.sac_imp;
-            ind.sac_succubus = p.sac_succubus;
-            ind.rotation = p.rotation;
-            ind.maintain_immolate = p.maintain_immolate;
+            ind.talents = graph.generate_random_valid(rng);
             ind.race = config.optimize_race ? static_cast<Race>(rng.next_u64() % 5) : base_sim.race;
+            adapt_policies_to_talents(ind, rng);
             enforce_constraints(ind, config, rng);
             population.push_back(ind);
-            if (population.size() >= static_cast<size_t>(config.population_size / 2)) break;
         }
-    }
 
-    // Fill remainder with random valid builds
-    while (population.size() < static_cast<size_t>(config.population_size)) {
-        Individual ind;
-        ind.talents = graph.generate_random_valid(rng);
-        ind.race = config.optimize_race ? static_cast<Race>(rng.next_u64() % 5) : base_sim.race;
-        adapt_policies_to_talents(ind, rng);
-        enforce_constraints(ind, config, rng);
-        population.push_back(ind);
-    }
+        // Evaluate Gen 0
+        for (size_t i = 0; i < population.size(); ++i) {
+            if (!population[i].evaluated) {
+                WarlockSimulator s = individual_to_sim(base_sim, population[i]);
+                population[i].batch = ParallelSimRunner::run_batch(s, config.screening_sims, config.num_threads);
+                population[i].fitness = population[i].batch.mean_dps;
+                population[i].evaluated = true;
+                summary.total_evaluations++;
 
-    // 2. Evaluate Generation 0
-    int total_steps = config.generations + 1;
-    for (size_t i = 0; i < population.size(); ++i) {
-        if (should_stop && should_stop->load()) break;
-        if (!population[i].evaluated) {
-            WarlockSimulator sim = individual_to_sim(base_sim, population[i]);
-            population[i].batch = ParallelSimRunner::run_batch(sim, config.screening_sims, config.num_threads);
-            population[i].fitness = population[i].batch.mean_dps;
-            population[i].evaluated = true;
-            summary.total_evaluations++;
+                summary.trained_surrogate.add_sample({
+                    population[i].talents,
+                    population[i].pet,
+                    population[i].sac_imp,
+                    population[i].sac_succubus,
+                    population[i].rotation,
+                    population[i].maintain_immolate,
+                    population[i].curse,
+                    population[i].race,
+                    population[i].fitness
+                });
 
-            summary.trained_surrogate.add_sample({
-                population[i].talents,
-                population[i].pet,
-                population[i].sac_imp,
-                population[i].sac_succubus,
-                population[i].rotation,
-                population[i].maintain_immolate,
-                population[i].curse,
-                population[i].race,
-                population[i].fitness
-            });
-
-            add_to_map_elites(population[i]);
+                add_to_map_elites(population[i]);
+            }
         }
+
+        std::sort(population.begin(), population.end(), [](const Individual& a, const Individual& b) {
+            return a.fitness > b.fitness;
+        });
+
+        summary.trained_surrogate.train();
+        live_elites = make_candidate_results(population);
+        current_progress = 0.0f;
+        current_status = "Generation 0 Initialized";
+        is_running = true;
     }
 
-    std::sort(population.begin(), population.end(), [](const Individual& a, const Individual& b) {
-        return a.fitness > b.fitness;
-    });
+    bool step(std::vector<CandidateResult>& elites_out, float& progress_out, std::string& status_out) {
+        if (!is_running) return false;
+        if (stop_requested || gen >= config.generations) {
+            finish();
+            elites_out = live_elites;
+            progress_out = 1.0f;
+            status_out = "Completed";
+            return false;
+        }
 
-    summary.trained_surrogate.train();
+        const auto& graph = TalentGraph::get();
+        gen++;
 
-    if (generation_callback) {
-        generation_callback(make_candidate_results(population));
-    }
-
-    // Main Evolutionary Loop (MAP-Elites Quality-Diversity with Exploration Cooling)
-    for (int gen = 1; gen <= config.generations; ++gen) {
-        if (should_stop && should_stop->load()) break;
-
-        // Annealed exploration schedule: starts high to prevent premature local convergence, then narrows
         double t_prog = static_cast<double>(gen - 1) / std::max(1, config.generations - 1);
         double cur_exploration_rate = config.initial_exploration_rate * (1.0 - t_prog) + config.min_exploration_rate * t_prog;
 
-        float progress = static_cast<float>(gen) / static_cast<float>(total_steps);
-        if (callback) {
-            std::ostringstream ss;
-            ss << "Gen " << gen << "/" << config.generations << " [Best: " << std::fixed << std::setprecision(1) << population[0].fitness << " DPS]";
-            callback(progress, ss.str());
-        }
+        current_progress = static_cast<float>(gen) / static_cast<float>(total_steps);
+        std::ostringstream ss;
+        ss << "Gen " << gen << "/" << config.generations << " [Best: " << std::fixed << std::setprecision(1) << population[0].fitness << " DPS]";
+        current_status = ss.str();
 
         auto occupied_elites = get_occupied_elites();
         if (occupied_elites.empty()) occupied_elites = population;
 
-        // Generate candidate offspring pool
         std::vector<Individual> candidate_pool;
         candidate_pool.reserve(config.offspring_pool_size);
 
         for (int i = 0; i < config.offspring_pool_size; ++i) {
-            // Quality-Diversity Parent Selection: Sample from occupied niches across the entire map
             size_t p1_idx = rng.next_u64() % occupied_elites.size();
             size_t p2_idx = rng.next_u64() % occupied_elites.size();
 
@@ -704,7 +720,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
                 offspring = occupied_elites[p1_idx];
             }
 
-            // Guided point swap mutations with annealing exploration
             if (rng.next_double() < config.mutation_rate) {
                 int swaps = 1 + (rng.next_u64() % 3);
                 auto effective_reqs = get_effective_required_talents(config);
@@ -713,12 +728,10 @@ GeneticOptimizationSummary GeneticOptimizer::run(
                 }
             }
 
-            // Race mutation (if race optimization enabled and not locked)
             if (config.forced_race < 0 && config.optimize_race && rng.next_double() < 0.20) {
                 offspring.race = static_cast<Race>(rng.next_u64() % 5);
             }
 
-            // Macro-jump / Rotation mutation
             if (rng.next_double() < 0.20) {
                 adapt_policies_to_talents(offspring, rng);
             }
@@ -727,7 +740,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             candidate_pool.push_back(offspring);
         }
 
-        // Diversity injection: 6 random immigrants
         for (int imm = 0; imm < 6; ++imm) {
             Individual immigrant;
             immigrant.talents = graph.generate_random_valid(rng);
@@ -737,7 +749,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             candidate_pool.push_back(immigrant);
         }
 
-        // Surrogate Pre-Screening: Score candidate offspring using regression model
         struct ScoredCandidate {
             size_t idx;
             double predicted_dps;
@@ -763,7 +774,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             return a.predicted_dps > b.predicted_dps;
         });
 
-        // Niche-fair offspring selection: Allocate simulation budget evenly across top surrogate predictions + exploratory candidates
         int num_to_sim = std::min(config.simulated_offspring_per_gen, static_cast<int>(candidate_pool.size()));
         int num_top = static_cast<int>(num_to_sim * 0.70);
         int num_explore = num_to_sim - num_top;
@@ -781,11 +791,11 @@ GeneticOptimizationSummary GeneticOptimizer::run(
         evaluated_offspring.reserve(chosen_indices.size());
 
         for (size_t cand_idx : chosen_indices) {
-            if (should_stop && should_stop->load()) break;
+            if (stop_requested) break;
             Individual ind = candidate_pool[cand_idx];
 
-            WarlockSimulator sim = individual_to_sim(base_sim, ind);
-            ind.batch = ParallelSimRunner::run_batch(sim, config.screening_sims, config.num_threads);
+            WarlockSimulator s = individual_to_sim(base_sim, ind);
+            ind.batch = ParallelSimRunner::run_batch(s, config.screening_sims, config.num_threads);
             ind.fitness = ind.batch.mean_dps;
             ind.evaluated = true;
             summary.total_evaluations++;
@@ -806,7 +816,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
             evaluated_offspring.push_back(ind);
         }
 
-        // Elitism: Merge top parents + evaluated offspring, keep top population_size
         std::vector<Individual> next_pop;
         next_pop.insert(next_pop.end(), population.begin(), population.begin() + std::min((size_t)5, population.size()));
         next_pop.insert(next_pop.end(), evaluated_offspring.begin(), evaluated_offspring.end());
@@ -820,7 +829,6 @@ GeneticOptimizationSummary GeneticOptimizer::run(
         }
         population = std::move(next_pop);
 
-        // Update tracking
         double mean_dps = 0.0;
         for (const auto& ind : population) mean_dps += ind.fitness;
         mean_dps /= population.size();
@@ -828,154 +836,213 @@ GeneticOptimizationSummary GeneticOptimizer::run(
         summary.generation_best_dps.push_back(population[0].fitness);
         summary.generation_mean_dps.push_back(mean_dps);
 
-        // Retrain the surrogate with updated dataset
         summary.trained_surrogate.train();
 
-        // Publish live generation elites to UI
-        if (generation_callback) {
-            auto live_elites = get_occupied_elites();
-            std::sort(live_elites.begin(), live_elites.end(), [](const Individual& a, const Individual& b) {
-                return a.fitness > b.fitness;
-            });
-            if (live_elites.size() > 20) live_elites.resize(20);
-            generation_callback(make_candidate_results(live_elites));
+        auto live = get_occupied_elites();
+        std::sort(live.begin(), live.end(), [](const Individual& a, const Individual& b) {
+            return a.fitness > b.fitness;
+        });
+        if (live.size() > 20) live.resize(20);
+        live_elites = make_candidate_results(live);
+
+        elites_out = live_elites;
+        progress_out = current_progress;
+        status_out = current_status;
+
+        if (gen >= config.generations) {
+            finish();
+            elites_out = live_elites;
+            progress_out = 1.0f;
+            status_out = "Completed";
+            return false;
         }
+
+        return true;
     }
 
-    // Final Stage: High-precision evaluation of Stratified Quality-Diversity Spectrum
-    if (callback) callback(0.95f, "Finalizing & Simulating Diverse Spec Champions (High Precision)...");
+    std::vector<CandidateResult> finish(std::function<void(float, const std::string&)> cb = nullptr) {
+        if (is_finished) return live_elites;
+        if (cb) cb(0.95f, "Finalizing Diverse Spec Champions (High Precision)...");
 
-    // Extract all MAP-Elites champions
-    auto all_map_elites = get_occupied_elites();
+        const auto& graph = TalentGraph::get();
+        auto all_map_elites = get_occupied_elites();
+        if (all_map_elites.empty()) all_map_elites = population;
 
-    // Group occupied cells into distinct macro-archetype niches based on continuous talent distributions
-    enum class MacroArchetype {
-        DESTRUCTION_HEAVY,
-        AFFLICTION_HEAVY,
-        DEMONOLOGY_HEAVY,
-        HYBRID_SPECS
-    };
+        enum class MacroArchetype {
+            DESTRUCTION_HEAVY,
+            AFFLICTION_HEAVY,
+            DEMONOLOGY_HEAVY,
+            HYBRID_SPECS
+        };
 
-    struct TypedElite {
-        Individual ind;
-        MacroArchetype archetype;
-        std::string archetype_name;
-    };
+        struct TypedElite {
+            Individual ind;
+            MacroArchetype archetype;
+            std::string archetype_name;
+        };
 
-    std::vector<TypedElite> categorized;
-    categorized.reserve(all_map_elites.size());
+        std::vector<TypedElite> categorized;
+        categorized.reserve(all_map_elites.size());
 
-    for (const auto& ind : all_map_elites) {
-        int a = graph.count_tree_points(ind.talents, 0);
-        int d = graph.count_tree_points(ind.talents, 1);
-        int x = graph.count_tree_points(ind.talents, 2);
+        for (const auto& ind : all_map_elites) {
+            int a = graph.count_tree_points(ind.talents, 0);
+            int d = graph.count_tree_points(ind.talents, 1);
+            int x = graph.count_tree_points(ind.talents, 2);
 
-        TypedElite te;
-        te.ind = ind;
+            TypedElite te;
+            te.ind = ind;
 
-        if (x >= 25 && x >= a && x >= d) {
-            te.archetype = MacroArchetype::DESTRUCTION_HEAVY;
-            te.archetype_name = "Destruction Peak";
-        } else if (a >= 25 && a >= x && a >= d) {
-            te.archetype = MacroArchetype::AFFLICTION_HEAVY;
-            te.archetype_name = "Affliction Peak";
-        } else if (d >= 25 && d >= a && d >= x) {
-            te.archetype = MacroArchetype::DEMONOLOGY_HEAVY;
-            te.archetype_name = "Demonology Peak";
-        } else {
-            te.archetype = MacroArchetype::HYBRID_SPECS;
-            te.archetype_name = "Hybrid Peak";
+            if (x >= 25 && x >= a && x >= d) {
+                te.archetype = MacroArchetype::DESTRUCTION_HEAVY;
+                te.archetype_name = "Destruction Peak";
+            } else if (a >= 25 && a >= x && a >= d) {
+                te.archetype = MacroArchetype::AFFLICTION_HEAVY;
+                te.archetype_name = "Affliction Peak";
+            } else if (d >= 25 && d >= a && d >= x) {
+                te.archetype = MacroArchetype::DEMONOLOGY_HEAVY;
+                te.archetype_name = "Demonology Peak";
+            } else {
+                te.archetype = MacroArchetype::HYBRID_SPECS;
+                te.archetype_name = "Hybrid Peak";
+            }
+            categorized.push_back(te);
         }
-        categorized.push_back(te);
-    }
 
-    // Sort within each archetype by screening fitness
-    std::sort(categorized.begin(), categorized.end(), [](const TypedElite& a, const TypedElite& b) {
-        return a.ind.fitness > b.ind.fitness;
-    });
+        std::sort(categorized.begin(), categorized.end(), [](const TypedElite& a, const TypedElite& b) {
+            return a.ind.fitness > b.ind.fitness;
+        });
 
-    // Helper lambda to check talent/policy equality
-    auto is_same_build = [](const Individual& a, const Individual& b) {
-        return a.talents == b.talents && a.rotation == b.rotation && a.pet == b.pet &&
-               a.sac_imp == b.sac_imp && a.sac_succubus == b.sac_succubus && a.race == b.race;
-    };
+        auto is_same_build = [](const Individual& a, const Individual& b) {
+            return a.talents == b.talents && a.rotation == b.rotation && a.pet == b.pet &&
+                   a.sac_imp == b.sac_imp && a.sac_succubus == b.sac_succubus && a.race == b.race;
+        };
 
-    // Quotas: Pick top 5 Destro, top 5 Affliction, top 5 Demo, top 5 Hybrid
-    std::vector<TypedElite> diverse_pool;
-    std::unordered_map<MacroArchetype, int> archetype_counts;
-    const int max_per_archetype = 5;
+        std::vector<TypedElite> diverse_pool;
+        std::unordered_map<MacroArchetype, int> archetype_counts;
+        const int max_per_archetype = 5;
 
-    // Pass 1: Select up to max_per_archetype from each category
-    for (const auto& te : categorized) {
-        if (archetype_counts[te.archetype] >= max_per_archetype) continue;
-        bool dup = false;
-        for (const auto& d : diverse_pool) {
-            if (is_same_build(te.ind, d.ind)) { dup = true; break; }
-        }
-        if (!dup) {
-            diverse_pool.push_back(te);
-            archetype_counts[te.archetype]++;
-        }
-    }
-
-    // Pass 2: If we have fewer than 20 builds total, fill remaining slots with highest overall fitness
-    if (diverse_pool.size() < 20) {
         for (const auto& te : categorized) {
+            if (archetype_counts[te.archetype] >= max_per_archetype) continue;
             bool dup = false;
             for (const auto& d : diverse_pool) {
                 if (is_same_build(te.ind, d.ind)) { dup = true; break; }
             }
             if (!dup) {
                 diverse_pool.push_back(te);
-                if (diverse_pool.size() >= 20) break;
+                archetype_counts[te.archetype]++;
             }
         }
+
+        if (diverse_pool.size() < 20) {
+            for (const auto& te : categorized) {
+                bool dup = false;
+                for (const auto& d : diverse_pool) {
+                    if (is_same_build(te.ind, d.ind)) { dup = true; break; }
+                }
+                if (!dup) {
+                    diverse_pool.push_back(te);
+                    if (diverse_pool.size() >= 20) break;
+                }
+            }
+        }
+
+        summary.diverse_peaks.clear();
+        for (size_t i = 0; i < diverse_pool.size(); ++i) {
+            if (stop_requested) break;
+            WarlockSimulator s = individual_to_sim(base_sim, diverse_pool[i].ind);
+            BatchSimResult batch = ParallelSimRunner::run_batch(s, config.final_sims, config.num_threads);
+
+            CandidateResult res;
+            res.name = format_build_name(diverse_pool[i].ind);
+            res.category = diverse_pool[i].archetype_name;
+            res.race = s.race;
+            res.mean_dps = batch.mean_dps;
+            res.std_dev_dps = batch.std_dev_dps;
+            res.min_dps = batch.min_dps;
+            res.max_dps = batch.max_dps;
+            res.isb_uptime = batch.mean_isb_uptime;
+            res.talents = s.talents;
+            res.gear = s.gear;
+            res.use_raw_stats = s.use_raw_stats;
+            res.raw_stats = s.raw_stats;
+            res.buffs = s.buffs;
+            res.policy = s.policy;
+            res.mechanics = s.mechanics;
+            res.batch = batch;
+
+            summary.diverse_peaks.push_back(res);
+        }
+
+        std::sort(summary.diverse_peaks.begin(), summary.diverse_peaks.end(), [](const CandidateResult& a, const CandidateResult& b) {
+            return a.mean_dps > b.mean_dps;
+        });
+
+        for (size_t i = 0; i < summary.diverse_peaks.size(); ++i) {
+            summary.diverse_peaks[i].rank = static_cast<int>(i + 1);
+        }
+
+        summary.top_candidates = summary.diverse_peaks;
+        live_elites = summary.diverse_peaks;
+        is_running = false;
+        is_finished = true;
+        current_progress = 1.0f;
+        current_status = "Completed";
+        if (cb) cb(1.0f, "Completed");
+        return live_elites;
+    }
+};
+
+GeneticOptimizerSession::GeneticOptimizerSession() : impl_(std::make_unique<Impl>()) {}
+GeneticOptimizerSession::~GeneticOptimizerSession() = default;
+GeneticOptimizerSession::GeneticOptimizerSession(GeneticOptimizerSession&&) noexcept = default;
+GeneticOptimizerSession& GeneticOptimizerSession::operator=(GeneticOptimizerSession&&) noexcept = default;
+
+void GeneticOptimizerSession::start(const WarlockSimulator& base_sim, const GeneticOptimizerConfig& config) {
+    impl_->start(base_sim, config);
+}
+bool GeneticOptimizerSession::step(std::vector<CandidateResult>& current_elites, float& progress, std::string& status) {
+    return impl_->step(current_elites, progress, status);
+}
+std::vector<CandidateResult> GeneticOptimizerSession::finish(std::function<void(float, const std::string&)> callback) {
+    return impl_->finish(callback);
+}
+void GeneticOptimizerSession::stop() {
+    impl_->stop_requested = true;
+}
+bool GeneticOptimizerSession::is_running() const { return impl_->is_running; }
+bool GeneticOptimizerSession::is_finished() const { return impl_->is_finished; }
+float GeneticOptimizerSession::progress() const { return impl_->current_progress; }
+const std::string& GeneticOptimizerSession::current_status() const { return impl_->current_status; }
+const std::vector<CandidateResult>& GeneticOptimizerSession::get_elites() const { return impl_->live_elites; }
+const GeneticOptimizationSummary& GeneticOptimizerSession::get_summary() const { return impl_->summary; }
+
+GeneticOptimizationSummary GeneticOptimizer::run(
+    const WarlockSimulator& base_sim,
+    const GeneticOptimizerConfig& config,
+    std::function<void(float progress, const std::string& current_name)> callback,
+    std::function<void(const std::vector<CandidateResult>& current_elites)> generation_callback,
+    const std::atomic<bool>* should_stop
+) {
+    GeneticOptimizerSession session;
+    session.start(base_sim, config);
+    if (generation_callback) generation_callback(session.get_elites());
+
+    while (session.is_running()) {
+        if (should_stop && should_stop->load()) {
+            session.stop();
+            break;
+        }
+        std::vector<CandidateResult> elites;
+        float prog;
+        std::string status;
+        bool more = session.step(elites, prog, status);
+        if (callback) callback(prog, status);
+        if (generation_callback && !elites.empty()) generation_callback(elites);
+        if (!more) break;
     }
 
-    // High precision simulation for all chosen diverse champions
-    for (size_t i = 0; i < diverse_pool.size(); ++i) {
-        if (should_stop && should_stop->load()) break;
-        WarlockSimulator sim = individual_to_sim(base_sim, diverse_pool[i].ind);
-        BatchSimResult batch = ParallelSimRunner::run_batch(sim, config.final_sims, config.num_threads);
-
-        CandidateResult res;
-        res.name = format_build_name(diverse_pool[i].ind);
-        res.category = diverse_pool[i].archetype_name;
-        res.race = sim.race;
-        res.mean_dps = batch.mean_dps;
-        res.std_dev_dps = batch.std_dev_dps;
-        res.min_dps = batch.min_dps;
-        res.max_dps = batch.max_dps;
-        res.isb_uptime = batch.mean_isb_uptime;
-        res.talents = sim.talents;
-        res.gear = sim.gear;
-        res.use_raw_stats = sim.use_raw_stats;
-        res.raw_stats = sim.raw_stats;
-        res.buffs = sim.buffs;
-        res.policy = sim.policy;
-        res.mechanics = sim.mechanics;
-        res.batch = batch;
-
-        summary.diverse_peaks.push_back(res);
-    }
-
-    // Sort final results by high-precision simulated mean DPS
-    std::sort(summary.diverse_peaks.begin(), summary.diverse_peaks.end(), [](const CandidateResult& a, const CandidateResult& b) {
-        return a.mean_dps > b.mean_dps;
-    });
-
-    for (size_t i = 0; i < summary.diverse_peaks.size(); ++i) {
-        summary.diverse_peaks[i].rank = static_cast<int>(i + 1);
-    }
-
-    summary.top_candidates = summary.diverse_peaks;
-
-    if (generation_callback && !summary.diverse_peaks.empty()) {
-        generation_callback(summary.diverse_peaks);
-    }
-
-    if (callback) callback(1.0f, "Completed");
-    return summary;
+    session.finish(callback);
+    return session.get_summary();
 }
 
 } // namespace warlock
