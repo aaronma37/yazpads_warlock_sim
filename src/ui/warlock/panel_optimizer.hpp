@@ -71,7 +71,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
   ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
   ImGui::SameLine();
-  ImGui::RadioButton("Genetic Search", &opt_mode, 0);
+  ImGui::RadioButton("Search", &opt_mode, 0);
 
   ImGui::Spacing();
 

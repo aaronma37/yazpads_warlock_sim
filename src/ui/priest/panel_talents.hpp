@@ -5,6 +5,7 @@
 #include "src/sim/priest/spec_presets.hpp"
 #include "src/sim/priest/priest_sim.hpp"
 #include "src/ui/common/asset_manager.hpp"
+#include "src/ui/common/cover_uv.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -161,11 +162,21 @@ inline void render_priest_tree_column(const char* tree_name,
   ImVec2 win_size = ImGui::GetWindowSize();
   ImVec2 win_max = ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y);
 
-  // 1. Draw Background Image
+  // 1. Draw Background Image (Preserving Aspect Ratio - Cover/Crop, never stretched)
   const Texture2D& bg_tex = warlock::AssetManager::get().get_icon(bg_filename);
   if (bg_tex.id > 0)
   {
-    draw_list->AddImage(ImTextureID(bg_tex.id), win_pos, win_max, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 210));
+    float u0, v0, u1, v1;
+    warlock::compute_cover_uv(static_cast<float>(bg_tex.width),
+                              static_cast<float>(bg_tex.height),
+                              win_size.x,
+                              win_size.y,
+                              u0,
+                              v0,
+                              u1,
+                              v1);
+    draw_list->AddImage(ImTextureID(bg_tex.id), win_pos, win_max, ImVec2(u0, v0), ImVec2(u1, v1),
+                        IM_COL32(255, 255, 255, 210));
     draw_list->AddRectFilled(win_pos, win_max, IM_COL32(10, 12, 18, 90));
   }
   else
@@ -207,16 +218,6 @@ inline void render_priest_tree_column(const char* tree_name,
   std::array<ImVec2, N> node_centers;
   std::array<bool, N> node_rendered;
   node_rendered.fill(false);
-
-  // Subtle tier guidelines
-  for (int r = 1; r <= 7; ++r)
-  {
-    float tier_y = win_pos.y + grid_start_y + (r - 1) * row_height;
-    draw_list->AddLine(ImVec2(win_pos.x + 8.0f, tier_y - 2.0f),
-                       ImVec2(win_max.x - 8.0f, tier_y - 2.0f),
-                       IM_COL32(255, 255, 255, 14),
-                       1.0f);
-  }
 
   // 4. Render 7x4 Grid of Talents
   for (int row = 1; row <= 7; ++row)
@@ -479,7 +480,8 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
     col_w = 250.0f;
 
   float avail_h = ImGui::GetContentRegionAvail().y;
-  float col_h = std::max(530.0f, avail_h - 8.0f);
+  constexpr float kBelowPanelH = 240.0f;
+  float col_h = std::max(530.0f, avail_h - kBelowPanelH - 16.0f);
 
   // Column 1: Discipline
   render_priest_tree_column(
@@ -526,6 +528,11 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
       total_pts,
       col_w,
       col_h);
+
+  // Blank panel below the talent trees (reserved space for future content).
+  ImGui::Spacing();
+  ImGui::BeginChild("PriestBelowTalents", ImVec2(0, kBelowPanelH), true);
+  ImGui::EndChild();
 }
 
 inline void render_priest_talents_panel(Talents& talents)

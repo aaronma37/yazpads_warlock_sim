@@ -66,7 +66,7 @@ inline void render_priest_panel_optimizer(
     static int opt_mode = 1; // 0 = Genetic Search, 1 = Standard Presets Benchmark
     ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
     ImGui::SameLine();
-    ImGui::RadioButton("Genetic Search", &opt_mode, 0);
+    ImGui::RadioButton("Search", &opt_mode, 0);
 
     ImGui::Spacing();
 

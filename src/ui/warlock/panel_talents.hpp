@@ -4,6 +4,7 @@
 #include "src/sim/spec_presets.hpp"
 #include "src/sim/talents.hpp"
 #include "src/ui/asset_manager.hpp"
+#include "src/ui/common/cover_uv.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -173,38 +174,17 @@ inline void render_tree_column(const char* tree_name,
   const Texture2D& bg_tex = AssetManager::get().get_icon(bg_filename);
   if (bg_tex.id > 0)
   {
-    float tex_w = static_cast<float>(bg_tex.width);
-    float tex_h = static_cast<float>(bg_tex.height);
-    float win_w = win_size.x;
-    float win_h = win_size.y;
-
-    ImVec2 uv0(0.0f, 0.0f);
-    ImVec2 uv1(1.0f, 1.0f);
-
-    if (tex_w > 0.0f && tex_h > 0.0f && win_w > 0.0f && win_h > 0.0f)
-    {
-      float win_aspect = win_w / win_h;
-      float tex_aspect = tex_w / tex_h;
-
-      if (win_aspect > tex_aspect)
-      {
-        // Window is wider than texture: crop top/bottom
-        float v_span = tex_aspect / win_aspect;
-        float v0 = (1.0f - v_span) * 0.5f;
-        float v1 = v0 + v_span;
-        uv0 = ImVec2(0.0f, std::max(0.0f, v0));
-        uv1 = ImVec2(1.0f, std::min(1.0f, v1));
-      }
-      else
-      {
-        // Window is narrower than texture: crop sides (centered horizontally)
-        float u_span = win_aspect / tex_aspect;
-        float u0 = (1.0f - u_span) * 0.5f;
-        float u1 = u0 + u_span;
-        uv0 = ImVec2(std::max(0.0f, u0), 0.0f);
-        uv1 = ImVec2(std::min(1.0f, u1), 1.0f);
-      }
-    }
+    float u0, v0, u1, v1;
+    compute_cover_uv(static_cast<float>(bg_tex.width),
+                     static_cast<float>(bg_tex.height),
+                     win_size.x,
+                     win_size.y,
+                     u0,
+                     v0,
+                     u1,
+                     v1);
+    const ImVec2 uv0(u0, v0);
+    const ImVec2 uv1(u1, v1);
 
     draw_list->AddImage(ImTextureID(bg_tex.id), win_pos, win_max, uv0, uv1, IM_COL32(255, 255, 255, 210));
     // Subtle dark ambient overlay so icons, text, and lines are sharp and readable
@@ -253,16 +233,6 @@ inline void render_tree_column(const char* tree_name,
   std::array<ImVec2, N> node_centers;
   std::array<bool, N> node_rendered;
   node_rendered.fill(false);
-
-  // Subtle horizontal tier guidelines
-  for (int r = 1; r <= 7; ++r)
-  {
-    float tier_y = win_pos.y + grid_start_y + (r - 1) * row_height;
-    draw_list->AddLine(ImVec2(win_pos.x + 8.0f, tier_y - 2.0f),
-                       ImVec2(win_max.x - 8.0f, tier_y - 2.0f),
-                       IM_COL32(255, 255, 255, 14),
-                       1.0f);
-  }
 
   // 4. Render 7x4 Grid of Talents
   for (int row = 1; row <= 7; ++row)
@@ -554,7 +524,8 @@ inline void render_panel_talents(WarlockSimulator& sim)
     col_w = 250.0f;
 
   float avail_h = ImGui::GetContentRegionAvail().y;
-  float col_h = std::max(530.0f, avail_h - 8.0f);
+  constexpr float kBelowPanelH = 240.0f;
+  float col_h = std::max(530.0f, avail_h - kBelowPanelH - 16.0f);
 
   // --- Column 1: Affliction Tree ---
   render_tree_column(
@@ -601,6 +572,11 @@ inline void render_panel_talents(WarlockSimulator& sim)
       total_pts,
       col_w,
       col_h);
+
+  // Blank panel below the talent trees (reserved space for future content).
+  ImGui::Spacing();
+  ImGui::BeginChild("WarlockBelowTalents", ImVec2(0, kBelowPanelH), true);
+  ImGui::EndChild();
 }
 
 inline void render_panel_talents(Talents& talents)
