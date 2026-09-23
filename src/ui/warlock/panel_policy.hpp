@@ -1,6 +1,7 @@
 #pragma once
 #include "asset_manager.hpp"
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include "src/sim/policy.hpp"
 #include "src/sim/talents.hpp"
 #include "src/sim/warlock_sim.hpp"
@@ -103,7 +104,6 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     policy.rotation = static_cast<RotationChoice>(rot_idx);
   }
 
-  ImGui::TextWrapped("%s", rotation_choice_description(policy.rotation));
 
   ImGui::Spacing();
 
@@ -135,12 +135,12 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
   // 3. Spell & Rotational Policy Ability Toggles
   ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Rotational Ability Policies:");
-  ImGui::Checkbox("Cast Conflagrate on Cooldown##Policy", &policy.use_conflagrate);
+  WowCheckbox("Cast Conflagrate on Cooldown##Policy", &policy.use_conflagrate);
   if (ImGui::IsItemHovered())
   {
     ImGui::SetTooltip("When talented and Immolate is active, casts Conflagrate on 10s cooldown.");
   }
-  ImGui::Checkbox("Decimation Soul Fire (<35% HP)##Policy", &policy.use_decimation_soul_fire);
+  WowCheckbox("Decimation Soul Fire (<35% HP)##Policy", &policy.use_decimation_soul_fire);
   if (ImGui::IsItemHovered())
   {
     ImGui::SetTooltip("When talented and in execute phase (<35%% HP), spams Soul Fire during Decimation buff.");
@@ -151,12 +151,12 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
   // 4. Multi-Target Combat Policy
   ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Multi-Target Combat Policy:");
-  ImGui::Checkbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
+  WowCheckbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
   if (ImGui::IsItemHovered())
   {
     ImGui::SetTooltip("When 2+ targets are configured, automatically maintains Corruption on secondary targets.");
   }
-  ImGui::Checkbox("Auto-Apply Bane of Havoc##Policy", &policy.auto_bane_of_havoc);
+  WowCheckbox("Auto-Apply Bane of Havoc##Policy", &policy.auto_bane_of_havoc);
   if (ImGui::IsItemHovered())
   {
     ImGui::SetTooltip(

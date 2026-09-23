@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "src/ui/common/wow_widgets.hpp"
 #include "rlImGui.h"
 #include "src/sim/priest/talents.hpp"
 #include "src/sim/priest/spec_presets.hpp"
@@ -186,36 +187,25 @@ inline void render_priest_tree_column(const char* tree_name,
     draw_list->AddRectFilled(win_pos, win_max, IM_COL32(20, 20, 26, 255));
   }
 
-  // Border frame
-  draw_list->AddRect(win_pos, win_max, IM_COL32(85, 75, 55, 255), 4.0f, 0, 1.5f);
+  // Border frame - authentic WoW dark bronze beveled border
+  draw_list->AddRect(win_pos, win_max, IM_COL32(110, 88, 48, 255), 4.0f, 0, 1.5f);
+  draw_list->AddRect(ImVec2(win_pos.x + 1, win_pos.y + 1), ImVec2(win_max.x - 1, win_max.y - 1), IM_COL32(35, 28, 18, 200), 3.0f, 0, 1.0f);
 
-  // 2. Tree Header
-  ImGui::TextColored(title_color, "%s", tree_name);
-  ImGui::SameLine();
-  ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "(%d)", tree_total_points);
-
-  float reset_btn_x = col_w - 38.0f;
-  ImGui::SameLine(reset_btn_x);
+  // 2. Tree Header (WoW Spec Header Bar + Title + Reset Red-X button)
   std::string reset_btn_id = std::string("##Reset_Priest_") + tree_name;
-  if (ImGui::SmallButton(("↺" + reset_btn_id).c_str()))
+  if (warlock::DrawWowTalentTreeHeader(draw_list, win_pos, win_max, tree_name, tree_total_points, title_color, reset_btn_id.c_str()))
   {
     reset_tree_func();
   }
-  if (ImGui::IsItemHovered())
-  {
-    ImGui::SetTooltip("Reset points in %s", tree_name);
-  }
-
-  ImGui::Separator();
 
   // 3. Grid Positioning Parameters
-  const float icon_sz = 34.0f;
-  const float cell_w = 42.0f;
+  const float icon_sz = 36.0f;
+  const float cell_w = 44.0f;
   const float col_spacing = 12.0f;
   const float total_grid_w = 4.0f * cell_w + 3.0f * col_spacing;
   const float start_x = std::max(4.0f, (col_w - total_grid_w) * 0.5f);
-  const float grid_start_y = 38.0f;
-  const float row_height = 68.0f;
+  const float grid_start_y = 36.0f;
+  const float row_height = 56.0f;
 
   std::array<ImVec2, N> node_centers;
   std::array<bool, N> node_rendered;
@@ -252,64 +242,52 @@ inline void render_priest_tree_column(const char* tree_name,
       ImGui::SetCursorPos(ImVec2(cell_x, cursor_y));
 
       ImVec2 icon_screen_pos = ImGui::GetCursorScreenPos();
+      ImVec2 icon_screen_max = ImVec2(icon_screen_pos.x + icon_sz, icon_screen_pos.y + icon_sz);
       node_centers[found_idx] = ImVec2(icon_screen_pos.x + icon_sz * 0.5f, icon_screen_pos.y + icon_sz * 0.5f);
       node_rendered[found_idx] = true;
-
-      // Border color: Gold if maxed, Vivid Green if partial, Light silver if learnable, Dim if locked
-      ImVec4 border_col = ImVec4(0.25f, 0.25f, 0.25f, 0.85f);
-      if (current_pts == node.max_points)
-      {
-        border_col = ImVec4(1.0f, 0.82f, 0.15f, 1.0f);  // Gold
-      }
-      else if (current_pts > 0)
-      {
-        border_col = ImVec4(0.2f, 0.95f, 0.2f, 1.0f);  // Vivid Green
-      }
-      else if (tier_unlocked && prereq_met)
-      {
-        border_col = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);  // Silver
-      }
 
       const Texture2D& tex = warlock::AssetManager::get().get_icon(node.icon);
 
       ImGui::PushID(node.id);
-      ImGui::PushStyleColor(ImGuiCol_Border, border_col);
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.45f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.25f, 0.35f, 0.70f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.40f, 0.55f, 0.85f));
-      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, (current_pts > 0) ? 2.0f : 1.0f);
-      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1.0f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
+      ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
 
-      if (rlImGuiImageButtonSize(node.id, &tex, Vector2{icon_sz, icon_sz}))
+      bool clicked = ImGui::Button("##TalentBtn", ImVec2(icon_sz, icon_sz));
+      bool hovered = ImGui::IsItemHovered();
+
+      if (clicked && can_learn)
       {
-        if (can_learn)
-        {
-          get_pts_ref_func(found_idx)++;
-        }
+        get_pts_ref_func(found_idx)++;
       }
 
       // Right-click decrements point
-      if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
+      if (ImGui::IsItemClicked(ImGuiMouseButton_Right) && can_unlearn)
       {
-        if (can_unlearn)
-        {
-          get_pts_ref_func(found_idx)--;
-        }
+        get_pts_ref_func(found_idx)--;
       }
 
       ImGui::PopStyleVar(2);
       ImGui::PopStyleColor(4);
 
-      // Dim overlay if locked
-      if (!tier_unlocked || !prereq_met)
-      {
-        draw_list->AddRectFilled(icon_screen_pos,
-                                 ImVec2(icon_screen_pos.x + icon_sz, icon_screen_pos.y + icon_sz),
-                                 IM_COL32(0, 0, 0, 175));
-      }
+      // Draw authentic WoW Talent Slot with Blizzard border, hover gloss, and rank badge
+      warlock::DrawWowTalentSlot(
+          draw_list,
+          (ImTextureID)(uintptr_t)tex.id,
+          icon_screen_pos,
+          icon_screen_max,
+          current_pts,
+          node.max_points,
+          tier_unlocked,
+          prereq_met,
+          hovered
+      );
 
       // Hover tooltip
-      if (ImGui::IsItemHovered())
+      if (hovered)
       {
         ImGui::BeginTooltip();
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "%s", node.name);
@@ -350,20 +328,6 @@ inline void render_priest_tree_column(const char* tree_name,
         ImGui::TextDisabled("Left-click: Learn | Right-click: Unlearn");
         ImGui::EndTooltip();
       }
-
-      // Point Counter badge (bottom right)
-      char pt_buf[16];
-      snprintf(pt_buf, sizeof(pt_buf), "%d/%d", current_pts, node.max_points);
-      ImVec2 text_sz = ImGui::CalcTextSize(pt_buf);
-
-      float badge_x = cell_x + icon_sz - text_sz.x - 2.0f;
-      float badge_y = cursor_y + icon_sz + 2.0f;
-
-      ImU32 text_col = (current_pts == node.max_points) ? IM_COL32(255, 215, 30, 255)
-                       : (current_pts > 0)             ? IM_COL32(50, 240, 50, 255)
-                                                       : IM_COL32(160, 160, 160, 200);
-
-      draw_list->AddText(ImVec2(win_pos.x + badge_x, win_pos.y + badge_y), text_col, pt_buf);
 
       ImGui::PopID();
     }
@@ -429,7 +393,7 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
   }
 
   ImGui::SameLine();
-  if (ImGui::SmallButton("Reset All"))
+  if (warlock::WowButton("Reset All"))
   {
     sim.talents = Talents();
     preset_idx = -1;
@@ -440,7 +404,7 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
 
   static bool url_copied = false;
   static float url_copied_timer = 0.0f;
-  if (ImGui::SmallButton("Copy URL"))
+  if (warlock::WowButton("Copy URL"))
   {
     std::string url = talents_to_url(sim.talents);
     ImGui::SetClipboardText(url.c_str());
@@ -482,8 +446,7 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
     col_w = 250.0f;
 
   float avail_h = ImGui::GetContentRegionAvail().y;
-  constexpr float kBelowPanelH = 240.0f;
-  float col_h = std::clamp(avail_h - kBelowPanelH - 16.0f, 530.0f, 580.0f);
+  float col_h = 440.0f;
 
   // Column 1: Discipline
   render_priest_tree_column(
@@ -530,16 +493,6 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
       total_pts,
       col_w,
       col_h);
-
-  // Panel below the talent trees: Consumables & Elixirs, Raid Buffs, World Buffs, Target Raid Debuffs, Priest Self-Buffs, Stances, Game Mechanics
-  ImGui::Spacing();
-  if (ImGui::BeginChild("PriestBelowTalents", ImVec2(0, 0), true))
-  {
-    warlock::render_panel_buffs(sim);
-    ImGui::Spacing();
-    priest::render_priest_mechanics_panel(sim.mechanics);
-  }
-  ImGui::EndChild();
 }
 
 inline void render_priest_talents_panel(Talents& talents)

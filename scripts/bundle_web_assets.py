@@ -140,6 +140,15 @@ def build_web_assets():
         for f in os.listdir(src_bgs):
             shutil.copy2(os.path.join(src_bgs, f), os.path.join(out_bgs, f))
 
+    # Vendored Blizzard UI chrome (buttons, dialog frame, tooltip pieces).
+    # The desktop build resolves these from assets/wow_classic via
+    # AssetManager; the web build needs them under assets_web/wow_classic.
+    src_chrome = os.path.join(ASSETS_DIR, "wow_classic")
+    out_chrome = os.path.join(OUT_DIR, "wow_classic")
+    if os.path.exists(src_chrome):
+        shutil.copytree(src_chrome, out_chrome, dirs_exist_ok=True)
+        copied += sum(len(files) for _, _, files in os.walk(out_chrome))
+
     # Calculate total size
     total_bytes = 0
     for root, _, files in os.walk(OUT_DIR):

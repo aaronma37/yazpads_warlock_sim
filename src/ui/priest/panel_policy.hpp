@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "src/ui/common/wow_widgets.hpp"
 #include "src/sim/priest/policy.hpp"
 #include "src/sim/priest/talents.hpp"
 #include "src/sim/common/player_class.hpp"
@@ -113,7 +114,7 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
                     policy.rotation == RotationChoice::SHADOW_SWP_ONLY);
 
     if (uses_swp) {
-        ImGui::Checkbox("Maintain Shadow Word: Pain##Policy", &policy.maintain_swp);
+        warlock::WowCheckbox("Maintain Shadow Word: Pain##Policy", &policy.maintain_swp);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Maintains 100%% uptime on Shadow Word: Pain.");
         }
@@ -121,20 +122,20 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
 
     if (uses_mb) {
         if (uses_swp) ImGui::SameLine(0, 16);
-        ImGui::Checkbox("Cast Mind Blast on Cooldown##Policy", &policy.cast_mind_blast);
+        warlock::WowCheckbox("Cast Mind Blast on Cooldown##Policy", &policy.cast_mind_blast);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts Mind Blast whenever off cooldown (5.5s cooldown when talented).");
         }
     }
 
     if (uses_swd) {
-        ImGui::Checkbox("Cast Shadow Word: Death##Policy", &policy.cast_sw_death);
+        warlock::WowCheckbox("Cast Shadow Word: Death##Policy", &policy.cast_sw_death);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts Shadow Word: Death on 15s cooldown.");
         }
         if (policy.cast_sw_death) {
             ImGui::SameLine(0, 16);
-            ImGui::Checkbox("Execute Only (<20% HP)##Policy", &policy.execute_sw_death_only);
+            warlock::WowCheckbox("Execute Only (<20% HP)##Policy", &policy.execute_sw_death_only);
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Restricts SW:D to execute phase (<20%% HP) to benefit from Early Demise +30%% crit.");
             }
@@ -142,54 +143,54 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
     }
 
     if (uses_dp) {
-        ImGui::Checkbox("Cast Devouring Plague on Cooldown##Policy", &policy.cast_devouring_plague);
+        warlock::WowCheckbox("Cast Devouring Plague on Cooldown##Policy", &policy.cast_devouring_plague);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts Devouring Plague whenever off its 1 min cooldown.");
         }
     }
 
     if (uses_hf) {
-        ImGui::Checkbox("Maintain Holy Fire DoT##Policy", &policy.cast_holy_fire);
+        warlock::WowCheckbox("Maintain Holy Fire DoT##Policy", &policy.cast_holy_fire);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts Holy Fire to maintain DoT and trigger Power in Light (+10%% Smite/Penance damage).");
         }
     }
 
     if (uses_penance && talents.disc.penance > 0) {
-        ImGui::Checkbox("Cast Penance on Cooldown##Policy", &policy.cast_penance);
+        warlock::WowCheckbox("Cast Penance on Cooldown##Policy", &policy.cast_penance);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Channels Penance whenever off cooldown.");
         }
     }
 
     if (uses_mf) {
-        ImGui::Checkbox("Clip Mind Flay after Tick 2 for MB / SW:P##Policy", &policy.clip_mind_flay_for_mb);
+        warlock::WowCheckbox("Clip Mind Flay after Tick 2 for MB / SW:P##Policy", &policy.clip_mind_flay_for_mb);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("When ON: Clips Mind Flay early after the second damage tick (2.0s) if Mind Blast or SW:P is ready to cast.");
         }
     }
 
     if (talents.shadow.vampiric_embrace > 0) {
-        ImGui::Checkbox("Maintain Vampiric Embrace##Policy", &policy.cast_vampiric_embrace);
+        warlock::WowCheckbox("Maintain Vampiric Embrace##Policy", &policy.cast_vampiric_embrace);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts Vampiric Embrace every 30s to heal the party for 20%% of Shadow spell damage.");
         }
     }
 
     if (policy.rotation == RotationChoice::SMITE_PRIEST || policy.rotation == RotationChoice::PURE_SMITE) {
-        ImGui::Checkbox("Cast Free Holy Nova on Clearcast Proc##Policy", &policy.cast_holy_nova_on_proc);
+        warlock::WowCheckbox("Cast Free Holy Nova on Clearcast Proc##Policy", &policy.cast_holy_nova_on_proc);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Consumes Searing Light clearcast procs with an instant free Holy Nova.");
         }
     }
 
     if (race == sim::Race::NIGHT_ELF) {
-        ImGui::Checkbox("Cast Starshards on Cooldown (Night Elf)##Policy", &policy.cast_starshards);
+        warlock::WowCheckbox("Cast Starshards on Cooldown (Night Elf)##Policy", &policy.cast_starshards);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Channels racial Starshards on 30s cooldown for heavy Arcane damage.");
         }
     } else if (race == sim::Race::DWARF) {
-        ImGui::Checkbox("Cast Chastise on Cooldown (Dwarf)##Policy", &policy.cast_chastise);
+        warlock::WowCheckbox("Cast Chastise on Cooldown (Dwarf)##Policy", &policy.cast_chastise);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Casts racial Chastise on 2 min cooldown for instant Holy damage.");
         }
@@ -200,25 +201,25 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
 
     // 3. Cooldown & Consumable Thresholds
     ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Cooldown & Consumable Triggers:");
-    ImGui::Checkbox("Use Inner Focus on Cooldown##Policy", &policy.use_inner_focus);
+    warlock::WowCheckbox("Use Inner Focus on Cooldown##Policy", &policy.use_inner_focus);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically activates Inner Focus for a 100%% free spell with +25%% crit.");
     }
     ImGui::SameLine(0, 16);
-    ImGui::Checkbox("Use Power Infusion on Cooldown##Policy", &policy.use_power_infusion);
+    warlock::WowCheckbox("Use Power Infusion on Cooldown##Policy", &policy.use_power_infusion);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Pops Power Infusion for +20%% spell damage and haste for 15 sec.");
     }
 
     if (race == sim::Race::UNDEAD) {
         ImGui::SameLine(0, 16);
-        ImGui::Checkbox("Dark Sacrifice (<60% Mana)##Policy", &policy.use_dark_sacrifice);
+        warlock::WowCheckbox("Dark Sacrifice (<60% Mana)##Policy", &policy.use_dark_sacrifice);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Cannibalizes 1600 HP over 15s to restore 1600 Mana when under 60%% Mana.");
         }
     } else if (race == sim::Race::TROLL) {
         ImGui::SameLine(0, 16);
-        ImGui::Checkbox("Berserking on Cooldown##Policy", &policy.use_berserking);
+        warlock::WowCheckbox("Berserking on Cooldown##Policy", &policy.use_berserking);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Pops Troll racial Berserking on 3 min cooldown.");
         }
@@ -226,13 +227,13 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
 
     ImGui::SetNextItemWidth(200);
     float pot_thresh = static_cast<float>(policy.mana_potion_threshold * 100.0);
-    if (ImGui::SliderFloat("Mana Potion Threshold##Policy", &pot_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
+    if (warlock::WowSliderFloat("Mana Potion Threshold##Policy", &pot_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
         policy.mana_potion_threshold = pot_thresh / 100.0;
     }
     ImGui::SameLine(0, 16);
     ImGui::SetNextItemWidth(200);
     float rune_thresh = static_cast<float>(policy.demonic_rune_threshold * 100.0);
-    if (ImGui::SliderFloat("Demonic Rune Threshold##Policy", &rune_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
+    if (warlock::WowSliderFloat("Demonic Rune Threshold##Policy", &rune_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
         policy.demonic_rune_threshold = rune_thresh / 100.0;
     }
 }

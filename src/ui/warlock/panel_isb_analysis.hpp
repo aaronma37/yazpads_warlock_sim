@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include "implot.h"
 #include "src/sim/isb_analysis.hpp"
 #include <cstdio>
@@ -35,7 +36,7 @@ inline void render_panel_isb_analysis() {
 
     static float cast_interval = 2.5f;
     ImGui::SetNextItemWidth(260);
-    ImGui::SliderFloat("Sec per Shadow Bolt", &cast_interval, 2.0f, 3.0f, "%.2fs");
+    WowSliderFloat("Sec per Shadow Bolt", &cast_interval, 2.0f, 3.0f, "%.2fs");
     ImGui::SameLine();
     ImGui::TextDisabled("2.5s = 5/5 Bane");
 

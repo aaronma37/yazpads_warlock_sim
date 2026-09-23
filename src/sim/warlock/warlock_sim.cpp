@@ -1695,7 +1695,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage += dmg;
                     apply_havoc_cleave(dmg, 0);
 
-                    // Nightfall proc check on Drain Hope ticks (2% per pt = 4% at 2/2)
+                    // Nightfall proc check on Wrack ticks (2% per pt = 4% at 2/2)
                     if (mechanics.nightfall_enabled && talents.aff.nightfall > 0) {
                         double p = talents.aff.nightfall * 0.02;
                         if (rng.chance(p)) {
@@ -1711,7 +1711,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double dmg = 71.0 + (0.10 * sp);
                     dmg *= imp_drains_mult * soul_siphon_mult;
 
-                    // Drain Hope amplification (+10% to other Shadow DoTs/drains)
+                    // Wrack amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
@@ -1756,7 +1756,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double dmg = 91.0 + (0.20 * sp);
                     dmg *= imp_drains_mult * soul_siphon_mult;
 
-                    // Drain Hope amplification (+10% to other Shadow DoTs/drains)
+                    // Wrack amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 
@@ -1812,7 +1812,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dmg = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
                         }
 
-                        // Drain Hope amplification (+10% to other Shadow DoTs)
+                        // Wrack amplification (+10% to other Shadow DoTs)
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
                         dmg *= get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
 

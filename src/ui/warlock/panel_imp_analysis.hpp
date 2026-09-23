@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include "implot.h"
 #include "src/sim/pet_analysis.hpp"
 #include <vector>
@@ -171,11 +172,11 @@ inline void render_panel_imp_analysis(double fight_duration) {
 
     static int sp_max = 800;
     ImGui::SetNextItemWidth(260);
-    ImGui::SliderInt("Max Master Spell Power", &sp_max, 200, 1500, "%d SP");
+    WowSliderInt("Max Master Spell Power", &sp_max, 200, 1500, "%d SP");
 
     ImGui::Spacing();
-    if (ImGui::BeginTabBar("ImpAnalysisSubTabs", ImGuiTabBarFlags_None)) {
-        if (ImGui::BeginTabItem("  Mana-Starved (Base Regen)  ")) {
+    if (WowBeginTabBar("ImpAnalysisSubTabs", ImGuiTabBarFlags_None)) {
+        if (WowBeginTabItem("  Mana-Starved (Base Regen)  ")) {
             ImGui::TextDisabled("Imp spends 115 mana per Firebolt from a 1150 pool; "
                                 "Succubus spends 160 mana per Lash of Pain from a 1450 pool "
                                 "(melee swings are free). Both recover 45 mana every 5s, no buffs.");
@@ -185,9 +186,9 @@ inline void render_panel_imp_analysis(double fight_duration) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "Succubus (Melee + Lash of Pain):");
             render_succubus_dps_chart("Succubus DPS - Mana-Starved", true, fight_duration, sp_max);
-            ImGui::EndTabItem();
+            WowEndTabItem();
         }
-        if (ImGui::BeginTabItem("  Infinite Mana  ")) {
+        if (WowBeginTabItem("  Infinite Mana  ")) {
             ImGui::TextDisabled("Imp casts Firebolt every 1.5s; Succubus swings every 2.0s and "
                                 "casts Lash of Pain on cooldown (9s, 6s with 3/3 Sayaad).");
             ImGui::Spacing();
@@ -196,9 +197,9 @@ inline void render_panel_imp_analysis(double fight_duration) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.70f, 0.40f, 1.0f, 1.0f), "Succubus (Melee + Lash of Pain):");
             render_succubus_dps_chart("Succubus DPS - Infinite Mana", false, fight_duration, sp_max);
-            ImGui::EndTabItem();
+            WowEndTabItem();
         }
-        ImGui::EndTabBar();
+        WowEndTabBar();
     }
 
     ImGui::Spacing();

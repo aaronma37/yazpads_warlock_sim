@@ -13,7 +13,7 @@ inline void render_priest_sim_control(PriestSimulator& sim,
                                       float& progress)
 {
   warlock::render_common_sim_control<PriestSimulator, BatchSimResult, ParallelSimRunner>(
-      sim, iterations, thread_count, last_result, is_running, progress, ">>> RUN PRIEST DES SIMULATION <<<");
+      sim, iterations, thread_count, last_result, is_running, progress, "RUN PRIEST DES SIMULATION");
 }
 
 } // namespace priest

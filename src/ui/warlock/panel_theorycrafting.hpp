@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include "implot.h"
 #include "panel_imp_analysis.hpp"
 #include "panel_isb_analysis.hpp"
@@ -16,32 +17,32 @@ namespace warlock
 
 inline void render_panel_theorycrafting(const WarlockSimulator& sim)
 {
-  if (ImGui::BeginTabBar("TheorycraftSubTabs", ImGuiTabBarFlags_None))
+  if (WowBeginTabBar("TheorycraftSubTabs", ImGuiTabBarFlags_None))
   {
     // -------------------------------------------------------------------------------------------------
     // SUBTAB 1: PET DAMAGE ANALYSIS (Imp & Succubus Scaling)
     // -------------------------------------------------------------------------------------------------
-    if (ImGui::BeginTabItem("  Pet Damage Analysis  "))
+    if (WowBeginTabItem("  Pet Damage Analysis  "))
     {
       ImGui::Spacing();
       render_panel_imp_analysis(sim.fight_duration);
-      ImGui::EndTabItem();
+      WowEndTabItem();
     }
 
     // -------------------------------------------------------------------------------------------------
     // SUBTAB 2: ISB UPTIME ANALYSIS (ISB uptime vs crit & hit chance)
     // -------------------------------------------------------------------------------------------------
-    if (ImGui::BeginTabItem("  ISB Uptime Analysis  "))
+    if (WowBeginTabItem("  ISB Uptime Analysis  "))
     {
       ImGui::Spacing();
       render_panel_isb_analysis();
-      ImGui::EndTabItem();
+      WowEndTabItem();
     }
 
     // -------------------------------------------------------------------------------------------------
     // SUBTAB 3: MATHEMATICAL PROOFS & DOMINANCE THEOREMS
     // -------------------------------------------------------------------------------------------------
-    if (ImGui::BeginTabItem("  Theorycrafting  "))
+    if (WowBeginTabItem("  Theorycrafting  "))
     {
       ImGui::Spacing();
 
@@ -54,7 +55,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
       // -------------------------------------------------------------------------------------------------
       // THEOREM 1: Bane of Doom (T >= 60s) Dominance Over Bane of Agony
       // -------------------------------------------------------------------------------------------------
-      if (ImGui::CollapsingHeader("[Unverified] Policy that prefers Bane of Doom (T >= 60s) > Bane of Agony strictly "
+      if (WowCollapsingHeader("[Unverified] Policy that prefers Bane of Doom (T >= 60s) > Bane of Agony strictly "
                                   "Dominates only Bane of Agony",
                                   ImGuiTreeNodeFlags_DefaultOpen))
       {
@@ -260,7 +261,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
       // -------------------------------------------------------------------------------------------------
       // THEOREM: Amplify Curse (1/1) Dominance Over Improved Bane of Agony (1/2 or 2/2)
       // -------------------------------------------------------------------------------------------------
-      if (ImGui::CollapsingHeader(
+      if (WowCollapsingHeader(
               "Amplify Curse (1/1) strictly Dominates Improved Bane of Agony (1/2 or 2/2) per Talent Point",
               ImGuiTreeNodeFlags_DefaultOpen))
       {
@@ -406,7 +407,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
       // -------------------------------------------------------------------------------------------------
       // THEOREM: Untalented Shadow Bolt vs Maximized Channeled Wrack
       // -------------------------------------------------------------------------------------------------
-      if (ImGui::CollapsingHeader(
+      if (WowCollapsingHeader(
               "[Unverified] Untalented Shadow Bolt (No Talents) vs Maximized Channeled Wrack (6.0s Budget)",
               ImGuiTreeNodeFlags_DefaultOpen))
       {
@@ -564,7 +565,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
       // -------------------------------------------------------------------------------------------------
       // THEOREM 3: Ruin (100% Critical Damage) Superlinear Value Function
       // -------------------------------------------------------------------------------------------------
-      if (ImGui::CollapsingHeader("Ruin (100% Critical Bonus) Multiplicative Value Function",
+      if (WowCollapsingHeader("Ruin (100% Critical Bonus) Multiplicative Value Function",
                                   ImGuiTreeNodeFlags_DefaultOpen))
       {
         ImGui::Indent(8.0f);
@@ -613,10 +614,10 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
 
       ImGui::Spacing();
       ImGui::Separator();
-      ImGui::EndTabItem();
+      WowEndTabItem();
     }
 
-    ImGui::EndTabBar();
+    WowEndTabBar();
   }
 }
 

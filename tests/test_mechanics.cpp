@@ -292,7 +292,7 @@ TEST_CASE(Mechanics, InstantDrainHopeToggle) {
     FastRNG rng_chan(1337);
     FastRNG rng_inst(1337);
 
-    // Channeled Drain Hope
+    // Channeled Wrack
     WarlockSimulator sim_chan;
     sim_chan.talents = Talents::create_forever_deep_affliction();
     sim_chan.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
@@ -301,7 +301,7 @@ TEST_CASE(Mechanics, InstantDrainHopeToggle) {
     sim_chan.record_timeline = true;
     SimResult res_chan = sim_chan.run_single_simulation(rng_chan);
 
-    // Instant Cast DoT Drain Hope
+    // Instant Cast DoT Wrack
     WarlockSimulator sim_inst;
     sim_inst.talents = Talents::create_forever_deep_affliction();
     sim_inst.policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
@@ -310,11 +310,11 @@ TEST_CASE(Mechanics, InstantDrainHopeToggle) {
     sim_inst.record_timeline = true;
     SimResult res_inst = sim_inst.run_single_simulation(rng_inst);
 
-    // Both should deal Drain Hope damage
+    // Both should deal Wrack damage
     CHECK(res_chan.dmg_drain_hope > 0.0);
     CHECK(res_inst.dmg_drain_hope > 0.0);
 
-    // Instant Drain Hope frees up GCD (1.5s vs 6s channel), allowing more Shadow Bolt filler casts
+    // Instant Wrack frees up GCD (1.5s vs 6s channel), allowing more Shadow Bolt filler casts
     CHECK(res_inst.shadow_bolt_casts > res_chan.shadow_bolt_casts);
     CHECK(res_inst.total_damage > res_chan.total_damage);
 

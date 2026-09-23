@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/warlock_sim.hpp"
 #include <thread>
@@ -15,16 +16,9 @@ inline void render_common_sim_control(SimType& sim,
                                       BatchResultType& last_result,
                                       bool& is_running,
                                       float& progress,
-                                      const char* button_text = ">>> RUN DES SIMULATION <<<")
+                                      const char* button_text = "RUN DES SIMULATION")
 {
-  // Big prominent RUN button
-  ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.15f, 0.65f, 1.0f));
-  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.50f, 0.22f, 0.85f, 1.0f));
-  ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.65f, 0.30f, 1.0f, 1.0f));
-
-  if (is_running)
-    ImGui::BeginDisabled();
-  if (ImGui::Button(button_text, ImVec2(-1, 38)))
+  if (WowButton(button_text, ImVec2(-1, 38), !is_running))
   {
     is_running = true;
     progress = 0.0f;
@@ -32,9 +26,6 @@ inline void render_common_sim_control(SimType& sim,
     is_running = false;
     progress = 1.0f;
   }
-  if (is_running)
-    ImGui::EndDisabled();
-  ImGui::PopStyleColor(3);
 
   if (is_running)
   {
@@ -55,15 +46,15 @@ inline void render_common_sim_control(SimType& sim,
   // Encounter & Simulation Parameters
   ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Encounter & Simulation Parameters:");
   double dur_min = 10.0, dur_max = 600.0;
-  ImGui::SliderScalar("Fight Duration (s)", ImGuiDataType_Double, &sim.fight_duration, &dur_min, &dur_max, "%.0f seconds");
+  WowInputDouble("Fight Duration (s)",  &sim.fight_duration, 0, 0, "%.0f seconds");
 
-  ImGui::Checkbox("Randomize Fight Duration", &sim.randomize_duration);
+  WowCheckbox("Randomize Fight Duration", &sim.randomize_duration);
   if (sim.randomize_duration)
   {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(140);
     double var_min = 1.0, var_max = 60.0;
-    ImGui::SliderScalar("Variance (+/- s)", ImGuiDataType_Double, &sim.duration_variance, &var_min, &var_max, "+/- %.0fs");
+    WowInputDouble("Variance (+/- s)", &sim.duration_variance, 0,0, "+/- %.0fs");
   }
 
   // Target Level & Type
@@ -90,13 +81,13 @@ inline void render_common_sim_control(SimType& sim,
     sim.target_config.is_beast = (sim.target_config.creature_type == sim::CreatureType::BEAST);
   }
 
-  ImGui::SliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
+  WowSliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
 
 #if !defined(__EMSCRIPTEN__)
   int max_threads = static_cast<int>(std::thread::hardware_concurrency());
   if (max_threads <= 0)
     max_threads = 4;
-  ImGui::SliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
+  WowSliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
 #endif
 }
 
@@ -108,7 +99,7 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
                                      float& progress)
 {
   render_common_sim_control<WarlockSimulator, BatchSimResult, ParallelSimRunner>(
-      sim, iterations, thread_count, last_result, is_running, progress, ">>> RUN DES SIMULATION <<<");
+      sim, iterations, thread_count, last_result, is_running, progress, "RUN DES SIMULATION");
 }
 
 }  // namespace warlock

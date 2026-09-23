@@ -24,6 +24,7 @@
 #include "panel_target.hpp"
 #include "panel_theorycrafting.hpp"
 #include "ui_theme.hpp"
+#include "wow_widgets.hpp"
 
 #include "src/sim/build_export.hpp"
 #include "src/sim/optimizer.hpp"
@@ -107,6 +108,70 @@ class WarlockSimApp
     priest_sim.duration_variance = 30.0;
   }
 
+  enum class AppTab {
+    PRESETS = 0,
+    SIMULATE = 1,
+    ABILITIES = 2,
+    THEORYCRAFTING = 3
+  };
+
+  AppTab active_tab = AppTab::PRESETS;
+  AppTab priest_active_tab = AppTab::PRESETS;
+
+  void render_top_navigation_tabs(float target_bottom_y)
+  {
+    const float tab_h = 32.0f;
+    const float tab_spacing = 6.0f;
+
+    struct TabDef {
+      const char* label;
+      AppTab tab;
+      float width;
+    };
+
+    std::vector<TabDef> tabs;
+    if (active_class == sim::PlayerClass::WARLOCK) {
+      tabs = {
+        {"Presets", AppTab::PRESETS, 100.0f},
+        {"Simulate", AppTab::SIMULATE, 100.0f},
+        {"Abilities", AppTab::ABILITIES, 100.0f},
+        {"Theorycrafting", AppTab::THEORYCRAFTING, 136.0f}
+      };
+    } else {
+      tabs = {
+        {"Presets", AppTab::PRESETS, 100.0f},
+        {"Simulate", AppTab::SIMULATE, 100.0f},
+        {"Abilities", AppTab::ABILITIES, 100.0f}
+      };
+    }
+
+    float total_tabs_w = 0.0f;
+    for (size_t i = 0; i < tabs.size(); ++i) {
+      total_tabs_w += tabs[i].width;
+      if (i > 0) total_tabs_w += tab_spacing;
+    }
+
+    float win_w = ImGui::GetWindowWidth();
+    float start_x = win_w - total_tabs_w - 16.0f;
+    if (start_x < 120.0f) start_x = 120.0f;
+
+    ImGui::SameLine(start_x);
+    // Align bottom of tab buttons exactly flush with the top of panels below
+    ImGui::SetCursorPosY(target_bottom_y - tab_h);
+
+    AppTab& cur_tab = (active_class == sim::PlayerClass::WARLOCK) ? active_tab : priest_active_tab;
+
+    for (size_t i = 0; i < tabs.size(); ++i) {
+      if (i > 0) {
+        ImGui::SameLine(0.0f, tab_spacing);
+      }
+      bool is_selected = (cur_tab == tabs[i].tab);
+      if (WowTabButton(tabs[i].label, is_selected, tabs[i].width, tab_h)) {
+        cur_tab = tabs[i].tab;
+      }
+    }
+  }
+
   void render_frame()
   {
 #if defined(__EMSCRIPTEN__)
@@ -127,7 +192,8 @@ class WarlockSimApp
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())));
     ImGuiWindowFlags root_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+                                  ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
+                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -135,12 +201,16 @@ class WarlockSimApp
 
     if (ImGui::Begin("RootFixedCanvas", nullptr, root_flags))
     {
+      // Draw seamless Classic WoW dark stone/parchment background
+      DrawWowDialogBackdrop(ImGui::GetWindowDrawList(), ImVec2(0, 0), ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())), false);
+
       // -------------------------------------------------------------------------
-      // Top Header Bar: Class Switcher & Character Profile
+      // Top Header Bar: Class Switcher (Left) & Right-Justified Navigation Tabs
       // -------------------------------------------------------------------------
       const Texture2D& warlock_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::WARLOCK));
       const Texture2D& priest_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::PRIEST));
       constexpr float kClassIconSize = 36.0f;
+      const float top_bar_bottom_y = ImGui::GetCursorPosY() + kClassIconSize + 4.0f;
 
       ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
       ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
@@ -190,11 +260,11 @@ class WarlockSimApp
 
       ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
-      ImGui::SameLine();
+      // Render right-justified tabs on the same row, flush with the panel below
+      render_top_navigation_tabs(top_bar_bottom_y);
 
-      ImGui::Spacing();
-      ImGui::Separator();
-      ImGui::Spacing();
+      // Start main view flush at top_bar_bottom_y
+      ImGui::SetCursorPosY(top_bar_bottom_y);
 
       const float full_height = ImGui::GetContentRegionAvail().y;
 
@@ -229,10 +299,11 @@ class WarlockSimApp
 #endif
     SetTargetFPS(60);
 
+    rlImGuiSetLoadFontsCallback(load_wow_fonts);
     rlImGuiSetup(true);
     ImPlot::CreateContext();
     AssetManager::get().init();
-    apply_warlock_theme();
+    apply_wow_theme();
 
     // Initial baseline runs
     last_result = ParallelSimRunner::run_batch(sim, 2000, thread_count);
@@ -353,115 +424,72 @@ class WarlockSimApp
     // If candidate configuration was applied from combinatorial sim, refresh baseline
     if (request_switch_to_preset)
     {
+      request_switch_to_preset = false;
+      active_tab = AppTab::PRESETS;
       last_result = ParallelSimRunner::run_batch(sim, 5000, thread_count);
     }
 
-    // =========================================================================
-    // TOP-LEVEL HIERARCHICAL TABS
-    // =========================================================================
-    if (ImGui::BeginTabBar("TopLayerTabs", ImGuiTabBarFlags_None))
+    switch (active_tab)
     {
-      // 1. PRESET SIMULATION (Inspector, Talents, Gear, Buffs, APL, Sim)
-      ImGuiTabItemFlags preset_flags = 0;
-      if (request_switch_to_preset)
+      case AppTab::PRESETS:
       {
-        preset_flags |= ImGuiTabItemFlags_SetSelected;
-      }
+        const float pane1_w = 330.0f;                   // Column 1: Left (~330px)
+        const float pane2_w = 360.0f;                   // Column 2: Middle (~360px)
+        const float pane_height = full_height;
 
-      if (ImGui::BeginTabItem("  Presets  ", nullptr, preset_flags))
-      {
-        if (request_switch_to_preset)
-        {
-          request_switch_to_preset = false;
-        }
-
-        if (ImGui::BeginTabBar("PresetSubTabs", ImGuiTabBarFlags_None))
-        {
-          // SUBTAB 1: BUILD CONFIGURATION (Gear, Talents, Buffs, Rotation)
-          if (ImGui::BeginTabItem("  Build Configuration  "))
-          {
-            const float pane1_w = 340.0f;                   // Gear, Direct Stats, Policy, Pet
-            const float pane2_w = 830.0f;                   // Talents Tree (51 Points) & Below Panel
-            const float pane_height = full_height - 35.0f;  // Available content height
-
-            // Pane 1: Gear & Direct Stats, Combat Policy, Active Pet
-            ImGui::BeginChild("PresetPane_Gear", ImVec2(pane1_w, pane_height), true);
-            render_armory_panel(
-                sim, selected_model_idx, sim::PlayerClass::WARLOCK);
-            ImGui::Spacing();
-            ImGui::Separator();
-            render_panel_policy(sim);
-            ImGui::Spacing();
-            ImGui::Separator();
-            render_panel_active_pet(sim);
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            // Pane 2: Talent Tree (51 Points) & Below Panel (Buffs, Debuffs, Mechanics)
-            ImGui::BeginChild(
-                "PresetPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
-            render_panel_talents(sim);
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            // Pane 3: Right Panel: Combat Stats Summary & Target Encounter
-            ImGui::BeginChild("PresetPane_Right", ImVec2(0, pane_height), true);
-            render_combat_stats_summary(
-                sim, player_stats, sim.base_attrs, build_copied_timer, sim::PlayerClass::WARLOCK);
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            render_panel_target(
-                sim.target_config, sim.fight_duration, sim.randomize_duration, sim.duration_variance);
-            ImGui::EndChild();
-
-            ImGui::EndTabItem();
-          }
-
-          // SUBTAB 2: COMBAT SIMULATION & RESULTS (Controls, Histograms, Logs)
-          if (ImGui::BeginTabItem("  Combat Simulation & Results  "))
-          {
-            ImGui::Spacing();
-            render_panel_sim_control(sim, iterations, thread_count, last_result, is_sim_running, sim_progress);
-            ImGui::Separator();
-            render_panel_results(last_result);
-            ImGui::EndTabItem();
-          }
-
-          ImGui::EndTabBar();
-        }
-
-        ImGui::EndTabItem();
-      }
-
-      // 2. SIMULATE (Brute-Force Optimizer)
-      if (ImGui::BeginTabItem("  Simulate  "))
-      {
+        // Column 1 (Left, ~330px): Gear & Direct Stats, Combat Policy
+        BeginWowChild("PresetPane_Col1", ImVec2(pane1_w, pane_height), true);
+        render_armory_panel(
+            sim, selected_model_idx, sim::PlayerClass::WARLOCK);
         ImGui::Spacing();
+        ImGui::Separator();
+        render_panel_policy(sim);
+        EndWowChild();
+
+        ImGui::SameLine();
+
+        // Column 2 (Middle, ~360px): Combat Stats Summary collapsible header, followed by collapsible panels: Consumables & Elixirs, Raid Buffs, World Buffs, Raid Debuffs, and Game Mechanics
+        BeginWowChild("PresetPane_Col2", ImVec2(pane2_w, pane_height), true);
+        render_combat_stats_summary(
+            sim, player_stats, sim.base_attrs, build_copied_timer, sim::PlayerClass::WARLOCK);
+        ImGui::Spacing();
+        render_panel_buffs(sim);
+        ImGui::Spacing();
+        render_panel_mechanics(sim.mechanics);
+        EndWowChild();
+
+        ImGui::SameLine();
+
+        // Column 3 (Talents on top, Sim Config & Simulation Results sharing panel below):
+        BeginWowChild("PresetPane_Col3", ImVec2(0, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
+        render_panel_talents(sim);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        render_panel_target(
+            sim, iterations, thread_count, last_result, is_sim_running, sim_progress);
+        EndWowChild();
+        break;
+      }
+
+      case AppTab::SIMULATE:
+      {
         render_panel_optimizer(
             sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset);
-        ImGui::EndTabItem();
+        break;
       }
 
-      // 3. SPELLBOOK (Spell Database, Ranks, Base Stats, Coefficients)
-      if (ImGui::BeginTabItem("  Abilities  "))
+      case AppTab::ABILITIES:
       {
-        ImGui::Spacing();
         render_panel_spellbook();
-        ImGui::EndTabItem();
+        break;
       }
 
-      // 4. THEORYCRAFTING (Mathematical Proofs & Dominance Theorems)
-      if (ImGui::BeginTabItem("  Theorycrafting  "))
+      case AppTab::THEORYCRAFTING:
       {
-        ImGui::Spacing();
         render_panel_theorycrafting(sim);
-        ImGui::EndTabItem();
+        break;
       }
-
-      ImGui::EndTabBar();
     }
   }
 
@@ -478,101 +506,72 @@ class WarlockSimApp
     // If candidate configuration was applied from optimizer, refresh baseline
     if (request_priest_switch_to_preset)
     {
+      request_priest_switch_to_preset = false;
+      priest_active_tab = AppTab::PRESETS;
       priest_last_result = priest::ParallelSimRunner::run_batch(priest_sim, 2500, thread_count);
     }
 
-    if (ImGui::BeginTabBar("PriestTopLayerTabs", ImGuiTabBarFlags_None))
+    switch (priest_active_tab)
     {
-      // 1. Presets / Configuration
-      ImGuiTabItemFlags preset_flags = 0;
-      if (request_priest_switch_to_preset)
+      case AppTab::PRESETS:
       {
-        preset_flags |= ImGuiTabItemFlags_SetSelected;
-      }
+        const float pane1_w = 330.0f;                   // Column 1: Left (~330px)
+        const float pane2_w = 360.0f;                   // Column 2: Middle (~360px)
+        const float pane_height = full_height;
 
-      if (ImGui::BeginTabItem("  Presets  ", nullptr, preset_flags))
-      {
-        if (request_priest_switch_to_preset)
-        {
-          request_priest_switch_to_preset = false;
-        }
-
-        if (ImGui::BeginTabBar("PriestPresetSubTabs", ImGuiTabBarFlags_None))
-        {
-          // SubTab 1: Build Configuration
-          if (ImGui::BeginTabItem("  Build Configuration  "))
-          {
-            const float pane1_w = 340.0f;
-            const float pane2_w = 830.0f;
-            const float pane_height = full_height - 35.0f;
-
-            // Pane 1: Gear, Direct Stats, Combat Policy
-            ImGui::BeginChild("PriestPane_Stats", ImVec2(pane1_w, pane_height), true);
-            render_armory_panel(
-                priest_sim, priest_model_idx, sim::PlayerClass::PRIEST);
-            ImGui::Spacing();
-            ImGui::Separator();
-            priest::render_priest_policy_panel(priest_sim.policy, priest_sim.talents, priest_sim.race);
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            // Pane 2: Priest Talents & Below Panel (Buffs, Debuffs, Mechanics)
-            ImGui::BeginChild(
-                "PriestPane_Talents", ImVec2(pane2_w, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
-            priest::render_priest_talents_panel(priest_sim);
-            ImGui::EndChild();
-
-            ImGui::SameLine();
-
-            // Pane 3: Right Panel: Combat Stats Summary & Target Encounter
-            ImGui::BeginChild("PriestPane_Right", ImVec2(0, pane_height), true);
-            render_combat_stats_summary(
-                priest_sim, priest_stats, priest_sim.base_attrs, priest_build_copied_timer, sim::PlayerClass::PRIEST);
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
-            render_panel_target(
-                priest_sim.target_config, priest_sim.fight_duration, priest_sim.randomize_duration, priest_sim.duration_variance);
-            ImGui::EndChild();
-
-            ImGui::EndTabItem();
-          }
-
-          // SubTab 2: Combat Simulation & Results
-          if (ImGui::BeginTabItem("  Combat Simulation & Results  "))
-          {
-            ImGui::Spacing();
-            priest::render_priest_sim_control(
-                priest_sim, priest_iterations, thread_count, priest_last_result, is_priest_sim_running, priest_sim_progress);
-            ImGui::Separator();
-            priest::render_priest_panel_results(priest_last_result);
-            ImGui::EndTabItem();
-          }
-
-          ImGui::EndTabBar();
-        }
-        ImGui::EndTabItem();
-      }
-
-      // 2. Simulate (Optimizer)
-      if (ImGui::BeginTabItem("  Simulate  "))
-      {
+        // Column 1 (Left, ~330px): Gear, Direct Stats, Combat Policy
+        BeginWowChild("PriestPane_Col1", ImVec2(pane1_w, pane_height), true);
+        render_armory_panel(
+            priest_sim, priest_model_idx, sim::PlayerClass::PRIEST);
         ImGui::Spacing();
+        ImGui::Separator();
+        priest::render_priest_policy_panel(priest_sim.policy, priest_sim.talents, priest_sim.race);
+        EndWowChild();
+
+        ImGui::SameLine();
+
+        // Column 2 (Middle, ~360px): Combat Stats Summary collapsible header, followed by collapsible panels: Consumables & Elixirs, Raid Buffs, World Buffs, Raid Debuffs, and Priest Mechanics
+        BeginWowChild("PriestPane_Col2", ImVec2(pane2_w, pane_height), true);
+        render_combat_stats_summary(
+            priest_sim, priest_stats, priest_sim.base_attrs, priest_build_copied_timer, sim::PlayerClass::PRIEST);
+        ImGui::Spacing();
+        warlock::render_panel_buffs(priest_sim);
+        ImGui::Spacing();
+        priest::render_priest_mechanics_panel(priest_sim.mechanics);
+        EndWowChild();
+
+        ImGui::SameLine();
+
+        // Column 3 (Talents on top, Sim Config & Simulation Results sharing panel below):
+        BeginWowChild("PriestPane_Col3", ImVec2(0, pane_height), true, ImGuiWindowFlags_HorizontalScrollbar);
+        priest::render_priest_talents_panel(priest_sim);
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        render_panel_target<priest::PriestSimulator, priest::BatchSimResult, priest::ParallelSimRunner>(
+            priest_sim, priest_iterations, thread_count, priest_last_result, is_priest_sim_running, priest_sim_progress, "RUN PRIEST DES SIMULATION");
+        EndWowChild();
+        break;
+      }
+
+      case AppTab::SIMULATE:
+      {
         priest::render_priest_panel_optimizer(
             priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset);
-        ImGui::EndTabItem();
+        break;
       }
 
-      // 3. Abilities (Spellbook)
-      if (ImGui::BeginTabItem("  Abilities  "))
+      case AppTab::ABILITIES:
       {
-        ImGui::Spacing();
         priest::render_priest_spellbook_panel();
-        ImGui::EndTabItem();
+        break;
       }
 
-      ImGui::EndTabBar();
+      case AppTab::THEORYCRAFTING:
+      {
+        priest_active_tab = AppTab::PRESETS;
+        break;
+      }
     }
   }
 };

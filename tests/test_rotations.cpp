@@ -410,7 +410,7 @@ TEST_CASE(Rotations, AfflictionMultiDotHybrid) {
     CHECK(res.dmg_curse > 0.0);      // Agony
     CHECK(res.dmg_corruption > 0.0); // Corruption
     CHECK(res.dmg_immolate > 0.0);   // Immolate
-    CHECK(res.dmg_drain_hope > 0.0); // Drain Hope
+    CHECK(res.dmg_drain_hope > 0.0); // Wrack
 }
 
 TEST_CASE(Rotations, DemoExecuteCorruptionCast) {
@@ -480,11 +480,11 @@ TEST_CASE(Rotations, PriorityRuleChainGeneration) {
     CHECK_EQ(static_cast<int>(dp_fire_rules.back().action), static_cast<int>(PriorityAction::SEARING_PAIN_FILLER));
     CHECK_EQ(static_cast<int>(dp_fire_rules.back().spell_id), static_cast<int>(SpellID::SEARING_PAIN));
 
-    // For Deep Affliction: Corruption > Bane of Agony > Drain Hope > Drain Soul Filler
+    // For Deep Affliction: Corruption > Bane of Agony > Wrack > Drain Soul Filler
     policy.rotation = RotationChoice::DEEP_AFFLICTION;
     Talents talents_aff = Talents::create_forever_deep_affliction();
     auto aff_rules = policy.get_priority_rules(talents_aff);
-    // Find positions of Corruption, Agony, Drain Hope, Drain Soul
+    // Find positions of Corruption, Agony, Wrack, Drain Soul
     int pos_corr = -1, pos_agony = -1, pos_dh = -1, pos_ds = -1;
     for (size_t i = 0; i < aff_rules.size(); ++i) {
         if (aff_rules[i].spell_id == SpellID::CORRUPTION) pos_corr = (int)i;
@@ -501,7 +501,7 @@ TEST_CASE(Rotations, PriorityRuleChainGeneration) {
     CHECK(pos_dh < pos_ds);
     CHECK_EQ(static_cast<int>(aff_rules.back().action), static_cast<int>(PriorityAction::DRAIN_SOUL_FILLER));
 
-    // For Deep Affliction (SB filler): Corruption > Bane of Agony > Drain Hope > SB Filler
+    // For Deep Affliction (SB filler): Corruption > Bane of Agony > Wrack > SB Filler
     policy.rotation = RotationChoice::DEEP_AFFLICTION_SB;
     auto aff_sb_rules = policy.get_priority_rules(talents_aff);
     int pos_sb_corr = -1, pos_sb_agony = -1, pos_sb_dh = -1, pos_sb_filler = -1;
@@ -520,7 +520,7 @@ TEST_CASE(Rotations, PriorityRuleChainGeneration) {
     CHECK(pos_sb_dh < pos_sb_filler);
     CHECK_EQ(static_cast<int>(aff_sb_rules.back().action), static_cast<int>(PriorityAction::SHADOW_BOLT_FILLER));
 
-    // For Deep Affliction (SB filler, No Siphon Life): Corruption > Bane of Agony > Drain Hope > SB Filler, no Siphon Life
+    // For Deep Affliction (SB filler, No Siphon Life): Corruption > Bane of Agony > Wrack > SB Filler, no Siphon Life
     policy.rotation = RotationChoice::DEEP_AFFLICTION_SB_NO_SL;
     auto aff_sb_no_sl_rules = policy.get_priority_rules(talents_aff);
     bool has_sl = false;

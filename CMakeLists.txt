@@ -100,6 +100,7 @@ else()
         tests/test_races.cpp
         tests/test_icons.cpp
         tests/test_cover_uv.cpp
+        tests/test_frame_geometry.cpp
         tests/test_spell_stats.cpp
         tests/test_talents.cpp
         tests/test_gear.cpp

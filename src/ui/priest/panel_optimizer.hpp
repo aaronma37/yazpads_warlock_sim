@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "src/ui/common/asset_manager.hpp"
 #include "src/ui/common/damage_breakdown_view.hpp"
+#include "src/ui/common/wow_widgets.hpp"
 #include "src/ui/common/panel_policy.hpp"
 #include "src/ui/priest/panel_policy.hpp"
 #include "src/sim/priest/optimizer.hpp"
@@ -131,39 +132,39 @@ inline void render_priest_panel_optimizer(
 
     if (opt_mode == 0) {
         ImGui::SetNextItemWidth(100);
-        if (ImGui::InputInt("Generations", &ga_generations)) {
+        if (warlock::WowInputInt("Generations", &ga_generations)) {
             if (ga_generations < 1) ga_generations = 1;
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
-        if (ImGui::InputInt("Population", &ga_pop_size)) {
+        if (warlock::WowInputInt("Population", &ga_pop_size)) {
             if (ga_pop_size < 4) ga_pop_size = 4;
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(110);
-        if (ImGui::InputInt("Screening Sims", &ga_screening_sims)) {
+        if (warlock::WowInputInt("Screening Sims", &ga_screening_sims)) {
             if (ga_screening_sims < 10) ga_screening_sims = 10;
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(110);
-        if (ImGui::InputInt("Final Precision", &ga_final_sims)) {
+        if (warlock::WowInputInt("Final Precision", &ga_final_sims)) {
             if (ga_final_sims < 10) ga_final_sims = 10;
         }
 #if !defined(__EMSCRIPTEN__)
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
         int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-        if (ImGui::SliderInt("Threads", &ga_threads, 1, max_threads, "%d")) {
+        if (warlock::WowSliderInt("Threads", &ga_threads, 1, max_threads, "%d")) {
             if (ga_threads < 1) ga_threads = 1;
         }
 #endif
 
         ImGui::Spacing();
-        ImGui::Checkbox("Seed with standard presets", &ga_seed_presets);
+        warlock::WowCheckbox("Seed with standard presets", &ga_seed_presets);
         ImGui::SameLine(460);
-        ImGui::Checkbox("Optimize Race", &ga_optimize_race);
+        warlock::WowCheckbox("Optimize Race", &ga_optimize_race);
         ImGui::SameLine(750);
-        ImGui::Checkbox("Advanced Convergence Tuning", &show_advanced_tuning);
+        warlock::WowCheckbox("Advanced Convergence Tuning", &show_advanced_tuning);
 
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f), "Build Constraints:");
@@ -248,22 +249,22 @@ inline void render_priest_panel_optimizer(
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.6f));
             ImGui::BeginChild("PriestGATuningBox", ImVec2(-1, 68), true);
             ImGui::SetNextItemWidth(150);
-            ImGui::SliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
+            warlock::WowSliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
             ImGui::SameLine(220);
             ImGui::SetNextItemWidth(180);
-            ImGui::SliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
+            warlock::WowSliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
             ImGui::SameLine(480);
             ImGui::SetNextItemWidth(180);
-            ImGui::SliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
+            warlock::WowSliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
             ImGui::TextDisabled("Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
             ImGui::EndChild();
             ImGui::PopStyleColor();
         }
     } else {
         ImGui::SetNextItemWidth(200);
-        ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 500, 10000, "%d fights");
+        warlock::WowSliderInt("Sims Per Candidate", &iters_per_candidate, 500, 10000, "%d fights");
         ImGui::SameLine(340);
-        ImGui::Checkbox("Compare across all races", &compare_all_races);
+        warlock::WowCheckbox("Compare across all races", &compare_all_races);
     }
 
     ImGui::Spacing();
@@ -276,7 +277,7 @@ inline void render_priest_panel_optimizer(
         bool is_busy = worker.is_running.load();
 #endif
         if (!is_busy) {
-            if (ImGui::Button("Run AI Genetic Optimization", ImVec2(260, 28))) {
+            if (warlock::WowButton("Run AI Genetic Optimization", ImVec2(260, 28))) {
                 PriestSimulator sim_copy = sim;
                 int pop_sz = ga_pop_size;
                 int gens = ga_generations;
@@ -368,8 +369,7 @@ inline void render_priest_panel_optimizer(
 #endif
             }
         } else {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
-            if (ImGui::Button("🛑 Stop Search & Keep Best", ImVec2(220, 28))) {
+            if (warlock::WowButton("🛑 Stop Search & Keep Best", ImVec2(220, 28))) {
 #if defined(__EMSCRIPTEN__)
                 em_session.stop();
                 optimizer_results = em_session.finish();
@@ -380,11 +380,9 @@ inline void render_priest_panel_optimizer(
                 worker.stop_requested = true;
 #endif
             }
-            ImGui::PopStyleColor();
         }
     } else {
-        if (is_optimizing) ImGui::BeginDisabled();
-        if (ImGui::Button("Simulate Standard Specs", ImVec2(240, 28))) {
+        if (warlock::WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing)) {
             is_optimizing = true;
             opt_progress = 0.0f;
             optimizer_results = Optimizer::optimize_talents(
@@ -492,11 +490,11 @@ inline void render_priest_panel_optimizer(
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
-        ImGui::Checkbox("% from Leader", &show_pct_from_leader);
+        warlock::WowCheckbox("% from Leader", &show_pct_from_leader);
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
-        ImGui::Checkbox("Show Std Dev", &show_std_dev);
+        warlock::WowCheckbox("Show Std Dev", &show_std_dev);
 
         if (ImGui::BeginTable("PriestOptLeaderboardTable", num_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45);
@@ -974,11 +972,9 @@ inline void render_priest_panel_optimizer(
 
             ImGui::Spacing();
             ImGui::Separator();
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.65f, 1.0f));
-            if (ImGui::Button("▶ Load Configuration into Preset Simulation", ImVec2(320, 28))) {
+            if (warlock::WowButton("▶ Load Configuration into Preset Simulation", ImVec2(320, 28))) {
                 apply_candidate_config(sel);
             }
-            ImGui::PopStyleColor();
 
             ImGui::Columns(1);
         }

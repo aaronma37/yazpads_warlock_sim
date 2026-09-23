@@ -1,6 +1,7 @@
 #pragma once
 #include "asset_manager.hpp"
 #include "damage_breakdown_view.hpp"
+#include "wow_widgets.hpp"
 #include "imgui.h"
 #include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
@@ -147,28 +148,28 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   if (opt_mode == 0)
   {
     ImGui::SetNextItemWidth(100);
-    if (ImGui::InputInt("Generations", &ga_generations))
+    if (WowInputInt("Generations", &ga_generations))
     {
       if (ga_generations < 1)
         ga_generations = 1;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(100);
-    if (ImGui::InputInt("Population", &ga_pop_size))
+    if (WowInputInt("Population", &ga_pop_size))
     {
       if (ga_pop_size < 2)
         ga_pop_size = 2;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(110);
-    if (ImGui::InputInt("Screening Sims", &ga_screening_sims))
+    if (WowInputInt("Screening Sims", &ga_screening_sims))
     {
       if (ga_screening_sims < 10)
         ga_screening_sims = 10;
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(110);
-    if (ImGui::InputInt("Final Precision", &ga_final_sims))
+    if (WowInputInt("Final Precision", &ga_final_sims))
     {
       if (ga_final_sims < 10)
         ga_final_sims = 10;
@@ -177,7 +178,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     ImGui::SameLine();
     ImGui::SetNextItemWidth(100);
     int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    if (ImGui::SliderInt("Threads", &ga_threads, 1, max_threads, "%d"))
+    if (WowSliderInt("Threads", &ga_threads, 1, max_threads, "%d"))
     {
       if (ga_threads < 1)
         ga_threads = 1;
@@ -185,11 +186,11 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 #endif
 
     ImGui::Spacing();
-    ImGui::Checkbox("Seed with standard presets", &ga_seed_presets);
+    WowCheckbox("Seed with standard presets", &ga_seed_presets);
     ImGui::SameLine(460);
-    ImGui::Checkbox("Optimize Race", &ga_optimize_race);
+    WowCheckbox("Optimize Race", &ga_optimize_race);
     ImGui::SameLine(750);
-    ImGui::Checkbox("Advanced Convergence Tuning", &show_advanced_tuning);
+    WowCheckbox("Advanced Convergence Tuning", &show_advanced_tuning);
 
     ImGui::Spacing();
     ImGui::TextColored(ImVec4(0.9f, 0.75f, 0.3f, 1.0f), "Build Constraints:");
@@ -309,13 +310,13 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.6f));
       ImGui::BeginChild("GATuningBox", ImVec2(-1, 68), true);
       ImGui::SetNextItemWidth(150);
-      ImGui::SliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
+      WowSliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
       ImGui::SameLine(220);
       ImGui::SetNextItemWidth(180);
-      ImGui::SliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
+      WowSliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
       ImGui::SameLine(480);
       ImGui::SetNextItemWidth(180);
-      ImGui::SliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
+      WowSliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
       ImGui::TextDisabled(
           "Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
       ImGui::EndChild();
@@ -325,16 +326,16 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   else if (opt_mode == 1)
   {
     ImGui::SetNextItemWidth(200);
-    ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
+    WowSliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
     ImGui::SameLine(340);
-    ImGui::Checkbox("Compare across all races", &compare_all_races);
+    WowCheckbox("Compare across all races", &compare_all_races);
     ImGui::SameLine();
-    ImGui::Checkbox("Calculate Stat Weights", &calculate_stat_weights);
+    WowCheckbox("Calculate Stat Weights", &calculate_stat_weights);
   }
   else
   {
     ImGui::SetNextItemWidth(200);
-    ImGui::SliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
+    WowSliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
   }
 
   ImGui::Spacing();
@@ -348,7 +349,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 #endif
     if (!is_busy)
     {
-      if (ImGui::Button("Run AI Genetic Optimization", ImVec2(260, 28)))
+      if (WowButton("Run AI Genetic Optimization", ImVec2(260, 28)))
       {
         WarlockSimulator sim_copy = sim;
         int pop_sz = ga_pop_size;
@@ -468,8 +469,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     }
     else
     {
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.20f, 0.20f, 1.0f));
-      if (ImGui::Button("🛑 Stop Search & Keep Best", ImVec2(220, 28)))
+      if (WowButton("🛑 Stop Search & Keep Best", ImVec2(220, 28)))
       {
 #if defined(__EMSCRIPTEN__)
         em_session.stop();
@@ -481,14 +481,11 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         worker.stop_requested = true;
 #endif
       }
-      ImGui::PopStyleColor();
     }
   }
   else if (opt_mode == 1)
   {
-    if (is_optimizing)
-      ImGui::BeginDisabled();
-    if (ImGui::Button("Simulate Standard Specs", ImVec2(240, 28)))
+    if (WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing))
     {
       is_optimizing = true;
       opt_progress = 0.0f;
@@ -505,15 +502,11 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       is_optimizing = false;
       opt_progress = 1.0f;
     }
-    if (is_optimizing)
-      ImGui::EndDisabled();
 
     if (SurrogateEvaluator::get().is_loaded())
     {
       ImGui::SameLine();
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.45f, 0.70f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.58f, 0.88f, 1.0f));
-      if (ImGui::Button("⚡ Instant ML Inference (All Specs)", ImVec2(240, 28)))
+      if (WowButton("⚡ Instant ML Inference (All Specs)", ImVec2(240, 28)))
       {
         optimizer_results.clear();
         const auto& all_presets = standard_spec_presets();
@@ -763,11 +756,11 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
-    ImGui::Checkbox("% from Leader", &show_pct_from_leader);
+    WowCheckbox("% from Leader", &show_pct_from_leader);
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
-    ImGui::Checkbox("Show Std Dev", &show_std_dev);
+    WowCheckbox("Show Std Dev", &show_std_dev);
 
     if (ImGui::BeginTable("OptLeaderboardTable",
                           num_cols,
@@ -1513,12 +1506,10 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 
       ImGui::Spacing();
       ImGui::Separator();
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.65f, 1.0f));
-      if (ImGui::Button("▶ Load Configuration into Preset Simulation", ImVec2(320, 28)))
+      if (WowButton("▶ Load Configuration into Preset Simulation", ImVec2(320, 28)))
       {
         apply_candidate_config(sel);
       }
-      ImGui::PopStyleColor();
 
       ImGui::Columns(1);
     }

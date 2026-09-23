@@ -69,7 +69,7 @@ def scale_text(text, from_r, to_r, t):
         return f"Hitting an enemy with Conflagrate increases all Shadow damage you deal by {dmg}% for 20 sec, and hitting an enemy with Shadowburn increases all Fire damage you deal by {dmg}% for 20 sec. In addition, Conflagrate has a {pct}% chance not to consume Immolate, and Shadowburn has a {pct}% chance to instantly refund a Soul Shard."
     if t["name"] == "Pandemic":
         bonus = 33 * to_r if to_r < 3 else 100
-        return f"Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Drain Hope spells by {bonus}%."
+        return f"Increases the critical strike damage bonus of your Corruption, Bane of Agony, Bane of Doom, Drain Soul, Drain Life, Siphon Life, and Wrack spells by {bonus}%."
     if t["name"] == "Demonic Knowledge":
         pct = 33 * to_r if to_r < 3 else 100
         return f"Increases your spell damage and healing by up to {pct}% of your level while you have a summoned Demon pet active."
@@ -262,7 +262,7 @@ out += """struct Talents {
         return t;
     }
 
-    // 4. Forever Deep Affliction (Drain Hope + Pandemic + Malevolence) (41/0/10)
+    // 4. Forever Deep Affliction (Wrack + Pandemic + Malevolence) (41/0/10)
     static Talents create_forever_deep_affliction() {
         Talents t;
         // Affliction: 41 points

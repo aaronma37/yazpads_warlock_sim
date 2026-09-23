@@ -88,7 +88,7 @@ public:
         double sm_rank = static_cast<double>(talents[15]) / 5.0; // Shadow Mastery
         double nightfall_rank = static_cast<double>(talents[11]) / 2.0; // Nightfall
         double corr_rank = static_cast<double>(talents[2]) / 5.0; // Imp Corruption
-        double wrack_rank = static_cast<double>(talents[16]) / 1.0; // Drain Hope / Wrack
+        double wrack_rank = static_cast<double>(talents[16]) / 1.0; // Wrack
         x[idx++] = sm_rank * (!is_fire ? 1.0 : 0.0);
         x[idx++] = nightfall_rank * corr_rank;
         x[idx++] = wrack_rank * (is_deep_aff ? 1.0 : 0.0);

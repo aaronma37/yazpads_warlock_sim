@@ -2,6 +2,8 @@
 #include "asset_manager.hpp"
 #include "imgui.h"
 #include "rlImGui.h"
+#include "ui_theme.hpp"
+#include "wow_widgets.hpp"
 #include "src/sim/build_export.hpp"
 #include "src/sim/gear.hpp"
 #include "src/sim/stats.hpp"
@@ -18,14 +20,18 @@ inline ImVec4 get_item_color(ItemQuality q)
 {
   switch (q)
   {
-    case ItemQuality::EPIC:
-      return ImVec4(0.75f, 0.35f, 1.00f, 1.0f);  // Epic purple
-    case ItemQuality::RARE:
-      return ImVec4(0.20f, 0.60f, 1.00f, 1.0f);  // Rare blue
+    case ItemQuality::COMMON:
+      return wow_colors::QualityCommon;
     case ItemQuality::UNCOMMON:
-      return ImVec4(0.20f, 1.00f, 0.20f, 1.0f);
+      return wow_colors::QualityUncommon;
+    case ItemQuality::RARE:
+      return wow_colors::QualityRare;
+    case ItemQuality::EPIC:
+      return wow_colors::QualityEpic;
+    case ItemQuality::LEGENDARY:
+      return wow_colors::QualityLegendary;
     default:
-      return ImVec4(0.70f, 0.70f, 0.70f, 1.0f);
+      return wow_colors::ParchmentText;
   }
 }
 
@@ -150,125 +156,338 @@ inline void render_armory_panel(SimType& sim,
 {
   GearLoadout& gear = sim.gear;
 
-  // --- CHARACTER RACE SELECTION (ICON BUTTONS) ---
+  // --- CHARACTER RACE, PET, DEMONIC SACRIFICE & RACIAL ICONS ---
   ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.12f, 0.10f, 0.16f, 0.90f));
-  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 112), true);
+  ImGui::BeginChild("ArmoryHeader", ImVec2(0, 78), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-  //ImGui::SameLine();
+  static bool race_selector_expanded = false;
+  static bool pet_selector_expanded = false;
+  static bool ds_selector_expanded = false;
 
-  const char* warlock_races[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
-  const Race warlock_race_vals[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};
-
-  const char* priest_races[] = {"Human", "Dwarf", "Night Elf", "Gnome", "Undead", "Troll"};
-  const Race priest_race_vals[] = {Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::GNOME, Race::UNDEAD, Race::TROLL};
-
-  const char** race_names = (player_class == sim::PlayerClass::PRIEST) ? priest_races : warlock_races;
-  const Race* race_vals = (player_class == sim::PlayerClass::PRIEST) ? priest_race_vals : warlock_race_vals;
-  int num_races = (player_class == sim::PlayerClass::PRIEST) ? 6 : 5;
-
-  constexpr float kRaceIconSize = 28.0f;
+  constexpr float kIconSize = 34.0f;
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
-  for (int i = 0; i < num_races; ++i)
-  {
-    if (i > 0)
-      ImGui::SameLine();
-    if (sim.race == race_vals[i])
+
+  auto draw_slot_btn = [&](const char* id, const char* icon_file, bool is_none, bool is_sel, const char* tooltip) {
+    if (is_sel)
     {
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.65f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.80f, 0.50f, 1.0f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.24f, 0.18f, 0.12f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.00f, 0.82f, 0.20f, 1.0f));
       ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
     }
     else
     {
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.09f, 0.07f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.28f, 0.18f, 0.7f));
       ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
     }
-    const Texture2D& race_tex = AssetManager::get().get_icon(race_to_icon(race_vals[i]));
-    const std::string race_btn_id = std::string("##Race_") + race_names[i];
-    if (rlImGuiImageButtonSize(race_btn_id.c_str(), &race_tex, Vector2{kRaceIconSize, kRaceIconSize}))
+
+    bool clicked = false;
+    if (is_none || !icon_file || icon_file[0] == '\0')
     {
-      sim.race = race_vals[i];
-      selected_model_idx = i;
-      sim.base_attrs = sim::get_base_attributes_for_class_and_race(player_class, sim.race);
+      clicked = ImGui::Button(id, ImVec2(kIconSize, kIconSize));
     }
+    else
+    {
+      const Texture2D& tex = AssetManager::get().get_icon(icon_file);
+      clicked = rlImGuiImageButtonSize(id, &tex, Vector2{kIconSize, kIconSize});
+    }
+
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("%s", tooltip);
+    }
+
     ImGui::PopStyleVar();
     ImGui::PopStyleColor(2);
-  }
-  ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
+    return clicked;
+  };
 
-  if (player_class == sim::PlayerClass::PRIEST)
+  if (race_selector_expanded)
   {
-    switch (sim.race)
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Select Race");
+
+    const char* warlock_races[] = {"Undead", "Orc", "Troll", "Human", "Gnome"};
+    const Race warlock_race_vals[] = {Race::UNDEAD, Race::ORC, Race::TROLL, Race::HUMAN, Race::GNOME};
+    const char* priest_races[] = {"Human", "Dwarf", "Night Elf", "Gnome", "Undead", "Troll"};
+    const Race priest_race_vals[] = {Race::HUMAN, Race::DWARF, Race::NIGHT_ELF, Race::GNOME, Race::UNDEAD, Race::TROLL};
+
+    const char** race_names = (player_class == sim::PlayerClass::PRIEST) ? priest_races : warlock_races;
+    const Race* race_vals = (player_class == sim::PlayerClass::PRIEST) ? priest_race_vals : warlock_race_vals;
+    int num_races = (player_class == sim::PlayerClass::PRIEST) ? 6 : 5;
+
+    for (int i = 0; i < num_races; ++i)
     {
-      case Race::HUMAN:
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "The Human Spirit (+5%% Spirit)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Divine Grace (Emergency Heal <50%% HP)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Feedback (Anti-Magic Mana Burn & Dmg)");
-        break;
-      case Race::DWARF:
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Chastise (272-306 Holy Dmg, 2s Immobilize)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Desperate Prayer (Instant self-heal 1285-1513)");
-        break;
-      case Race::NIGHT_ELF:
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Starshards (1800 Arcane Dmg over 6s - 30s CD)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Elune's Grace (-50%% Attack Hit Chance 15s)");
-        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth) | Quickness (+1%% Dodge)");
-        break;
-      case Race::GNOME:
-        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Contingency Plan (Emergency Shield & Heal)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Confounding Flash (AoE Confuse 5 Enemies 3s)");
-        break;
-      case Race::UNDEAD:
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Dark Sacrifice (Cannibalize 1600 HP -> 1600 Mana)");
-        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Touch of the Grave (Drain up to 5%% Max HP)");
-        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f), "Will of the Forsaken (Charm/Fear/Sleep Immune)");
-        break;
-      case Race::TROLL:
-        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
-        ImGui::TextColored(ImVec4(0.80f, 0.70f, 1.0f, 1.0f), "Shadowguard (3 Charges: 96 Shadow Dmg Retaliation)");
-        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
-        break;
-      default:
-        break;
+      if (i > 0)
+        ImGui::SameLine();
+      bool is_sel = (sim.race == race_vals[i]);
+      const std::string race_btn_id = std::string("##RaceOpt_") + race_names[i];
+      if (draw_slot_btn(race_btn_id.c_str(), race_to_icon(race_vals[i]), false, is_sel, race_names[i]))
+      {
+        sim.race = race_vals[i];
+        selected_model_idx = i;
+        sim.base_attrs = sim::get_base_attributes_for_class_and_race(player_class, sim.race);
+        race_selector_expanded = false;
+      }
+    }
+  }
+  else if (pet_selector_expanded)
+  {
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Select Pet");
+
+    if constexpr (requires { sim.policy.pet; sim.buffs.sacrifice_imp; })
+    {
+      struct PetDef { PetChoice pet; const char* icon; const char* name; const char* desc; };
+      PetDef pet_opts[] = {
+        {PetChoice::NONE, nullptr, "None", "No active demon pet summoned (Empty Slot)"},
+        {PetChoice::IMP, "Spell_Shadow_SummonImp.png", "Imp", "Active Imp (Firebolt auto-cast)"},
+        {PetChoice::SUCCUBUS, "Spell_Shadow_SummonSuccubus.png", "Succubus", "Active Succubus (Melee swings + Lash of Pain)"}
+      };
+
+      for (int i = 0; i < 3; ++i)
+      {
+        if (i > 0)
+          ImGui::SameLine();
+        bool is_sel = (sim.policy.pet == pet_opts[i].pet);
+        bool is_none = (pet_opts[i].pet == PetChoice::NONE);
+        const std::string btn_id = std::string("##PetOpt_") + pet_opts[i].name;
+        std::string tip = std::string(pet_opts[i].name) + "\n" + pet_opts[i].desc;
+        if (draw_slot_btn(btn_id.c_str(), pet_opts[i].icon, is_none, is_sel, tip.c_str()))
+        {
+          sim.policy.pet = pet_opts[i].pet;
+          // Mutual exclusion constraint: Pet and DS cannot be the same demon
+          if (sim.policy.pet == PetChoice::IMP && sim.buffs.sacrifice_imp)
+          {
+            sim.buffs.sacrifice_imp = false;
+          }
+          else if (sim.policy.pet == PetChoice::SUCCUBUS && sim.buffs.sacrifice_succubus)
+          {
+            sim.buffs.sacrifice_succubus = false;
+          }
+          pet_selector_expanded = false;
+        }
+      }
+    }
+  }
+  else if (ds_selector_expanded)
+  {
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Select Demonic Sacrifice");
+
+    if constexpr (requires { sim.buffs.sacrifice_imp; sim.buffs.sacrifice_succubus; sim.policy.pet; })
+    {
+      struct DsDef { int id; const char* icon; const char* name; const char* desc; };
+      DsDef ds_opts[] = {
+        {0, nullptr, "None", "No Demonic Sacrifice active (Empty Slot)"},
+        {1, "Spell_Shadow_SummonImp.png", "Sacrifice Imp", "+15% Shadow Damage in Forever (Sacrificed Imp)"},
+        {2, "Spell_Shadow_SummonSuccubus.png", "Sacrifice Succubus", "+15% Fire Damage in Forever (Sacrificed Succubus)"}
+      };
+
+      for (int i = 0; i < 3; ++i)
+      {
+        if (i > 0)
+          ImGui::SameLine();
+        bool is_sel = (i == 0 && !sim.buffs.sacrifice_imp && !sim.buffs.sacrifice_succubus) ||
+                      (i == 1 && sim.buffs.sacrifice_imp) ||
+                      (i == 2 && sim.buffs.sacrifice_succubus);
+        bool is_none = (i == 0);
+        const std::string btn_id = std::string("##DsOpt_") + ds_opts[i].name;
+        std::string tip = std::string(ds_opts[i].name) + "\n" + ds_opts[i].desc;
+        if (draw_slot_btn(btn_id.c_str(), ds_opts[i].icon, is_none, is_sel, tip.c_str()))
+        {
+          if (i == 0) {
+            sim.buffs.sacrifice_imp = false;
+            sim.buffs.sacrifice_succubus = false;
+          } else if (i == 1) {
+            sim.buffs.sacrifice_imp = true;
+            sim.buffs.sacrifice_succubus = false;
+            // Mutual exclusion constraint: Pet and DS cannot be the same demon
+            if (sim.policy.pet == PetChoice::IMP)
+            {
+              sim.policy.pet = PetChoice::NONE;
+            }
+          } else if (i == 2) {
+            sim.buffs.sacrifice_imp = false;
+            sim.buffs.sacrifice_succubus = true;
+            // Mutual exclusion constraint: Pet and DS cannot be the same demon
+            if (sim.policy.pet == PetChoice::SUCCUBUS)
+            {
+              sim.policy.pet = PetChoice::NONE;
+            }
+          }
+          ds_selector_expanded = false;
+        }
+      }
     }
   }
   else
   {
-    switch (sim.race)
+    // Collapsed standard view: Race, Pet, and DS side-by-side | Divider | Racials
+    // 1. Race
+    ImGui::BeginGroup();
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Race");
+    std::string race_tip = std::string("Race: ") + race_to_string(sim.race) + " (Click to change)";
+    if (draw_slot_btn("##SelectedRace", race_to_icon(sim.race), false, true, race_tip.c_str()))
     {
-      case Race::HUMAN:
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Sword Spec (+2%% Crit w/ Swords)");
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Spirit (+5%%)");
-        break;
-      case Race::GNOME:
-        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Expansive Mind (+5%% Mana)");
-        ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Eureka! (-50%% Mana, +10%% Dmg 3 casts)");
-        break;
-      case Race::ORC:
-        ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.30f, 1.0f), "Blood Fury (+10%% SP for 15s)");
-        break;
-      case Race::UNDEAD:
-        ImGui::TextColored(ImVec4(0.70f, 0.90f, 0.60f, 1.0f),
-                           "Touch of the Grave (10%% chance to drain up to 5%% Max HP)");
-        break;
-      case Race::TROLL:
-        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Berserking (+10%% Haste for 10s)");
-        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.80f, 1.0f), "Beast Slaying (+5%% vs Beasts)");
-        break;
-      case Race::DWARF:
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Stoneform (+10%% Armor, Bleed/Poison Immune)");
-        ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.40f, 1.0f), "Frost Resistance (+10)");
-        break;
-      case Race::NIGHT_ELF:
-        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Quickness (+1%% Dodge)");
-        ImGui::TextColored(ImVec4(0.50f, 0.80f, 1.0f, 1.0f), "Shadowmeld (Stealth)");
-        break;
+      race_selector_expanded = true;
+      pet_selector_expanded = false;
+      ds_selector_expanded = false;
     }
+    ImGui::EndGroup();
+
+    if constexpr (requires { sim.policy.pet; sim.buffs.sacrifice_imp; })
+    {
+      if (player_class == sim::PlayerClass::WARLOCK)
+      {
+        ImGui::SameLine(0.0f, 12.0f);
+
+        // 2. Pet
+        ImGui::BeginGroup();
+        ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Pet");
+        bool pet_is_none = (sim.policy.pet == PetChoice::NONE);
+        const char* pet_icon = pet_is_none ? nullptr : (sim.policy.pet == PetChoice::IMP ? "Spell_Shadow_SummonImp.png" : "Spell_Shadow_SummonSuccubus.png");
+        std::string pet_tip = std::string("Active Pet: ") + pet_choice_to_string(sim.policy.pet) + " (Click to change)";
+        if (draw_slot_btn("##SelectedPet", pet_icon, pet_is_none, !pet_is_none, pet_tip.c_str()))
+        {
+          pet_selector_expanded = true;
+          race_selector_expanded = false;
+          ds_selector_expanded = false;
+        }
+        ImGui::EndGroup();
+
+        ImGui::SameLine(0.0f, 12.0f);
+
+        // 3. DS (Demonic Sacrifice)
+        ImGui::BeginGroup();
+        ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "DS");
+        bool ds_is_none = (!sim.buffs.sacrifice_imp && !sim.buffs.sacrifice_succubus);
+        const char* ds_icon = ds_is_none ? nullptr : (sim.buffs.sacrifice_imp ? "Spell_Shadow_SummonImp.png" : "Spell_Shadow_SummonSuccubus.png");
+        const char* ds_name = ds_is_none ? "None" : (sim.buffs.sacrifice_imp ? "Sacrificed Imp (+15% Shadow Damage)" : "Sacrificed Succubus (+15% Fire Damage)");
+        std::string ds_tip = std::string("Demonic Sacrifice: ") + ds_name + " (Click to change)";
+        if (draw_slot_btn("##SelectedDS", ds_icon, ds_is_none, !ds_is_none, ds_tip.c_str()))
+        {
+          ds_selector_expanded = true;
+          race_selector_expanded = false;
+          pet_selector_expanded = false;
+        }
+        ImGui::EndGroup();
+      }
+    }
+
+    // Vertical Divider Line
+    ImGui::SameLine(0.0f, 12.0f);
+    ImVec2 div_p0 = ImGui::GetCursorScreenPos();
+    float div_h = kIconSize + 16.0f;
+    ImGui::GetWindowDrawList()->AddLine(
+        ImVec2(div_p0.x, div_p0.y - 2.0f),
+        ImVec2(div_p0.x, div_p0.y + div_h),
+        IM_COL32(90, 72, 40, 200), 1.5f);
+    ImGui::Dummy(ImVec2(1.5f, div_h));
+
+    ImGui::SameLine(0.0f, 12.0f);
+
+    // 4. Racials
+    ImGui::BeginGroup();
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Racials");
+
+    struct RacialTraitInfo {
+      const char* name;
+      const char* icon;
+      const char* desc;
+    };
+
+    std::vector<RacialTraitInfo> racials;
+    if (player_class == sim::PlayerClass::PRIEST)
+    {
+      switch (sim.race)
+      {
+        case Race::HUMAN:
+          racials.push_back({"The Human Spirit", "Spell_Holy_MagicalSentry.png", "+5% Spirit"});
+          racials.push_back({"Divine Grace", "Spell_Holy_Restoration.png", "Emergency Heal <50% HP"});
+          racials.push_back({"Feedback", "Spell_Shadow_ManaBurn.png", "Anti-Magic Mana Burn & Dmg"});
+          break;
+        case Race::DWARF:
+          racials.push_back({"Stoneform", "Spell_Shadow_UnholyStrength.png", "+10% Armor, Bleed/Poison Immune"});
+          racials.push_back({"Chastise", "INV_Misc_QuestionMark.png", "272-306 Holy Dmg, 2s Immobilize"});
+          racials.push_back({"Desperate Prayer", "Spell_Holy_Restoration.png", "Instant self-heal 1285-1513"});
+          break;
+        case Race::NIGHT_ELF:
+          racials.push_back({"Starshards", "Spell_Arcane_StarFire.png", "1800 Arcane Dmg over 6s (30s CD)"});
+          racials.push_back({"Elune's Grace", "Spell_Holy_ElunesGrace.png", "-50% Attack Hit Chance for 15s"});
+          racials.push_back({"Shadowmeld", "INV_Misc_QuestionMark.png", "Stealth | Quickness (+1% Dodge)"});
+          break;
+        case Race::GNOME:
+          racials.push_back({"Expansive Mind", "INV_Enchant_EssenceEternalLarge.png", "+5% Mana"});
+          racials.push_back({"Contingency Plan", "Spell_Holy_PowerWordShield.png", "Emergency Shield & Heal"});
+          racials.push_back({"Confounding Flash", "Spell_Shadow_MindSteal.png", "AoE Confuse 5 Enemies for 3s"});
+          break;
+        case Race::UNDEAD:
+          racials.push_back({"Dark Sacrifice", "Ability_Racial_Cannibalize.png", "Cannibalize 1600 HP -> 1600 Mana"});
+          racials.push_back({"Touch of the Grave", "Spell_Shadow_LifeDrain02.png", "Drain up to 5% Max HP"});
+          racials.push_back({"Will of the Forsaken", "Spell_Shadow_RaiseDead.png", "Charm/Fear/Sleep Immune"});
+          break;
+        case Race::TROLL:
+          racials.push_back({"Berserking", "Racial_Troll_Berserk.png", "+10% Haste for 10s"});
+          racials.push_back({"Shadowguard", "Spell_Shadow_ManaBurn.png", "3 Charges: 96 Shadow Dmg Retaliation"});
+          racials.push_back({"Beast Slaying", "Ability_Hunter_BeastSoothe.png", "+5% vs Beasts"});
+          break;
+        default:
+          break;
+      }
+    }
+    else
+    {
+      switch (sim.race)
+      {
+        case Race::HUMAN:
+          racials.push_back({"Sword Spec", "INV_Sword_27.png", "+2% Crit w/ Swords"});
+          racials.push_back({"The Human Spirit", "Spell_Holy_MagicalSentry.png", "+5% Spirit"});
+          break;
+        case Race::GNOME:
+          racials.push_back({"Expansive Mind", "INV_Enchant_EssenceEternalLarge.png", "+5% Mana"});
+          racials.push_back({"Eureka!", "Spell_Nature_WispSplode.png", "-50% Mana, +10% Dmg for 3 casts"});
+          break;
+        case Race::ORC:
+          racials.push_back({"Blood Fury", "Racial_Orc_BerserkerStrength.png", "+10% SP for 15s"});
+          break;
+        case Race::UNDEAD:
+          racials.push_back({"Touch of the Grave", "Spell_Shadow_LifeDrain02.png", "10% chance to drain up to 5% Max HP"});
+          racials.push_back({"Will of the Forsaken", "Spell_Shadow_RaiseDead.png", "Charm/Fear/Sleep Immune"});
+          break;
+        case Race::TROLL:
+          racials.push_back({"Berserking", "Racial_Troll_Berserk.png", "+10% Haste for 10s"});
+          racials.push_back({"Beast Slaying", "Ability_Hunter_BeastSoothe.png", "+5% vs Beasts"});
+          break;
+        case Race::DWARF:
+          racials.push_back({"Stoneform", "Spell_Shadow_UnholyStrength.png", "+10% Armor, Bleed/Poison Immune"});
+          break;
+        case Race::NIGHT_ELF:
+          racials.push_back({"Shadowmeld", "INV_Misc_QuestionMark.png", "Stealth | Quickness (+1% Dodge)"});
+          break;
+      }
+    }
+
+    for (size_t i = 0; i < racials.size(); ++i)
+    {
+      if (i > 0) ImGui::SameLine(0.0f, 6.0f);
+      const Texture2D& r_tex = AssetManager::get().get_icon(racials[i].icon);
+      const std::string r_id = std::string("##Racial_") + racials[i].name;
+
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.09f, 0.07f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.40f, 0.32f, 0.20f, 0.7f));
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+
+      rlImGuiImageButtonSize(r_id.c_str(), &r_tex, Vector2{kIconSize, kIconSize});
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("%s\n%s", racials[i].name, racials[i].desc);
+      }
+
+      ImGui::PopStyleVar();
+      ImGui::PopStyleColor(2);
+    }
+    ImGui::EndGroup();
   }
+  ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
   ImGui::EndChild();
   ImGui::PopStyleColor();
@@ -280,19 +499,7 @@ inline void render_armory_panel(SimType& sim,
   float mode_btn_w = (avail_w - 6.0f) * 0.5f;
 
   bool in_raw_mode = sim.use_raw_stats;
-  if (in_raw_mode)
-  {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.45f, 0.28f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.40f, 1.0f, 0.60f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-  }
-  else
-  {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.12f, 0.18f, 0.85f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.28f, 0.45f, 0.6f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  }
-  if (ImGui::Button("DIRECT STAT VALUES", ImVec2(mode_btn_w, 28)))
+  if (WowButton(in_raw_mode ? "DIRECT STATS" : "DIRECT STAT VALUES", ImVec2(mode_btn_w, 28)))
   {
     sim.use_raw_stats = true;
     if (sim.raw_stats.spell_power == 0.0 && sim.raw_stats.shadow_power == 0.0)
@@ -300,46 +507,30 @@ inline void render_armory_panel(SimType& sim,
       sim.raw_stats = sim.gear.calculate_stats();
     }
   }
-  ImGui::PopStyleVar();
-  ImGui::PopStyleColor(2);
 
   ImGui::SameLine();
 
   bool in_gear_mode = !sim.use_raw_stats;
-  if (in_gear_mode)
-  {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.42f, 0.20f, 0.68f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 0.85f, 0.20f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-  }
-  else
-  {
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.14f, 0.12f, 0.18f, 0.85f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.28f, 0.45f, 0.6f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-  }
-  if (ImGui::Button("EQUIPPED ITEMS", ImVec2(mode_btn_w, 28)))
+  if (WowButton("EQUIPPED ITEMS", ImVec2(mode_btn_w, 28)))
   {
     sim.use_raw_stats = false;
   }
-  ImGui::PopStyleVar();
-  ImGui::PopStyleColor(2);
 
   ImGui::Spacing();
 
   if (!sim.use_raw_stats)
   {
     // Quick tier buttons for equipped gear
-    if (ImGui::SmallButton("Pre-Raid"))
+    if (WowButton("Pre-Raid"))
       gear = GearLoadout::create_preraid_bis();
     ImGui::SameLine();
-    if (ImGui::SmallButton("Phase 3/4"))
+    if (WowButton("Phase 3/4"))
       gear = GearLoadout::create_phase3_bis();
     ImGui::SameLine();
-    if (ImGui::SmallButton("Phase 5"))
+    if (WowButton("Phase 5"))
       gear = GearLoadout::create_phase5_bis();
     ImGui::SameLine();
-    if (ImGui::SmallButton("Phase 6 BiS"))
+    if (WowButton("Phase 6 BiS"))
       gear = GearLoadout::create_phase6_bis();
 
     ImGui::Spacing();
@@ -348,124 +539,60 @@ inline void render_armory_panel(SimType& sim,
   else
   {
     // Direct Stats Mode
-    ImGui::Text("Stat Presets:");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Pre-Raid"))
-    {
-      sim.raw_stats = Stats();
-      if (player_class == sim::PlayerClass::PRIEST)
-      {
-        sim.raw_stats.spell_power = 300.0;
-        sim.raw_stats.shadow_power = 80.0;
-        sim.raw_stats.spell_hit_percent = 3.0;
-        sim.raw_stats.spell_crit_percent = 5.0;
-        sim.raw_stats.intellect = 140.0;
-        sim.raw_stats.spirit = 180.0;
-        sim.raw_stats.stamina = 120.0;
-        sim.raw_stats.mp5 = 15.0;
-      }
-      else
-      {
-        sim.raw_stats.spell_power = 320.0;
-        sim.raw_stats.spell_hit_percent = 3.0;
-        sim.raw_stats.spell_crit_percent = 4.0;
-        sim.raw_stats.intellect = 110.0;
-        sim.raw_stats.stamina = 130.0;
-        sim.raw_stats.spirit = 50.0;
-      }
-    }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Phase 3/4"))
-    {
-      sim.raw_stats = Stats();
-      if (player_class == sim::PlayerClass::PRIEST)
-      {
-        sim.raw_stats.spell_power = 500.0;
-        sim.raw_stats.shadow_power = 120.0;
-        sim.raw_stats.spell_hit_percent = 6.0;
-        sim.raw_stats.spell_crit_percent = 10.0;
-        sim.raw_stats.intellect = 180.0;
-        sim.raw_stats.spirit = 240.0;
-        sim.raw_stats.stamina = 150.0;
-        sim.raw_stats.mp5 = 30.0;
-      }
-      else
-      {
-        sim.raw_stats.spell_power = 520.0;
-        sim.raw_stats.spell_hit_percent = 8.0;
-        sim.raw_stats.spell_crit_percent = 10.0;
-        sim.raw_stats.intellect = 140.0;
-        sim.raw_stats.stamina = 160.0;
-        sim.raw_stats.spirit = 60.0;
-      }
-    }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Phase 6 BiS"))
-    {
-      sim.raw_stats = Stats();
-      if (player_class == sim::PlayerClass::PRIEST)
-      {
-        sim.raw_stats.spell_power = 750.0;
-        sim.raw_stats.shadow_power = 150.0;
-        sim.raw_stats.spell_hit_percent = 16.0;
-        sim.raw_stats.spell_crit_percent = 16.0;
-        sim.raw_stats.spell_haste_percent = 6.0;
-        sim.raw_stats.intellect = 220.0;
-        sim.raw_stats.spirit = 300.0;
-        sim.raw_stats.stamina = 180.0;
-        sim.raw_stats.mp5 = 45.0;
-      }
-      else
-      {
-        sim.raw_stats.spell_power = 780.0;
-        sim.raw_stats.spell_hit_percent = 16.0;
-        sim.raw_stats.spell_crit_percent = 18.0;
-        sim.raw_stats.spell_haste_percent = 8.0;
-        sim.raw_stats.intellect = 180.0;
-        sim.raw_stats.stamina = 200.0;
-        sim.raw_stats.spirit = 75.0;
-      }
-    }
-
-    if (ImGui::Button("Import From Gear", ImVec2(130, 22)))
-    {
-      sim.raw_stats = sim.gear.calculate_stats();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Reset to 0", ImVec2(90, 22)))
-    {
-      sim.raw_stats = Stats();
-    }
-
     ImGui::Separator();
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Power##Raw", &sim.raw_stats.spell_power, 0.0, 0.0, "%.0f");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Shadow Power##Raw", &sim.raw_stats.shadow_power, 0.0, 0.0, "%.0f");
-    if (player_class == sim::PlayerClass::PRIEST)
+    ImGui::Spacing();
+
+    auto render_stat_entry = [](const char* label, const char* id, double* val, const char* fmt = "%.0f") {
+      ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
+      ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
+      ImGui::SetNextItemWidth(-1.0f);
+      WowInputDouble(id, val, 0.0, 0.0, fmt);
+      ImGui::PopStyleVar();
+    };
+
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.0f, 2.0f));
+    if (ImGui::BeginTable("DirectStatsGrid", 2, ImGuiTableFlags_SizingStretchSame))
     {
-      ImGui::SetNextItemWidth(100);
-      ImGui::InputDouble("Holy Power##Raw", &sim.raw_stats.holy_power, 0.0, 0.0, "%.0f");
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
+      render_stat_entry("Spell Power", "##RawSpellPower", &sim.raw_stats.spell_power, "%.0f");
+      ImGui::TableNextColumn();
+      render_stat_entry("Shadow Power", "##RawShadowPower", &sim.raw_stats.shadow_power, "%.0f");
+
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
+      if (player_class == sim::PlayerClass::PRIEST)
+      {
+        render_stat_entry("Holy Power", "##RawHolyPower", &sim.raw_stats.holy_power, "%.0f");
+      }
+      else
+      {
+        render_stat_entry("Fire Power", "##RawFirePower", &sim.raw_stats.fire_power, "%.0f");
+      }
+      ImGui::TableNextColumn();
+      render_stat_entry("Spell Hit %", "##RawSpellHit", &sim.raw_stats.spell_hit_percent, "%.1f%%");
+
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
+      render_stat_entry("Spell Crit %", "##RawSpellCrit", &sim.raw_stats.spell_crit_percent, "%.1f%%");
+      ImGui::TableNextColumn();
+      render_stat_entry("Spell Haste %", "##RawSpellHaste", &sim.raw_stats.spell_haste_percent, "%.1f%%");
+
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
+      render_stat_entry("Intellect", "##RawIntellect", &sim.raw_stats.intellect, "%.0f");
+      ImGui::TableNextColumn();
+      render_stat_entry("Stamina", "##RawStamina", &sim.raw_stats.stamina, "%.0f");
+
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
+      render_stat_entry("Spirit", "##RawSpirit", &sim.raw_stats.spirit, "%.0f");
+      ImGui::TableNextColumn();
+      render_stat_entry("MP5", "##RawMP5", &sim.raw_stats.mp5, "%.0f");
+
+      ImGui::EndTable();
     }
-    else
-    {
-      ImGui::SetNextItemWidth(100);
-      ImGui::InputDouble("Fire Power##Raw", &sim.raw_stats.fire_power, 0.0, 0.0, "%.0f");
-    }
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Hit %##Raw", &sim.raw_stats.spell_hit_percent, 0.0, 0.0, "%.1f%%");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Crit %##Raw", &sim.raw_stats.spell_crit_percent, 0.0, 0.0, "%.1f%%");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spell Haste %##Raw", &sim.raw_stats.spell_haste_percent, 0.0, 0.0, "%.1f%%");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("MP5##Raw", &sim.raw_stats.mp5, 0.0, 0.0, "%.0f");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Intellect##Raw", &sim.raw_stats.intellect, 0.0, 0.0, "%.0f");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Stamina##Raw", &sim.raw_stats.stamina, 0.0, 0.0, "%.0f");
-    ImGui::SetNextItemWidth(100);
-    ImGui::InputDouble("Spirit##Raw", &sim.raw_stats.spirit, 0.0, 0.0, "%.0f");
+    ImGui::PopStyleVar();
   }
 }
 
@@ -487,8 +614,9 @@ inline void render_combat_stats_summary(SimType& sim,
                                         float& build_copied_timer,
                                         sim::PlayerClass player_class = sim::PlayerClass::WARLOCK)
 {
-  ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Combat Stats Summary:");
-  ImGui::Separator();
+  if (WowCollapsingHeader("Combat Stats Summary", ImGuiTreeNodeFlags_DefaultOpen))
+  {
+    ImGui::Indent(8.0f);
 
   ImGui::Text("Shadow SP: %.0f", total_stats.effective_shadow_power());
   if (player_class == sim::PlayerClass::PRIEST)
@@ -543,7 +671,7 @@ inline void render_combat_stats_summary(SimType& sim,
   ImGui::Spacing();
 
   float avail_btn_w = ImGui::GetContentRegionAvail().x;
-  if (ImGui::Button("Copy Build to Clipboard", ImVec2(avail_btn_w, 26)))
+  if (WowRedDialogButton("Copy Build to Clipboard", ImVec2(avail_btn_w, 26)))
   {
     if constexpr (std::is_same_v<SimType, WarlockSimulator>)
     {
@@ -567,6 +695,9 @@ inline void render_combat_stats_summary(SimType& sim,
   {
     build_copied_timer -= ImGui::GetIO().DeltaTime;
     ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Build copied to clipboard!");
+  }
+
+    ImGui::Unindent(8.0f);
   }
 }
 

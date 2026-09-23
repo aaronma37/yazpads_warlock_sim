@@ -1,6 +1,7 @@
 #pragma once
 #include "asset_manager.hpp"
 #include "imgui.h"
+#include "wow_widgets.hpp"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -39,7 +40,7 @@ inline void render_unified_spellbook_table(const char* table_id,
   ImGui::InputTextWithHint(
       "##SpellSearch", search_hint, search_filter, filter_buf_size);
   ImGui::SameLine();
-  if (ImGui::Button("Clear"))
+  if (WowButton("Clear"))
   {
     search_filter[0] = '\0';
   }
@@ -68,17 +69,10 @@ inline void render_unified_spellbook_table(const char* table_id,
   for (size_t i = 0; i < schools.size(); ++i)
   {
     ImGui::SameLine();
-    bool is_sel = (selected_school_idx == static_cast<int>(i));
-    if (is_sel)
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.35f, 0.25f, 0.50f, 1.0f));
-    else
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.22f, 0.8f));
-
-    if (ImGui::Button(schools[i].c_str()))
+    if (WowButton(schools[i].c_str()))
     {
       selected_school_idx = static_cast<int>(i);
     }
-    ImGui::PopStyleColor();
   }
 
   ImGui::Spacing();

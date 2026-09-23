@@ -80,7 +80,7 @@ void adapt_policies_to_talents(Individual& ind, FastRNG& rng) {
     bool has_ruin = (ind.talents[36 + 6] > 0);      // Ruin
     bool has_incin = (ind.talents[36 + 15] > 0);    // Incinerate
     bool has_sm = (ind.talents[15] > 0);            // Shadow Mastery
-    bool has_wrack = (ind.talents[16] > 0);         // Wrack / Drain Hope
+    bool has_wrack = (ind.talents[16] > 0);         // Wrack
     bool has_siphon = (ind.talents[13] > 0);        // Siphon Life
     bool has_conflag = (ind.talents[36 + 10] > 0);  // Conflagrate
     bool has_sburn = (ind.talents[36 + 7] > 0);     // Shadowburn
@@ -474,7 +474,7 @@ std::string format_build_name(const Individual& ind) {
     std::vector<std::string> tags;
 
     // Affliction tags
-    if (has_dh) tags.push_back("Drain Hope");
+    if (has_dh) tags.push_back("Wrack");
     else if (has_sm) tags.push_back("SM");
     else if (has_sl) tags.push_back("SL");
     else if (has_nf) tags.push_back("NF");

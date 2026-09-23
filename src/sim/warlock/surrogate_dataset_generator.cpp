@@ -178,7 +178,7 @@ bool SurrogateDatasetGenerator::generate_dataset(
                 bool has_incin = (talent_vec[36 + 15] > 0);    // Incinerate
                 bool has_conflag = (talent_vec[36 + 10] > 0);  // Conflagrate
                 bool has_sm = (talent_vec[15] > 0);            // Shadow Mastery
-                bool has_wrack = (talent_vec[16] > 0);         // Wrack / Drain Hope
+                bool has_wrack = (talent_vec[16] > 0);         // Wrack
 
                 // 2. Select Aligned Demon Setup (8 valid mutually exclusive states)
                 DemonSetup demon_setup = DemonSetup::NO_PET_NO_SAC;

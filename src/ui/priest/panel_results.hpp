@@ -3,6 +3,7 @@
 #include "implot.h"
 #include "src/ui/common/asset_manager.hpp"
 #include "src/ui/common/damage_breakdown_view.hpp"
+#include "src/ui/common/wow_widgets.hpp"
 #include "src/sim/priest/parallel_runner.hpp"
 #include <vector>
 #include <algorithm>
@@ -14,11 +15,21 @@ namespace priest {
 
 inline void render_priest_panel_results(const BatchSimResult& batch) {
     if (batch.total_iterations == 0) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No simulation results yet. Click '>>> RUN PRIEST DES SIMULATION <<<' above to begin.");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No simulation results yet. Click 'RUN PRIEST DES SIMULATION' above to begin.");
         return;
     }
 
-    // Top Summary Metric Cards (Exact Warlock 4-Column Layout)
+    // Top Summary Metric Cards over a tiled marble stone backdrop.
+    warlock::DrawPanelBanner("Combat Results - DPS Summary", "UI-Background-Marble", 52.0f);
+    warlock::BeginWowChild("PriestResultsSummaryBG", ImVec2(-1, 92), true);
+    {
+        ImVec2 wp = ImGui::GetWindowPos();
+        ImVec2 ws = ImGui::GetWindowSize();
+        ImVec2 bp0(wp.x + 2.0f, wp.y + 2.0f);
+        ImVec2 bp1(wp.x + ws.x - 2.0f, wp.y + ws.y - 2.0f);
+        warlock::DrawTiledPanelBackdrop(bp0, bp1, "UI-Background-Rock", IM_COL32(255, 255, 255, 255));
+        ImGui::GetWindowDrawList()->AddRectFilled(bp0, bp1, IM_COL32(0, 0, 0, 110));
+    }
     ImGui::Columns(4, "PriestResultsSummaryCols", false);
 
     ImGui::TextDisabled("MEAN DPS");
@@ -42,11 +53,12 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
     ImGui::NextColumn();
 
     ImGui::Columns(1);
+    warlock::EndWowChild();
     ImGui::Separator();
 
-    if (ImGui::BeginTabBar("PriestResultsTabBar")) {
+    if (warlock::WowBeginTabBar("PriestResultsTabBar")) {
         // Tab 1: DPS Distribution Histogram
-        if (ImGui::BeginTabItem("DPS Histogram")) {
+        if (warlock::WowBeginTabItem("DPS Histogram")) {
             if (!batch.histogram.empty()) {
                 std::vector<double> xs(batch.histogram.size());
                 std::vector<double> ys(batch.histogram.size());
@@ -75,11 +87,11 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                     ImPlot::EndPlot();
                 }
             }
-            ImGui::EndTabItem();
+            warlock::WowEndTabItem();
         }
 
         // Tab 2: Sample Combat Timeline
-        if (ImGui::BeginTabItem("Sample Combat Timeline")) {
+        if (warlock::WowBeginTabItem("Sample Combat Timeline")) {
             const auto& t = batch.sample_timeline.timeline;
             if (!t.empty()) {
                 std::vector<double> times;
@@ -104,11 +116,11 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
             } else {
                 ImGui::Text("No timeline recorded.");
             }
-            ImGui::EndTabItem();
+            warlock::WowEndTabItem();
         }
 
         // Tab 3: Damage Breakdown (Styled matching golden standard)
-        if (ImGui::BeginTabItem("Damage Breakdown")) {
+        if (warlock::WowBeginTabItem("Damage Breakdown")) {
             ImGui::Text("Spell Damage Contribution (%% of Total + DPS):");
             ImGui::Separator();
 
@@ -139,11 +151,11 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                 ImGui::BulletText("Mana Gained / Regenerated: %.0f", batch.mean_mana_gained);
             }
 
-            ImGui::EndTabItem();
+            warlock::WowEndTabItem();
         }
 
         // Tab 4: Observed Spell Cast Sequence
-        if (ImGui::BeginTabItem("Observed Spell Cast Sequence")) {
+        if (warlock::WowBeginTabItem("Observed Spell Cast Sequence")) {
             const auto& seq = batch.sample_timeline.cast_sequence;
             if (seq.empty()) {
                 ImGui::TextDisabled("No sample cast sequence available. Run a simulation to generate observed sequence.");
@@ -229,14 +241,14 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                 static float export_feedback_timer = 0.0f;
                 static std::string export_feedback_msg = "";
 
-                if (ImGui::Button("📋 Copy Cast History to Clipboard##Priest")) {
+                if (warlock::WowButton("📋 Copy Cast History to Clipboard##Priest")) {
                     std::string text = generate_priest_cast_history_text();
                     ImGui::SetClipboardText(text.c_str());
                     export_feedback_msg = "Copied to clipboard!";
                     export_feedback_timer = 3.0f;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("💾 Export to Text File (priest_cast_sequence.txt)##Priest")) {
+                if (warlock::WowButton("💾 Export to Text File (priest_cast_sequence.txt)##Priest")) {
                     std::string text = generate_priest_cast_history_text();
                     std::ofstream out("priest_cast_sequence.txt");
                     if (out.is_open()) {
@@ -315,11 +327,66 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                     ImGui::EndTable();
                 }
             }
-            ImGui::EndTabItem();
+            warlock::WowEndTabItem();
         }
 
-        ImGui::EndTabBar();
+        warlock::WowEndTabBar();
     }
+}
+
+inline void render_priest_build_sim_results(const BatchSimResult& batch) {
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Simulation Results");
+    ImGui::Spacing();
+
+    if (batch.total_iterations == 0) {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No simulation results yet.\nRun a simulation to view results.");
+        return;
+    }
+
+    // Top DPS numbers
+    ImGui::BeginGroup();
+    ImGui::TextDisabled("MEAN DPS");
+    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%.1f DPS", batch.mean_dps);
+
+    ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.75f, 1.0f), "(Min: %.0f  Max: %.0f  ±%.1f)",
+                       batch.min_dps, batch.max_dps, batch.std_dev_dps);
+    ImGui::TextDisabled("Median: %.1f (P5: %.1f - P95: %.1f)", batch.p50_dps, batch.p5_dps, batch.p95_dps);
+    ImGui::TextDisabled("Crit: %.1f%%  |  Miss: %.1f%%", batch.crit_percent, batch.miss_percent);
+    if (batch.mean_sw_weaving_procs > 0.0) {
+        ImGui::TextDisabled("SW Weaving: %.1f procs", batch.mean_sw_weaving_procs);
+    }
+    ImGui::EndGroup();
+
+    ImGui::Spacing();
+    static bool open_detailed_modal = false;
+    if (warlock::WowButton("🔍 Detailed View", ImVec2(-1, 26))) {
+        open_detailed_modal = true;
+        ImGui::OpenPopup("Detailed Simulation Results##Priest");
+    }
+
+    // Detailed View Modal
+    ImGui::SetNextWindowSize(ImVec2(860, 620), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Detailed Simulation Results##Priest", &open_detailed_modal, ImGuiWindowFlags_None)) {
+        render_priest_panel_results(batch);
+        ImGui::Spacing();
+        if (warlock::WowButton("Close", ImVec2(100, 28))) {
+            open_detailed_modal = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Damage Breakdown
+    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Damage Breakdown");
+    ImGui::Spacing();
+    float avail_w = ImGui::GetContentRegionAvail().x;
+    float label_offset = 120.0f;
+    float bar_w = std::max(60.0f, avail_w - label_offset - 8.0f);
+    render_priest_damage_breakdown_bars(batch, bar_w, label_offset);
 }
 
 } // namespace priest

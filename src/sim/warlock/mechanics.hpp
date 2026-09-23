@@ -19,9 +19,9 @@ struct MechanicsConfig : public sim::CombatMechanicsConfig {
     bool nightfall_enabled = true;
     double nightfall_proc_chance = 0.04;
 
-    // 11. Drain Hope Spell Type
-    // True: Drain Hope (Wrack) is an instant cast 6-second DoT (1.5s GCD floor), allowing filler casts during its duration.
-    // False: Drain Hope is a channeled spell (player is locked channeling for its duration).
+    // 11. Wrack Spell Type
+    // True: Wrack is an instant cast 6-second DoT (1.5s GCD floor), allowing filler casts during its duration.
+    // False: Wrack is a channeled spell (player is locked channeling for its duration).
     bool instant_drain_hope = false;
 
     // 12. Corruption Spell Power Coefficient

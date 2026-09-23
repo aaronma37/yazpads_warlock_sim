@@ -152,11 +152,11 @@ enum class RotationChoice : uint8_t
                  // filler
   DP_AF_SHADOW,  // Demonology Shadow: Corruption + Bane of Agony + SB filler
   DP_RUIN_FIRE,  // DP/Ruin Fire: Immolate + Conflagrate + Searing Pain / Decimation Soul Fire (<35% HP)
-  DEEP_AFFLICTION,  // Deep Affliction: Corruption + Bane of Agony + Drain Hope (20s CD) + Nightfall procs + SB filler
+  DEEP_AFFLICTION,  // Deep Affliction: Corruption + Bane of Agony + Wrack (20s CD) + Nightfall procs + SB filler
   SM_RUIN,          // SM/Ruin: Corruption + Bane of Agony + Nightfall + Shadowburn + Shadow Bolt filler
   DEMONOLOGY_EXECUTE,  // Demo Execute: Corruption + Bane of Agony + Decimation Soul Fire (<35% HP execute) + SB filler
   PURE_SHADOW_BOLT,    // Pure Shadow Bolt: SB spam only (0 DoTs, classic 16 debuff limit)
-  AFFLICTION_HYBRID_DOTS,   // Multi-DoT Hybrid: Agony + Corruption + Immolate + Drain Hope + SB filler
+  AFFLICTION_HYBRID_DOTS,   // Multi-DoT Hybrid: Agony + Corruption + Immolate + Wrack + SB filler
   SHADOW_AND_FLAME_FIRE_2,  // Shadow & Flame Fire 2: Immolate + Conflag + Corruption + SBurn + Incinerate (No Searing
                             // Pain / Soul Fire)
   DP_AF_SHADOW_NO_CORRUPTION,  // Demonology Shadow (No Corruption): Bane of Agony only + SB filler
@@ -166,9 +166,9 @@ enum class RotationChoice : uint8_t
                               // Soul Fire
   DP_AF_SHADOW_NO_BANE,       // Demonology Shadow (No Bane): Corruption only + SB filler, no Bane of Agony
   DP_AF_SHADOW_NO_SOUL_FIRE_NO_BANE,  // Demonology Shadow (No Soul Fire, No Bane): Corruption only + SB filler
-  DEEP_AFFLICTION_SB,  // Deep Affliction (SB filler): Corruption + Bane of Agony + Siphon Life + Drain Hope + Nightfall
+  DEEP_AFFLICTION_SB,  // Deep Affliction (SB filler): Corruption + Bane of Agony + Siphon Life + Wrack + Nightfall
                        // + SB filler
-  DEEP_AFFLICTION_SB_NO_SL,    // Deep Affliction (SB filler, No Siphon Life): Corruption + Bane of Agony + Drain Hope +
+  DEEP_AFFLICTION_SB_NO_SL,    // Deep Affliction (SB filler, No Siphon Life): Corruption + Bane of Agony + Wrack +
                                // Nightfall + SB filler
   SHADOW_AND_FLAME_FIRE_BANE,  // Shadow & Flame Fire (with Bane): Immolate + Conflag + Corruption + Bane of Doom/Agony
                                // + SBurn + Incinerate
@@ -371,7 +371,7 @@ struct PolicyConfig
   bool use_conflagrate = true;           // Cast Conflagrate on cooldown
   bool use_incinerate = true;            // Use Incinerate when talented
   bool use_decimation_soul_fire = true;  // Execute phase Soul Fire procs (<35% HP)
-  bool channel_drain_hope = true;        // Channel Drain Hope on cooldown if talented
+  bool channel_drain_hope = true;        // Channel Wrack on cooldown if talented
 
   // Constructs the ordered priority rule list for display and execution
   std::vector<PriorityRule> get_priority_rules(const Talents& talents, Race race = Race::UNDEAD) const
@@ -805,7 +805,7 @@ struct PolicyConfig
         break;
 
       case RotationChoice::DEEP_AFFLICTION:
-        // Corruption, CoA, and Siphon Life higher priority than Drain Hope
+        // Corruption, CoA, and Siphon Life higher priority than Wrack
         add_racial();
         add_nightfall();  // Cast Shadow Bolt ONLY on Nightfall procs
         add_corruption();
@@ -816,7 +816,7 @@ struct PolicyConfig
         break;
 
       case RotationChoice::DEEP_AFFLICTION_SB:
-        // Same as Deep Affliction (Corruption, CoA, Siphon Life, Drain Hope), but uses Shadow Bolt as filler
+        // Same as Deep Affliction (Corruption, CoA, Siphon Life, Wrack), but uses Shadow Bolt as filler
         add_racial();
         add_nightfall();
         add_corruption();

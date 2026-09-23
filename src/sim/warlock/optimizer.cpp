@@ -985,7 +985,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         candidates.push_back({label, base_sim.talents, p, base_sim.buffs});
     }
 
-    // F. Drain Hope / Wrack
+    // F. Wrack
     if (base_sim.talents.aff.drain_hope > 0) {
         auto p = base_sim.policy;
         p.channel_drain_hope = !p.channel_drain_hope;
