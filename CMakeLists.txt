@@ -81,6 +81,7 @@ if (EMSCRIPTEN)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs"
     )
     target_link_options(warlock_sim PRIVATE
+        -O3
         -pthread
         -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
         -sPTHREAD_POOL_SIZE_STRICT=0

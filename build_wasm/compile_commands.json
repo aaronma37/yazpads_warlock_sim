@@ -1,0 +1,140 @@
+[
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/main.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/main.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/main.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/common/gear.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/common/gear.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/common/gear.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/common/gear.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/warlock/warlock_sim.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/warlock_sim.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/warlock_sim.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/warlock/warlock_sim.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/warlock/parallel_runner.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/parallel_runner.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/parallel_runner.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/warlock/parallel_runner.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/warlock/optimizer.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/optimizer.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/optimizer.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/warlock/optimizer.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/warlock/genetic_optimizer.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/genetic_optimizer.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/genetic_optimizer.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/warlock/genetic_optimizer.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/warlock/surrogate_dataset_generator.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/surrogate_dataset_generator.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock/surrogate_dataset_generator.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/warlock/surrogate_dataset_generator.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/priest/priest_sim.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/priest/priest_sim.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/priest/priest_sim.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/priest/priest_sim.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/priest/parallel_runner.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/priest/parallel_runner.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/priest/parallel_runner.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/priest/parallel_runner.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/src/sim/priest/optimizer.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/src/sim/priest/optimizer.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/src/sim/priest/optimizer.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/src/sim/priest/optimizer.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/imgui/imgui.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/imgui/imgui.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_draw.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_draw.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_draw.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_draw.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_tables.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_tables.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_tables.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_tables.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_widgets.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_widgets.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/imgui/imgui_widgets.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/imgui/imgui_widgets.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/implot/implot.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/implot/implot.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/implot/implot.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/implot/implot.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/implot/implot_items.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/implot/implot_items.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/implot/implot_items.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/implot/implot_items.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/em++ -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui  -O3 -pthread -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/warlock_sim.dir/third_party/rlImGui/rlImGui.cpp.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui/rlImGui.cpp",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui/rlImGui.cpp",
+  "output": "CMakeFiles/warlock_sim.dir/third_party/rlImGui/rlImGui.cpp.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/rcore.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rcore.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rcore.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/rcore.c.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/rshapes.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rshapes.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rshapes.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/rshapes.c.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/rtext.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rtext.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rtext.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/rtext.c.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/rtextures.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rtextures.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rtextures.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/rtextures.c.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/raudio.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/raudio.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/raudio.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/raudio.c.o"
+},
+{
+  "directory": "/home/aaron-ma/yazpads_warlock_sim/build_wasm/third_party/raylib/raylib",
+  "command": "/home/aaron-ma/emsdk/upstream/emscripten/emcc -DGRAPHICS_API_OPENGL_ES2 -DPLATFORM_WEB -I/home/aaron-ma/yazpads_warlock_sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim -I/home/aaron-ma/yazpads_warlock_sim/src/sim/common -I/home/aaron-ma/yazpads_warlock_sim/src/sim/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/sim/priest -I/home/aaron-ma/yazpads_warlock_sim/src/ui -I/home/aaron-ma/yazpads_warlock_sim/src/ui/common -I/home/aaron-ma/yazpads_warlock_sim/src/ui/warlock -I/home/aaron-ma/yazpads_warlock_sim/src/ui/priest -I/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src -I/home/aaron-ma/yazpads_warlock_sim/third_party/imgui -I/home/aaron-ma/yazpads_warlock_sim/third_party/implot -I/home/aaron-ma/yazpads_warlock_sim/third_party/rlImGui -fno-strict-aliasing -Werror=implicit-function-declaration -Werror=pointer-arith  -O3 -pthread -O3 -DNDEBUG -std=gnu99 -o CMakeFiles/raylib.dir/rmodels.c.o -c /home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rmodels.c",
+  "file": "/home/aaron-ma/yazpads_warlock_sim/third_party/raylib/src/rmodels.c",
+  "output": "third_party/raylib/raylib/CMakeFiles/raylib.dir/rmodels.c.o"
+}
+]

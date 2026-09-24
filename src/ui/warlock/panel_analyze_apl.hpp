@@ -98,6 +98,20 @@ inline ImVec4 get_spell_block_color(SpellID id, const std::string& tag)
   }
 }
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+inline int get_browser_max_threads()
+{
+  int browser_threads = EM_ASM_INT({
+    return (typeof navigator !== 'undefined' && navigator.hardwareConcurrency)
+        ? navigator.hardwareConcurrency
+        : 4;
+  });
+  // Reserve 2 threads for browser main thread and coordinator worker
+  return std::max(1, browser_threads - 2);
+}
+#endif
+
 // ============================================================================
 // MAIN ENTRY POINT: 2 Columns on Top + 1 Shared Full-Width Column Below
 // ============================================================================
@@ -107,7 +121,11 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
   auto& mcts_worker = get_full_mcts_analyzer_worker_state();
 
   static ActiveAnalysisView active_view = ActiveAnalysisView::NONE;
+#if defined(__EMSCRIPTEN__)
+  static int blunder_threads = get_browser_max_threads();
+#else
   static int blunder_threads = static_cast<int>(std::max(1u, std::thread::hardware_concurrency()));
+#endif
   static bool blunder_adaptive_rollouts = true;
   static int blunder_rollouts_per_action = 512;
   static char blunder_filter[64] = "";
@@ -162,7 +180,12 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
     if (is_any_busy) ImGui::BeginDisabled();
     WowInputInt("##BlunderThreadsInput", &blunder_threads, 1, 4);
     if (blunder_threads < 1) blunder_threads = 1;
+#if defined(__EMSCRIPTEN__)
+    int max_wasm_threads = get_browser_max_threads();
+    if (blunder_threads > max_wasm_threads) blunder_threads = max_wasm_threads;
+#else
     if (blunder_threads > 128) blunder_threads = 128;
+#endif
     if (is_any_busy) ImGui::EndDisabled();
     ImGui::EndGroup();
 
@@ -221,6 +244,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
         blunder_worker.worker = std::thread([sim_copy, rollouts_cnt, adapt, user_threads]() {
           auto& w = get_blunder_analyzer_worker_state();
+          printf("[BlunderCoordinator] Thread started. Initializing session with %d rollouts...\n", rollouts_cnt);
+          fflush(stdout);
+
           auto sess = std::make_shared<APLAnalyzer::AsyncBlunderAnalysisSession>();
           sess->init(sim_copy, rollouts_cnt, adapt, 1337);
 
@@ -231,8 +257,14 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
           size_t avail_threads = user_threads;
 #endif
           size_t num_workers = std::min(avail_threads, sess->total_decision_steps);
+          printf("[BlunderCoordinator] Total decision steps: %zu. Spawning %zu worker threads (avail: %zu)...\n",
+                 sess->total_decision_steps, num_workers, avail_threads);
+          fflush(stdout);
+
           if (num_workers <= 1)
           {
+            printf("[BlunderCoordinator] Running single-threaded evaluation path...\n");
+            fflush(stdout);
             for (size_t d = 0; d < sess->total_decision_steps; ++d)
             {
               sess->eval_decision(d);
@@ -248,7 +280,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
             for (size_t t = 0; t < num_workers; ++t)
             {
-              workers.emplace_back([sess, &w]() {
+              workers.emplace_back([sess, &w, t]() {
+                printf("[BlunderWorker #%zu] Worker thread launched.\n", t);
+                fflush(stdout);
                 while (true)
                 {
                   size_t d = sess->next_d.fetch_add(1, std::memory_order_relaxed);
@@ -259,18 +293,26 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
                   std::string msg = "Evaluating APL Decision #" + std::to_string(done) + " / " + std::to_string(sess->total_decision_steps) + "...";
                   w.set_status(p, msg);
                 }
+                printf("[BlunderWorker #%zu] Finished all assigned tasks.\n", t);
+                fflush(stdout);
               });
             }
 
-            for (auto& worker_th : workers)
+            for (size_t t = 0; t < workers.size(); ++t)
             {
-              if (worker_th.joinable())
+              if (workers[t].joinable())
               {
-                worker_th.join();
+                printf("[BlunderCoordinator] Joining worker #%zu...\n", t);
+                fflush(stdout);
+                workers[t].join();
+                printf("[BlunderCoordinator] Worker #%zu successfully joined!\n", t);
+                fflush(stdout);
               }
             }
           }
 
+          printf("[BlunderCoordinator] Finalizing report...\n");
+          fflush(stdout);
           APLAnalysisReport res = sess->finalize();
           {
             std::lock_guard<std::mutex> lock(w.mtx);
@@ -279,6 +321,8 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             w.is_running = false;
           }
           w.set_status(1.0f, "Analysis Complete!");
+          printf("[BlunderCoordinator] Analysis complete and published to UI!\n");
+          fflush(stdout);
         });
       }
       if (is_any_busy) ImGui::EndDisabled();
