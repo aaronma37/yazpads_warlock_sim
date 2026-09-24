@@ -522,6 +522,58 @@ inline bool WowCloseButton(const char* str_id = "##close", const ImVec2& size = 
 }
 
 // ============================================================================
+// Classic WoW Bigger Button (UI-Panel-BiggerButton-Up / Down / Disabled)
+// ============================================================================
+inline bool WowBiggerButton(const char* str_id = "##bigger_btn", const ImVec2& size = ImVec2(22.0f, 22.0f), bool enabled = true) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems)
+        return false;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiID id = window->GetID(str_id);
+
+    const ImVec2 pos = window->DC.CursorPos;
+    const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+
+    ImGui::ItemSize(size);
+    if (!ImGui::ItemAdd(bb, id))
+        return false;
+
+    bool hovered = false, held = false;
+    bool pressed = false;
+    if (enabled) {
+        pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
+    }
+
+    ImDrawList* drawList = window->DrawList;
+
+    const Texture2D& texUp = AssetManager::get().get_texture("UI-Panel-BiggerButton-Up");
+    const Texture2D& texDown = AssetManager::get().get_texture("UI-Panel-BiggerButton-Down");
+    const Texture2D& texDisabled = AssetManager::get().get_texture("UI-Panel-BiggerButton-Disabled");
+    const Texture2D& fallback = AssetManager::get().get_fallback();
+
+    Texture2D tex = texUp;
+    if (!enabled) {
+        tex = (texDisabled.id > 0 && texDisabled.id != fallback.id) ? texDisabled : texUp;
+    } else if (held) {
+        tex = (texDown.id > 0 && texDown.id != fallback.id) ? texDown : texUp;
+    }
+
+    if (tex.id > 0 && tex.id != fallback.id) {
+        drawList->AddImage((ImTextureID)(uintptr_t)tex.id, bb.Min, bb.Max);
+        if (hovered && enabled) {
+            drawList->AddImage((ImTextureID)(uintptr_t)tex.id, bb.Min, bb.Max, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 120));
+        }
+    } else {
+        ImU32 bg = held ? IM_COL32(60, 45, 25, 255) : (hovered ? IM_COL32(95, 75, 45, 255) : IM_COL32(75, 55, 30, 255));
+        drawList->AddRectFilled(bb.Min, bb.Max, bg, 3.0f);
+        drawList->AddRect(bb.Min, bb.Max, IM_COL32(200, 160, 60, 255), 3.0f, 0, 1.0f);
+    }
+
+    return pressed;
+}
+
+// ============================================================================
 // Classic WoW Section Header Bar
 // ============================================================================
 inline void DrawWowSectionHeader(const char* title, float height = 28.0f) {
@@ -621,6 +673,14 @@ inline void PopWowInputStyle() {
     ImGui::PopStyleColor(7);
 }
 
+// Reset text baseline offset so vertical column groups and table cells align consistently
+inline void WowResetTextBaseline() {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window) {
+        window->DC.CurrLineTextBaseOffset = 0.0f;
+    }
+}
+
 // ============================================================================
 // Convenience WoW Slider/Input Wrappers (3-slice Common-Input-Border)
 // ============================================================================
@@ -699,6 +759,21 @@ inline bool WowInputDouble(const char* label, double* v, double step = 0.0, doub
     return changed;
 }
 
+inline bool WowInputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f, const char* format = "%.3f", ImGuiInputTextFlags flags = 0) {
+    PushWowInputStyle();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    drawList->ChannelsSplit(2);
+    drawList->ChannelsSetCurrent(1);
+    bool changed = ImGui::InputFloat(label, v, step, step_fast, format, flags);
+    ImVec2 frame_min = ImGui::GetItemRectMin();
+    ImVec2 frame_max = ImGui::GetItemRectMax();
+    drawList->ChannelsSetCurrent(0);
+    DrawWowInputBorder(frame_min, frame_max);
+    drawList->ChannelsMerge();
+    PopWowInputStyle();
+    return changed;
+}
+
 inline bool WowInputText(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0) {
     PushWowInputStyle();
     ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -754,67 +829,42 @@ inline bool WowCollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
 
     ImDrawList* drawList = window->DrawList;
 
-    // --- Background bar ---
-    // Beveled stone header bar with warm tones
-    ImU32 bgCol = hovered ? IM_COL32(42, 32, 22, 240) : IM_COL32(32, 24, 17, 235);
-    drawList->AddRectFilled(bb.Min, bb.Max, bgCol, 3.0f);
+    // --- Plus / Minus Button Indicator ---
+    const float btnSize = 16.0f;
+    float btnX = bb.Min.x + 2.0f;
+    float btnY = bb.Min.y + (height - btnSize) * 0.5f;
 
-    // Beveled border: light top-left, dark bottom-right (raised bar effect)
-    ImVec2 tl = bb.Min;
-    ImVec2 br = bb.Max;
-    // Top edge (lighter — catching light)
-    drawList->AddLine(ImVec2(tl.x, tl.y), ImVec2(br.x, tl.y), IM_COL32(110, 88, 50, 255), 1.0f);
-    // Left edge (lighter)
-    drawList->AddLine(ImVec2(tl.x, tl.y), ImVec2(tl.x, br.y), IM_COL32(100, 80, 45, 220), 1.0f);
-    // Bottom edge (dark shadow — underside)
-    drawList->AddLine(ImVec2(tl.x, br.y), ImVec2(br.x, br.y), IM_COL32(12, 10, 6, 255), 1.0f);
-    // Right edge (dark)
-    drawList->AddLine(ImVec2(br.x, tl.y), ImVec2(br.x, br.y), IM_COL32(18, 14, 8, 255), 1.0f);
+    AssetManager& assets = AssetManager::get();
+    const char* btnTexName = is_open ? (held ? "UI-MinusButton-Down" : "UI-MinusButton-Up")
+                                     : (held ? "UI-PlusButton-Down" : "UI-PlusButton-Up");
+    const Texture2D& btnTex = assets.get_texture(btnTexName);
+    const Texture2D& fallbackTex = assets.get_fallback();
 
-    // Inner highlight line (subtle raised stone ridge)
-    drawList->AddLine(ImVec2(tl.x + 1, tl.y + 1), ImVec2(br.x - 1, tl.y + 1), IM_COL32(80, 65, 38, 140), 1.0f);
-
-    // Hover glow: subtle warm overlay
-    if (hovered) {
-        drawList->AddRectFilled(bb.Min, bb.Max, IM_COL32(255, 200, 80, 18), 3.0f);
-    }
-
-    // --- Arrow indicator (brass) ---
-    float arrowX = bb.Min.x + 8.0f;
-    float arrowCenterY = bb.Min.y + height * 0.5f;
-
-    ImU32 arrowCol = hovered ? IM_COL32(255, 230, 120, 255) : IM_COL32(200, 165, 80, 255);
-    ImU32 arrowShadowCol = IM_COL32(0, 0, 0, 180);
-
-    if (is_open) {
-        // Down-pointing triangle (▼)
-        float halfW = 5.0f, halfH = 4.0f;
-        ImVec2 p1(arrowX + halfW, arrowCenterY - halfH);
-        ImVec2 p2(arrowX + halfW * 2, arrowCenterY + halfH);
-        ImVec2 p3(arrowX, arrowCenterY + halfH);
-        // Shadow
-        drawList->AddTriangleFilled(
-            ImVec2(p1.x + 1, p1.y + 1), ImVec2(p2.x + 1, p2.y + 1), ImVec2(p3.x + 1, p3.y + 1), arrowShadowCol);
-        drawList->AddTriangleFilled(p1, p2, p3, arrowCol);
+    if (btnTex.id > 0 && btnTex.id != fallbackTex.id) {
+        drawList->AddImage(
+            (ImTextureID)btnTex.id,
+            ImVec2(btnX, btnY),
+            ImVec2(btnX + btnSize, btnY + btnSize)
+        );
     } else {
-        // Right-pointing triangle (▶)
-        float halfW = 4.0f, halfH = 5.0f;
-        ImVec2 p1(arrowX + 1, arrowCenterY - halfH);
-        ImVec2 p2(arrowX + halfW * 2 + 1, arrowCenterY);
-        ImVec2 p3(arrowX + 1, arrowCenterY + halfH);
-        // Shadow
-        drawList->AddTriangleFilled(
-            ImVec2(p1.x + 1, p1.y + 1), ImVec2(p2.x + 1, p2.y + 1), ImVec2(p3.x + 1, p3.y + 1), arrowShadowCol);
-        drawList->AddTriangleFilled(p1, p2, p3, arrowCol);
+        // Fallback procedural +/- button
+        ImU32 boxBg = held ? IM_COL32(20, 15, 10, 255) : IM_COL32(35, 25, 18, 255);
+        drawList->AddRectFilled(ImVec2(btnX, btnY), ImVec2(btnX + btnSize, btnY + btnSize), boxBg, 2.0f);
+        drawList->AddRect(ImVec2(btnX, btnY), ImVec2(btnX + btnSize, btnY + btnSize), IM_COL32(160, 130, 70, 255), 2.0f);
+        float midX = btnX + btnSize * 0.5f;
+        float midY = btnY + btnSize * 0.5f;
+        drawList->AddLine(ImVec2(midX - 4.0f, midY), ImVec2(midX + 4.0f, midY), IM_COL32(255, 209, 0, 255), 1.5f);
+        if (!is_open) {
+            drawList->AddLine(ImVec2(midX, midY - 4.0f), ImVec2(midX, midY + 4.0f), IM_COL32(255, 209, 0, 255), 1.5f);
+        }
     }
 
-    // --- Title text ---
-    float labelX = bb.Min.x + arrowSize + 12.0f;
+    // --- Title text (Classic WoW Gold with Shadow) ---
+    float labelX = btnX + btnSize + 8.0f;
     float textY = bb.Min.y + (height - label_size.y) * 0.5f;
 
-    // Title text (gold with shadow)
-    ImU32 textCol = hovered ? IM_COL32(255, 240, 120, 255) : IM_COL32(255, 209, 0, 255);
-    drawList->AddText(ImVec2(labelX + 1.0f, textY + 1.0f), IM_COL32(0, 0, 0, 220), label, label_display_end);
+    ImU32 textCol = hovered ? IM_COL32(255, 235, 120, 255) : IM_COL32(255, 209, 0, 255);
+    drawList->AddText(ImVec2(labelX + 1.0f, textY + 1.0f), IM_COL32(0, 0, 0, 240), label, label_display_end);
     drawList->AddText(ImVec2(labelX, textY), textCol, label, label_display_end);
 
     return is_open;
@@ -833,8 +883,17 @@ inline void DrawWowDialogBackdrop(
 ) {
     if (!drawList) return;
 
-    const Texture2D& bgTex = AssetManager::get().get_texture("UI-DialogBox-Background-Dark");
-    if (bgTex.id > 0) {
+    AssetManager& assets = AssetManager::get();
+    const Texture2D& guildParchment = assets.get_texture("UI-GuildAchievement-Parchment-Horizontal-Desaturated");
+    const Texture2D& achParchment = assets.get_texture("UI-Achievement-Parchment-Horizontal-Desaturated");
+    const Texture2D& bgTex = assets.get_texture("UI-DialogBox-Background-Dark");
+    const Texture2D& fallbackTex = assets.get_fallback();
+
+    if (guildParchment.id > 0 && guildParchment.id != fallbackTex.id) {
+        drawList->AddImage((ImTextureID)guildParchment.id, pMin, pMax, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(200, 190, 180, 255));
+    } else if (achParchment.id > 0 && achParchment.id != fallbackTex.id) {
+        drawList->AddImage((ImTextureID)achParchment.id, pMin, pMax, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), IM_COL32(200, 190, 180, 255));
+    } else if (bgTex.id > 0 && bgTex.id != fallbackTex.id) {
         DrawTiledTexture(drawList, (ImTextureID)bgTex.id, pMin, pMax, ImVec2(64.0f, 64.0f), IM_COL32(230, 230, 230, 255));
     } else {
         drawList->AddRectFilled(pMin, pMax, IM_COL32(18, 16, 14, 250), 4.0f);
@@ -896,13 +955,13 @@ inline void DrawWowDialogBorder(ImDrawList* drawList, ImVec2 pMin, ImVec2 pMax) 
         ImVec2(pMin.x + L.right.x0, pMin.y + L.right.y0), ImVec2(pMin.x + L.right.x1, pMin.y + L.right.y1));
 }
 
-// Inset container well for sub-panels and stat tables
-inline void BeginWowChild(const char* str_id, const ImVec2& size = ImVec2(0, 0), bool border = true, ImGuiWindowFlags flags = 0) {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.05f, 0.04f, 0.85f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.40f, 0.32f, 0.20f, 0.70f));
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, border ? 1.0f : 0.0f);
-    ImGui::BeginChild(str_id, size, border, flags);
+// Inset container well for sub-panels and stat tables - transparent background & clean no-border
+inline void BeginWowChild(const char* str_id, const ImVec2& size = ImVec2(0, 0), bool border = false, ImGuiWindowFlags flags = 0) {
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.0f);
+    ImGui::BeginChild(str_id, size, false, flags);
 }
 
 inline void EndWowChild() {
@@ -1281,7 +1340,6 @@ inline void DrawWowTabOverlay(
     // Pick the right base texture
     const Texture2D& activeTex   = assets.get_texture("UI-CHARACTER-ACTIVETAB");
     const Texture2D& inactiveTex = assets.get_texture("UI-CHARACTER-INACTIVETAB");
-    const Texture2D& highlightTex = assets.get_texture("UI-Character-Tab-Highlight-yellow");
 
     const Texture2D& baseTex = isSelected ? activeTex : inactiveTex;
 
@@ -1296,8 +1354,12 @@ inline void DrawWowTabOverlay(
 
     // Invert V (Y) UV coordinates so the rounded dog-eared corners are at the top
     // and the flat base is at the bottom, poking upward from the separator.
-    const ImVec2 uvMin(0.0f, 1.0f);
-    const ImVec2 uvMax(1.0f, 0.0f);
+    // UI-CHARACTER-INACTIVETAB has transparent margins in the raw texture:
+    // the base starts at row 2 and top art ends at row 28 (of 32px height).
+    // Trimming UVs for inactive tabs ensures their bottom baseline is flush
+    // with active tabs and the frame below.
+    const ImVec2 uvMin = isSelected ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 28.0f / 32.0f);
+    const ImVec2 uvMax = isSelected ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 2.0f / 32.0f);
 
     float padX = tabW * 0.03f;  // slight horizontal extension
     float padTop = isSelected ? 5.0f : 1.0f;  // selected tab extends UPWARD
@@ -1321,19 +1383,6 @@ inline void DrawWowTabOverlay(
         ImU32 bgCol = isSelected ? IM_COL32(40, 32, 24, 240) : IM_COL32(24, 20, 16, 200);
         drawList->AddRectFilled(ImVec2(tabMin.x, tabMin.y - padTop), texMax, bgCol, 4.0f, ImDrawFlags_RoundCornersTop);
         drawList->AddRect(ImVec2(tabMin.x, tabMin.y - padTop), texMax, IM_COL32(100, 80, 45, 200), 4.0f, ImDrawFlags_RoundCornersTop, 1.0f);
-    }
-
-    // Hover highlight glow overlay
-    if (isHovered && highlightTex.id > 0) {
-        DrawThreeSliceHorizontal(
-            drawList, (ImTextureID)highlightTex.id,
-            texMin, texMax,
-            capWidth, kTexWidth,
-            uvMin, uvMax,
-            IM_COL32(255, 255, 255, isSelected ? 120 : 180)
-        );
-    } else if (isHovered) {
-        drawList->AddRectFilled(ImVec2(tabMin.x, tabMin.y - padTop), texMax, IM_COL32(255, 200, 80, 30), 4.0f, ImDrawFlags_RoundCornersTop);
     }
 
     // --- Gold label text with drop shadow ---

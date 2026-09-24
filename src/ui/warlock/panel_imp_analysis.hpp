@@ -171,8 +171,10 @@ inline void render_panel_imp_analysis(double fight_duration) {
     ImGui::Separator();
 
     static int sp_max = 800;
-    ImGui::SetNextItemWidth(260);
-    WowSliderInt("Max Master Spell Power", &sp_max, 200, 1500, "%d SP");
+    ImGui::Text("Max Master Spell Power:");
+    ImGui::SetNextItemWidth(180);
+    WowInputInt("##MaxMasterSpellPower", &sp_max, 50, 200);
+    if (sp_max < 50) sp_max = 50;
 
     ImGui::Spacing();
     if (WowBeginTabBar("ImpAnalysisSubTabs", ImGuiTabBarFlags_None)) {

@@ -68,9 +68,42 @@ inline void render_priority_chain_subpane(const std::vector<PriorityRule>& rules
   render_common_priority_chain(common_rules);
 }
 
+inline std::vector<PriorityRule> get_available_warlock_actions(const Talents& talents, Race race)
+{
+  std::vector<PriorityRule> list;
+  list.push_back({PriorityAction::SHADOW_BOLT_FILLER, SpellID::SHADOW_BOLT, "Shadow Bolt", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Main Shadow direct damage spell."});
+  list.push_back({PriorityAction::INCINERATE_FILLER, SpellID::INCINERATE, "Incinerate", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Main Fire direct damage spell (+25% bonus against Immolated targets)."});
+  list.push_back({PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN, "Searing Pain", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Fast 1.5s cast Fire damage spell."});
+  list.push_back({PriorityAction::DRAIN_SOUL_FILLER, SpellID::DRAIN_SOUL, "Drain Soul", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Channeled Affliction shadow drain filler."});
+  list.push_back({PriorityAction::LIFE_TAP, SpellID::LIFE_TAP, "Life Tap", "Mana <= 30% & HP > 800", "Trigger when: Current Mana <= 30% and Health > 800.", "Converts health into mana on global cooldown."});
+  list.push_back({PriorityAction::CORRUPTION, SpellID::CORRUPTION, "Corruption", "DoT Expired / Missing", "Trigger when: Target does not have active Corruption.", "Maintains 18s ticking Shadow DoT."});
+  list.push_back({PriorityAction::IMMOLATE, SpellID::IMMOLATE, "Immolate", "DoT Expired / Missing", "Trigger when: Target does not have active Immolate.", "Maintains 15s ticking Fire DoT and enables Incinerate/Conflagrate."});
+  list.push_back({PriorityAction::CURSE_OF_AGONY, SpellID::CURSE_OF_AGONY, "Bane of Agony", "DoT Expired / Missing", "Trigger when: Target does not have active Bane of Agony.", "Maintains 24s ramping Shadow DoT."});
+  list.push_back({PriorityAction::CURSE_OF_DOOM, SpellID::CURSE_OF_DOOM, "Curse of Doom", "Target Missing Curse & >60s Left", "Trigger when: Target has no curse and >60s remain in combat.", "Deals massive delayed Shadow damage after 60s."});
+  if (talents.destro.conflagrate > 0)
+    list.push_back({PriorityAction::CONFLAGRATE, SpellID::CONFLAGRATE, "Conflagrate", "Immolate Active & CD Ready", "Trigger when: Target is Immolated and Conflagrate CD is ready (10s).", "Consumes Immolate for instant Fire burst damage."});
+  if (talents.destro.shadowburn > 0)
+    list.push_back({PriorityAction::SHADOWBURN, SpellID::SHADOWBURN, "Shadowburn", "CD Ready & Soul Shard Available", "Trigger when: Shadowburn CD is ready (15s).", "Instant cast Shadow burst spell."});
+  if (talents.aff.siphon_life > 0)
+    list.push_back({PriorityAction::SIPHON_LIFE, SpellID::SIPHON_LIFE, "Siphon Life", "DoT Expired / Missing", "Trigger when: Target does not have active Siphon Life.", "Maintains 30s ticking Shadow DoT."});
+  if (talents.aff.amplify_curse > 0)
+    list.push_back({PriorityAction::AMPLIFY_CURSE, SpellID::AMPLIFY_CURSE, "Amplify Curse", "CD Ready & Curse Cast", "Trigger when: Amplify Curse CD is ready (180s).", "Boosts next Bane of Agony base damage by 50%."});
+  if (talents.demo.decimation > 0)
+    list.push_back({PriorityAction::DECIMATION_SOUL_FIRE, SpellID::SOUL_FIRE, "Decimation: Soul Fire", "Target < 35% HP & Decimation Active", "Trigger when: Target HP < 35% and Decimation buff is active.", "Spams fast cast Soul Fire during execute phase."});
+  if (talents.aff.drain_hope > 0)
+    list.push_back({PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE, "Drain Hope", "Target < 20% HP", "Trigger when: Target HP < 20%.", "Channels execute drain on low health targets."});
+  if (race == Race::ORC)
+    list.push_back({PriorityAction::RACIAL_BLOOD_FURY, SpellID::NONE, "Blood Fury", "On Cooldown", "Trigger when: Blood Fury CD is ready (120s).", "Racial ability: Increases base spell damage for 15s."});
+  else if (race == Race::TROLL)
+    list.push_back({PriorityAction::RACIAL_BERSERKING, SpellID::NONE, "Berserking", "On Cooldown", "Trigger when: Berserking CD is ready (180s).", "Racial ability: Increases spell casting speed for 10s."});
+  else if (race == Race::GNOME)
+    list.push_back({PriorityAction::RACIAL_EUREKA, SpellID::NONE, "Eureka", "On Cooldown", "Trigger when: Eureka CD is ready (120s).", "Racial ability: Restores mana and grants spell power."});
+  return list;
+}
+
 inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& talents, Race race = Race::UNDEAD)
 {
-  ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Combat Policy & Priority Rules:");
+  ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Action Priority List");
   ImGui::Separator();
 
   // 0. Rotation Choice / Strategy
@@ -106,101 +139,128 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     policy.custom_rules.clear();
   }
 
-
   ImGui::Spacing();
 
-  // 1. Dynamic Rule-Based Priority Chain Subpane (<Spell> > <Spell> > <Spell>)
-  std::vector<PriorityRule> rules = policy.get_priority_rules(talents, race);
-  render_priority_chain_subpane(rules);
-
-  ImGui::Spacing();
-  if (ImGui::CollapsingHeader("Action Priority List (APL) Order & Customization", ImGuiTreeNodeFlags_DefaultOpen))
+  if (policy.use_custom_apl)
   {
-    if (policy.use_custom_apl)
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Custom APL Active (Modified)");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Reset to Preset Defaults"))
     {
-      ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Custom APL Active (Modified)");
-      ImGui::SameLine();
-      if (ImGui::SmallButton("Reset to Preset Defaults"))
+      policy.reset_to_preset(talents, race);
+    }
+  }
+
+  if (ImGui::BeginTable("WarlockAplTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+  {
+    ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.44f);
+    ImGui::TableSetupColumn("Trigger Condition", ImGuiTableColumnFlags_WidthStretch, 0.56f);
+    ImGui::TableSetupColumn("##ModifyCol", ImGuiTableColumnFlags_WidthFixed, 26.0f);
+    ImGui::TableHeadersRow();
+
+    std::vector<PriorityRule> current_rules = policy.get_priority_rules(talents, race);
+    std::vector<PriorityRule> available_rules = get_available_warlock_actions(talents, race);
+
+    for (size_t i = 0; i < current_rules.size(); ++i)
+    {
+      const auto& r = current_rules[i];
+      ImGui::TableNextRow();
+      ImGui::PushID(static_cast<int>(i));
+
+      // Col 0: Action / Spell Icon + Name
+      ImGui::TableSetColumnIndex(0);
+      Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(r.spell_id));
+      if (icon.id > 0)
       {
-        policy.reset_to_preset(talents, race);
+        ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+        ImGui::SameLine(0, 4);
       }
-    }
-    else
-    {
-      ImGui::TextDisabled("Using standard preset ordering. Reorder or toggle any rule below to customize.");
-    }
+      ImGui::Text("%s", r.name.c_str());
 
-    if (ImGui::BeginTable("WarlockAplTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
-    {
-      ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 24.0f);
-      ImGui::TableSetupColumn("Order", ImGuiTableColumnFlags_WidthFixed, 56.0f);
-      ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 44.0f);
-      ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.45f);
-      ImGui::TableSetupColumn("Trigger Condition", ImGuiTableColumnFlags_WidthStretch, 0.55f);
-      ImGui::TableHeadersRow();
+      // Col 1: Condition Summary
+      ImGui::TableSetColumnIndex(1);
+      ImGui::TextUnformatted(r.condition_summary.c_str());
 
-      std::vector<PriorityRule> current_rules = policy.get_priority_rules(talents, race);
-      for (size_t i = 0; i < current_rules.size(); ++i)
+      // Col 2: Modify button & popup
+      ImGui::TableSetColumnIndex(2);
+      std::string btn_label = "##RuleMod_" + std::to_string(i);
+      if (WowBiggerButton(btn_label.c_str(), ImVec2(20, 20)))
       {
-        const auto& r = current_rules[i];
-        ImGui::TableNextRow();
-        ImGui::PushID(static_cast<int>(i));
+        ImGui::OpenPopup("ModifyRulePopup");
+      }
 
-        // Col 0: Index
-        ImGui::TableSetColumnIndex(0);
-        ImGui::TextDisabled("%d", (int)i + 1);
+      if (ImGui::BeginPopup("ModifyRulePopup"))
+      {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "#%zu %s", i + 1, r.name.c_str());
+        ImGui::Separator();
 
-        // Col 1: Up / Down move buttons
-        ImGui::TableSetColumnIndex(1);
         if (i > 0)
         {
-          if (ImGui::SmallButton("^"))
+          if (ImGui::MenuItem("▲ Move Up"))
           {
             policy.move_rule_up(i, talents, race);
           }
         }
         else
         {
-          ImGui::Dummy(ImVec2(16, 16));
+          ImGui::BeginDisabled();
+          ImGui::MenuItem("▲ Move Up");
+          ImGui::EndDisabled();
         }
-        ImGui::SameLine(0, 2);
+
         if (i + 1 < current_rules.size())
         {
-          if (ImGui::SmallButton("v"))
+          if (ImGui::MenuItem("▼ Move Down"))
           {
             policy.move_rule_down(i, talents, race);
           }
         }
-
-        // Col 2: Active checkbox
-        ImGui::TableSetColumnIndex(2);
-        bool enabled = r.enabled;
-        if (ImGui::Checkbox("##Enabled", &enabled))
-        {
-          policy.set_rule_enabled(i, enabled, talents, race);
-        }
-
-        // Col 3: Action / Spell Icon + Name
-        ImGui::TableSetColumnIndex(3);
-        Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(r.spell_id));
-        if (icon.id > 0)
-        {
-          ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
-          ImGui::SameLine(0, 4);
-        }
-        if (enabled)
-          ImGui::Text("%s", r.name.c_str());
         else
-          ImGui::TextDisabled("%s (Disabled)", r.name.c_str());
+        {
+          ImGui::BeginDisabled();
+          ImGui::MenuItem("▼ Move Down");
+          ImGui::EndDisabled();
+        }
 
-        // Col 4: Condition Summary
-        ImGui::TableSetColumnIndex(4);
-        ImGui::TextUnformatted(r.condition_summary.c_str());
+        ImGui::Separator();
 
-        ImGui::PopID();
+        if (ImGui::BeginMenu("➕ Add Rule Above"))
+        {
+          for (const auto& avail : available_rules)
+          {
+            if (ImGui::MenuItem(avail.name.c_str()))
+            {
+              policy.insert_rule(i, avail, talents, race);
+            }
+          }
+          ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("➕ Add Rule Below"))
+        {
+          for (const auto& avail : available_rules)
+          {
+            if (ImGui::MenuItem(avail.name.c_str()))
+            {
+              policy.insert_rule(i + 1, avail, talents, race);
+            }
+          }
+          ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("❌ Remove Rule"))
+        {
+          policy.remove_rule(i, talents, race);
+        }
+
+        ImGui::EndPopup();
       }
-      ImGui::EndTable();
+
+      ImGui::PopID();
     }
+    ImGui::EndTable();
   }
 
   // 2. Racial Ability Strategy
@@ -225,23 +285,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
   ImGui::Spacing();
   ImGui::Separator();
 
-  // 3. Spell & Rotational Policy Ability Toggles
-  ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Rotational Ability Policies:");
-  WowCheckbox("Cast Conflagrate on Cooldown##Policy", &policy.use_conflagrate);
-  if (ImGui::IsItemHovered())
-  {
-    ImGui::SetTooltip("When talented and Immolate is active, casts Conflagrate on 10s cooldown.");
-  }
-  WowCheckbox("Decimation Soul Fire (<35% HP)##Policy", &policy.use_decimation_soul_fire);
-  if (ImGui::IsItemHovered())
-  {
-    ImGui::SetTooltip("When talented and in execute phase (<35%% HP), spams Soul Fire during Decimation buff.");
-  }
-
-  ImGui::Spacing();
-  ImGui::Separator();
-
-  // 4. Multi-Target Combat Policy
+  // 3. Multi-Target Combat Policy
   ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Multi-Target Combat Policy:");
   WowCheckbox("Multi-DoT Corruption##Policy", &policy.multi_dot_corruption);
   if (ImGui::IsItemHovered())

@@ -28,6 +28,7 @@ struct ActionMCTSEval {
 
 // A single decision-point discrepancy where APL differed from the optimal MCTS choice
 struct APLDivergenceEvent {
+    size_t blunder_rank = 1;            // 1 = Worst move in the run, 2 = 2nd worst, etc.
     double timestamp = 0.0;
     size_t decision_step = 0;
     sim::SimObservation state;
@@ -42,11 +43,14 @@ struct APLDivergenceEvent {
     double mcts_expected_dps = 0.0;
     double mcts_std_error = 0.0;
 
-    double delta_dps = 0.0;             // mcts_expected_dps - apl_expected_dps
+    double delta_dps = 0.0;             // mcts_expected_dps - apl_expected_dps (DPS loss)
+    double delta_dps_ci_lower = 0.0;    // 95% Confidence interval lower bound
+    double delta_dps_ci_upper = 0.0;    // 95% Confidence interval upper bound
     double confidence_pct = 0.0;        // Statistical confidence that MCTS action is strictly superior
     double z_score = 0.0;
 
-    std::vector<ActionMCTSEval> candidate_evals; // Full distribution of all evaluated branches
+    std::vector<ActionMCTSEval> candidate_evals; // Full distribution of all evaluated branches (sorted best to worst)
+    std::string top_alternatives_summary;        // Quick text summary of the highest value alternative actions
     std::string rationale;
 };
 
@@ -181,6 +185,13 @@ public:
             case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt Filler";
             default: return "Unknown Action";
         }
+    }
+
+    static SpellID get_action_spell_id(PriorityAction action) {
+        for (const auto& [act, sp] : get_candidate_actions()) {
+            if (act == action) return sp;
+        }
+        return SpellID::SHADOW_BOLT;
     }
 
     static bool is_action_legal(PriorityAction action, const sim::SimObservation& obs, const Talents& talents) {
@@ -401,12 +412,17 @@ public:
                 sum_sq += sample_dps[k][r] * sample_dps[k][r];
             }
             results[k].mean_dps = sum / n;
-            double var = std::max(0.0, (sum_sq - (sum * sum / n)) / (n - 1.0));
+            double var = (n > 1.0) ? std::max(0.0, (sum_sq - (sum * sum / n)) / (n - 1.0)) : 0.0;
             results[k].stddev_dps = std::sqrt(var);
             results[k].std_error = results[k].stddev_dps / std::sqrt(n);
             results[k].ci_lower_95 = results[k].mean_dps - 1.96 * results[k].std_error;
             results[k].ci_upper_95 = results[k].mean_dps + 1.96 * results[k].std_error;
         }
+
+        // Sort candidate branches from highest expected DPS to lowest
+        std::sort(results.begin(), results.end(), [](const ActionMCTSEval& a, const ActionMCTSEval& b) {
+            return a.mean_dps > b.mean_dps;
+        });
 
         return results;
     }
@@ -510,7 +526,9 @@ public:
         }
     }
 
-    // Evaluates a single trace run comparing APL decisions against true MCTS rollouts
+    // Evaluates a single trace run using two distinct MCTS processes:
+    // 1. Autonomous MCTS Policy Trajectory (Ghost reference playthrough for continuous timeline & max yield benchmark)
+    // 2. APL Decision Judge & Blunder Detector (evaluates APL's exact decision points, states, and blunders ranked worst-first)
     static APLAnalysisRun analyze_single_run(
         const WarlockSimulator& base_sim,
         size_t run_idx,
@@ -522,7 +540,11 @@ public:
         run.seed = seed;
         run.fight_duration = base_sim.fight_duration;
 
-        // 1. Run full APL baseline episode with timeline and observation logging
+        auto candidate_actions = get_candidate_actions();
+
+        // ---------------------------------------------------------------------
+        // STEP 1: Run Full APL Baseline Episode
+        // ---------------------------------------------------------------------
         FastRNG rng(seed);
         WarlockSimulator apl_sim = base_sim;
         apl_sim.randomize_duration = false;
@@ -537,19 +559,16 @@ public:
         run.fight_duration = apl_res.duration;
         run.total_decisions = apl_sim.viper_dataset.samples.size();
 
-        auto candidate_actions = get_candidate_actions();
-
+        // ---------------------------------------------------------------------
+        // MCTS PROCESS 1: Autonomous MCTS Trajectory ("Ghost" Optimal Playthrough)
+        // ---------------------------------------------------------------------
         std::vector<PriorityAction> mcts_optimal_action_sequence;
         mcts_optimal_action_sequence.reserve(std::max(size_t(32), run.total_decisions));
 
-        // 2. Closed-Loop Live State MCTS Step Search
-        // At each step, simulate up to the current decision point using the cumulative MCTS prefix,
-        // inspect the real live MCTS observation, evaluate legal candidate actions, and pick the best action.
-        size_t decision_step = 0;
-        const size_t max_allowed_decisions = 250; // Guard against infinite loop
+        size_t mcts_step = 0;
+        const size_t max_allowed_decisions = 250;
 
-        while (decision_step < max_allowed_decisions) {
-            // Run a simulation on the base seed with the cumulative MCTS prefix to extract the live state at step `decision_step`
+        while (mcts_step < max_allowed_decisions) {
             FastRNG live_rng(seed);
             WarlockSimulator live_sim = base_sim;
             live_sim.randomize_duration = false;
@@ -561,19 +580,16 @@ public:
 
             SimResult step_probe_res = live_sim.run_single_simulation(live_rng);
 
-            // If the fight has finished (no more decision points generated past prefix), we are done!
             if (step_probe_res.action_history.size() <= mcts_optimal_action_sequence.size()) {
                 break;
             }
 
-            // Extract the TRUE LIVE observation and the default APL action at this exact decision point
-            const auto& live_sample = live_sim.viper_dataset.samples[decision_step];
+            const auto& live_sample = live_sim.viper_dataset.samples[mcts_step];
             const sim::SimObservation& live_obs = live_sample.state;
-            PriorityAction default_apl_act = (decision_step < step_probe_res.action_history.size())
-                                             ? step_probe_res.action_history[decision_step]
+            PriorityAction default_act = (mcts_step < step_probe_res.action_history.size())
+                                             ? step_probe_res.action_history[mcts_step]
                                              : static_cast<PriorityAction>(live_sample.oracle_action);
 
-            // Filter legal candidate actions for the REAL LIVE state observation & active talents
             std::vector<PriorityAction> legal_candidates;
             for (const auto& [act, _] : candidate_actions) {
                 if (act == PriorityAction::RACIAL_EUREKA ||
@@ -581,85 +597,33 @@ public:
                     act == PriorityAction::RACIAL_BERSERKING ||
                     act == PriorityAction::AMPLIFY_CURSE ||
                     act == PriorityAction::BANE_OF_HAVOC) {
-                    continue; // Off-GCD
+                    continue;
                 }
                 if (is_action_legal(act, live_obs, base_sim.talents)) {
                     legal_candidates.push_back(act);
                 }
             }
-
-            // Always ensure the default APL action is evaluated in the candidate set
-            if (std::find(legal_candidates.begin(), legal_candidates.end(), default_apl_act) == legal_candidates.end()) {
-                legal_candidates.push_back(default_apl_act);
+            if (std::find(legal_candidates.begin(), legal_candidates.end(), default_act) == legal_candidates.end()) {
+                legal_candidates.push_back(default_act);
             }
 
-            // Execute Common Random Numbers (CRN) Monte Carlo Forward Rollouts from current cumulative prefix
-            std::vector<ActionMCTSEval> evals = evaluate_candidate_branches_crn(
+            auto evals = evaluate_candidate_branches_crn(
                 base_sim,
                 mcts_optimal_action_sequence,
                 legal_candidates,
                 rollouts_per_action,
-                seed + decision_step * 65537 + 13
+                seed + mcts_step * 65537 + 13
             );
 
-            ActionMCTSEval best_eval;
-            best_eval.mean_dps = -1e9;
-            ActionMCTSEval apl_eval;
-            apl_eval.mean_dps = -1e9;
-
-            for (const auto& e : evals) {
-                if (e.mean_dps > best_eval.mean_dps) {
-                    best_eval = e;
-                }
-                if (e.action == default_apl_act) {
-                    apl_eval = e;
-                }
+            PriorityAction chosen_action = default_act;
+            if (!evals.empty()) {
+                chosen_action = evals[0].action; // evals are sorted descending by mean_dps
             }
-
-            if (apl_eval.mean_dps < -1e8) {
-                apl_eval = best_eval; // Fallback safety
-            }
-
-            // Calculate delta DPS, Standard Error of difference, Z-score, and Confidence
-            double delta_dps = std::max(0.0, best_eval.mean_dps - apl_eval.mean_dps);
-            double se_diff = std::sqrt(best_eval.std_error * best_eval.std_error + apl_eval.std_error * apl_eval.std_error);
-            double z_score = (se_diff > 1e-5) ? (delta_dps / se_diff) : 0.0;
-            double confidence = compute_statistical_confidence(delta_dps, se_diff);
-
-            PriorityAction chosen_mcts_action = default_apl_act;
-
-            // If MCTS found a statistically superior action over APL with measurable confidence
-            if (best_eval.action != default_apl_act && delta_dps >= 1.5 && confidence >= 70.0) {
-                APLDivergenceEvent ev;
-                ev.timestamp = live_obs.fight_progress_pct * base_sim.fight_duration;
-                ev.decision_step = decision_step;
-                ev.state = live_obs;
-                ev.apl_action = default_apl_act;
-                ev.apl_action_name = get_action_name(default_apl_act);
-                ev.apl_expected_dps = apl_eval.mean_dps;
-                ev.apl_std_error = apl_eval.std_error;
-
-                ev.mcts_action = best_eval.action;
-                ev.mcts_action_name = get_action_name(best_eval.action);
-                ev.mcts_expected_dps = best_eval.mean_dps;
-                ev.mcts_std_error = best_eval.std_error;
-
-                ev.delta_dps = delta_dps;
-                ev.confidence_pct = confidence;
-                ev.z_score = z_score;
-                ev.candidate_evals = std::move(evals);
-
-                ev.rationale = generate_rationale(default_apl_act, best_eval.action, live_obs, base_sim.talents, delta_dps, confidence);
-                run.events.push_back(std::move(ev));
-
-                chosen_mcts_action = best_eval.action;
-            }
-
-            mcts_optimal_action_sequence.push_back(chosen_mcts_action);
-            decision_step++;
+            mcts_optimal_action_sequence.push_back(chosen_action);
+            mcts_step++;
         }
 
-        // 3. Run full MCTS optimal policy trajectory on identical seed with full timeline recording
+        // Run full MCTS simulation to get timeline and spell sequence
         FastRNG mcts_rng(seed);
         WarlockSimulator mcts_sim = base_sim;
         mcts_sim.randomize_duration = false;
@@ -672,6 +636,124 @@ public:
         run.mcts_dps = mcts_res.dps;
         run.dps_difference = run.mcts_dps - run.apl_dps;
 
+        // ---------------------------------------------------------------------
+        // MCTS PROCESS 2: APL Decision Judge & Blunder Detector
+        // Evaluates each action the APL made during its ACTUAL simulation run
+        // ---------------------------------------------------------------------
+        std::vector<PriorityAction> apl_prefix;
+        apl_prefix.reserve(apl_res.action_history.size());
+
+        for (size_t d = 0; d < apl_res.action_history.size(); ++d) {
+            if (d >= apl_sim.viper_dataset.samples.size()) break;
+
+            const auto& apl_sample = apl_sim.viper_dataset.samples[d];
+            const sim::SimObservation& apl_state = apl_sample.state;
+            PriorityAction chosen_apl_act = apl_res.action_history[d];
+
+            std::vector<PriorityAction> legal_candidates;
+            for (const auto& [act, _] : candidate_actions) {
+                if (act == PriorityAction::RACIAL_EUREKA ||
+                    act == PriorityAction::RACIAL_BLOOD_FURY ||
+                    act == PriorityAction::RACIAL_BERSERKING ||
+                    act == PriorityAction::AMPLIFY_CURSE ||
+                    act == PriorityAction::BANE_OF_HAVOC) {
+                    continue;
+                }
+                if (is_action_legal(act, apl_state, base_sim.talents)) {
+                    legal_candidates.push_back(act);
+                }
+            }
+            if (std::find(legal_candidates.begin(), legal_candidates.end(), chosen_apl_act) == legal_candidates.end()) {
+                legal_candidates.push_back(chosen_apl_act);
+            }
+
+            // Execute Common Random Numbers (CRN) Monte Carlo Forward Rollouts from the APL prefix
+            auto evals = evaluate_candidate_branches_crn(
+                base_sim,
+                apl_prefix,
+                legal_candidates,
+                rollouts_per_action,
+                seed + (d + 500) * 65537 + 19
+            );
+
+            // evals is already sorted descending by mean_dps
+            ActionMCTSEval best_eval = evals.empty() ? ActionMCTSEval{} : evals.front();
+            ActionMCTSEval apl_eval;
+            apl_eval.mean_dps = -1e9;
+
+            for (const auto& e : evals) {
+                if (e.action == chosen_apl_act) {
+                    apl_eval = e;
+                    break;
+                }
+            }
+            if (apl_eval.mean_dps < -1e8) {
+                apl_eval = best_eval;
+            }
+
+            double delta_dps = std::max(0.0, best_eval.mean_dps - apl_eval.mean_dps);
+            double se_diff = std::sqrt(best_eval.std_error * best_eval.std_error + apl_eval.std_error * apl_eval.std_error);
+            double z_score = (se_diff > 1e-5) ? (delta_dps / se_diff) : 0.0;
+            double confidence = compute_statistical_confidence(delta_dps, se_diff);
+
+            // If MCTS found a statistically superior action over what the APL did at this exact state
+            if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
+                APLDivergenceEvent ev;
+                ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
+                ev.decision_step = d;
+                ev.state = apl_state;
+
+                ev.apl_action = chosen_apl_act;
+                ev.apl_action_name = get_action_name(chosen_apl_act);
+                ev.apl_expected_dps = apl_eval.mean_dps;
+                ev.apl_std_error = apl_eval.std_error;
+
+                ev.mcts_action = best_eval.action;
+                ev.mcts_action_name = get_action_name(best_eval.action);
+                ev.mcts_expected_dps = best_eval.mean_dps;
+                ev.mcts_std_error = best_eval.std_error;
+
+                ev.delta_dps = delta_dps;
+                ev.delta_dps_ci_lower = std::max(0.0, delta_dps - 1.96 * se_diff);
+                ev.delta_dps_ci_upper = delta_dps + 1.96 * se_diff;
+                ev.confidence_pct = confidence;
+                ev.z_score = z_score;
+
+                // Summarize top alternative actions evaluated at this state
+                std::ostringstream alt_ss;
+                alt_ss << std::fixed << std::setprecision(1);
+                size_t alt_count = 0;
+                for (const auto& cand : evals) {
+                    if (cand.action == chosen_apl_act) continue;
+                    if (alt_count > 0) alt_ss << ", ";
+                    double cand_gain = cand.mean_dps - apl_eval.mean_dps;
+                    alt_ss << cand.name << " (" << (cand_gain >= 0 ? "+" : "") << cand_gain << " DPS)";
+                    alt_count++;
+                    if (alt_count >= 3) break;
+                }
+                ev.top_alternatives_summary = alt_ss.str();
+
+                ev.rationale = generate_rationale(chosen_apl_act, best_eval.action, apl_state, base_sim.talents, delta_dps, confidence);
+                ev.candidate_evals = std::move(evals);
+
+                run.events.push_back(std::move(ev));
+            }
+
+            apl_prefix.push_back(chosen_apl_act);
+        }
+
+        // Rank blunders from WORST move to least severe (highest delta_dps loss first)
+        std::sort(run.events.begin(), run.events.end(), [](const APLDivergenceEvent& a, const APLDivergenceEvent& b) {
+            if (std::abs(a.delta_dps - b.delta_dps) > 1e-4) {
+                return a.delta_dps > b.delta_dps;
+            }
+            return a.confidence_pct > b.confidence_pct;
+        });
+
+        for (size_t i = 0; i < run.events.size(); ++i) {
+            run.events[i].blunder_rank = i + 1;
+        }
+
         run.divergence_count = run.events.size();
         if (run.total_decisions > 0) {
             size_t matching = (run.total_decisions > run.divergence_count) ? (run.total_decisions - run.divergence_count) : 0;
@@ -680,7 +762,9 @@ public:
             run.agreement_rate_pct = 100.0;
         }
 
-        // 4. Construct comprehensive timeline time series and spell blocks
+        // ---------------------------------------------------------------------
+        // STEP 4: Construct Aligned Timeline Time Series & Spell Gantt Blocks
+        // ---------------------------------------------------------------------
         build_run_timeline_data(run, apl_res, mcts_res, run.fight_duration);
 
         return run;

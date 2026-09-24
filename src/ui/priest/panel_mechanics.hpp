@@ -33,11 +33,15 @@ inline void render_priest_mechanics_panel(MechanicsConfig& mechanics) {
             ImGui::SetTooltip("When ON (Forever): Shadow Weaving only amplifies the caster's own Shadow spells.\nWhen OFF (Classic): Shadow Weaving increases all shadow damage dealt by the raid.");
         }
 
-        float sw_per_stack = static_cast<float>(mechanics.shadow_weaving_per_stack * 100.0);
-        if (warlock::WowSliderFloat("Shadow Weaving % Per Stack", &sw_per_stack, 1.0f, 5.0f, "%.1f%% / stack")) {
+        ImGui::Text("Shadow Weaving %% Per Stack:");
+        ImGui::SetNextItemWidth(160);
+        double sw_per_stack = mechanics.shadow_weaving_per_stack * 100.0;
+        if (warlock::WowInputDouble("##ShadowWeavingPerStack", &sw_per_stack, 0.5, 1.0, "%.1f %%")) {
+            if (sw_per_stack < 0.0) sw_per_stack = 0.0;
+            if (sw_per_stack > 10.0) sw_per_stack = 10.0;
             mechanics.shadow_weaving_per_stack = sw_per_stack / 100.0;
         }
-        ImGui::TextDisabled("  -> Max 5 stacks: +%.1f%% total Shadow damage", sw_per_stack * 5.0f);
+        ImGui::TextDisabled("  -> Max 5 stacks: +%.1f%% total Shadow damage", sw_per_stack * 5.0);
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -65,8 +69,12 @@ inline void render_priest_mechanics_panel(MechanicsConfig& mechanics) {
 
         // 5. 5-Second Rule & Meditation
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "5-Second Rule & Meditation:");
-        float med_ratio = static_cast<float>(mechanics.meditation_casting_regen_ratio * 100.0);
-        if (warlock::WowSliderFloat("Meditation In-5SR Regen Ratio", &med_ratio, 15.0f, 100.0f, "%.0f%%")) {
+        ImGui::Text("Meditation In-5SR Regen Ratio (%%):");
+        ImGui::SetNextItemWidth(160);
+        double med_ratio = mechanics.meditation_casting_regen_ratio * 100.0;
+        if (warlock::WowInputDouble("##MeditationRatio", &med_ratio, 5.0, 10.0, "%.0f %%")) {
+            if (med_ratio < 0.0) med_ratio = 0.0;
+            if (med_ratio > 100.0) med_ratio = 100.0;
             mechanics.meditation_casting_regen_ratio = med_ratio / 100.0;
         }
         ImGui::TextDisabled("  -> Percentage of Spirit mana regeneration continuing while casting (Rank 3: 50%% in Forever)");
@@ -78,8 +86,12 @@ inline void render_priest_mechanics_panel(MechanicsConfig& mechanics) {
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Batching & Missile Travel Time:");
         warlock::WowCheckbox("Simulate Spell Batching Window", &mechanics.spell_batching);
         if (mechanics.spell_batching) {
-            float bw = static_cast<float>(mechanics.batch_window_ms);
-            if (warlock::WowSliderFloat("Batch Window (ms)", &bw, 50.0f, 400.0f, "%.0f ms")) {
+            ImGui::Text("Batch Window (ms):");
+            ImGui::SetNextItemWidth(160);
+            double bw = mechanics.batch_window_ms;
+            if (warlock::WowInputDouble("##BatchWindowMs", &bw, 10.0, 50.0, "%.0f ms")) {
+                if (bw < 10.0) bw = 10.0;
+                if (bw > 1000.0) bw = 1000.0;
                 mechanics.batch_window_ms = bw;
             }
         }

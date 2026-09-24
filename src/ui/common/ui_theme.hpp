@@ -10,6 +10,15 @@
 
 namespace warlock {
 
+enum class AppTab {
+    PRESETS = 0,
+    COMPARE_STANDARD_SPECS = 1,
+    CONSTRAINED_SPEC_SEARCH = 2,
+    ANALYZE_APL = 3,
+    ABILITIES = 4,
+    THEORYCRAFTING = 5
+};
+
 // ============================================================================
 // Classic WoW Color Palette Constants
 // ============================================================================

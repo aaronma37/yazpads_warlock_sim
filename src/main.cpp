@@ -13,6 +13,14 @@
 
 using namespace warlock;
 
+unsigned int GetWowTextureIdByName(const char* name) {
+    if (!name) return 0;
+    const auto& tex = warlock::AssetManager::get().get_texture(name);
+    const auto& fb = warlock::AssetManager::get().get_fallback();
+    if (tex.id > 0 && tex.id != fb.id) return tex.id;
+    return 0;
+}
+
 void print_help() {
     std::cout << "WoW: Forever Warlock DES\n"
               << "Usage: ./warlock_sim [options]\n\n"

@@ -45,16 +45,19 @@ inline void render_common_sim_control(SimType& sim,
 
   // Encounter & Simulation Parameters
   ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Encounter & Simulation Parameters:");
-  double dur_min = 10.0, dur_max = 600.0;
-  WowInputDouble("Fight Duration (s)",  &sim.fight_duration, 0, 0, "%.0f seconds");
+
+  ImGui::Text("Fight Duration (seconds):");
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x > 250.0f ? 240.0f : ImGui::GetContentRegionAvail().x);
+  WowInputDouble("##FightDuration", &sim.fight_duration, 5.0, 30.0, "%.0f s");
+  if (sim.fight_duration < 5.0) sim.fight_duration = 5.0;
 
   WowCheckbox("Randomize Fight Duration", &sim.randomize_duration);
   if (sim.randomize_duration)
   {
-    ImGui::SameLine();
+    ImGui::Text("Duration Variance (+/- seconds):");
     ImGui::SetNextItemWidth(140);
-    double var_min = 1.0, var_max = 60.0;
-    WowInputDouble("Variance (+/- s)", &sim.duration_variance, 0,0, "+/- %.0fs");
+    WowInputDouble("##Variance", &sim.duration_variance, 1.0, 5.0, "+/- %.0f s");
+    if (sim.duration_variance < 0.0) sim.duration_variance = 0.0;
   }
 
   // Target Level & Type
@@ -62,8 +65,9 @@ inline void render_common_sim_control(SimType& sim,
       "Level 60 (Equal Lvl)", "Level 61 (+1 Lvl)", "Level 62 (+2 Lvl)", "Level 63 (Raid Boss)"};
   int current_lvl_idx =
       (sim.target_config.level >= 60 && sim.target_config.level <= 63) ? (sim.target_config.level - 60) : 3;
+  ImGui::Text("Target Level & Creature Type:");
   ImGui::SetNextItemWidth(180);
-  if (ImGui::Combo("Target Level", &current_lvl_idx, level_presets, IM_ARRAYSIZE(level_presets)))
+  if (ImGui::Combo("##TargetLevel", &current_lvl_idx, level_presets, IM_ARRAYSIZE(level_presets)))
   {
     sim.target_config.level = 60 + current_lvl_idx;
   }
@@ -75,19 +79,26 @@ inline void render_common_sim_control(SimType& sim,
     current_type_idx = 0;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(180);
-  if (ImGui::Combo("Target Type", &current_type_idx, creature_types, IM_ARRAYSIZE(creature_types)))
+  if (ImGui::Combo("##TargetType", &current_type_idx, creature_types, IM_ARRAYSIZE(creature_types)))
   {
     sim.target_config.creature_type = static_cast<sim::CreatureType>(current_type_idx);
     sim.target_config.is_beast = (sim.target_config.creature_type == sim::CreatureType::BEAST);
   }
 
-  WowSliderInt("Iterations", &iterations, 1000, 100000, "%d fights");
+  ImGui::Text("Sim Iterations:");
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x > 250.0f ? 240.0f : ImGui::GetContentRegionAvail().x);
+  WowInputInt("##SimIterations", &iterations, 500, 5000);
+  if (iterations < 1) iterations = 1;
 
 #if !defined(__EMSCRIPTEN__)
   int max_threads = static_cast<int>(std::thread::hardware_concurrency());
   if (max_threads <= 0)
     max_threads = 4;
-  WowSliderInt("Worker Threads", &thread_count, 1, max_threads, "%d threads");
+  ImGui::Text("Worker Threads:");
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x > 250.0f ? 240.0f : ImGui::GetContentRegionAvail().x);
+  WowInputInt("##WorkerThreads", &thread_count, 1, 4);
+  if (thread_count < 1) thread_count = 1;
+  if (thread_count > max_threads) thread_count = max_threads;
 #endif
 }
 

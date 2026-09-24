@@ -109,21 +109,13 @@ class WarlockSimApp
     priest_sim.duration_variance = 30.0;
   }
 
-  enum class AppTab {
-    PRESETS = 0,
-    SIMULATE = 1,
-    ANALYZE_APL = 2,
-    ABILITIES = 3,
-    THEORYCRAFTING = 4
-  };
-
   AppTab active_tab = AppTab::PRESETS;
   AppTab priest_active_tab = AppTab::PRESETS;
 
   void render_top_navigation_tabs(float target_bottom_y)
   {
     const float tab_h = 32.0f;
-    const float tab_spacing = 6.0f;
+    const float tab_spacing = 1.0f;
 
     struct TabDef {
       const char* label;
@@ -134,18 +126,20 @@ class WarlockSimApp
     std::vector<TabDef> tabs;
     if (active_class == sim::PlayerClass::WARLOCK) {
       tabs = {
-        {"Presets", AppTab::PRESETS, 90.0f},
-        {"Simulate", AppTab::SIMULATE, 95.0f},
+        {"Presets", AppTab::PRESETS, 80.0f},
+        {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
+        {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
-        {"Abilities", AppTab::ABILITIES, 95.0f},
-        {"Theorycrafting", AppTab::THEORYCRAFTING, 130.0f}
+        {"Abilities", AppTab::ABILITIES, 85.0f},
+        {"Theorycrafting", AppTab::THEORYCRAFTING, 125.0f}
       };
     } else {
       tabs = {
-        {"Presets", AppTab::PRESETS, 90.0f},
-        {"Simulate", AppTab::SIMULATE, 95.0f},
+        {"Presets", AppTab::PRESETS, 80.0f},
+        {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
+        {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
-        {"Abilities", AppTab::ABILITIES, 95.0f}
+        {"Abilities", AppTab::ABILITIES, 85.0f}
       };
     }
 
@@ -159,20 +153,17 @@ class WarlockSimApp
     float start_x = win_w - total_tabs_w - 16.0f;
     if (start_x < 120.0f) start_x = 120.0f;
 
-    ImGui::SameLine(start_x);
-    // Align bottom of tab buttons exactly flush with the top of panels below
-    ImGui::SetCursorPosY(target_bottom_y - tab_h);
-
+    float current_x = start_x;
+    const float tab_y = target_bottom_y - tab_h;
     AppTab& cur_tab = (active_class == sim::PlayerClass::WARLOCK) ? active_tab : priest_active_tab;
 
     for (size_t i = 0; i < tabs.size(); ++i) {
-      if (i > 0) {
-        ImGui::SameLine(0.0f, tab_spacing);
-      }
+      ImGui::SetCursorPos(ImVec2(current_x, tab_y));
       bool is_selected = (cur_tab == tabs[i].tab);
       if (WowTabButton(tabs[i].label, is_selected, tabs[i].width, tab_h)) {
         cur_tab = tabs[i].tab;
       }
+      current_x += tabs[i].width + tab_spacing;
     }
   }
 
@@ -267,8 +258,33 @@ class WarlockSimApp
       // Render right-justified tabs on the same row, flush with the panel below
       render_top_navigation_tabs(top_bar_bottom_y);
 
-      // Start main view flush at top_bar_bottom_y
-      ImGui::SetCursorPosY(top_bar_bottom_y);
+      // Overlay a transparent dark rectangle under where the tabs are flush with, extending to the bottom of the window
+      ImDrawList* draw_list = ImGui::GetWindowDrawList();
+      draw_list->AddRectFilled(
+          ImVec2(0.0f, top_bar_bottom_y),
+          ImVec2(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())),
+          IM_COL32(10, 9, 14, 215)
+      );
+
+      // Tile Common-Input-Border-T along the top of the dark overlay to separate the top bar from it
+      const Texture2D& borderTex = AssetManager::get().get_texture("Common-Input-Border-T");
+      const Texture2D& fallbackTex = AssetManager::get().get_fallback();
+      constexpr float border_h = 8.0f;
+      if (borderTex.id > 0 && borderTex.id != fallbackTex.id)
+      {
+        DrawTiledTexture(
+            draw_list,
+            (ImTextureID)borderTex.id,
+            ImVec2(0.0f, top_bar_bottom_y),
+            ImVec2(static_cast<float>(GetScreenWidth()), top_bar_bottom_y + border_h),
+            ImVec2(8.0f, 8.0f),
+            IM_COL32_WHITE
+        );
+      }
+
+      // Start main view with comfortable spacing below the top border
+      constexpr float kTabContentTopSpacing = 14.0f;
+      ImGui::SetCursorPosY(top_bar_bottom_y + border_h + kTabContentTopSpacing);
 
       const float full_height = ImGui::GetContentRegionAvail().y;
 
@@ -476,16 +492,23 @@ class WarlockSimApp
         break;
       }
 
-      case AppTab::SIMULATE:
+      case AppTab::COMPARE_STANDARD_SPECS:
       {
         render_panel_optimizer(
-            sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset);
+            sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset, 1);
+        break;
+      }
+
+      case AppTab::CONSTRAINED_SPEC_SEARCH:
+      {
+        render_panel_optimizer(
+            sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset, 0);
         break;
       }
 
       case AppTab::ANALYZE_APL:
       {
-        render_panel_analyze_apl(sim);
+        render_panel_analyze_apl(sim, &active_tab);
         break;
       }
 
@@ -564,10 +587,17 @@ class WarlockSimApp
         break;
       }
 
-      case AppTab::SIMULATE:
+      case AppTab::COMPARE_STANDARD_SPECS:
       {
         priest::render_priest_panel_optimizer(
-            priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset);
+            priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset, 1);
+        break;
+      }
+
+      case AppTab::CONSTRAINED_SPEC_SEARCH:
+      {
+        priest::render_priest_panel_optimizer(
+            priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset, 0);
         break;
       }
 

@@ -69,6 +69,7 @@ inline void render_panel_target_config(TargetConfig& target) {
         ImGui::Indent(8.0f);
 
         auto render_field_int = [](const char* label, const char* id, int* val, int min_v, int max_v, float input_w = 80.0f) {
+            WowResetTextBaseline();
             ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
             ImGui::SetNextItemWidth(input_w);
@@ -79,6 +80,7 @@ inline void render_panel_target_config(TargetConfig& target) {
         };
 
         auto render_field_double = [](const char* label, const char* id, double* val, const char* fmt = "%.0f", float input_w = 80.0f) {
+            WowResetTextBaseline();
             ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
             ImGui::SetNextItemWidth(input_w);

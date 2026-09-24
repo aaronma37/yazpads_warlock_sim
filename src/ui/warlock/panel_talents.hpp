@@ -464,7 +464,6 @@ inline void render_panel_talents(WarlockSimulator& sim)
   ImGui::SameLine();
   ImGui::TextColored(pt_color, "%d / 51", total_pts);
 
-  ImGui::Separator();
   ImGui::Spacing();
 
   // Calculate dimensions for the 3 side-by-side trees

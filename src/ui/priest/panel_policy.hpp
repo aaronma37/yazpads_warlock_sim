@@ -51,8 +51,44 @@ inline void render_priest_priority_chain_subpane(const std::vector<PriorityRule>
     warlock::render_common_priority_chain(common_rules);
 }
 
+inline std::vector<PriorityRule> get_available_priest_actions(const Talents& talents, sim::Race race) {
+    std::vector<PriorityRule> list;
+    if (talents.shadow.mind_flay > 0) {
+        list.push_back({SpellID::MIND_FLAY, "Mind Flay", "Primary Filler", "3.0s channeled Shadow beam (benefits from Shadowform/Darkness).", true});
+    }
+    list.push_back({SpellID::SMITE, "Smite", "Primary Filler", "2.0s - 2.5s Holy direct damage filler.", true});
+    list.push_back({SpellID::SHADOW_WORD_PAIN, "Shadow Word: Pain", "DoT Expired / Refresh", "Maintains 100% uptime on Shadow Word: Pain DoT.", true});
+    list.push_back({SpellID::MIND_BLAST, "Mind Blast", "On Cooldown (5.5s-8s)", "High burst Shadow damage on short cooldown.", true});
+    list.push_back({SpellID::SHADOW_WORD_DEATH, "Shadow Word: Death", "On Cooldown (15s)", "Instant shadow nuke (10% max HP backlash self-damage).", true});
+    list.push_back({SpellID::DEVOURING_PLAGUE, "Devouring Plague", "On Cooldown (1 min)", "Afflicts target with Shadow damage over 24s and heals caster.", true});
+    list.push_back({SpellID::HOLY_FIRE, "Holy Fire", "Maintain DoT (10s)", "Empowers Smite & Penance (+10% damage from Power in Light).", true});
+    if (talents.disc.penance > 0) {
+        list.push_back({SpellID::PENANCE, "Penance", "On Cooldown (10s)", "3-pulse Holy volley channel; benefits from Power in Light.", true});
+    }
+    list.push_back({SpellID::HOLY_NOVA, "Holy Nova", "Clearcast Proc", "Instant free cast when Clearcasting triggers.", true});
+    if (talents.shadow.vampiric_embrace > 0) {
+        list.push_back({SpellID::VAMPIRIC_EMBRACE, "Vampiric Embrace", "DoT Expired (30s)", "Afflicts target: 20% of shadow spell damage heals party.", true});
+    }
+    if (talents.disc.inner_focus > 0) {
+        list.push_back({SpellID::INNER_FOCUS, "Inner Focus", "On Cooldown (3m)", "Next spell costs 0 mana and +25% crit chance.", true});
+    }
+    if (talents.disc.power_infusion > 0) {
+        list.push_back({SpellID::POWER_INFUSION, "Power Infusion", "On Cooldown (3m)", "Infuses self for +20% spell damage & healing for 15s.", true});
+    }
+    if (race == sim::Race::UNDEAD) {
+        list.push_back({SpellID::DARK_SACRIFICE, "Dark Sacrifice", "Mana <= 60%", "Cannibalize / sacrifice target for 1600 mana.", true});
+    } else if (race == sim::Race::TROLL) {
+        list.push_back({SpellID::RACIAL_BERSERKING, "Berserking", "On Cooldown (3m)", "Increases casting speed by 10% for 10s.", true});
+    } else if (race == sim::Race::NIGHT_ELF) {
+        list.push_back({SpellID::STARSHARDS, "Starshards", "On Cooldown (30s)", "Night Elf racial channel dealing Arcane damage over 6s.", true});
+    } else if (race == sim::Race::DWARF) {
+        list.push_back({SpellID::CHASTISE, "Chastise", "On Cooldown (2 min)", "Dwarf racial instant Holy damage.", true});
+    }
+    return list;
+}
+
 inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& talents = Talents(), sim::Race race = sim::Race::HUMAN) {
-    ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Combat Policy & Priority Rules:");
+    ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Action Priority List");
     ImGui::Separator();
 
     // 0. Rotation Choice Combo
@@ -70,88 +106,111 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##PriestRotationCombo", &rot_idx, rot_names, IM_ARRAYSIZE(rot_names))) {
         policy.rotation = static_cast<RotationChoice>(rot_idx);
+        policy.use_custom_apl = false;
+        policy.custom_rules.clear();
     }
     ImGui::TextWrapped("%s", rotation_choice_description(policy.rotation));
 
     ImGui::Spacing();
 
-    // 1. Dynamic Action Priority Chain
-    std::vector<PriorityRule> rules = policy.get_priority_rules(talents, race);
-    render_priest_priority_chain_subpane(rules);
-
-    ImGui::Spacing();
-    if (ImGui::CollapsingHeader("Action Priority List (APL) Order & Customization", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (policy.use_custom_apl) {
-            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Custom APL Active (Modified)");
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Reset to Preset Defaults")) {
-                policy.reset_to_preset(talents, race);
-            }
-        } else {
-            ImGui::TextDisabled("Using standard preset ordering. Reorder or toggle any rule below to customize.");
+    if (policy.use_custom_apl) {
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Custom APL Active (Modified)");
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset to Preset Defaults")) {
+            policy.reset_to_preset(talents, race);
         }
+    }
 
-        if (ImGui::BeginTable("PriestAplTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 24.0f);
-            ImGui::TableSetupColumn("Order", ImGuiTableColumnFlags_WidthFixed, 56.0f);
-            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 44.0f);
-            ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.45f);
-            ImGui::TableSetupColumn("Trigger Condition", ImGuiTableColumnFlags_WidthStretch, 0.55f);
-            ImGui::TableHeadersRow();
+    if (ImGui::BeginTable("PriestAplTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.44f);
+        ImGui::TableSetupColumn("Trigger Condition", ImGuiTableColumnFlags_WidthStretch, 0.56f);
+        ImGui::TableSetupColumn("##ModifyCol", ImGuiTableColumnFlags_WidthFixed, 26.0f);
+        ImGui::TableHeadersRow();
 
-            std::vector<PriorityRule> current_rules = policy.get_priority_rules(talents, race);
-            for (size_t i = 0; i < current_rules.size(); ++i) {
-                const auto& r = current_rules[i];
-                ImGui::TableNextRow();
-                ImGui::PushID(static_cast<int>(i));
+        std::vector<PriorityRule> current_rules = policy.get_priority_rules(talents, race);
+        std::vector<PriorityRule> available_rules = get_available_priest_actions(talents, race);
 
-                // Col 0: Index
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextDisabled("%d", (int)i + 1);
+        for (size_t i = 0; i < current_rules.size(); ++i) {
+            const auto& r = current_rules[i];
+            ImGui::TableNextRow();
+            ImGui::PushID(static_cast<int>(i));
 
-                // Col 1: Up / Down move buttons
-                ImGui::TableSetColumnIndex(1);
+            // Col 0: Action / Spell Icon + Name
+            ImGui::TableSetColumnIndex(0);
+            Texture2D icon = warlock::AssetManager::get().get_icon(spell_id_to_icon(r.spell_id));
+            if (icon.id > 0) {
+                ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+                ImGui::SameLine(0, 4);
+            }
+            ImGui::Text("%s", r.name.c_str());
+
+            // Col 1: Condition Summary
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextUnformatted(r.condition_summary.c_str());
+
+            // Col 2: Modify button & popup
+            ImGui::TableSetColumnIndex(2);
+            std::string btn_label = "##PriestRuleMod_" + std::to_string(i);
+            if (warlock::WowBiggerButton(btn_label.c_str(), ImVec2(20, 20))) {
+                ImGui::OpenPopup("ModifyRulePopup");
+            }
+
+            if (ImGui::BeginPopup("ModifyRulePopup")) {
+                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "#%zu %s", i + 1, r.name.c_str());
+                ImGui::Separator();
+
                 if (i > 0) {
-                    if (ImGui::SmallButton("^")) {
+                    if (ImGui::MenuItem("▲ Move Up")) {
                         policy.move_rule_up(i, talents, race);
                     }
                 } else {
-                    ImGui::Dummy(ImVec2(16, 16));
+                    ImGui::BeginDisabled();
+                    ImGui::MenuItem("▲ Move Up");
+                    ImGui::EndDisabled();
                 }
-                ImGui::SameLine(0, 2);
+
                 if (i + 1 < current_rules.size()) {
-                    if (ImGui::SmallButton("v")) {
+                    if (ImGui::MenuItem("▼ Move Down")) {
                         policy.move_rule_down(i, talents, race);
                     }
+                } else {
+                    ImGui::BeginDisabled();
+                    ImGui::MenuItem("▼ Move Down");
+                    ImGui::EndDisabled();
                 }
 
-                // Col 2: Active checkbox
-                ImGui::TableSetColumnIndex(2);
-                bool enabled = r.enabled;
-                if (ImGui::Checkbox("##Enabled", &enabled)) {
-                    policy.set_rule_enabled(i, enabled, talents, race);
+                ImGui::Separator();
+
+                if (ImGui::BeginMenu("➕ Add Rule Above")) {
+                    for (const auto& avail : available_rules) {
+                        if (ImGui::MenuItem(avail.name.c_str())) {
+                            policy.insert_rule(i, avail, talents, race);
+                        }
+                    }
+                    ImGui::EndMenu();
                 }
 
-                // Col 3: Action / Spell Icon + Name
-                ImGui::TableSetColumnIndex(3);
-                Texture2D icon = warlock::AssetManager::get().get_icon(spell_id_to_icon(r.spell_id));
-                if (icon.id > 0) {
-                    ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
-                    ImGui::SameLine(0, 4);
+                if (ImGui::BeginMenu("➕ Add Rule Below")) {
+                    for (const auto& avail : available_rules) {
+                        if (ImGui::MenuItem(avail.name.c_str())) {
+                            policy.insert_rule(i + 1, avail, talents, race);
+                        }
+                    }
+                    ImGui::EndMenu();
                 }
-                if (enabled)
-                    ImGui::Text("%s", r.name.c_str());
-                else
-                    ImGui::TextDisabled("%s (Disabled)", r.name.c_str());
 
-                // Col 4: Condition Summary
-                ImGui::TableSetColumnIndex(4);
-                ImGui::TextUnformatted(r.condition_summary.c_str());
+                ImGui::Separator();
 
-                ImGui::PopID();
+                if (ImGui::MenuItem("❌ Remove Rule")) {
+                    policy.remove_rule(i, talents, race);
+                }
+
+                ImGui::EndPopup();
             }
-            ImGui::EndTable();
+
+            ImGui::PopID();
         }
+        ImGui::EndTable();
     }
 
     ImGui::Spacing();
@@ -301,17 +360,25 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
         }
     }
 
-    ImGui::SetNextItemWidth(200);
-    float pot_thresh = static_cast<float>(policy.mana_potion_threshold * 100.0);
-    if (warlock::WowSliderFloat("Mana Potion Threshold##Policy", &pot_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
+    ImGui::Text("Mana Potion Threshold (%% Mana):");
+    ImGui::SetNextItemWidth(160);
+    double pot_thresh = policy.mana_potion_threshold * 100.0;
+    if (warlock::WowInputDouble("##ManaPotionThreshold", &pot_thresh, 1.0, 5.0, "%.0f%%")) {
+        if (pot_thresh < 5.0) pot_thresh = 5.0;
+        if (pot_thresh > 95.0) pot_thresh = 95.0;
         policy.mana_potion_threshold = pot_thresh / 100.0;
     }
     ImGui::SameLine(0, 16);
-    ImGui::SetNextItemWidth(200);
-    float rune_thresh = static_cast<float>(policy.demonic_rune_threshold * 100.0);
-    if (warlock::WowSliderFloat("Demonic Rune Threshold##Policy", &rune_thresh, 10.0f, 80.0f, "%.0f%% Mana")) {
+    ImGui::BeginGroup();
+    ImGui::Text("Demonic Rune Threshold (%% Mana):");
+    ImGui::SetNextItemWidth(160);
+    double rune_thresh = policy.demonic_rune_threshold * 100.0;
+    if (warlock::WowInputDouble("##DemonicRuneThreshold", &rune_thresh, 1.0, 5.0, "%.0f%%")) {
+        if (rune_thresh < 5.0) rune_thresh = 5.0;
+        if (rune_thresh > 95.0) rune_thresh = 95.0;
         policy.demonic_rune_threshold = rune_thresh / 100.0;
     }
+    ImGui::EndGroup();
 }
 
 } // namespace priest

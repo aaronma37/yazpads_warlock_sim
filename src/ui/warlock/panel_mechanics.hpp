@@ -79,16 +79,25 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
         }
         if (mechanics.pet_scaling) {
             ImGui::Indent(12.0f);
-            float sp_pct = static_cast<float>(mechanics.pet_sp_ratio * 100.0);
-            if (WowSliderFloat("Pet SP Scaling (%)", &sp_pct, 0.0f, 100.0f, "%.1f %%")) {
-                mechanics.pet_sp_ratio = static_cast<double>(sp_pct) / 100.0;
+            ImGui::Text("Pet SP Scaling (%%):");
+            ImGui::SetNextItemWidth(160);
+            double sp_pct = mechanics.pet_sp_ratio * 100.0;
+            if (WowInputDouble("##PetSpRatio", &sp_pct, 1.0, 5.0, "%.1f %%")) {
+                if (sp_pct < 0.0) sp_pct = 0.0;
+                if (sp_pct > 200.0) sp_pct = 200.0;
+                mechanics.pet_sp_ratio = sp_pct / 100.0;
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Percentage of master's Spell Power inherited by demon spells (e.g. Imp Firebolt, Succubus Lash of Pain). Default: 10.0%% (10 SP = 1 Pet SP)");
             }
-            float ap_pct = static_cast<float>(mechanics.pet_ap_ratio * 100.0);
-            if (WowSliderFloat("Pet AP Scaling (%)", &ap_pct, 0.0f, 100.0f, "%.1f %%")) {
-                mechanics.pet_ap_ratio = static_cast<double>(ap_pct) / 100.0;
+
+            ImGui::Text("Pet AP Scaling (%%):");
+            ImGui::SetNextItemWidth(160);
+            double ap_pct = mechanics.pet_ap_ratio * 100.0;
+            if (WowInputDouble("##PetApRatio", &ap_pct, 1.0, 5.0, "%.1f %%")) {
+                if (ap_pct < 0.0) ap_pct = 0.0;
+                if (ap_pct > 200.0) ap_pct = 200.0;
+                mechanics.pet_ap_ratio = ap_pct / 100.0;
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Percentage of master's Spell Power converted to demon Attack Power for physical melee attacks (e.g. Succubus melee). Default: 16.7%% (6 SP = 1 Pet AP)");
@@ -111,7 +120,14 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Missile Physics & Travel Time:");
         WowCheckbox("Simulate Projectile Travel Time", &mechanics.projectile_travel_time);
         if (mechanics.projectile_travel_time) {
-            WowSliderFloat("Boss Distance (yd)", (float*)&mechanics.default_boss_distance_yards, 10.0f, 40.0f, "%.0f yd");
+            ImGui::Text("Boss Distance (yards):");
+            ImGui::SetNextItemWidth(160);
+            double dist = mechanics.default_boss_distance_yards;
+            if (WowInputDouble("##BossDistanceYd", &dist, 1.0, 5.0, "%.0f yd")) {
+                if (dist < 1.0) dist = 1.0;
+                if (dist > 60.0) dist = 60.0;
+                mechanics.default_boss_distance_yards = dist;
+            }
         }
 
         ImGui::Unindent(8.0f);

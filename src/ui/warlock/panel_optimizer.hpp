@@ -90,7 +90,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
                                    bool& is_optimizing,
                                    float& opt_progress,
                                    std::string& current_opt_target,
-                                   bool* request_switch_to_preset = nullptr)
+                                   bool* request_switch_to_preset = nullptr,
+                                   int opt_mode = 1)
 {
 #if defined(__EMSCRIPTEN__)
   auto& em_session = get_emscripten_ga_session();
@@ -152,15 +153,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   }
 #endif
 
-  static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Genetic APL Search
-  ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
-  ImGui::SameLine();
-  ImGui::RadioButton("Search", &opt_mode, 0);
-  ImGui::SameLine();
-  ImGui::RadioButton("Genetic APL Search", &opt_mode, 2);
-
-  ImGui::Spacing();
-
   static int ga_pop_size = 50;
   static int ga_generations = 400;
   static int ga_screening_sims = 400;
@@ -189,49 +181,75 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 
   if (opt_mode == 0)
   {
-    ImGui::SetNextItemWidth(100);
-    if (WowInputInt("Generations", &ga_generations))
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Generations:");
+    ImGui::SetNextItemWidth(110);
+    if (WowInputInt("##WarlockGAGenerations", &ga_generations))
     {
       if (ga_generations < 1)
         ga_generations = 1;
     }
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(100);
-    if (WowInputInt("Population", &ga_pop_size))
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0.0f, 16.0f);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Population:");
+    ImGui::SetNextItemWidth(110);
+    if (WowInputInt("##WarlockGAPopulation", &ga_pop_size))
     {
       if (ga_pop_size < 2)
         ga_pop_size = 2;
     }
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(110);
-    if (WowInputInt("Screening Sims", &ga_screening_sims))
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0.0f, 16.0f);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Screening Sims:");
+    ImGui::SetNextItemWidth(125);
+    if (WowInputInt("##WarlockGAScreeningSims", &ga_screening_sims))
     {
       if (ga_screening_sims < 10)
         ga_screening_sims = 10;
     }
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(110);
-    if (WowInputInt("Final Precision", &ga_final_sims))
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0.0f, 16.0f);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Final Precision:");
+    ImGui::SetNextItemWidth(125);
+    if (WowInputInt("##WarlockGAFinalSims", &ga_final_sims))
     {
       if (ga_final_sims < 10)
         ga_final_sims = 10;
     }
+    ImGui::EndGroup();
+
 #if !defined(__EMSCRIPTEN__)
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(100);
+    ImGui::SameLine(0.0f, 16.0f);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Threads:");
+    ImGui::SetNextItemWidth(90);
     int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-    if (WowSliderInt("Threads", &ga_threads, 1, max_threads, "%d"))
+    if (WowInputInt("##WarlockGAThreads", &ga_threads, 1, 2))
     {
       if (ga_threads < 1)
         ga_threads = 1;
+      if (ga_threads > max_threads)
+        ga_threads = max_threads;
     }
+    ImGui::EndGroup();
 #endif
 
     ImGui::Spacing();
     WowCheckbox("Seed with standard presets", &ga_seed_presets);
-    ImGui::SameLine(460);
+    ImGui::SameLine(0.0f, 24.0f);
     WowCheckbox("Optimize Race", &ga_optimize_race);
-    ImGui::SameLine(750);
+    ImGui::SameLine(0.0f, 24.0f);
     WowCheckbox("Advanced Convergence Tuning", &show_advanced_tuning);
 
     ImGui::Spacing();
@@ -249,8 +267,12 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         preview = std::string(n.name) + " (" + tree_name + ")";
       }
 
-      ImGui::SetNextItemWidth(210);
-      if (ImGui::BeginCombo(label, preview.c_str()))
+      ImGui::BeginGroup();
+      WowResetTextBaseline();
+      ImGui::Text("%s:", label);
+      ImGui::SetNextItemWidth(200);
+      std::string combo_id = std::string("##") + label;
+      if (ImGui::BeginCombo(combo_id.c_str(), preview.c_str()))
       {
         if (ImGui::Selectable("[None]", selected_idx == -1))
         {
@@ -271,32 +293,41 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         }
         ImGui::EndCombo();
       }
+      ImGui::EndGroup();
     };
 
     render_talent_combo("Req Talent 1", ga_req_talent1);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 16.0f);
     render_talent_combo("Req Talent 2", ga_req_talent2);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 16.0f);
     render_talent_combo("Req Talent 3", ga_req_talent3);
 
+    ImGui::SameLine(0.0f, 16.0f);
     // Race constraint combo
-    ImGui::SetNextItemWidth(170);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Locked Race:");
+    ImGui::SetNextItemWidth(150);
     const char* race_names[] = {"[Any / Evolve]", "Undead", "Orc", "Troll", "Human", "Gnome"};
     int current_race_idx = (ga_forced_race >= 0 && ga_forced_race < 5) ? (ga_forced_race + 1) : 0;
-    if (ImGui::Combo("Locked Race", &current_race_idx, race_names, IM_ARRAYSIZE(race_names)))
+    if (ImGui::Combo("##LockedRace", &current_race_idx, race_names, IM_ARRAYSIZE(race_names)))
     {
       ga_forced_race = (current_race_idx == 0) ? -1 : (current_race_idx - 1);
     }
+    ImGui::EndGroup();
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 16.0f);
     // Rotation constraint combo
-    ImGui::SetNextItemWidth(240);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Locked Rotation:");
+    ImGui::SetNextItemWidth(210);
     const char* rot_preview = "[Auto / Adaptive]";
     if (ga_forced_rotation >= 0)
     {
       rot_preview = rotation_choice_to_string(static_cast<RotationChoice>(ga_forced_rotation));
     }
-    if (ImGui::BeginCombo("Locked Rotation", rot_preview))
+    if (ImGui::BeginCombo("##LockedRotation", rot_preview))
     {
       if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_rotation == -1))
       {
@@ -316,16 +347,20 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
       ImGui::EndCombo();
     }
+    ImGui::EndGroup();
 
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 16.0f);
     // Pet / Demonic Sacrifice constraint combo
-    ImGui::SetNextItemWidth(260);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Text("Locked Pet / DS:");
+    ImGui::SetNextItemWidth(210);
     const char* pet_preview = "[Auto / Adaptive]";
     if (ga_forced_pet_mode >= 0)
     {
       pet_preview = pet_constraint_to_string(static_cast<PetConstraint>(ga_forced_pet_mode));
     }
-    if (ImGui::BeginCombo("Locked Pet / DS", pet_preview))
+    if (ImGui::BeginCombo("##LockedPetDS", pet_preview))
     {
       if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_pet_mode == -1))
       {
@@ -345,20 +380,37 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
       ImGui::EndCombo();
     }
+    ImGui::EndGroup();
 
     if (show_advanced_tuning)
     {
       ImGui::Spacing();
       ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.6f));
-      ImGui::BeginChild("GATuningBox", ImVec2(-1, 68), true);
-      ImGui::SetNextItemWidth(150);
-      WowSliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
-      ImGui::SameLine(220);
-      ImGui::SetNextItemWidth(180);
-      WowSliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
-      ImGui::SameLine(480);
-      ImGui::SetNextItemWidth(180);
-      WowSliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
+      ImGui::BeginChild("GATuningBox", ImVec2(-1, 88), true);
+      
+      ImGui::BeginGroup();
+      WowResetTextBaseline();
+      ImGui::Text("Mutation Rate:");
+      ImGui::SetNextItemWidth(130);
+      WowInputFloat("##WarlockGAMutationRate", &ga_mutation_rate, 0.05f, 0.1f, "%.2f");
+      ImGui::EndGroup();
+
+      ImGui::SameLine(0.0f, 20.0f);
+      ImGui::BeginGroup();
+      WowResetTextBaseline();
+      ImGui::Text("Start Exploration Rate:");
+      ImGui::SetNextItemWidth(160);
+      WowInputFloat("##WarlockGAInitExplore", &ga_initial_explore, 0.05f, 0.1f, "%.2f");
+      ImGui::EndGroup();
+
+      ImGui::SameLine(0.0f, 20.0f);
+      ImGui::BeginGroup();
+      WowResetTextBaseline();
+      ImGui::Text("End Exploration Rate:");
+      ImGui::SetNextItemWidth(160);
+      WowInputFloat("##WarlockGAMinExplore", &ga_min_explore, 0.05f, 0.1f, "%.2f");
+      ImGui::EndGroup();
+
       ImGui::TextDisabled(
           "Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
       ImGui::EndChild();
@@ -367,13 +419,22 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   }
   else if (opt_mode == 1)
   {
-    ImGui::SetNextItemWidth(200);
-    WowSliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
-    ImGui::SameLine(340);
+    ImGui::BeginGroup();
+    ImGui::Text("Sims Per Candidate:");
+    ImGui::SetNextItemWidth(180);
+    WowInputInt("##WarlockItersPerCandidate", &iters_per_candidate, 500, 2000);
+    if (iters_per_candidate < 100) iters_per_candidate = 100;
+    ImGui::EndGroup();
+
+    ImGui::SameLine(220);
+    ImGui::BeginGroup();
+    ImGui::Dummy(ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing()));
     WowCheckbox("Compare across all races", &compare_all_races);
-    ImGui::SameLine();
+    ImGui::SameLine(0.0f, 20.0f);
     WowCheckbox("Calculate Stat Weights", &calculate_stat_weights);
+    ImGui::EndGroup();
   }
+#if 0  // Genetic APL search hidden/disabled for now
   else if (opt_mode == 2)
   {
     static int apl_pop_size = 32;
@@ -401,26 +462,46 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     bool is_busy = a_worker.is_running.load();
 
     ImGui::BeginDisabled(is_busy);
-    ImGui::SetNextItemWidth(150);
-    WowSliderInt("Population Size / Epoch Budget", &apl_pop_size, 10, 128, "%d");
-    ImGui::SameLine(220);
-    ImGui::SetNextItemWidth(150);
-    WowSliderInt("Generations / Epochs", &apl_generations, 5, 100, "%d");
-    ImGui::SameLine(420);
-    ImGui::SetNextItemWidth(150);
-    WowSliderInt("Eval Precision", &apl_eval_sims, 20, 400, "%d sims");
-    ImGui::SameLine(620);
-    ImGui::SetNextItemWidth(150);
-    WowSliderInt("Benchmark Precision", &apl_bench_sims, 100, 2000, "%d sims");
+    ImGui::BeginGroup();
+    ImGui::Text("Pop Size / Epoch Budget:");
+    ImGui::SetNextItemWidth(130);
+    WowInputInt("##APLPopSize", &apl_pop_size, 4, 16);
+    ImGui::EndGroup();
+
+    ImGui::SameLine(180);
+    ImGui::BeginGroup();
+    ImGui::Text("Generations / Epochs:");
+    ImGui::SetNextItemWidth(130);
+    WowInputInt("##APLGenerations", &apl_generations, 5, 20);
+    ImGui::EndGroup();
+
+    ImGui::SameLine(360);
+    ImGui::BeginGroup();
+    ImGui::Text("Eval Precision:");
+    ImGui::SetNextItemWidth(130);
+    WowInputInt("##APLEvalSims", &apl_eval_sims, 20, 100);
+    ImGui::EndGroup();
+
+    ImGui::SameLine(540);
+    ImGui::BeginGroup();
+    ImGui::Text("Benchmark Precision:");
+    ImGui::SetNextItemWidth(130);
+    WowInputInt("##APLBenchSims", &apl_bench_sims, 50, 200);
+    ImGui::EndGroup();
 
     ImGui::Spacing();
-    ImGui::SetNextItemWidth(150);
-    WowSliderFloat("Mutation Rate", &apl_mutation_rate, 0.10f, 0.80f, "%.2f");
-    ImGui::SameLine(220);
+    ImGui::BeginGroup();
+    ImGui::Text("Mutation Rate:");
+    ImGui::SetNextItemWidth(130);
+    WowInputFloat("##APLMutationRate", &apl_mutation_rate, 0.05f, 0.1f, "%.2f");
+    ImGui::EndGroup();
+
+    ImGui::SameLine(180);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 18.0f);
     WowCheckbox("Allow Dual Life Tap", &apl_allow_dual_tap);
-    ImGui::SameLine(420);
+    ImGui::SameLine(360);
     WowCheckbox("Seed from Current APL", &apl_seed_from_current);
-    ImGui::SameLine(620);
+    ImGui::SameLine(560);
     WowCheckbox("Use Simulated Annealing (SA)", &apl_use_simulated_annealing);
     ImGui::EndDisabled();
 
@@ -970,6 +1051,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
     }
   }
+#endif
 
   ImGui::Spacing();
 
@@ -1135,58 +1217,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       is_optimizing = false;
       opt_progress = 1.0f;
     }
-
-    if (SurrogateEvaluator::get().is_loaded())
-    {
-      ImGui::SameLine();
-      if (WowButton("⚡ Instant ML Inference (All Specs)", ImVec2(240, 28)))
-      {
-        optimizer_results.clear();
-        const auto& all_presets = standard_spec_presets();
-        for (size_t p_idx = 0; p_idx < all_presets.size(); ++p_idx)
-        {
-          const auto& preset = all_presets[p_idx];
-          WarlockSimulator s = sim;
-          s.talents = preset.make_talents();
-          s.policy.rotation = preset.rotation;
-          s.policy.pet = preset.pet;
-          s.buffs.sacrifice_succubus = preset.sac_succubus;
-          s.buffs.sacrifice_imp = preset.sac_imp;
-          s.policy.maintain_immolate = preset.maintain_immolate;
-          s.policy.use_custom_apl = false;
-          s.policy.custom_rules.clear();
-
-          double pred_dps = SurrogateEvaluator::get().predict_from_sim(s, static_cast<int>(p_idx));
-
-          CandidateResult res;
-          res.name = preset.display_name;
-          res.category = "Talents";
-          res.race = s.race;
-          res.mean_dps = pred_dps;
-          res.inferred_dps = pred_dps;
-          res.talents = s.talents;
-          res.gear = s.gear;
-          res.buffs = s.buffs;
-          res.policy = s.policy;
-          res.mechanics = s.mechanics;
-          optimizer_results.push_back(res);
-        }
-
-        std::sort(optimizer_results.begin(), optimizer_results.end(), [](const CandidateResult& a, const CandidateResult& b) {
-          return a.inferred_dps > b.inferred_dps;
-        });
-        for (size_t idx = 0; idx < optimizer_results.size(); ++idx) {
-          optimizer_results[idx].rank = static_cast<int>(idx + 1);
-        }
-      }
-      ImGui::PopStyleColor(2);
-      if (ImGui::IsItemHovered())
-      {
-        ImGui::BeginTooltip();
-        ImGui::Text("Evaluate all standard specs instantly using the trained LightGBM surrogate model (< 0.1 ms)");
-        ImGui::EndTooltip();
-      }
-    }
   }
   else
   {
@@ -1271,10 +1301,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       }
     }
 
-    bool has_surrogate = SurrogateEvaluator::get().is_loaded();
     int num_cols = show_stat_weights ? 14 : 8;
-    if (has_surrogate)
-      num_cols += 1;
     static bool show_std_dev = false;
     if (!show_std_dev)
       num_cols -= 1;  // hide +/- StdDev column
@@ -1408,8 +1435,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
       ImGui::TableSetupColumn("Damage Split", ImGuiTableColumnFlags_WidthFixed, 150);
       ImGui::TableSetupColumn(show_pct_from_leader ? "% vs Leader" : "Mean DPS", ImGuiTableColumnFlags_WidthFixed, 85);
-      if (has_surrogate)
-        ImGui::TableSetupColumn("Inferred DPS", ImGuiTableColumnFlags_WidthFixed, 85);
       if (show_std_dev)
         ImGui::TableSetupColumn("+/- StdDev", ImGuiTableColumnFlags_WidthFixed, 75);
       if (show_stat_weights)
@@ -1765,34 +1790,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         else
         {
           ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%.1f", r.mean_dps);
-        }
-
-        if (has_surrogate)
-        {
-          ImGui::TableNextColumn();
-          if (r.inferred_dps > 0.0)
-          {
-            ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "%.1f", r.inferred_dps);
-            if (ImGui::IsItemHovered())
-            {
-              ImGui::BeginTooltip();
-              ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "LightGBM GBDT Surrogate Prediction");
-              ImGui::Separator();
-              ImGui::Text("Inferred:  %.2f DPS", r.inferred_dps);
-              if (r.mean_dps > 0.0)
-              {
-                double delta = r.inferred_dps - r.mean_dps;
-                double pct = (delta / r.mean_dps) * 100.0;
-                ImGui::Text("Simulated: %.2f DPS", r.mean_dps);
-                ImGui::Text("Delta:     %+.2f DPS (%+.2f%%)", delta, pct);
-              }
-              ImGui::EndTooltip();
-            }
-          }
-          else
-          {
-            ImGui::TextDisabled("--");
-          }
         }
 
         if (show_std_dev)

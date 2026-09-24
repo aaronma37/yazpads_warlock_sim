@@ -543,6 +543,7 @@ inline void render_armory_panel(SimType& sim,
     ImGui::Spacing();
 
     auto render_stat_entry = [](const char* label, const char* id, double* val, const char* fmt = "%.0f") {
+      WowResetTextBaseline();
       ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
       ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
       ImGui::SetNextItemWidth(-1.0f);
@@ -664,37 +665,6 @@ inline void render_combat_stats_summary(SimType& sim,
   else
   {
     ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
-  }
-
-  ImGui::Spacing();
-  ImGui::Separator();
-  ImGui::Spacing();
-
-  float avail_btn_w = ImGui::GetContentRegionAvail().x;
-  if (WowRedDialogButton("Copy Build to Clipboard", ImVec2(avail_btn_w, 26)))
-  {
-    if constexpr (std::is_same_v<SimType, WarlockSimulator>)
-    {
-      ImGui::SetClipboardText(build_export::export_build_json(sim).c_str());
-      build_copied_timer = 3.0f;
-    }
-    else
-    {
-      std::ostringstream json;
-      json << "{\n";
-      json << "  \"format\": \"priest-build/1\",\n";
-      json << "  \"race\": \"" << race_to_string(sim.race) << "\",\n";
-      json << "  \"fight_duration\": " << sim.fight_duration << ",\n";
-      json << "  \"stats_mode\": \"" << (sim.use_raw_stats ? "raw" : "gear") << "\"\n";
-      json << "}\n";
-      ImGui::SetClipboardText(json.str().c_str());
-      build_copied_timer = 3.0f;
-    }
-  }
-  if (build_copied_timer > 0.0f)
-  {
-    build_copied_timer -= ImGui::GetIO().DeltaTime;
-    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Build copied to clipboard!");
   }
 
     ImGui::Unindent(8.0f);

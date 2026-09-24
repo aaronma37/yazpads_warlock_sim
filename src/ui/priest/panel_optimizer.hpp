@@ -47,7 +47,8 @@ inline void render_priest_panel_optimizer(
     bool& is_optimizing,
     float& opt_progress,
     std::string& current_opt_target,
-    bool* request_switch_to_preset = nullptr
+    bool* request_switch_to_preset = nullptr,
+    int opt_mode = 1
 ) {
 #if defined(__EMSCRIPTEN__)
     auto& em_session = get_emscripten_priest_ga_session();
@@ -99,13 +100,6 @@ inline void render_priest_panel_optimizer(
     }
 #endif
 
-    static int opt_mode = 1; // 0 = Genetic Search, 1 = Standard Presets Benchmark
-    ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
-    ImGui::SameLine();
-    ImGui::RadioButton("Search", &opt_mode, 0);
-
-    ImGui::Spacing();
-
     static int ga_pop_size = 50;
     static int ga_generations = 400;
     static int ga_screening_sims = 400;
@@ -131,39 +125,64 @@ inline void render_priest_panel_optimizer(
     static bool compare_all_races = false;
 
     if (opt_mode == 0) {
-        ImGui::SetNextItemWidth(100);
-        if (warlock::WowInputInt("Generations", &ga_generations)) {
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Generations:");
+        ImGui::SetNextItemWidth(110);
+        if (warlock::WowInputInt("##PriestGAGenerations", &ga_generations)) {
             if (ga_generations < 1) ga_generations = 1;
         }
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(100);
-        if (warlock::WowInputInt("Population", &ga_pop_size)) {
+        ImGui::EndGroup();
+
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Population:");
+        ImGui::SetNextItemWidth(110);
+        if (warlock::WowInputInt("##PriestGAPopulation", &ga_pop_size)) {
             if (ga_pop_size < 4) ga_pop_size = 4;
         }
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(110);
-        if (warlock::WowInputInt("Screening Sims", &ga_screening_sims)) {
+        ImGui::EndGroup();
+
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Screening Sims:");
+        ImGui::SetNextItemWidth(125);
+        if (warlock::WowInputInt("##PriestGAScreeningSims", &ga_screening_sims)) {
             if (ga_screening_sims < 10) ga_screening_sims = 10;
         }
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(110);
-        if (warlock::WowInputInt("Final Precision", &ga_final_sims)) {
+        ImGui::EndGroup();
+
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Final Precision:");
+        ImGui::SetNextItemWidth(125);
+        if (warlock::WowInputInt("##PriestGAFinalSims", &ga_final_sims)) {
             if (ga_final_sims < 10) ga_final_sims = 10;
         }
+        ImGui::EndGroup();
+
 #if !defined(__EMSCRIPTEN__)
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(100);
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Threads:");
+        ImGui::SetNextItemWidth(90);
         int max_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
-        if (warlock::WowSliderInt("Threads", &ga_threads, 1, max_threads, "%d")) {
+        if (warlock::WowInputInt("##PriestGAThreads", &ga_threads, 1, 2)) {
             if (ga_threads < 1) ga_threads = 1;
+            if (ga_threads > max_threads) ga_threads = max_threads;
         }
+        ImGui::EndGroup();
 #endif
 
         ImGui::Spacing();
         warlock::WowCheckbox("Seed with standard presets", &ga_seed_presets);
-        ImGui::SameLine(460);
+        ImGui::SameLine(0.0f, 24.0f);
         warlock::WowCheckbox("Optimize Race", &ga_optimize_race);
-        ImGui::SameLine(750);
+        ImGui::SameLine(0.0f, 24.0f);
         warlock::WowCheckbox("Advanced Convergence Tuning", &show_advanced_tuning);
 
         ImGui::Spacing();
@@ -179,8 +198,12 @@ inline void render_priest_panel_optimizer(
                 preview = n.name + " (" + tree_name + ")";
             }
 
-            ImGui::SetNextItemWidth(210);
-            if (ImGui::BeginCombo(label, preview.c_str())) {
+            ImGui::BeginGroup();
+            warlock::WowResetTextBaseline();
+            ImGui::Text("%s:", label);
+            ImGui::SetNextItemWidth(200);
+            std::string combo_id = std::string("##") + label;
+            if (ImGui::BeginCombo(combo_id.c_str(), preview.c_str())) {
                 if (ImGui::Selectable("[None]", selected_idx == -1)) {
                     selected_idx = -1;
                 }
@@ -196,16 +219,21 @@ inline void render_priest_panel_optimizer(
                 }
                 ImGui::EndCombo();
             }
+            ImGui::EndGroup();
         };
 
         render_priest_talent_combo("Req Talent 1", ga_req_talent1);
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, 16.0f);
         render_priest_talent_combo("Req Talent 2", ga_req_talent2);
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, 16.0f);
         render_priest_talent_combo("Req Talent 3", ga_req_talent3);
 
+        ImGui::SameLine(0.0f, 16.0f);
         // Race constraint combo
-        ImGui::SetNextItemWidth(170);
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Locked Race:");
+        ImGui::SetNextItemWidth(150);
         const char* race_names[] = {"[Any / Evolve]", "Human", "Dwarf", "Night Elf", "Undead", "Troll"};
         const sim::Race race_enums[] = {sim::Race::HUMAN, sim::Race::HUMAN, sim::Race::DWARF, sim::Race::NIGHT_ELF, sim::Race::UNDEAD, sim::Race::TROLL};
         int current_race_idx = 0;
@@ -217,18 +245,22 @@ inline void render_priest_panel_optimizer(
                 }
             }
         }
-        if (ImGui::Combo("Locked Race", &current_race_idx, race_names, IM_ARRAYSIZE(race_names))) {
+        if (ImGui::Combo("##PriestLockedRace", &current_race_idx, race_names, IM_ARRAYSIZE(race_names))) {
             ga_forced_race = (current_race_idx == 0) ? -1 : static_cast<int>(race_enums[current_race_idx]);
         }
+        ImGui::EndGroup();
 
-        ImGui::SameLine();
+        ImGui::SameLine(0.0f, 16.0f);
         // Rotation constraint combo
+        ImGui::BeginGroup();
+        warlock::WowResetTextBaseline();
+        ImGui::Text("Locked Rotation:");
         ImGui::SetNextItemWidth(260);
         const char* rot_preview = "[Auto / Adaptive]";
         if (ga_forced_rotation >= 0) {
             rot_preview = rotation_choice_to_string(static_cast<RotationChoice>(ga_forced_rotation));
         }
-        if (ImGui::BeginCombo("Locked Rotation", rot_preview)) {
+        if (ImGui::BeginCombo("##PriestLockedRotation", rot_preview)) {
             if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_rotation == -1)) {
                 ga_forced_rotation = -1;
             }
@@ -243,28 +275,53 @@ inline void render_priest_panel_optimizer(
             }
             ImGui::EndCombo();
         }
+        ImGui::EndGroup();
 
         if (show_advanced_tuning) {
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.18f, 0.6f));
-            ImGui::BeginChild("PriestGATuningBox", ImVec2(-1, 68), true);
-            ImGui::SetNextItemWidth(150);
-            warlock::WowSliderFloat("Mutation Rate", &ga_mutation_rate, 0.10f, 0.90f, "%.2f");
-            ImGui::SameLine(220);
-            ImGui::SetNextItemWidth(180);
-            warlock::WowSliderFloat("Start Exploration Rate", &ga_initial_explore, 0.10f, 0.90f, "%.2f (early gens)");
-            ImGui::SameLine(480);
-            ImGui::SetNextItemWidth(180);
-            warlock::WowSliderFloat("End Exploration Rate", &ga_min_explore, 0.05f, 0.50f, "%.2f (annealed final)");
+            ImGui::BeginChild("PriestGATuningBox", ImVec2(-1, 88), true);
+            
+            ImGui::BeginGroup();
+            warlock::WowResetTextBaseline();
+            ImGui::Text("Mutation Rate:");
+            ImGui::SetNextItemWidth(130);
+            warlock::WowInputFloat("##GAMutationRate", &ga_mutation_rate, 0.05f, 0.1f, "%.2f");
+            ImGui::EndGroup();
+
+            ImGui::SameLine(0.0f, 20.0f);
+            ImGui::BeginGroup();
+            warlock::WowResetTextBaseline();
+            ImGui::Text("Start Exploration Rate:");
+            ImGui::SetNextItemWidth(160);
+            warlock::WowInputFloat("##GAInitExplore", &ga_initial_explore, 0.05f, 0.1f, "%.2f");
+            ImGui::EndGroup();
+
+            ImGui::SameLine(0.0f, 20.0f);
+            ImGui::BeginGroup();
+            warlock::WowResetTextBaseline();
+            ImGui::Text("End Exploration Rate:");
+            ImGui::SetNextItemWidth(160);
+            warlock::WowInputFloat("##GAMinExplore", &ga_min_explore, 0.05f, 0.1f, "%.2f");
+            ImGui::EndGroup();
+
             ImGui::TextDisabled("Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
             ImGui::EndChild();
             ImGui::PopStyleColor();
         }
     } else {
-        ImGui::SetNextItemWidth(200);
-        warlock::WowSliderInt("Sims Per Candidate", &iters_per_candidate, 500, 10000, "%d fights");
-        ImGui::SameLine(340);
+        ImGui::BeginGroup();
+        ImGui::Text("Sims Per Candidate:");
+        ImGui::SetNextItemWidth(180);
+        warlock::WowInputInt("##ItersPerCandidate", &iters_per_candidate, 500, 2000);
+        if (iters_per_candidate < 100) iters_per_candidate = 100;
+        ImGui::EndGroup();
+
+        ImGui::SameLine(220);
+        ImGui::BeginGroup();
+        ImGui::Dummy(ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing()));
         warlock::WowCheckbox("Compare across all races", &compare_all_races);
+        ImGui::EndGroup();
     }
 
     ImGui::Spacing();

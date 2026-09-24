@@ -35,10 +35,13 @@ inline void render_panel_isb_analysis() {
     ImGui::Separator();
 
     static float cast_interval = 2.5f;
-    ImGui::SetNextItemWidth(260);
-    WowSliderFloat("Sec per Shadow Bolt", &cast_interval, 2.0f, 3.0f, "%.2fs");
+    ImGui::Text("Sec per Shadow Bolt (seconds):");
+    ImGui::SetNextItemWidth(160);
+    WowInputFloat("##SecPerShadowBolt", &cast_interval, 0.1f, 0.5f, "%.2fs");
+    if (cast_interval < 0.5f) cast_interval = 0.5f;
     ImGui::SameLine();
-    ImGui::TextDisabled("2.5s = 5/5 Bane");
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f);
+    ImGui::TextDisabled("(2.5s = 5/5 Bane)");
 
     ImGui::Spacing();
 

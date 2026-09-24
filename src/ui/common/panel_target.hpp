@@ -37,6 +37,7 @@ inline void render_panel_sim_config(SimType& sim,
   ImGui::Spacing();
 
   auto render_input_double = [](const char* label, const char* id, double* val, const char* fmt = "%.0f", float extra_w = 14.0f) {
+    WowResetTextBaseline();
     ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
     float w = std::max(70.0f, ImGui::CalcTextSize(label).x + extra_w);
@@ -46,6 +47,7 @@ inline void render_panel_sim_config(SimType& sim,
   };
 
   auto render_input_int = [](const char* label, const char* id, int* val, int min_v = 1, int max_v = 1000000, float extra_w = 14.0f) {
+    WowResetTextBaseline();
     ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "%s", label);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 1.5f));
     float w = std::max(70.0f, ImGui::CalcTextSize(label).x + extra_w);

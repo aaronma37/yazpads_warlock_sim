@@ -178,6 +178,7 @@ public:
             Texture2D tex = LoadTexture(path.c_str());
             if (tex.id > 0) {
                 SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+                SetTextureWrap(tex, TEXTURE_WRAP_REPEAT);
                 textures_[key] = tex;
                 return textures_[key];
             } else {
@@ -188,6 +189,7 @@ public:
                     tex = LoadTexture(png_fit->second.c_str());
                     if (tex.id > 0) {
                         SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+                        SetTextureWrap(tex, TEXTURE_WRAP_REPEAT);
                         textures_[key] = tex;
                         return textures_[key];
                     }
@@ -212,3 +214,4 @@ public:
 };
 
 } // namespace warlock
+
