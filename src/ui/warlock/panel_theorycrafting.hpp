@@ -444,7 +444,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
             "3/3 Soul Siphon +36%%, 5/5 Malediction +5%%, 5/5 Malevolence +5%% crit, and 3/3 Pandemic "
             "+100%% DoT crit bonus):");
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f),
-                           "  - Direct Wrack: D_direct = (212.0 + 1.00 * SP) * 1.20 * 1.36 * 1.05 = (363.28 + 1.7136 * "
+                           "  - Direct Wrack: D_direct = (216.0 + 0.858 * SP) * 1.20 * 1.36 * 1.05 = (370.14 + 1.4704 * "
                            "SP) * M_shadow");
         ImGui::TextColored(
             ImVec4(0.85f, 0.85f, 0.85f, 1.0f),

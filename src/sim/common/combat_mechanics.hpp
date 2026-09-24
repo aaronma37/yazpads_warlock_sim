@@ -31,10 +31,17 @@ struct CombatMechanicsConfig {
     // False: Binary resist only (miss or full hit).
     bool partial_resists_enabled = true;
 
+    // 5b. Spell Piercing (Penetration) below 0
+    // In WoW Forever: Spell Piercing reduces target resistance below 0 into negative resistance,
+    // which amplifies spell damage (~0.55% - 0.60% per point of negative resistance).
+    bool spell_piercing_below_zero = true;
+    double spell_piercing_bonus_per_point = 0.00575; // Default: +0.575% damage per piercing point below 0
+
+
     // 6. Spell Hit Cap & Base Hit
-    // Level 60 vs Level 63 boss: Base hit chance is 83% (17% miss chance, 1% always misses, so 84% hit cap, 16% hit needed from gear/talents).
+    // Level 60 vs Level 63 boss: Base hit chance is 83% (17% miss chance, 0% miss floor in Forever Beta, so 100% hit cap with 17% hit from gear/talents).
     double base_hit_vs_boss = 0.83; // 83%
-    double max_spell_hit = 0.99;    // 1% minimum miss chance always remains in Classic
+    double max_spell_hit = 1.00;    // 100% hit cap (0% minimum miss chance floor in Forever Beta)
 
     // 7. Critical Strike Damage Multiplier
     // Base spell crit damage is 1.5x in Classic.

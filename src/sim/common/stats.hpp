@@ -204,6 +204,7 @@ struct Stats {
     double spell_hit_percent = 0.0; // Extra spell hit % from gear/talents/buffs
     double spell_crit_percent = 0.0;// Extra spell crit % from gear/buffs
     double spell_haste_percent = 0.0; // Spell haste % (if enabled)
+    double spell_penetration = 0.0; // Spell Penetration / Piercing
     double mp5 = 0.0;               // Mana regenerated per 5 seconds
 
     double shadow_multiplier = 1.0; // Global multiplier for shadow damage (e.g. SM +10%, DS +15%, etc.)

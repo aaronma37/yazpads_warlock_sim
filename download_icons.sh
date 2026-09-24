@@ -31,6 +31,9 @@ ICONS=(
     "spell_shadow_summonimp.jpg"
     "spell_shadow_summonsuccubus.jpg"
     "spell_shadow_psychicscream.jpg"
+    "ability_deathknight_hemorrhagicfever.jpg"
+    "inv_ability_soulharvesterwarlock_demonicsoul.jpg"
+    "ability_demonhunter_chaoticimprint_fire.jpg"
 
     # Items
     "inv_helmet_08.jpg"

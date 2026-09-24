@@ -384,7 +384,13 @@ inline void render_panel_talents(WarlockSimulator& sim)
   ImGui::SameLine();
   {
     const auto& presets = standard_spec_presets();
-    static int preset_idx = -1;  // -1 = no selection / placeholder
+    static int preset_idx = []() {
+      const auto& p = standard_spec_presets();
+      for (size_t i = 0; i < p.size(); ++i) {
+        if (std::string(p[i].id) == "dp_shadow") return static_cast<int>(i);
+      }
+      return -1;
+    }();
 
     // Build a flat list of display names for the combo
     // (ImGui::Combo needs a contiguous const char* array)

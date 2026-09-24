@@ -95,9 +95,9 @@ inline std::vector<PriorityRule> get_available_warlock_actions(const Talents& ta
     list.push_back({PriorityAction::DECIMATION_SOUL_FIRE, SpellID::SOUL_FIRE, "Decimation Soul Fire", "Target HP <= 35% & Decimation Active", "Trigger when: Target HP <= 35% and Decimation buff is active.", "Spams fast cast Soul Fire during execute phase."});
   }
   if (talents.demo.demonic_brand > 0)
-    list.push_back({PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::SEARING_PAIN, "Demonic Brand (Searing Pain)", "Demonic Brand Down", "Trigger when: Target is missing Demonic Brand.", "Brands target to empower pet attacks."});
+    list.push_back({PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::DEMONIC_BRAND, "Demonic Brand (Searing Pain)", "Demonic Brand Down", "Trigger when: Target is missing Demonic Brand.", "Brands target to empower pet attacks."});
   if (talents.aff.drain_hope > 0)
-    list.push_back({PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE, "Drain Hope", "Target < 20% HP", "Trigger when: Target HP < 20%.", "Channels execute drain on low health targets."});
+    list.push_back({PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE, "Wrack", "DoT Expired / Missing", "Trigger when: Wrack is not active on target (refreshed every 6s).", "Tears the target apart from within, dealing ticking Shadow damage and increasing other Shadow DoT damage by 10%."});
   if (race == Race::ORC)
     list.push_back({PriorityAction::RACIAL_BLOOD_FURY, SpellID::NONE, "Blood Fury", "On Cooldown", "Trigger when: Blood Fury CD is ready (120s).", "Racial ability: Increases base spell damage for 15s."});
   else if (race == Race::TROLL)

@@ -311,7 +311,7 @@ inline void render_priest_panel_optimizer(
         }
     } else {
         ImGui::BeginGroup();
-        ImGui::Text("Sims Per Candidate:");
+        ImGui::Text("Number of Simulations:");
         ImGui::SetNextItemWidth(180);
         warlock::WowInputInt("##ItersPerCandidate", &iters_per_candidate, 500, 2000);
         if (iters_per_candidate < 100) iters_per_candidate = 100;
@@ -862,26 +862,51 @@ inline void render_priest_panel_optimizer(
             ImGui::NextColumn();
 
             // Right Column: Observed Spell Cast Sequence & Combat Rotation
+            static bool priest_opt_show_all_damage_instances = false;
             ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "Observed Combat Rotation & Cast Sequence:");
+            ImGui::SameLine();
+            warlock::WowCheckbox("Show All Damage Instances (vs Casts)##PriestOptDamageToggle", &priest_opt_show_all_damage_instances);
 
-            // Obtain sample cast sequence
-            std::vector<SpellCastLog> seq = b.sample_timeline.cast_sequence;
-            if (seq.empty()) {
-                PriestSimulator s = sim;
-                s.race = sel.race;
-                s.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, sel.race);
-                s.talents = sel.talents;
-                s.policy = sel.policy;
-                s.buffs = sel.buffs;
-                s.record_timeline = true;
-                sim::FastRNG rng(0x13374242ULL);
-                SimResult res = s.run_single_simulation(rng);
-                seq = res.cast_sequence;
+            // Obtain sample sequence
+            std::vector<SpellCastLog> seq;
+            if (priest_opt_show_all_damage_instances) {
+                if (b.sample_timeline.timeline.empty()) {
+                    PriestSimulator s = sim;
+                    s.race = sel.race;
+                    s.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, sel.race);
+                    s.talents = sel.talents;
+                    s.policy = sel.policy;
+                    s.buffs = sel.buffs;
+                    s.record_timeline = true;
+                    sim::FastRNG rng(0x13374242ULL);
+                    SimResult res = s.run_single_simulation(rng);
+                    seq = res.get_damage_sequence();
+                } else {
+                    seq = b.sample_timeline.get_damage_sequence();
+                }
+            } else {
+                seq = b.sample_timeline.cast_sequence;
+                if (seq.empty()) {
+                    PriestSimulator s = sim;
+                    s.race = sel.race;
+                    s.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, sel.race);
+                    s.talents = sel.talents;
+                    s.policy = sel.policy;
+                    s.buffs = sel.buffs;
+                    s.record_timeline = true;
+                    sim::FastRNG rng(0x13374242ULL);
+                    SimResult res = s.run_single_simulation(rng);
+                    seq = res.cast_sequence;
+                }
             }
 
-            // 1. Opener Sequence Badges (First 16-24 Spells Cast)
+            // 1. Opener Sequence Badges (First 16-24 Spells Cast / Damage Events)
             int opener_count = (int)std::min(seq.size(), (size_t)16);
-            ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Sequence (First %d Spells):", opener_count);
+            if (priest_opt_show_all_damage_instances) {
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Damage Sequence (First %d Events):", opener_count);
+            } else {
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Sequence (First %d Spells):", opener_count);
+            }
             ImGui::BeginChild("PriestOpenerSequenceBox", ImVec2(-1, 64), true, ImGuiWindowFlags_HorizontalScrollbar);
             for (size_t i = 0; i < std::min(seq.size(), (size_t)24); ++i) {
                 const auto& cast = seq[i];
@@ -898,8 +923,13 @@ inline void render_priest_panel_optimizer(
                 if (ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
                     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "%s", spell_id_to_string(cast.spell_id));
-                    ImGui::Text("Time: %.1fs  |  Cast Duration: %.1fs", cast.time, cast.cast_time);
-                    ImGui::Text("Role: %s", cast.tag.c_str());
+                    if (priest_opt_show_all_damage_instances) {
+                        ImGui::Text("Time: %.1fs", cast.time);
+                        ImGui::Text("Type: %s", cast.tag.c_str());
+                    } else {
+                        ImGui::Text("Time: %.1fs  |  Cast Duration: %.1fs", cast.time, cast.cast_time);
+                        ImGui::Text("Role: %s", cast.tag.c_str());
+                    }
                     if (cast.damage > 0.0) {
                         ImGui::TextColored(cast.is_crit ? ImVec4(1.0f, 0.85f, 0.2f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
                                            "Damage: %.0f %s",
@@ -947,13 +977,17 @@ inline void render_priest_panel_optimizer(
             });
 
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Observed Cast Order & Role Breakdown (120s Fight):");
+            if (priest_opt_show_all_damage_instances) {
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Observed Damage Events Breakdown (120s Fight):");
+            } else {
+                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Observed Cast Order & Role Breakdown (120s Fight):");
+            }
             if (ImGui::BeginTable("PriestObservedSpellsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                 ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 18);
-                ImGui::TableSetupColumn("Spell", ImGuiTableColumnFlags_WidthFixed, 120);
-                ImGui::TableSetupColumn("First Cast", ImGuiTableColumnFlags_WidthFixed, 60);
-                ImGui::TableSetupColumn("Casts (Share)", ImGuiTableColumnFlags_WidthFixed, 85);
-                ImGui::TableSetupColumn("Combat Role & Behavior", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn(priest_opt_show_all_damage_instances ? "Spell / Source" : "Spell", ImGuiTableColumnFlags_WidthFixed, 120);
+                ImGui::TableSetupColumn(priest_opt_show_all_damage_instances ? "First Hit" : "First Cast", ImGuiTableColumnFlags_WidthFixed, 60);
+                ImGui::TableSetupColumn(priest_opt_show_all_damage_instances ? "Hits (Share)" : "Casts (Share)", ImGuiTableColumnFlags_WidthFixed, 85);
+                ImGui::TableSetupColumn(priest_opt_show_all_damage_instances ? "Event Type" : "Combat Role & Behavior", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableHeadersRow();
 
                 int rank = 1;
@@ -979,7 +1013,9 @@ inline void render_priest_panel_optimizer(
 
                     ImGui::TableNextColumn();
                     std::string role_desc;
-                    if (st.id == SpellID::SHADOW_WORD_PAIN) {
+                    if (priest_opt_show_all_damage_instances) {
+                        role_desc = st.role;
+                    } else if (st.id == SpellID::SHADOW_WORD_PAIN) {
                         role_desc = "DoT (Shadow Word: Pain; 18s-24s duration)";
                     } else if (st.id == SpellID::DEVOURING_PLAGUE) {
                         role_desc = "DoT (Devouring Plague; 1min CD, 24s disease)";

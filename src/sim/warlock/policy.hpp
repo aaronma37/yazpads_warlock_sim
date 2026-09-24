@@ -533,7 +533,7 @@ struct PriorityRule
 
 struct PolicyConfig
 {
-  RotationChoice rotation = RotationChoice::SHADOW_DESTRO;
+  RotationChoice rotation = RotationChoice::DP_AF_SHADOW;
   CurseChoice curse = CurseChoice::BANE_OF_AGONY;
   DotPolicy corruption = DotPolicy::ALWAYS;
   bool maintain_immolate = true;  // Maintain Immolate for Conflag/Incinerate bonuses
@@ -909,7 +909,7 @@ struct PolicyConfig
       if (talents.demo.demonic_brand > 0)
       {
         rules.push_back({PriorityAction::DEMONIC_BRAND_SEARING_PAIN,
-                         SpellID::SEARING_PAIN,
+                         SpellID::DEMONIC_BRAND,
                          "Demonic Brand (Searing Pain)",
                          "Demonic Brand Down / Expired",
                          "Trigger when: Target is not branded by Demonic Brand (or charges depleted), casting Searing "

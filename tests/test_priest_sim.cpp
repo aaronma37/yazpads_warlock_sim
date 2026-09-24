@@ -159,8 +159,8 @@ TEST_CASE(PriestSim, HolyPrecisionHitCap) {
     sim.talents.disc.holy_precision = 2; // +12%
     CHECK_NEAR(sim.calculate_hit_chance(sim::School::HOLY), 0.95, 0.001);
 
-    sim.talents.disc.holy_precision = 3; // +18% -> hits 99% cap
-    CHECK_NEAR(sim.calculate_hit_chance(sim::School::HOLY), 0.99, 0.001);
+    sim.talents.disc.holy_precision = 3; // +18% -> reaches 100% cap (overcaps by 1%)
+    CHECK_NEAR(sim.calculate_hit_chance(sim::School::HOLY), 1.00, 0.001);
 }
 
 TEST_CASE(PriestSim, HolyFireWeavingAndPenance) {

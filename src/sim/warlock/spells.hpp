@@ -37,6 +37,7 @@ enum class SpellID : uint8_t {
     RACIAL_BERSERKING,
     AMPLIFY_CURSE,
     TOUCH_OF_THE_GRAVE,
+    DEMONIC_BRAND,
 
     COUNT // Number of spell ids; must stay last (sizes per-spell stat arrays)
 };
@@ -199,8 +200,8 @@ public:
         s.base_cast_time = 0.0;
         s.mana_cost = 365.0;
         s.cooldown = 8.0;
-        s.min_dmg = 238.0;
-        s.max_dmg = 266.0;
+        s.min_dmg = 259.0;
+        s.max_dmg = 289.0;
         s.direct_coefficient = 1.5 / 3.5; // 0.4286
         return s;
     }
@@ -272,8 +273,8 @@ public:
         s.dot_duration = 6.0;
         s.dot_tick_interval = 1.0;
         s.num_ticks = 6;
-        s.dot_base_dmg_per_tick = 212.0 / 6.0; // 35.3333 (~36)
-        s.dot_coeff_per_tick = 1.0 / 6.0;      // 0.166667
+        s.dot_base_dmg_per_tick = 216.0 / 6.0; // 36.0
+        s.dot_coeff_per_tick = 0.858 / 6.0;    // 0.143 (85.8% total coefficient)
         return s;
     }
     static inline SpellDefinition drain_hope_rank3() { return wrack_rank3(); }
@@ -289,7 +290,7 @@ public:
         s.dot_duration = 5.0;
         s.dot_tick_interval = 1.0;
         s.num_ticks = 5;
-        s.dot_base_dmg_per_tick = 71.0; // 355 base across 5 sec (5 ticks of 71)
+        s.dot_base_dmg_per_tick = 51.0; // 255 base across 5 sec (5 ticks of 51)
         s.dot_coeff_per_tick = 0.10;   // 50% total SP coefficient (10% per tick)
         return s;
     }
@@ -305,7 +306,7 @@ public:
         s.dot_tick_interval = 3.0;
         s.num_ticks = 5;
         s.dot_base_dmg_per_tick = 84.0; // 420 base across 15 sec (5 ticks of 84)
-        s.dot_coeff_per_tick = 0.20;   // 100% total SP coefficient (20% per tick)
+        s.dot_coeff_per_tick = 0.10;   // 50% total SP coefficient (10% per tick)
         return s;
     }
 
@@ -365,6 +366,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::RACIAL_BERSERKING: return "Berserking";
         case SpellID::AMPLIFY_CURSE: return "Amplify Curse";
         case SpellID::TOUCH_OF_THE_GRAVE: return "Touch of the Grave";
+        case SpellID::DEMONIC_BRAND: return "Demonic Brand";
         default: return "Spell";
     }
 }
@@ -384,7 +386,7 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::CONFLAGRATE: return "spell_fire_fireball.png";
         case SpellID::INCINERATE: return "spell_fire_burnout.png";
         case SpellID::SOUL_FIRE: return "spell_fire_fireball02.png";
-        case SpellID::DRAIN_HOPE: return "spell_shadow_haunting.png";
+        case SpellID::DRAIN_HOPE: return "ability_deathknight_hemorrhagicfever.png";
         case SpellID::DRAIN_LIFE: return "spell_shadow_lifedrain02.png";
         case SpellID::DRAIN_SOUL: return "spell_shadow_soulgem.png";
         case SpellID::SIPHON_LIFE: return "spell_shadow_requiem.png";
@@ -397,6 +399,7 @@ inline const char* spell_id_to_icon(SpellID id) {
         case SpellID::RACIAL_BERSERKING: return "racial_troll_berserk.png";
         case SpellID::AMPLIFY_CURSE: return "spell_shadow_contagion.png";
         case SpellID::TOUCH_OF_THE_GRAVE: return "spell_shadow_chilltouch.png";
+        case SpellID::DEMONIC_BRAND: return "ability_demonhunter_chaoticimprint_fire.png";
         default: return "spell_shadow_shadowbolt.png";
     }
 }

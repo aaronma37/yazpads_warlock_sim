@@ -50,3 +50,34 @@ TEST_CASE(Icons, PetChoiceToIcon) {
     CHECK_EQ(std::string(pet_choice_to_icon(PetChoice::SUCCUBUS)), std::string("Spell_Shadow_SummonSuccubus.png"));
     CHECK(std::string(pet_choice_to_icon(PetChoice::NONE)).empty()); // nothing to depict when sacrificed / none
 }
+
+TEST_CASE(Icons, WrackAndDemonicIcons) {
+    CHECK_EQ(std::string(spell_id_to_icon(SpellID::DRAIN_HOPE)), std::string("ability_deathknight_hemorrhagicfever.png"));
+    CHECK_EQ(std::string(spell_id_to_icon(SpellID::DEMONIC_BRAND)), std::string("ability_demonhunter_chaoticimprint_fire.png"));
+
+    // Verify talent nodes icon assignments
+    bool found_wrack = false;
+    for (const auto& node : FOREVER_AFFLICTION_NODES) {
+        if (std::string(node.id) == "wrack") {
+            CHECK_EQ(std::string(node.icon), std::string("ability_deathknight_hemorrhagicfever.png"));
+            found_wrack = true;
+        }
+    }
+    CHECK(found_wrack);
+
+    bool found_dp = false;
+    bool found_brand = false;
+    for (const auto& node : FOREVER_DEMONOLOGY_NODES) {
+        if (std::string(node.id) == "demonic_pact") {
+            CHECK_EQ(std::string(node.icon), std::string("inv_ability_soulharvesterwarlock_demonicsoul.png"));
+            found_dp = true;
+        }
+        if (std::string(node.id) == "demonic_brand") {
+            CHECK_EQ(std::string(node.icon), std::string("ability_demonhunter_chaoticimprint_fire.png"));
+            found_brand = true;
+        }
+    }
+    CHECK(found_dp);
+    CHECK(found_brand);
+}
+

@@ -156,12 +156,31 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
 
         // Tab 4: Observed Spell Cast Sequence
         if (warlock::WowBeginTabItem("Observed Spell Cast Sequence")) {
-            const auto& seq = batch.sample_timeline.cast_sequence;
-            if (seq.empty()) {
-                ImGui::TextDisabled("No sample cast sequence available. Run a simulation to generate observed sequence.");
+            static bool priest_show_all_damage_instances = false;
+
+            std::vector<SpellCastLog> seq;
+            if (priest_show_all_damage_instances) {
+                seq = batch.sample_timeline.get_damage_sequence();
             } else {
+                seq = batch.sample_timeline.cast_sequence;
+            }
+
+            if (seq.empty()) {
+                ImGui::TextDisabled("No sample sequence available. Run a simulation to generate observed sequence.");
+            } else {
+                ImGui::AlignTextToFramePadding();
+                warlock::WowCheckbox("Show All Damage Instances (vs Casts Only)##PriestDamageToggle", &priest_show_all_damage_instances);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("When checked, shows all individual damage hits, DoT/channel ticks, and procs.\nWhen unchecked, shows player cast actions.");
+                }
+                ImGui::Spacing();
+
                 int opener_count = (int)std::min(seq.size(), (size_t)16);
-                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Flow (First %d Spells Cast):", opener_count);
+                if (priest_show_all_damage_instances) {
+                    ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Damage Flow (First %d Events):", opener_count);
+                } else {
+                    ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Opener Cast Flow (First %d Spells Cast):", opener_count);
+                }
                 ImGui::BeginChild("PriestResultOpenerBox", ImVec2(-1, 56), true, ImGuiWindowFlags_HorizontalScrollbar);
                 for (size_t i = 0; i < std::min(seq.size(), (size_t)24); ++i) {
                     const auto& cast = seq[i];
@@ -178,8 +197,13 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                     if (ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
                         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "%s", spell_id_to_string(cast.spell_id));
-                        ImGui::Text("Time: %.1fs  |  Cast Duration: %.1fs", cast.time, cast.cast_time);
-                        ImGui::Text("Role: %s", cast.tag.c_str());
+                        if (priest_show_all_damage_instances) {
+                            ImGui::Text("Time: %.1fs", cast.time);
+                            ImGui::Text("Type: %s", cast.tag.c_str());
+                        } else {
+                            ImGui::Text("Time: %.1fs  |  Cast Duration: %.1fs", cast.time, cast.cast_time);
+                            ImGui::Text("Role: %s", cast.tag.c_str());
+                        }
                         if (cast.damage > 0.0) {
                             ImGui::TextColored(cast.is_crit ? ImVec4(1.0f, 0.85f, 0.2f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
                                                "Damage: %.0f %s", cast.damage, cast.is_crit ? "(CRIT!)" : "");
@@ -194,27 +218,42 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                 ImGui::EndChild();
 
                 ImGui::Spacing();
-                ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Complete Cast History (%zu total casts in sample fight):", seq.size());
+                if (priest_show_all_damage_instances) {
+                    ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Complete Damage History (%zu total damage events in sample fight):", seq.size());
+                } else {
+                    ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Complete Cast History (%zu total casts in sample fight):", seq.size());
+                }
                 ImGui::SameLine();
 
                 auto generate_priest_cast_history_text = [&seq, &batch]() -> std::string {
                     std::ostringstream ss;
                     ss << "========================================================================================\n";
-                    ss << "                       OBSERVED SPELL CAST SEQUENCE & COMBAT HISTORY                    \n";
+                    if (priest_show_all_damage_instances) {
+                        ss << "                       OBSERVED DAMAGE EVENT HISTORY & COMBAT LOG                       \n";
+                    } else {
+                        ss << "                       OBSERVED SPELL CAST SEQUENCE & COMBAT HISTORY                    \n";
+                    }
                     ss << "========================================================================================\n";
                     ss << "Mean DPS: " << std::fixed << std::setprecision(1) << batch.mean_dps 
-                       << " | Total Casts: " << seq.size() << "\n\n";
-                    ss << std::left << std::setw(5)  << "#"
-                       << std::setw(10) << "Time (s)"
-                       << std::setw(24) << "Spell"
-                       << std::setw(12) << "Cast Time"
-                       << std::setw(18) << "Result / Dmg"
-                       << "Trigger / Role\n";
+                       << " | Total " << (priest_show_all_damage_instances ? "Damage Events: " : "Casts: ") << seq.size() << "\n\n";
+                    if (priest_show_all_damage_instances) {
+                        ss << std::left << std::setw(5)  << "#"
+                           << std::setw(10) << "Time (s)"
+                           << std::setw(24) << "Spell / Source"
+                           << std::setw(16) << "Event Type"
+                           << "Result / Dmg\n";
+                    } else {
+                        ss << std::left << std::setw(5)  << "#"
+                           << std::setw(10) << "Time (s)"
+                           << std::setw(24) << "Spell"
+                           << std::setw(14) << "Cast Time"
+                           << std::setw(18) << "Result / Dmg"
+                           << "Trigger / Role\n";
+                    }
                     ss << "----------------------------------------------------------------------------------------\n";
 
                     for (size_t i = 0; i < seq.size(); ++i) {
                         const auto& cast = seq[i];
-                        std::string cast_str = (cast.cast_time > 0.0) ? (std::to_string(cast.cast_time).substr(0, 3) + "s") : "Instant";
                         std::string res_str;
                         if (cast.damage > 0.0) {
                             res_str = std::to_string(static_cast<int>(cast.damage)) + (cast.is_crit ? " (CRIT)" : " (Hit)");
@@ -227,12 +266,21 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                         std::ostringstream time_buf;
                         time_buf << std::fixed << std::setprecision(1) << cast.time << "s";
 
-                        ss << std::left << std::setw(5)  << (i + 1)
-                           << std::setw(10) << time_buf.str()
-                           << std::setw(24) << spell_id_to_string(cast.spell_id)
-                           << std::setw(12) << cast_str
-                           << std::setw(18) << res_str
-                           << cast.tag << "\n";
+                        if (priest_show_all_damage_instances) {
+                            ss << std::left << std::setw(5)  << (i + 1)
+                               << std::setw(10) << time_buf.str()
+                               << std::setw(24) << spell_id_to_string(cast.spell_id)
+                               << std::setw(16) << cast.tag
+                               << res_str << "\n";
+                        } else {
+                            std::string cast_str = (cast.cast_time > 0.0) ? (std::to_string(cast.cast_time).substr(0, 3) + "s") : "Instant";
+                            ss << std::left << std::setw(5)  << (i + 1)
+                               << std::setw(10) << time_buf.str()
+                               << std::setw(24) << spell_id_to_string(cast.spell_id)
+                               << std::setw(14) << cast_str
+                               << std::setw(18) << res_str
+                               << cast.tag << "\n";
+                        }
                     }
                     ss << "========================================================================================\n";
                     return ss.str();
@@ -241,20 +289,21 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                 static float export_feedback_timer = 0.0f;
                 static std::string export_feedback_msg = "";
 
-                if (warlock::WowButton("📋 Copy Cast History to Clipboard##Priest")) {
+                if (warlock::WowButton(priest_show_all_damage_instances ? "📋 Copy Damage Log to Clipboard##Priest" : "📋 Copy Cast History to Clipboard##Priest")) {
                     std::string text = generate_priest_cast_history_text();
                     ImGui::SetClipboardText(text.c_str());
                     export_feedback_msg = "Copied to clipboard!";
                     export_feedback_timer = 3.0f;
                 }
                 ImGui::SameLine();
-                if (warlock::WowButton("💾 Export to Text File (priest_cast_sequence.txt)##Priest")) {
+                if (warlock::WowButton(priest_show_all_damage_instances ? "💾 Export Damage Log (priest_damage_events.txt)##Priest" : "💾 Export to Text File (priest_cast_sequence.txt)##Priest")) {
                     std::string text = generate_priest_cast_history_text();
-                    std::ofstream out("priest_cast_sequence.txt");
+                    std::string fname = priest_show_all_damage_instances ? "priest_damage_events.txt" : "priest_cast_sequence.txt";
+                    std::ofstream out(fname);
                     if (out.is_open()) {
                         out << text;
                         out.close();
-                        export_feedback_msg = "Saved to priest_cast_sequence.txt!";
+                        export_feedback_msg = "Saved to " + fname + "!";
                     } else {
                         export_feedback_msg = "Failed to open file for writing.";
                     }
@@ -267,13 +316,16 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                     export_feedback_timer -= ImGui::GetIO().DeltaTime;
                 }
 
-                if (ImGui::BeginTable("PriestAllCastsTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(-1, 240))) {
+                int priest_table_cols = priest_show_all_damage_instances ? 5 : 6;
+                if (ImGui::BeginTable("PriestAllCastsTable", priest_table_cols, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(-1, 240))) {
                     ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 28);
                     ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 50);
-                    ImGui::TableSetupColumn("Spell", ImGuiTableColumnFlags_WidthFixed, 140);
-                    ImGui::TableSetupColumn("Cast Time", ImGuiTableColumnFlags_WidthFixed, 70);
-                    ImGui::TableSetupColumn("Result / Damage", ImGuiTableColumnFlags_WidthFixed, 130);
-                    ImGui::TableSetupColumn("Trigger / Role", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Spell / Source", ImGuiTableColumnFlags_WidthFixed, 140);
+                    ImGui::TableSetupColumn(priest_show_all_damage_instances ? "Event Type" : "Cast Time", ImGuiTableColumnFlags_WidthFixed, priest_show_all_damage_instances ? 110 : 70);
+                    ImGui::TableSetupColumn("Result / Damage", priest_show_all_damage_instances ? ImGuiTableColumnFlags_WidthStretch : ImGuiTableColumnFlags_WidthFixed, 130);
+                    if (!priest_show_all_damage_instances) {
+                        ImGui::TableSetupColumn("Trigger / Role", ImGuiTableColumnFlags_WidthStretch);
+                    }
                     ImGui::TableHeadersRow();
 
                     for (size_t i = 0; i < seq.size(); ++i) {
@@ -297,12 +349,16 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                         }
                         ImGui::TextUnformatted(spell_id_to_string(cast.spell_id));
 
-                        // Col 3: Cast Time
+                        // Col 3: Cast Time / Event Type
                         ImGui::TableSetColumnIndex(3);
-                        if (cast.cast_time > 0.0) {
-                            ImGui::Text("%.1fs", cast.cast_time);
+                        if (priest_show_all_damage_instances) {
+                            ImGui::Text("%s", cast.tag.c_str());
                         } else {
-                            ImGui::TextDisabled("Instant");
+                            if (cast.cast_time > 0.0) {
+                                ImGui::Text("%.1fs", cast.cast_time);
+                            } else {
+                                ImGui::TextDisabled("Instant");
+                            }
                         }
 
                         // Col 4: Result / Damage
@@ -319,11 +375,11 @@ inline void render_priest_panel_results(const BatchSimResult& batch) {
                             ImGui::TextDisabled("-");
                         }
 
-                        // Col 5: Tag
-                        ImGui::TableSetColumnIndex(5);
-                        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "%s", cast.tag.c_str());
+                        if (!priest_show_all_damage_instances) {
+                            ImGui::TableSetColumnIndex(5);
+                            ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "%s", cast.tag.c_str());
+                        }
                     }
-
                     ImGui::EndTable();
                 }
             }

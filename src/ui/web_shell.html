@@ -25,19 +25,19 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background-color: #0e0c12;
+      background-color: #0b090f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    /* Pixel-perfect full window canvas */
+    /* Pixel-perfect scaled canvas that preserves 1650:960 aspect ratio */
     canvas.emscripten {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
       border: 0 none;
       outline: none;
       display: block;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(123, 44, 191, 0.25);
+      border-radius: 2px;
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
     }
@@ -171,7 +171,7 @@
       <div id="loading-detail">Downloading assets & WebAssembly binary...</div>
     </div>
 
-    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    <canvas class="emscripten" id="canvas" width="1650" height="960" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
   </main>
 
   <script>
@@ -192,15 +192,29 @@
       }
     }
 
-    function syncCanvasPixelSize() {
+    function syncCanvasAspect() {
       const canvas = document.getElementById('canvas');
-      if (canvas) {
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
+      if (!canvas) return;
+      if (canvas.width !== 1650) canvas.width = 1650;
+      if (canvas.height !== 960) canvas.height = 960;
+
+      const targetAspect = 1650 / 960;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const windowAspect = vw / vh;
+
+      if (windowAspect > targetAspect) {
+        // Window is wider than target -> fit height, pillarbox left & right
+        canvas.style.height = vh + 'px';
+        canvas.style.width = Math.round(vh * targetAspect) + 'px';
+      } else {
+        // Window is taller than target -> fit width, letterbox top & bottom
+        canvas.style.width = vw + 'px';
+        canvas.style.height = Math.round(vw / targetAspect) + 'px';
       }
     }
-    window.addEventListener('resize', syncCanvasPixelSize);
-    window.addEventListener('orientationchange', syncCanvasPixelSize);
+    window.addEventListener('resize', syncCanvasAspect);
+    window.addEventListener('orientationchange', syncCanvasAspect);
 
     var Module = {
       preRun: [],
@@ -219,7 +233,7 @@
               statusContainer.onmouseleave = () => { statusContainer.style.opacity = '0.4'; };
             }
           }, 3000);
-          syncCanvasPixelSize();
+          syncCanvasAspect();
         }
       ],
       print: function(text) {

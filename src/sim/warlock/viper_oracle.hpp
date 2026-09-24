@@ -71,7 +71,7 @@ public:
             {PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE},
             {PriorityAction::SHADOWBURN, SpellID::SHADOWBURN},
             {PriorityAction::SHADOWBURN_ISB, SpellID::SHADOWBURN},
-            {PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::SEARING_PAIN},
+            {PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::DEMONIC_BRAND},
             {PriorityAction::INCINERATE_FILLER, SpellID::INCINERATE},
             {PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN},
             {PriorityAction::DRAIN_SOUL_FILLER, SpellID::DRAIN_SOUL},
@@ -100,7 +100,7 @@ public:
             case PriorityAction::CONFLAGRATE: return "Conflagrate (Consume Immolate)";
             case PriorityAction::SHADOWBURN: return "Shadowburn (On Cooldown)";
             case PriorityAction::SHADOWBURN_ISB: return "Shadowburn (ISB Active)";
-            case PriorityAction::DRAIN_HOPE: return "Drain Hope Channel";
+            case PriorityAction::DRAIN_HOPE: return "Wrack Channel";
             case PriorityAction::INCINERATE_FILLER: return "Incinerate Filler";
             case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain Filler";
             case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life Filler";
@@ -121,7 +121,7 @@ public:
             case PriorityAction::NIGHTFALL_SHADOW_BOLT: return SpellID::SHADOW_BOLT;
             case PriorityAction::DECIMATION_SOUL_FIRE: return SpellID::SOUL_FIRE;
             case PriorityAction::DECIMATION_SEARING_PAIN: return SpellID::SEARING_PAIN;
-            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return SpellID::SEARING_PAIN;
+            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return SpellID::DEMONIC_BRAND;
             case PriorityAction::CORRUPTION: return SpellID::CORRUPTION;
             case PriorityAction::SIPHON_LIFE: return SpellID::SIPHON_LIFE;
             case PriorityAction::CURSE_OF_AGONY: return SpellID::CURSE_OF_AGONY;

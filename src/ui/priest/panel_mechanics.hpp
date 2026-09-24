@@ -63,6 +63,10 @@ inline void render_priest_mechanics_panel(MechanicsConfig& mechanics) {
         // 4. Resistance & Partial Resists
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Spell Resistance Mechanics:");
         warlock::WowCheckbox("Enable Partial Resists (Classic 4-Roll Table)", &mechanics.partial_resists_enabled);
+        warlock::WowCheckbox("Allow Spell Piercing Below 0 (Damage Amplification)", &mechanics.spell_piercing_below_zero);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When ON (Forever): Spell Piercing (Penetration) reduces resistance below 0, granting +0.575%% bonus damage per point.\nWhen OFF (Classic): Target resistance cannot be reduced below 0.");
+        }
 
         ImGui::Spacing();
         ImGui::Separator();

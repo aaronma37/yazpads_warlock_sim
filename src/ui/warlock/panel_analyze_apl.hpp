@@ -94,7 +94,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
   static ActiveAnalysisView active_view = ActiveAnalysisView::NONE;
   static bool blunder_adaptive_rollouts = true;
-  static int blunder_rollouts_per_action = 256;
+  static int blunder_rollouts_per_action = 512;
   static char blunder_filter[64] = "";
 
   static int mcts_num_runs = 3;
@@ -698,7 +698,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             }
             else
             {
-              ImGui::TextDisabled("0.0 DPS (0.0%)");
+              ImGui::TextDisabled("%s", "0.0 DPS (0.0%)");
             }
           }
           ImGui::EndTable();
@@ -1011,7 +1011,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
       ImGui::Text("1) Select desired preset and APL from");
       ImGui::SameLine();
-      render_tab_link("Presets", AppTab::PRESETS);
+      render_tab_link("Current Configuration", AppTab::PRESETS);
       ImGui::SameLine(0, 0);
       ImGui::Text(",");
       ImGui::SameLine();
@@ -1027,7 +1027,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
       ImGui::Text("2) Modify APL if wanted in");
       ImGui::SameLine();
-      render_tab_link("Presets", AppTab::PRESETS);
+      render_tab_link("Current Configuration", AppTab::PRESETS);
       ImGui::SameLine(0, 0);
       ImGui::Text(".");
 

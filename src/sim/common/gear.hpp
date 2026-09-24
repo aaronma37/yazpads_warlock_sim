@@ -88,6 +88,8 @@ struct Item {
     double on_use_spell_power = 0.0;
     double on_use_duration = 0.0;
     double on_use_cooldown = 0.0;
+
+    double spell_penetration = 0.0; // Spell Penetration / Piercing
 };
 
 inline std::string get_default_slot_icon(Slot s) {
@@ -133,6 +135,7 @@ struct GearLoadout {
     double extra_shadow_power = 0.0;
     double extra_spell_hit = 0.0;
     double extra_spell_crit = 0.0;
+    double extra_spell_penetration = 0.0;
 
     void equip(Slot slot, const Item& item) {
         items[static_cast<size_t>(slot)] = item;
@@ -164,6 +167,7 @@ struct GearLoadout {
             s.spell_hit_percent += item.spell_hit;
             s.spell_crit_percent += item.spell_crit;
             s.spell_haste_percent += item.spell_haste;
+            s.spell_penetration += item.spell_penetration;
             s.mp5 += item.mp5;
 
             if (item.set_name == "Bloodvine") bloodvine_pieces++;
@@ -195,6 +199,7 @@ struct GearLoadout {
         s.shadow_power += extra_shadow_power + 20.0 /*gloves*/;
         s.spell_hit_percent += extra_spell_hit;
         s.spell_crit_percent += extra_spell_crit;
+        s.spell_penetration += extra_spell_penetration;
         s.stamina += 4.0;
         s.intellect += 4.0;
 

@@ -45,14 +45,23 @@ double PriestSimulator::calculate_crit_chance(sim::School school, const sim::Sta
 }
 
 double PriestSimulator::calculate_partial_resist_multiplier(sim::School school, double target_resistance, sim::FastRNG& rng) const {
-    if (!mechanics.partial_resists_enabled || target_resistance <= 0.0) {
-        return 1.0;
-    }
     double r = target_resistance;
     if (school == sim::School::SHADOW && target_config.curse_of_shadows) r = std::max(0.0, r - 75.0);
-    if (r <= 0.0) return 1.0;
 
-    double avg_resist = r / (r + 400.0);
+    double effective_res = r - raw_stats.spell_penetration;
+
+    if (effective_res < 0.0) {
+        if (mechanics.spell_piercing_below_zero) {
+            return 1.0 + (-effective_res) * mechanics.spell_piercing_bonus_per_point;
+        }
+        return 1.0;
+    }
+
+    if (!mechanics.partial_resists_enabled || effective_res <= 0.0) {
+        return 1.0;
+    }
+
+    double avg_resist = effective_res / (effective_res + 400.0);
     double roll = rng.next_double();
     if (roll < avg_resist * 0.25) return 0.25;
     if (roll < avg_resist * 0.50) return 0.50;
@@ -312,21 +321,23 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             if (record_timeline) {
                 result.timeline.push_back({current_time, final_dmg, spell, is_crit, false, current_mana, shadow_weaving_stacks});
             }
+        }
+    };
 
-            // Undead Racial: Touch of the Grave (10% chance on damaging spell)
-            if (spell != SpellID::TOUCH_OF_THE_GRAVE && race == sim::Race::UNDEAD && rng.chance(0.10)) {
-                double mult = get_current_spell_multiplier(sim::School::SHADOW, SpellID::TOUCH_OF_THE_GRAVE);
-                double grave_raw = 0.05 * stats.max_health * mult;
-                double grave_res = calculate_partial_resist_multiplier(sim::School::SHADOW, shadow_res, rng);
-                double grave_dmg = grave_raw * grave_res;
-                if (grave_dmg > 0.0) {
-                    result.total_damage += grave_dmg;
-                    result.dmg_touch_of_the_grave += grave_dmg;
-                    result.touch_of_the_grave_procs++;
-                    result.record_spell_hit(SpellID::TOUCH_OF_THE_GRAVE, grave_dmg, false);
-                    if (record_timeline) {
-                        result.timeline.push_back({current_time, grave_dmg, SpellID::TOUCH_OF_THE_GRAVE, false, false, current_mana, shadow_weaving_stacks});
-                    }
+    double totg_cd_ready = 0.0;
+    auto apply_touch_of_the_grave = [&]() {
+        if (race == sim::Race::UNDEAD && current_time >= totg_cd_ready && rng.chance(0.10)) {
+            totg_cd_ready = current_time + 1.0;
+            double grave_raw = 0.05 * stats.max_health;
+            double grave_res = calculate_partial_resist_multiplier(sim::School::SHADOW, shadow_res, rng);
+            double grave_dmg = grave_raw * grave_res;
+            if (grave_dmg > 0.0) {
+                result.total_damage += grave_dmg;
+                result.dmg_touch_of_the_grave += grave_dmg;
+                result.touch_of_the_grave_procs++;
+                result.record_spell_hit(SpellID::TOUCH_OF_THE_GRAVE, grave_dmg, false);
+                if (record_timeline) {
+                    result.timeline.push_back({current_time, grave_dmg, SpellID::TOUCH_OF_THE_GRAVE, false, false, current_mana, shadow_weaving_stacks});
                 }
             }
         }
@@ -391,6 +402,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::DEVOURING_PLAGUE);
             result.total_casts++;
+            apply_touch_of_the_grave();
             cd_devouring_plague_ready = current_time + dp_def.cooldown;
 
             if (rng.chance(calculate_hit_chance(sim::School::SHADOW))) {
@@ -407,6 +419,10 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             } else {
                 result.record_spell_miss(SpellID::DEVOURING_PLAGUE);
                 result.misses++;
+            }
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::DEVOURING_PLAGUE, 0.0, false, false, 0.0, "DoT Application"});
             }
 
             gcd_ready_time = current_time + mechanics.base_gcd;
@@ -427,6 +443,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::SHADOW_WORD_PAIN);
             result.total_casts++;
+            apply_touch_of_the_grave();
 
             if (rng.chance(calculate_hit_chance(sim::School::SHADOW))) {
                 dot_swp.active = true;
@@ -446,6 +463,10 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
                 result.misses++;
             }
 
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::SHADOW_WORD_PAIN, 0.0, false, false, 0.0, "DoT Application"});
+            }
+
             gcd_ready_time = current_time + mechanics.base_gcd;
             queue.push(gcd_ready_time, sim::EventType::GCD_READY);
             return true;
@@ -462,6 +483,10 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             double cast_time = mb_def.base_cast_time / cast_speed_mult;
             cast_finish_time = current_time + cast_time;
             gcd_ready_time = current_time + std::max(mechanics.base_gcd, cast_time);
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::MIND_BLAST, 0.0, false, false, cast_time, "Burst"});
+            }
 
             queue.push(cast_finish_time, sim::EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::MIND_BLAST));
             queue.push(gcd_ready_time, sim::EventType::GCD_READY);
@@ -485,7 +510,12 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::SHADOW_WORD_DEATH);
             result.total_casts++;
+            apply_touch_of_the_grave();
             cd_sw_death_ready = current_time + swd_def.cooldown;
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::SHADOW_WORD_DEATH, 0.0, false, false, 0.0, "Execute / Burst"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::SHADOW))) {
                 double crit_p = calculate_crit_chance(sim::School::SHADOW, stats);
@@ -528,7 +558,12 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::STARSHARDS);
             result.total_casts++;
+            apply_touch_of_the_grave();
             cd_starshards_ready = current_time + star_def.cooldown;
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::STARSHARDS, 0.0, false, false, star_def.dot_duration, "Channel"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::ARCANE))) {
                 channel.active = true;
@@ -566,6 +601,11 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::MIND_FLAY);
             result.total_casts++;
+            apply_touch_of_the_grave();
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::MIND_FLAY, 0.0, false, false, 3.0, "Channel"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::SHADOW))) {
                 channel.active = true;
@@ -603,7 +643,12 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::CHASTISE);
             result.total_casts++;
+            apply_touch_of_the_grave();
             cd_chastise_ready = current_time + ch_def.cooldown;
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::CHASTISE, 0.0, false, false, 0.0, "Instant"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::HOLY))) {
                 bool is_crit = rng.chance(calculate_crit_chance(sim::School::HOLY, stats));
@@ -629,6 +674,11 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::HOLY_NOVA);
             result.total_casts++;
+            apply_touch_of_the_grave();
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::HOLY_NOVA, 0.0, false, false, 0.0, "Instant AoE"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::HOLY))) {
                 bool is_crit = rng.chance(calculate_crit_chance(sim::School::HOLY, stats));
@@ -658,6 +708,10 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             cast_finish_time = current_time + cast_time;
             gcd_ready_time = current_time + std::max(mechanics.base_gcd, cast_time);
 
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::HOLY_FIRE, 0.0, false, false, cast_time, "DoT / Direct"});
+            }
+
             queue.push(cast_finish_time, sim::EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::HOLY_FIRE));
             queue.push(gcd_ready_time, sim::EventType::GCD_READY);
             return true;
@@ -675,7 +729,12 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
             result.record_spell_cast(SpellID::PENANCE);
             result.total_casts++;
+            apply_touch_of_the_grave();
             cd_penance_ready = current_time + pen_def.cooldown;
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::PENANCE, 0.0, false, false, pen_def.dot_duration, "Channel"});
+            }
 
             if (rng.chance(calculate_hit_chance(sim::School::HOLY))) {
                 channel.active = true;
@@ -714,6 +773,10 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
             current_casting_spell = SpellID::SMITE;
             cast_finish_time = current_time + cast_time;
             gcd_ready_time = current_time + std::max(mechanics.base_gcd, cast_time);
+
+            if (record_timeline) {
+                result.cast_sequence.push_back({current_time, SpellID::SMITE, 0.0, false, false, cast_time, "Filler"});
+            }
 
             queue.push(cast_finish_time, sim::EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SMITE));
             queue.push(gcd_ready_time, sim::EventType::GCD_READY);
@@ -811,6 +874,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
                     result.record_spell_cast(SpellID::MIND_BLAST);
                     result.total_casts++;
+                    apply_touch_of_the_grave();
 
                     if (rng.chance(calculate_hit_chance(sim::School::SHADOW))) {
                         double crit_p = calculate_crit_chance(sim::School::SHADOW, stats) + (if_crit_bonus ? 0.25 : 0.0);
@@ -835,6 +899,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
                     result.record_spell_cast(SpellID::SMITE);
                     result.total_casts++;
+                    apply_touch_of_the_grave();
 
                     if (rng.chance(calculate_hit_chance(sim::School::HOLY))) {
                         double crit_p = calculate_crit_chance(sim::School::HOLY, stats) + (if_crit_bonus ? 0.25 : 0.0);
@@ -859,6 +924,7 @@ SimResult PriestSimulator::run_single_simulation(sim::FastRNG& rng) {
 
                     result.record_spell_cast(SpellID::HOLY_FIRE);
                     result.total_casts++;
+                    apply_touch_of_the_grave();
 
                     if (rng.chance(calculate_hit_chance(sim::School::HOLY))) {
                         double crit_p = calculate_crit_chance(sim::School::HOLY, stats) + (if_crit_bonus ? 0.25 : 0.0);

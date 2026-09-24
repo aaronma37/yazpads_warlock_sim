@@ -18,7 +18,21 @@ inline void render_panel_changelog() {
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Changelog Entry 1: Investigate diffs from discord and engine
+    // Changelog Entry: 9/24/26 Updates
+    if (WowCollapsingHeader("Changelog - 9/24/26: Engine Alignment & Mechanics Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+        ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/24/26):");
+        ImGui::BulletText("Spell Piercing (Penetration): Implemented sub-zero target resistance scaling (spell_piercing_below_zero = true). When caster Spell Piercing reduces target resistance below 0, spells deal amplified damage (+0.575%% per point of negative resistance), matching empirical Forever Beta findings.");
+        ImGui::BulletText("Spell Hit Cap: Updated default max_spell_hit to 1.00 (100%% true hit cap / 0%% miss floor) matching Forever Beta character sheet and empirical testing where 17%% spell hit eliminates all misses against level 63 boss targets.");
+        ImGui::BulletText("Touch of the Grave (Undead Racial): Aligned proc mechanics with empirical testing findings (1.0s internal cooldown, procs on spell casts/channels/wand hits only with no periodic DoT tick triggers, and deals flat 5%% Max HP damage/healing unaffected by Shadow multipliers).");
+        ImGui::BulletText("Drain Soul (Coefficient): Adjusted spell power coefficient from 100%% to 50%% total (10%% per tick across 5 ticks) matching the #forever-research coefficient database.");
+        ImGui::BulletText("Wrack (Base & Coefficient): Updated base damage to 216 (36.0 per tick) and spell power coefficient to 85.8%% total (14.3%% per tick across 6 ticks).");
+        ImGui::BulletText("Drain Life (Base Damage): Adjusted Rank 6 base damage to 255 (51.0 per tick across 5 ticks).");
+        ImGui::BulletText("Shadowburn (Base Damage): Updated Rank 6 base damage range to 259–289 (avg 274).");
+        ImGui::Spacing();
+    }
+
+    // Changelog Entry: Research Investigation & Discrepancies
     if (WowCollapsingHeader("Investigate diffs from discord and engine", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
         ImGui::TextColored(wow_colors::YellowHighlight, "Investigation Summary:");
@@ -43,7 +57,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Drain Soul (Coeff)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "100%% SP (20%% / tick)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "50%% SP (10%% / tick)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Discord pinned coefficient table confirms 50%% total SP coefficient (0.10 per tick across 5 ticks).");
 
             // Row 2: Wrack Base & Coeff
@@ -51,7 +65,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Wrack (Base & Coeff)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "212 Base (35.3/t), 100%% SP");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "216 Base (36/t), 85.8%% SP");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Discord pinned table indicates 216 total base damage (36 per tick) and 0.858 total coefficient (0.143 per tick).");
 
             // Row 3: Drain Life Base
@@ -59,7 +73,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Drain Life (Base Dmg)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "355 Base (71 / tick)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "255 Base (51 / tick)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Forever client nerfed base damage to 255 total (51 per tick across 5s). SP coefficient matches at 50%% (10%%/tick).");
 
             // Row 4: Shadowburn Base
@@ -67,7 +81,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Shadowburn (Base Dmg)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "238 - 268 (Avg 253)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "259 - 289 (Avg 274)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Discord pinned coefficient table records Rank 6 base damage as 259-289.");
 
             // Row 5: Touch of the Grave (ICD & Ticks)
@@ -75,7 +89,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Touch of the Grave");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "No ICD, Procs on DoT ticks, +Shadow%%");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "1.0s ICD, Casts only, Flat 5%% HP");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Extensive testing confirmed 1s ICD, no procs on periodic ticks, and flat 5%% Max HP without Shadow multiplier scaling.");
 
             // Row 6: Spell Hit Cap
@@ -83,7 +97,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Spell Hit Cap");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "16%% Cap (1%% hard miss floor)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "17%% Cap (0%% true miss floor)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Forever client character sheet and empirical testing confirm 17%% hit reaches 0%% miss chance on level 63 boss targets.");
 
             // Row 7: Wand Scaling
@@ -115,7 +129,7 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Spell Piercing");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::RedDebuff, "Resistance floor at 0");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Reduces below 0 (+Dmg)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::OrangeWarning, "Discrepancy");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Fixed");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Spell Piercing (Penetration) lowers creature resistance below 0, granting +0.55%% - 0.60%% damage per piercing point on non-bosses.");
 
             // Row 11: Ruin on Immolate Ticks
@@ -133,6 +147,14 @@ inline void render_panel_changelog() {
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "100%% Spirit Scaling");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Aligned");
             ImGui::TableNextColumn(); ImGui::TextWrapped("Engine correctly implements 1.0 * Spirit scaling (0%% SP) matching Forever Beta mechanics.");
+
+            // Row 13: Eureka! (Gnome Racial)
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Eureka! (Gnome Racial)");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-50%% Mana)");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-50%% Mana)");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Aligned");
+            ImGui::TableNextColumn(); ImGui::TextWrapped("Damage is amplified by +10%% continuously until 3 discrete spells are cast to consume the charges (allowing active DoT ticks to receive uninterrupted +10%% amplification if casting is paused).");
 
             ImGui::EndTable();
         }
@@ -153,13 +175,10 @@ inline void render_panel_changelog() {
             ImGui::Spacing();
         }
 
-        // Detailed Section 2: Touch of the Grave
-        if (WowCollapsingHeader("2. Touch of the Grave (Undead Racial)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::BulletText("Proc Chance: 10%% for Casters (Warlock/Mage/Priest), 5%% for Melee/Physical.");
-            ImGui::BulletText("Internal Cooldown (ICD): Confirmed 1.0 second ICD.");
-            ImGui::BulletText("Trigger Criteria: Procs strictly on direct spell casts and initial DoT/Curse applications (including non-damaging spells like CoW/CoE). Does NOT proc on DoT periodic ticks.");
-            ImGui::BulletText("Damage & Multipliers: Deals flat 5%% of caster's Max Health. Does not scale with Spell Power, nor is it increased by Shadow damage multipliers or ISB on target.");
-            ImGui::BulletText("Engine Comparison: Current engine procs on every DoT tick, lacks a 1s ICD check, and multiplies by Shadow damage multipliers.");
+        // Detailed Section 2: Racial Mechanics
+        if (WowCollapsingHeader("2. Racial Mechanics (Touch of the Grave & Eureka)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::BulletText("Touch of the Grave (Undead): 10%% proc chance on spell cast/application for casters (5%% for melee), 1.0s ICD, flat 5%% Max HP heal/dmg. Does not proc on DoT ticks or scale with Shadow multipliers.");
+            ImGui::BulletText("Eureka! (Gnome): Provides 3 charges (-50%% mana cost). Nuance: All outgoing damage is amplified by +10%% continuously until 3 discrete spells are cast to consume the charges. Because DoT ticks update dynamically and do not consume charges, idling or delaying casts maintains persistent +10%% DoT tick amplification. Fully aligned in simulator engine.");
             ImGui::Spacing();
         }
 
@@ -175,7 +194,7 @@ inline void render_panel_changelog() {
         if (WowCollapsingHeader("4. Wand Mechanics & Beta Quirks", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::BulletText("Wand Scaling: Verified wands scale with Spell Power based on attack speed: SP Coeff = Wand_Speed / 5.0 (or Speed / 5.25), utilizing generic Spell Power.");
             ImGui::BulletText("DoT Dynamic Scaling: Confirmed that DoT ticks recalculate damage dynamically with active buffs (e.g. Eureka, trinket procs) rather than snapshotting on cast. Engine is already aligned with this (mechanics.snapshot_dots = false by default).");
-            ImGui::BulletText("Drain Soul Bug: Drain Soul continues channeling and ticking while casting secondary spells (e.g. Shadow Bolt) until the second cast finishes.");
+            ImGui::BulletText("[Will Not Fix] Drain Soul Bug: Drain Soul continues channeling and ticking while casting secondary spells (e.g. Shadow Bolt) until the second cast finishes. Marked Will Not Fix as an unintended client bug.");
             ImGui::Spacing();
         }
     }

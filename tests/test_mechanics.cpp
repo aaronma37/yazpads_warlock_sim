@@ -41,7 +41,7 @@ TEST_CASE(Mechanics, ImmolateDoTCritRuinBonus) {
     CHECK_NEAR(destro_crit_mult, 2.00, 0.001);
 }
 
-TEST_CASE(Mechanics, SpellHitCapAt99Percent) {
+TEST_CASE(Mechanics, SpellHitCapAt100Percent) {
     FastRNG rng(42);
     WarlockSimulator sim;
     sim.use_raw_stats = true;
@@ -49,9 +49,15 @@ TEST_CASE(Mechanics, SpellHitCapAt99Percent) {
     sim.talents.aff.suppression = 5;         // +5% from talents
     sim.fight_duration = 10.0;
 
-    // Hit chance caps at 99% (1% miss chance floor)
-    CHECK_NEAR(sim.mechanics.max_spell_hit, 0.99, 0.0001);
+    // Hit chance caps at 100% (0% miss chance floor in Forever Beta)
+    CHECK_NEAR(sim.mechanics.max_spell_hit, 1.00, 0.0001);
     CHECK_NEAR(sim.mechanics.base_hit_vs_boss, 0.83, 0.0001);
+    CHECK_NEAR(sim.calculate_hit_chance(School::SHADOW), 1.00, 0.0001);
+
+    // With exact 17% hit (83% base + 17%), hit chance reaches exactly 1.00 (100%)
+    sim.raw_stats.spell_hit_percent = 17.0;
+    sim.talents.aff.suppression = 0;
+    CHECK_NEAR(sim.calculate_hit_chance(School::SHADOW), 1.00, 0.0001);
 }
 
 TEST_CASE(Mechanics, TargetISBApplicationAndCharges) {
@@ -522,13 +528,13 @@ TEST_CASE(Mechanics, WrackShadowDotAmplification) {
 
     // 2. Wrack Self-Damage Test (does not amplify itself):
     // Cast at t=4.5, all 6 ticks land at t=5.5, 6.5, 7.5, 8.5, 9.5, 10.5
-    // 6 ticks of (212 / 6) + (1.0 / 6) * 600 = 212 + 600 = 812 total (135.333/tick)
+    // 6 ticks of (216 / 6) + (0.858 / 6) * 600 = 216 + 514.8 = 730.8 total (121.8/tick)
     {
         WarlockSimulator sim_wrack = make_sim(true);
         sim_wrack.fight_duration = 11.0;
         SimResult res_wrack = sim_wrack.run_single_simulation(rng1);
 
-        CHECK_NEAR(res_wrack.dmg_drain_hope, 812.0, 0.01);
+        CHECK_NEAR(res_wrack.dmg_drain_hope, 730.8, 0.01);
     }
 
     // 3. Fire DoT (Immolate) Excluded from Shadow DoT amp:
@@ -638,3 +644,39 @@ TEST_CASE(Mechanics, BloodPactStaminaBonus) {
     double expected_bp_stam_demo = 54.0 * 1.15;
     CHECK_NEAR(stats_imp.stamina - stats_no_imp.stamina, 54.0, 0.01);
 }
+
+TEST_CASE(Mechanics, SpellPiercingBelowZeroDamageAmplification) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_penetration = 20.0; // 20 Spell Piercing
+    sim.mechanics.spell_piercing_below_zero = true;
+    sim.mechanics.spell_piercing_bonus_per_point = 0.00575;
+
+    // Target with 0 resistance (e.g. non-boss or fully debuffed)
+    double target_res = 0.0;
+    double mult = sim.calculate_partial_resist_multiplier(School::SHADOW, target_res, rng);
+
+    // Effective resistance is 0 - 20 = -20
+    // Damage multiplier should be 1.0 + 20 * 0.00575 = 1.115 (+11.5% damage)
+    CHECK_NEAR(mult, 1.115, 0.0001);
+
+    // If spell_piercing_below_zero is disabled (Classic mode), mult should be clamped to 1.0
+    sim.mechanics.spell_piercing_below_zero = false;
+    double classic_mult = sim.calculate_partial_resist_multiplier(School::SHADOW, target_res, rng);
+    CHECK_NEAR(classic_mult, 1.0, 0.0001);
+}
+
+TEST_CASE(Mechanics, SpellPiercingOffsetsPositiveResistance) {
+    FastRNG rng(42);
+    WarlockSimulator sim;
+    sim.use_raw_stats = true;
+    sim.raw_stats.spell_penetration = 24.0; // Exactly counters 24 base resistance
+    sim.mechanics.spell_piercing_below_zero = true;
+
+    double target_res = 24.0;
+    double mult = sim.calculate_partial_resist_multiplier(School::SHADOW, target_res, rng);
+    // Effective resistance is 24 - 24 = 0 -> 1.0 multiplier (no resists, no negative bonus)
+    CHECK_NEAR(mult, 1.0, 0.0001);
+}
+

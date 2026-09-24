@@ -174,7 +174,6 @@ inline void render_priest_spellbook_panel()
   const auto& entries = get_all_priest_spellbook_entries();
 
   warlock::render_unified_spellbook_table("PriestSpellbookTable",
-                                          "Priest Spellbook & Base Spell Data",
                                           "Search Spells (e.g. Shadow Word, Holy)...",
                                           search_filter, sizeof(search_filter),
                                           entries);

@@ -9,7 +9,12 @@ WarlockSimulator::WarlockSimulator() {
     race = Race::HUMAN;
     base_attrs = get_base_attributes_for_race(race);
     gear = GearLoadout::create_preraid_bis();
-    talents = Talents::create_forever_shadow_destro();
+    talents = Talents::create_forever_dp_af_shadow();
+    policy.rotation = RotationChoice::DP_AF_SHADOW;
+    policy.pet = PetChoice::SUCCUBUS;
+    policy.maintain_immolate = true;
+    buffs.sacrifice_succubus = false;
+    buffs.sacrifice_imp = true;
     use_raw_stats = true;
     raw_stats = gear.calculate_stats();
     raw_stats.spell_power += raw_stats.shadow_power;
@@ -88,13 +93,24 @@ double WarlockSimulator::calculate_crit_chance(School school, const Stats& stats
 }
 
 double WarlockSimulator::calculate_partial_resist_multiplier(School school, double target_resistance, FastRNG& rng) const {
-    if (!mechanics.partial_resists_enabled || target_resistance <= 0.0) {
+    double penetration = use_raw_stats ? raw_stats.spell_penetration : gear.calculate_stats().spell_penetration;
+    double effective_res = target_resistance - penetration;
+
+    if (effective_res < 0.0) {
+        if (mechanics.spell_piercing_below_zero) {
+            // Negative resistance from spell piercing increases damage (+0.575% per point)
+            return 1.0 + (-effective_res) * mechanics.spell_piercing_bonus_per_point;
+        }
+        return 1.0;
+    }
+
+    if (!mechanics.partial_resists_enabled || effective_res <= 0.0) {
         return 1.0;
     }
 
     // Classic 4-roll partial resist model
     // Innate resistance ~ 24 on boss if not cursed
-    double avg_resist = (target_resistance / (60.0 * 5.0)) * 0.75;
+    double avg_resist = (effective_res / (60.0 * 5.0)) * 0.75;
     if (avg_resist <= 0.0) return 1.0;
 
     double roll = rng.next_double();
@@ -370,9 +386,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         return mult;
     };
 
+    double totg_cd_ready = 0.0;
     auto apply_touch_of_the_grave = [&](double now) {
-        if (race == Race::UNDEAD && rng.chance(0.10)) {
-            double grave_dmg = 0.05 * stats.max_health * get_current_shadow_multiplier(now);
+        if (race == Race::UNDEAD && now >= totg_cd_ready && rng.chance(0.10)) {
+            totg_cd_ready = now + 1.0;
+            double grave_dmg = 0.05 * stats.max_health;
             result.total_damage += grave_dmg;
             result.dmg_touch_of_the_grave += grave_dmg;
             result.touch_of_the_grave_procs++;
@@ -1212,7 +1230,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 result.total_damage_events++;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                dmg = rng.range(238.0, 266.0) + (1.5 / 3.5) * sp;
+                                dmg = rng.range(259.0, 289.0) + (1.5 / 3.5) * sp;
                                 dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
 
                                 if (target.consume_isb_charge(now)) {
@@ -1922,7 +1940,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_HOPE)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double dmg = (212.0 / 6.0) + ((1.0 / 6.0) * sp);
+                    double dmg = (216.0 / 6.0) + ((0.858 / 6.0) * sp);
                     dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * imp_drains_mult * soul_siphon_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
@@ -1962,7 +1980,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_LIFE)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double dmg = 71.0 + (0.10 * sp);
+                    double dmg = 51.0 + (0.10 * sp);
                     dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Wrack amplification (+10% to other Shadow DoTs/drains)
@@ -2010,7 +2028,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_SOUL)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double dmg = 91.0 + (0.20 * sp);
+                    double dmg = 84.0 + (0.10 * sp);
                     dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Wrack amplification (+10% to other Shadow DoTs/drains)

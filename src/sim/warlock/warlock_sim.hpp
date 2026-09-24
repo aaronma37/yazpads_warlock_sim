@@ -31,7 +31,8 @@ struct SpellCastLog {
     bool is_crit = false;
     bool is_miss = false;
     double cast_time = 0.0;
-    std::string tag; // "Opener", "Curse", "DoT", "Execute", "Proc", "Burst", "Filler", "Mana"
+    std::string tag;                  // Role, trigger or notes
+    std::string event_type = "Cast";  // "Cast", "Hit", "Tick"
 };
 
 // Per-spell combat counters for the damage breakdown views.
@@ -113,6 +114,46 @@ struct SimResult {
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;
     std::vector<PriorityAction> action_history;
+
+    std::vector<SpellCastLog> get_combat_events() const {
+        std::vector<SpellCastLog> events;
+        for (const auto& c : cast_sequence) {
+            SpellCastLog entry = c;
+            entry.event_type = "Cast";
+            entry.tag = "Cast";
+            events.push_back(entry);
+        }
+        for (const auto& entry : timeline) {
+            if (entry.damage > 0.0 || entry.is_miss) {
+                bool is_channel = (entry.spell_id == SpellID::DRAIN_LIFE || entry.spell_id == SpellID::DRAIN_SOUL || entry.spell_id == SpellID::DRAIN_HOPE);
+                bool is_dot = (entry.spell_id == SpellID::CORRUPTION || entry.spell_id == SpellID::CURSE_OF_AGONY ||
+                               entry.spell_id == SpellID::SIPHON_LIFE || entry.spell_id == SpellID::CURSE_OF_DOOM ||
+                               entry.spell_id == SpellID::IMMOLATE);
+                std::string type_label;
+                if (is_channel) {
+                    type_label = "Channel Tick";
+                } else if (is_dot) {
+                    type_label = "DoT Tick";
+                } else {
+                    type_label = "Hit";
+                }
+                events.push_back({entry.time, entry.spell_id, entry.damage, entry.is_crit, entry.is_miss, 0.0, type_label, type_label});
+            }
+        }
+        std::stable_sort(events.begin(), events.end(), [](const SpellCastLog& a, const SpellCastLog& b) {
+            if (std::abs(a.time - b.time) > 1e-5) {
+                return a.time < b.time;
+            }
+            if (a.event_type == "Cast" && b.event_type != "Cast") return true;
+            if (a.event_type != "Cast" && b.event_type == "Cast") return false;
+            return false;
+        });
+        return events;
+    }
+
+    std::vector<SpellCastLog> get_damage_sequence() const {
+        return get_combat_events();
+    }
 };
 
 class WarlockSimulator {

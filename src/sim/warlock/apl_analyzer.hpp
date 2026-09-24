@@ -156,7 +156,7 @@ public:
             {PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE},
             {PriorityAction::SHADOWBURN, SpellID::SHADOWBURN},
             {PriorityAction::SHADOWBURN_ISB, SpellID::SHADOWBURN},
-            {PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::SEARING_PAIN},
+            {PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::DEMONIC_BRAND},
             {PriorityAction::INCINERATE_FILLER, SpellID::INCINERATE},
             {PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN},
             {PriorityAction::DRAIN_SOUL_FILLER, SpellID::DRAIN_SOUL},
@@ -176,7 +176,7 @@ public:
             case PriorityAction::NIGHTFALL_SHADOW_BOLT: return "Shadow Bolt (Trance)";
             case PriorityAction::DECIMATION_SOUL_FIRE: return "Soul Fire (Decimate)";
             case PriorityAction::DECIMATION_SEARING_PAIN: return "Searing Pain (Decimate)";
-            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Searing Pain (Brand)";
+            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand";
             case PriorityAction::CORRUPTION: return "Corruption";
             case PriorityAction::SIPHON_LIFE: return "Siphon Life";
             case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony";
@@ -185,7 +185,7 @@ public:
             case PriorityAction::CONFLAGRATE: return "Conflagrate";
             case PriorityAction::SHADOWBURN: return "Shadowburn";
             case PriorityAction::SHADOWBURN_ISB: return "Shadowburn (ISB)";
-            case PriorityAction::DRAIN_HOPE: return "Drain Hope";
+            case PriorityAction::DRAIN_HOPE: return "Wrack";
             case PriorityAction::INCINERATE_FILLER: return "Incinerate";
             case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain";
             case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life";
@@ -1062,7 +1062,7 @@ public:
     static APLAnalysisReport run_blunder_analysis(
         const WarlockSimulator& sim,
         size_t num_runs = 1,
-        size_t rollouts_per_action = 256,
+        size_t rollouts_per_action = 512,
         std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
         uint64_t base_seed = 42,
         bool adaptive_rollouts = true)

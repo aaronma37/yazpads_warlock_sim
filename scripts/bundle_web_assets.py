@@ -149,6 +149,13 @@ def build_web_assets():
         shutil.copytree(src_chrome, out_chrome, dirs_exist_ok=True)
         copied += sum(len(files) for _, _, files in os.walk(out_chrome))
 
+    # TrueType fonts for authentic WoW typography
+    src_fonts = os.path.join(ASSETS_DIR, "fonts")
+    out_fonts = os.path.join(OUT_DIR, "fonts")
+    if os.path.exists(src_fonts):
+        shutil.copytree(src_fonts, out_fonts, dirs_exist_ok=True)
+        copied += sum(len(files) for _, _, files in os.walk(out_fonts))
+
     # Calculate total size
     total_bytes = 0
     for root, _, files in os.walk(OUT_DIR):

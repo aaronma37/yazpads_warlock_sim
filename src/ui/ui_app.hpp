@@ -127,7 +127,7 @@ class WarlockSimApp
     std::vector<TabDef> tabs;
     if (active_class == sim::PlayerClass::WARLOCK) {
       tabs = {
-        {"Presets", AppTab::PRESETS, 80.0f},
+        {"Current Configuration", AppTab::PRESETS, 175.0f},
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
@@ -136,7 +136,7 @@ class WarlockSimApp
       };
     } else {
       tabs = {
-        {"Presets", AppTab::PRESETS, 80.0f},
+        {"Current Configuration", AppTab::PRESETS, 175.0f},
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
@@ -171,15 +171,6 @@ class WarlockSimApp
 
   void render_frame()
   {
-#if defined(__EMSCRIPTEN__)
-    int cur_w = EM_ASM_INT( return window.innerWidth; );
-    int cur_h = EM_ASM_INT( return window.innerHeight; );
-    if (cur_w > 0 && cur_h > 0 && (cur_w != GetScreenWidth() || cur_h != GetScreenHeight()))
-    {
-      SetWindowSize(cur_w, cur_h);
-    }
-#endif
-
     BeginDrawing();
     ClearBackground(Color{14, 12, 18, 255});
 
@@ -234,26 +225,16 @@ class WarlockSimApp
 
       ImGui::SameLine();
 
-      if (active_class == sim::PlayerClass::PRIEST)
-      {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.90f, 0.90f, 0.95f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-      }
-      else
-      {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.16f, 0.14f, 0.20f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.30f, 0.45f, 0.6f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-      }
-      if (rlImGuiImageButtonSize("##ClassPriest", &priest_icon, Vector2{kClassIconSize, kClassIconSize}))
-      {
-        active_class = sim::PlayerClass::PRIEST;
-      }
-      if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Priest");
+      ImGui::BeginDisabled(true);
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.09f, 0.12f, 0.4f));
+      ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.22f, 0.30f, 0.3f));
+      ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
+      rlImGuiImageButtonSize("##ClassPriest", &priest_icon, Vector2{kClassIconSize, kClassIconSize});
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        ImGui::SetTooltip("Priest (Disabled)");
       ImGui::PopStyleVar();
       ImGui::PopStyleColor(2);
+      ImGui::EndDisabled();
 
       ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
@@ -309,16 +290,12 @@ class WarlockSimApp
 
   void run_gui()
   {
+#if !defined(__EMSCRIPTEN__)
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
-#if defined(__EMSCRIPTEN__)
-    int init_w = EM_ASM_INT( return window.innerWidth; );
-    int init_h = EM_ASM_INT( return window.innerHeight; );
-    if (init_w <= 0) init_w = 1650;
-    if (init_h <= 0) init_h = 960;
-    InitWindow(init_w, init_h, "Classic WoW Warlock DES Simulator & Multi-Threaded Armory");
 #else
-    InitWindow(1650, 960, "Classic WoW Warlock DES Simulator & Multi-Threaded Armory");
+    SetConfigFlags(FLAG_VSYNC_HINT);
 #endif
+    InitWindow(1650, 960, "Classic WoW Warlock DES Simulator & Multi-Threaded Armory");
     SetTargetFPS(60);
 
     rlImGuiSetLoadFontsCallback(load_wow_fonts);
