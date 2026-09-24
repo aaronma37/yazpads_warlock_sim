@@ -6,8 +6,10 @@
 #include "panel_policy.hpp"
 #include "src/sim/optimizer.hpp"
 #include "src/sim/talent_graph.hpp"
+#include "src/sim/warlock/apl_optimizer.hpp"
 #include "src/sim/warlock/genetic_optimizer.hpp"
 #include "src/sim/warlock/surrogate_evaluator.hpp"
+#include "src/sim/warlock/viper_oracle.hpp"
 #include <algorithm>
 #include <atomic>
 #include <mutex>
@@ -44,6 +46,44 @@ inline OptimizerWorkerState& get_opt_worker_state()
   static OptimizerWorkerState state;
   return state;
 }
+
+// Background worker state for Genetic APL Optimization
+struct APLWorkerState
+{
+  std::thread worker;
+  std::mutex mtx;
+  std::atomic<bool> is_running{false};
+  std::atomic<float> progress{0.0f};
+  std::string current_status;
+  APLOptimizationResult live_result;
+  bool has_result = false;
+};
+
+inline APLWorkerState& get_apl_worker_state()
+{
+  static APLWorkerState state;
+  return state;
+}
+
+// Background worker state for VIPER policy extraction (legacy)
+struct VIPERWorkerState
+{
+  std::thread worker;
+  std::mutex mtx;
+  std::atomic<bool> is_running{false};
+  std::atomic<float> progress{0.0f};
+  std::string current_status;
+  VIPEROracle::VIPERExtractionResult live_result;
+  bool has_result = false;
+};
+
+inline VIPERWorkerState& get_viper_worker_state()
+{
+  static VIPERWorkerState state;
+  return state;
+}
+
+
 
 inline void render_panel_optimizer(WarlockSimulator& sim,
                                    std::vector<CandidateResult>& optimizer_results,
@@ -112,10 +152,12 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   }
 #endif
 
-  static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Perturb Active Build
+  static int opt_mode = 1;  // 0 = Genetic AI Search, 1 = Standard Presets Benchmark, 2 = Genetic APL Search
   ImGui::RadioButton("Standard Specs Benchmark", &opt_mode, 1);
   ImGui::SameLine();
   ImGui::RadioButton("Search", &opt_mode, 0);
+  ImGui::SameLine();
+  ImGui::RadioButton("Genetic APL Search", &opt_mode, 2);
 
   ImGui::Spacing();
 
@@ -332,10 +374,601 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     ImGui::SameLine();
     WowCheckbox("Calculate Stat Weights", &calculate_stat_weights);
   }
-  else
+  else if (opt_mode == 2)
   {
-    ImGui::SetNextItemWidth(200);
-    WowSliderInt("Sims Per Candidate", &iters_per_candidate, 1000, 20000, "%d fights");
+    static int apl_pop_size = 32;
+    static int apl_generations = 25;
+    static int apl_eval_sims = 80;
+    static int apl_bench_sims = 500;
+    static float apl_mutation_rate = 0.40f;
+    static bool apl_allow_dual_tap = true;
+    static bool apl_seed_from_current = true;
+    static bool apl_use_simulated_annealing = false;
+    static bool apl_applied_notification = false;
+
+    auto& a_worker = get_apl_worker_state();
+
+    // Check background worker completion
+    if (!a_worker.is_running.load() && a_worker.worker.joinable())
+    {
+      a_worker.worker.join();
+    }
+
+    ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Action Priority List (APL) Policy Optimization:");
+    ImGui::TextDisabled("Directly evolves discrete rule priorities and tunes continuous activation levers (Life Tap, Curse of Doom, Pandemic DoT windows) under strict structural constraints.");
+    ImGui::Spacing();
+
+    bool is_busy = a_worker.is_running.load();
+
+    ImGui::BeginDisabled(is_busy);
+    ImGui::SetNextItemWidth(150);
+    WowSliderInt("Population Size / Epoch Budget", &apl_pop_size, 10, 128, "%d");
+    ImGui::SameLine(220);
+    ImGui::SetNextItemWidth(150);
+    WowSliderInt("Generations / Epochs", &apl_generations, 5, 100, "%d");
+    ImGui::SameLine(420);
+    ImGui::SetNextItemWidth(150);
+    WowSliderInt("Eval Precision", &apl_eval_sims, 20, 400, "%d sims");
+    ImGui::SameLine(620);
+    ImGui::SetNextItemWidth(150);
+    WowSliderInt("Benchmark Precision", &apl_bench_sims, 100, 2000, "%d sims");
+
+    ImGui::Spacing();
+    ImGui::SetNextItemWidth(150);
+    WowSliderFloat("Mutation Rate", &apl_mutation_rate, 0.10f, 0.80f, "%.2f");
+    ImGui::SameLine(220);
+    WowCheckbox("Allow Dual Life Tap", &apl_allow_dual_tap);
+    ImGui::SameLine(420);
+    WowCheckbox("Seed from Current APL", &apl_seed_from_current);
+    ImGui::SameLine(620);
+    WowCheckbox("Use Simulated Annealing (SA)", &apl_use_simulated_annealing);
+    ImGui::EndDisabled();
+
+    ImGui::Spacing();
+
+    if (!is_busy)
+    {
+      std::string btn_label = apl_use_simulated_annealing ? "Run Simulated Annealing APL Optimization" : "Run Genetic APL Optimization";
+      if (WowButton(btn_label.c_str(), ImVec2(300, 28)))
+      {
+        apl_applied_notification = false;
+        a_worker.has_result = false;
+        a_worker.progress.store(0.0f);
+        a_worker.current_status = apl_use_simulated_annealing ? "Initializing Simulated Annealing APL optimizer..." : "Initializing Genetic APL optimizer...";
+        a_worker.is_running.store(true);
+
+        WarlockSimulator sim_copy = sim;
+        APLOptimizerConfig cfg;
+        cfg.population_size = static_cast<size_t>(apl_pop_size);
+        cfg.generations = static_cast<size_t>(apl_generations);
+        cfg.eval_simulations = static_cast<size_t>(apl_eval_sims);
+        cfg.benchmark_simulations = static_cast<size_t>(apl_bench_sims);
+        cfg.mutation_rate = apl_mutation_rate;
+        cfg.allow_dual_life_tap = apl_allow_dual_tap;
+        cfg.seed_from_current_apl = apl_seed_from_current;
+        cfg.use_simulated_annealing = apl_use_simulated_annealing;
+        if (apl_seed_from_current) {
+          cfg.custom_seed_rules = sim.policy.get_priority_rules(sim.talents, sim.race);
+        }
+        cfg.seed = 42;
+
+        if (a_worker.worker.joinable())
+        {
+          a_worker.worker.join();
+        }
+
+        a_worker.worker = std::thread([sim_copy, cfg]() mutable {
+          auto& w = get_apl_worker_state();
+          auto res = APLOptimizer::optimize_apl(
+              sim_copy,
+              cfg,
+              [&](float p, const std::string& status) {
+                w.progress.store(p);
+                std::lock_guard<std::mutex> lock(w.mtx);
+                w.current_status = status;
+              });
+
+          {
+            std::lock_guard<std::mutex> lock(w.mtx);
+            w.live_result = res;
+            w.has_result = true;
+          }
+          w.is_running.store(false);
+          w.progress.store(1.0f);
+        });
+      }
+
+      ImGui::SameLine();
+      if (WowButton("Seed from Current APL & Optimize", ImVec2(280, 28)))
+      {
+        apl_applied_notification = false;
+        a_worker.has_result = false;
+        a_worker.progress.store(0.0f);
+        a_worker.current_status = "Seeding from active APL and optimizing...";
+        a_worker.is_running.store(true);
+
+        WarlockSimulator sim_copy = sim;
+        APLOptimizerConfig cfg;
+        cfg.population_size = static_cast<size_t>(apl_pop_size);
+        cfg.generations = static_cast<size_t>(apl_generations);
+        cfg.eval_simulations = static_cast<size_t>(apl_eval_sims);
+        cfg.benchmark_simulations = static_cast<size_t>(apl_bench_sims);
+        cfg.mutation_rate = apl_mutation_rate;
+        cfg.allow_dual_life_tap = apl_allow_dual_tap;
+        cfg.seed_from_current_apl = true;
+        cfg.use_simulated_annealing = apl_use_simulated_annealing;
+        cfg.custom_seed_rules = sim.policy.get_priority_rules(sim.talents, sim.race);
+        cfg.seed = 42;
+
+        if (a_worker.worker.joinable())
+        {
+          a_worker.worker.join();
+        }
+
+        a_worker.worker = std::thread([sim_copy, cfg]() mutable {
+          auto& w = get_apl_worker_state();
+          auto res = APLOptimizer::optimize_apl(
+              sim_copy,
+              cfg,
+              [&](float p, const std::string& status) {
+                w.progress.store(p);
+                std::lock_guard<std::mutex> lock(w.mtx);
+                w.current_status = status;
+              });
+
+          {
+            std::lock_guard<std::mutex> lock(w.mtx);
+            w.live_result = res;
+            w.has_result = true;
+          }
+          w.is_running.store(false);
+          w.progress.store(1.0f);
+        });
+      }
+    }
+    else
+    {
+      // Live execution progress bar & status
+      float prog = a_worker.progress.load();
+      std::string status_msg;
+      {
+        std::lock_guard<std::mutex> lock(a_worker.mtx);
+        status_msg = a_worker.current_status;
+      }
+
+      ImGui::ProgressBar(prog, ImVec2(360, 26), "");
+      ImGui::SameLine();
+      ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", status_msg.c_str());
+    }
+
+    // Results Dashboard
+    if (a_worker.has_result)
+    {
+      APLOptimizationResult res;
+      {
+        std::lock_guard<std::mutex> lock(a_worker.mtx);
+        res = a_worker.live_result;
+      }
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      // Top Header Metrics Banner
+      ImGui::TextColored(ImVec4(0.30f, 0.95f, 0.40f, 1.0f), "Genetic APL Optimization Results & Expected Value Analysis");
+      ImGui::TextDisabled("Evaluated across %zu generations with %zu-iteration high-precision benchmark | Talent-Constrained & Deduplicated",
+                          res.evolution_history.size(), static_cast<size_t>(apl_bench_sims));
+
+      ImGui::Spacing();
+
+      // 3 Large Expected Value Comparison KPI Cards
+      float card_w = (ImGui::GetContentRegionAvail().x - 24) / 3.0f;
+      if (card_w < 200.0f) card_w = 200.0f;
+
+      // Card 1: Baseline Policy Expected Value
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.13f, 0.14f, 0.18f, 0.90f));
+      ImGui::BeginChild("BaselineCard", ImVec2(card_w, 95), true);
+      ImGui::TextDisabled("1. BASELINE APL");
+      ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "%.1f DPS", res.baseline_dps);
+      ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "stddev: +/-%.1f | [%.0f - %.0f]", res.baseline_stddev, res.baseline_min_dps, res.baseline_max_dps);
+      ImGui::TextDisabled("Default Preset Rotation");
+      ImGui::EndChild();
+      ImGui::PopStyleColor();
+
+      ImGui::SameLine();
+
+      // Card 2: Optimized Genetic APL Expected Value
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.19f, 0.14f, 0.90f));
+      ImGui::BeginChild("OptimizedAPLCard", ImVec2(card_w, 95), true);
+      ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.45f, 1.0f), "2. OPTIMIZED GENETIC APL");
+      ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.45f, 1.0f), "%.1f DPS", res.optimized_dps);
+      ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.50f, 1.0f), "stddev: +/-%.1f | [%.0f - %.0f]", res.optimized_stddev, res.optimized_min_dps, res.optimized_max_dps);
+      ImGui::TextDisabled("Evolved Sequence & Tuned Levers");
+      ImGui::EndChild();
+      ImGui::PopStyleColor();
+
+      ImGui::SameLine();
+
+      // Card 3: Net Realized Gain
+      ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.16f, 0.22f, 0.90f));
+      ImGui::BeginChild("GainCard", ImVec2(card_w, 95), true);
+      ImGui::TextColored(ImVec4(0.40f, 0.85f, 1.0f, 1.0f), "3. NET REALIZED GAIN");
+      if (res.dps_gain >= 0.0) {
+        ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.45f, 1.0f), "+%.1f DPS", res.dps_gain);
+        ImGui::TextColored(ImVec4(0.35f, 1.0f, 0.50f, 1.0f), "+%.2f%% Gain (%zu Gens)", res.dps_gain_pct, res.evolution_history.size());
+      } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%.1f DPS", res.dps_gain);
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%.2f%% Gain (%zu Gens)", res.dps_gain_pct, res.evolution_history.size());
+      }
+      ImGui::TextDisabled("Direct Policy Search Result");
+      ImGui::EndChild();
+      ImGui::PopStyleColor();
+
+      ImGui::Spacing();
+
+      // Action buttons
+      if (WowButton("Apply Optimized APL to Active Sim Policy", ImVec2(340, 28)))
+      {
+        sim.policy.custom_rules = res.optimized_rules;
+        sim.policy.use_custom_apl = true;
+        apl_applied_notification = true;
+      }
+      if (apl_applied_notification)
+      {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "Optimized Genetic APL applied! Check the Rotation tab to view or edit.");
+      }
+
+      ImGui::Spacing();
+
+      // Detailed Analysis Tabs
+      if (ImGui::BeginTabBar("APLDetailTabBar", ImGuiTabBarFlags_None))
+      {
+        // Tab 1: Top Candidate Policies Leaderboard Table
+        if (ImGui::BeginTabItem("Top Candidate Policies"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.30f, 0.95f, 0.40f, 1.0f), "Evolved Candidate Policies Leaderboard (%zu Candidates):", res.top_candidates.size());
+          ImGui::TextDisabled("Ranked high-precision evaluation of unique genetic chromosome solutions against baseline:");
+
+          ImGui::Spacing();
+          if (ImGui::BeginTable("APLLeaderboardTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
+          {
+            ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 45.0f);
+            ImGui::TableSetupColumn("Policy Variant Name", ImGuiTableColumnFlags_WidthFixed, 230.0f);
+            ImGui::TableSetupColumn("Action Priority Chain", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Expected DPS", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Gain vs Baseline", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 65.0f);
+            ImGui::TableHeadersRow();
+
+            for (size_t c_idx = 0; c_idx < res.top_candidates.size(); ++c_idx)
+            {
+              const auto& cand = res.top_candidates[c_idx];
+              ImGui::TableNextRow();
+
+              // Rank
+              ImGui::TableSetColumnIndex(0);
+              if (cand.rank == 1) {
+                ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "#1");
+              } else if (cand.rank == 2) {
+                ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.75f, 1.0f), "#2");
+              } else if (cand.rank == 3) {
+                ImGui::TextColored(ImVec4(0.80f, 0.50f, 0.20f, 1.0f), "#3");
+              } else {
+                ImGui::Text("#%d", cand.rank);
+              }
+
+              // Variant Name
+              ImGui::TableSetColumnIndex(1);
+              if (cand.rank == 1) {
+                ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.45f, 1.0f), "%s (Champion)", cand.name.c_str());
+              } else if (cand.name.find("Baseline") != std::string::npos) {
+                ImGui::TextColored(ImVec4(0.75f, 0.75f, 0.85f, 1.0f), "%s", cand.name.c_str());
+              } else {
+                ImGui::Text("%s", cand.name.c_str());
+              }
+
+              // Action Sequence Icons
+              ImGui::TableSetColumnIndex(2);
+              for (size_t r = 0; r < cand.rules.size(); ++r) {
+                if (r > 0) ImGui::SameLine(0.0f, 2.0f);
+                Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(APLOptimizer::get_spell_id(cand.rules[r].action)));
+                ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+                if (ImGui::IsItemHovered()) {
+                  ImGui::SetTooltip("#%zu: %s (%s)", r + 1, cand.rules[r].name.c_str(), cand.rules[r].condition_summary.c_str());
+                }
+              }
+
+              // Expected DPS
+              ImGui::TableSetColumnIndex(3);
+              ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.45f, 1.0f), "%.1f DPS", cand.dps);
+
+              // Gain %
+              ImGui::TableSetColumnIndex(4);
+              double delta = cand.dps - res.baseline_dps;
+              if (delta > 0.05) {
+                ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.40f, 1.0f), "+%.1f DPS (+%.2f%%)", delta, cand.gain_pct);
+              } else if (delta < -0.05) {
+                ImGui::TextColored(ImVec4(1.0f, 0.50f, 0.30f, 1.0f), "%.1f DPS (%.2f%%)", delta, cand.gain_pct);
+              } else {
+                ImGui::TextDisabled("Baseline (0.0%%)");
+              }
+
+              // Apply Button
+              ImGui::TableSetColumnIndex(5);
+              char btn_id[32];
+              std::snprintf(btn_id, sizeof(btn_id), "Apply##cand_%zu", c_idx);
+              if (ImGui::SmallButton(btn_id)) {
+                sim.policy.custom_rules = cand.rules;
+                sim.policy.use_custom_apl = true;
+                apl_applied_notification = true;
+              }
+            }
+            ImGui::EndTable();
+          }
+          ImGui::EndTabItem();
+        }
+
+        // Tab 2: Champion Priority Chain Details
+        if (ImGui::BeginTabItem("Champion Priority Chain"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.9f, 0.8f, 0.3f, 1.0f), "Evolved Priority Sequence (%zu rules):", res.optimized_rules.size());
+          ImGui::TextDisabled("Direct top-to-bottom decision chain with bounded activation conditions:");
+
+          ImGui::Spacing();
+          render_priority_chain_subpane(res.optimized_rules);
+
+          ImGui::Spacing();
+          if (ImGui::BeginTable("APLRulesTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+          {
+            ImGui::TableSetupColumn("Priority", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthFixed, 260.0f);
+            ImGui::TableSetupColumn("Condition / Trigger Criteria", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableHeadersRow();
+
+            for (size_t i = 0; i < res.optimized_rules.size(); ++i)
+            {
+              const auto& rule = res.optimized_rules[i];
+              ImGui::TableNextRow();
+
+              // Priority
+              ImGui::TableSetColumnIndex(0);
+              ImGui::Text("#%zu", i + 1);
+
+              // Action Name
+              ImGui::TableSetColumnIndex(1);
+              Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(APLOptimizer::get_spell_id(rule.action)));
+              ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+              ImGui::SameLine();
+              ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%s", APLOptimizer::get_action_name(rule.action));
+
+              // Condition description
+              ImGui::TableSetColumnIndex(2);
+              if (rule.action == PriorityAction::LIFE_TAP) {
+                if (rule.max_mana_pct <= 0.25f) {
+                  ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Emergency Tap (Mana <= %.0f%%)", rule.max_mana_pct * 100.0f);
+                } else {
+                  ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.4f, 1.0f), "Maintenance Tap (Mana <= %.0f%% & Time Left >= %.0fs)", rule.max_mana_pct * 100.0f, rule.min_time_remaining);
+                }
+              } else if (rule.action == PriorityAction::NIGHTFALL_SHADOW_BOLT) {
+                ImGui::TextColored(ImVec4(0.9f, 0.5f, 1.0f, 1.0f), "Shadow Trance proc active (Instant Cast)");
+              } else if (rule.action == PriorityAction::DECIMATION_SOUL_FIRE) {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "Decimation active & Target HP <= %.0f%%", res.execute_hp_threshold * 100.0f);
+              } else if (rule.action == PriorityAction::CONFLAGRATE) {
+                ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f), "Immolate active on target & CD ready");
+              } else if (rule.action == PriorityAction::IMMOLATE) {
+                ImGui::Text("Target Immolate <= %.2fs & Fight Duration >= 3.0s", res.dot_pandemic_window);
+              } else if (rule.action == PriorityAction::CORRUPTION) {
+                ImGui::Text("Target Corruption <= %.2fs & Fight Duration >= 4.0s", res.dot_pandemic_window);
+              } else if (rule.action == PriorityAction::CURSE_OF_DOOM) {
+                ImGui::Text("Fight Time Left >= %.0fs & CD ready", res.curse_of_doom_cutoff);
+              } else if (rule.action == PriorityAction::CURSE_OF_AGONY) {
+                ImGui::Text("Target Agony <= %.2fs & Curse of Doom not active", res.dot_pandemic_window);
+              } else {
+                ImGui::TextDisabled("Rotational Filler / Resource Generation");
+              }
+
+              // Status
+              ImGui::TableSetColumnIndex(3);
+              ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "ACTIVE");
+            }
+            ImGui::EndTable();
+          }
+          ImGui::EndTabItem();
+        }
+
+        // Tab 2: Rule Diff (Baseline vs Optimized)
+        if (ImGui::BeginTabItem("Rule Diff (Baseline vs Optimized)"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "Priority Shifts Against Baseline Preset:");
+          ImGui::TextDisabled("Highlights priority changes made by the genetic policy search:");
+
+          ImGui::Spacing();
+          if (ImGui::BeginTable("APLDiffTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+          {
+            ImGui::TableSetupColumn("Action Name", ImGuiTableColumnFlags_WidthFixed, 260.0f);
+            ImGui::TableSetupColumn("Baseline Priority", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Optimized Priority", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Shift Status", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+
+            for (const auto& shift : res.rule_shifts)
+            {
+              ImGui::TableNextRow();
+
+              ImGui::TableSetColumnIndex(0);
+              Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(APLOptimizer::get_spell_id(shift.action)));
+              ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+              ImGui::SameLine();
+              ImGui::Text("%s", shift.name.c_str());
+
+              ImGui::TableSetColumnIndex(1);
+              if (shift.baseline_rank > 0) {
+                ImGui::Text("#%d", shift.baseline_rank);
+              } else {
+                ImGui::TextDisabled("[None]");
+              }
+
+              ImGui::TableSetColumnIndex(2);
+              if (shift.optimized_rank > 0) {
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "#%d", shift.optimized_rank);
+              } else {
+                ImGui::TextDisabled("[None]");
+              }
+
+              ImGui::TableSetColumnIndex(3);
+              if (shift.change_type == "PROMOTED") {
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "PROMOTED (+%d positions)", shift.baseline_rank - shift.optimized_rank);
+              } else if (shift.change_type == "DEMOTED") {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "DEMOTED (-%d positions)", shift.optimized_rank - shift.baseline_rank);
+              } else if (shift.change_type == "NEW") {
+                ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "NEW RULE ADDED");
+              } else if (shift.change_type == "PRUNED") {
+                ImGui::TextColored(ImVec4(0.9f, 0.3f, 0.3f, 1.0f), "PRUNED (Talent-locked / Redundant)");
+              } else {
+                ImGui::TextDisabled("UNCHANGED");
+              }
+            }
+            ImGui::EndTable();
+          }
+          ImGui::EndTabItem();
+        }
+
+        // Tab 3: Continuous Parameter Levers
+        if (ImGui::BeginTabItem("Tuned Continuous Parameters"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "Continuous Activation Levers (Evolved via BLX-alpha Blend):");
+          ImGui::TextDisabled("Continuous parameters tuned alongside priority permutations under strict domain constraints:");
+
+          ImGui::Spacing();
+          if (ImGui::BeginTable("APLLeversTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+          {
+            ImGui::TableSetupColumn("Parameter Lever", ImGuiTableColumnFlags_WidthFixed, 240.0f);
+            ImGui::TableSetupColumn("Optimized Value", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+            ImGui::TableSetupColumn("Structural Bound", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+            ImGui::TableSetupColumn("Design Rationale / Invariant", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+
+            // Row 1: Emergency Tap
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Emergency Life Tap Mana");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%.1f%% Mana", res.emergency_tap_mana * 100.0f);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextDisabled("[10.0%% - 25.0%%]");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextWrapped("Prevents OOM stalls without wasteful high-mana tapping.");
+
+            // Row 2: Maintenance Tap
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.4f, 1.0f), "Maintenance Life Tap Mana");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%.1f%% Mana", res.maint_tap_mana * 100.0f);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextDisabled("[25.0%% - 50.0%%]");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextWrapped("Permits opportunistic resource buffering with min 20s combat remaining.");
+
+            // Row 3: Curse of Doom Cutoff
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(0.9f, 0.5f, 1.0f, 1.0f), "Curse of Doom Cutoff");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%.1fs Remaining", res.curse_of_doom_cutoff);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextDisabled("[50.0s - 75.0s]");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextWrapped("Guarantees full 60s tick before combat expiration.");
+
+            // Row 4: DoT Pandemic Window
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "DoT Refresh (Pandemic Window)");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "<= %.2fs Remaining", res.dot_pandemic_window);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextDisabled("[0.00s - 2.50s]");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextWrapped("Allows smooth queueing of Corruption/Immolate without clipping tick intervals.");
+
+            // Row 5: Decimation / Execute HP
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "Execute HP Threshold");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "<= %.1f%% Boss HP", res.execute_hp_threshold * 100.0f);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextDisabled("[20.0%% - 35.0%%]");
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextWrapped("Controls when Decimation Soul Fire / Searing Pain execute triggers take priority.");
+
+            ImGui::EndTable();
+          }
+
+          ImGui::Spacing();
+          ImGui::Separator();
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "Domain Invariants Enforced:");
+          ImGui::BulletText("Action Uniqueness: Damaging spells cannot appear multiple times in the priority chain.");
+          ImGui::BulletText("Mandatory Fallback Filler: Exactly 1 unconditional cast filler (Shadow Bolt / Incinerate) at the end.");
+          ImGui::BulletText("Talent Legality: Spells not unlocked in the active talent spec are strictly pruned.");
+          ImGui::BulletText("No 95%% Tap Glitch: Continuous parameter bounds mathematically preclude high-mana tapping.");
+
+          ImGui::EndTabItem();
+        }
+
+        // Tab 4: Evolution History
+        if (!res.evolution_history.empty() && ImGui::BeginTabItem("Evolution History"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "Genetic Policy Convergence History (%zu Generations):", res.evolution_history.size());
+          ImGui::TextDisabled("Tracks the elite candidate fitness and population average across evolutionary cycles:");
+
+          ImGui::Spacing();
+          if (ImGui::BeginTable("APLEvolutionTable", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+          {
+            ImGui::TableSetupColumn("Generation", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Best Policy DPS", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableSetupColumn("Population Mean DPS", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableSetupColumn("Gain over Baseline", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+
+            for (const auto& gen_stat : res.evolution_history)
+            {
+              ImGui::TableNextRow();
+
+              ImGui::TableSetColumnIndex(0);
+              ImGui::Text("Gen #%zu", gen_stat.generation);
+
+              ImGui::TableSetColumnIndex(1);
+              ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.45f, 1.0f), "%.1f DPS", gen_stat.best_dps);
+
+              ImGui::TableSetColumnIndex(2);
+              ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%.1f DPS", gen_stat.avg_dps);
+
+              ImGui::TableSetColumnIndex(3);
+              double delta = gen_stat.best_dps - res.baseline_dps;
+              if (delta >= 0.0) {
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "+%.1f DPS (+%.2f%%)", delta, (delta / std::max(1.0, res.baseline_dps)) * 100.0);
+              } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.3f, 1.0f), "%.1f DPS (%.2f%%)", delta, (delta / std::max(1.0, res.baseline_dps)) * 100.0);
+              }
+            }
+            ImGui::EndTable();
+          }
+          ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+      }
+    }
   }
 
   ImGui::Spacing();
@@ -520,6 +1153,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           s.buffs.sacrifice_succubus = preset.sac_succubus;
           s.buffs.sacrifice_imp = preset.sac_imp;
           s.policy.maintain_immolate = preset.maintain_immolate;
+          s.policy.use_custom_apl = false;
+          s.policy.custom_rules.clear();
 
           double pred_dps = SurrogateEvaluator::get().predict_from_sim(s, static_cast<int>(p_idx));
 

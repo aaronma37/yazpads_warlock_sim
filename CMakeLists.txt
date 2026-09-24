@@ -115,6 +115,8 @@ else()
         tests/test_mana_regen.cpp
         tests/test_priest_sim.cpp
         tests/test_surrogate_dataset.cpp
+        tests/test_viper_pipeline.cpp
+        tests/test_apl_analyzer.cpp
     )
 
     add_executable(sim_tests

@@ -92,6 +92,8 @@ inline void apply_spec_preset(WarlockSimulator& sim, const SpecPreset& p) {
     sim.policy.maintain_immolate = p.maintain_immolate;
     sim.buffs.sacrifice_succubus = p.sac_succubus;
     sim.buffs.sacrifice_imp = p.sac_imp;
+    sim.policy.use_custom_apl = false;
+    sim.policy.custom_rules.clear();
 }
 
 } // namespace warlock

@@ -10,6 +10,7 @@
 #include "policy.hpp"
 #include "mechanics.hpp"
 #include "spells.hpp"
+#include "src/sim/common/sim_state_vector.hpp"
 
 namespace warlock {
 
@@ -111,6 +112,7 @@ struct SimResult {
 
     std::vector<TimelineEntry> timeline;
     std::vector<SpellCastLog> cast_sequence;
+    std::vector<PriorityAction> action_history;
 };
 
 class WarlockSimulator {
@@ -132,6 +134,10 @@ public:
     bool randomize_duration = false;     // When true, fight length varies uniformly per simulation: [fight_duration - variance, fight_duration + variance]
     double duration_variance = 30.0;     // Fight length spread in seconds (+/- seconds)
     bool record_timeline = false;
+    bool record_viper_samples = false;
+    bool use_oracle_execution_policy = false; // Live online greedy MCTS / Oracle controller
+    std::vector<PriorityAction> forced_action_prefix; // Prefix of actions to force during rollouts
+    sim::VIPERDataset viper_dataset;
 
     WarlockSimulator();
 

@@ -95,11 +95,102 @@ struct PolicyConfig {
     double mana_potion_threshold = 0.35;   // Drink Major Mana Potion below 35% mana
     double demonic_rune_threshold = 0.50;  // Use Demonic Rune below 50% mana
 
+    // Dynamic & Custom APL properties
+    bool use_custom_apl = false;
+    std::vector<PriorityRule> custom_rules;
+
     // Constructs the ordered priority rule list for display and execution
     std::vector<PriorityRule> get_priority_rules(const Talents& talents, sim::Race race = sim::Race::HUMAN) const;
+    std::vector<PriorityRule> build_preset_rules(const Talents& talents, sim::Race race = sim::Race::HUMAN) const;
+
+    void enable_custom_apl(const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        if (custom_rules.empty()) {
+            custom_rules = build_preset_rules(talents, race);
+        }
+        use_custom_apl = true;
+    }
+
+    void reset_to_preset(const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        custom_rules.clear();
+        use_custom_apl = false;
+    }
+
+    size_t rule_count(const Talents& talents, sim::Race race = sim::Race::HUMAN) const {
+        return get_priority_rules(talents, race).size();
+    }
+
+    bool move_rule_up(size_t index, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index > 0 && index < custom_rules.size()) {
+            std::swap(custom_rules[index], custom_rules[index - 1]);
+            return true;
+        }
+        return false;
+    }
+
+    bool move_rule_down(size_t index, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index + 1 < custom_rules.size()) {
+            std::swap(custom_rules[index], custom_rules[index + 1]);
+            return true;
+        }
+        return false;
+    }
+
+    bool swap_rules(size_t i, size_t j, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (i < custom_rules.size() && j < custom_rules.size()) {
+            std::swap(custom_rules[i], custom_rules[j]);
+            return true;
+        }
+        return false;
+    }
+
+    bool set_rule_enabled(size_t index, bool enabled, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index < custom_rules.size()) {
+            custom_rules[index].enabled = enabled;
+            return true;
+        }
+        return false;
+    }
+
+    bool set_rule(size_t index, const PriorityRule& rule, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index < custom_rules.size()) {
+            custom_rules[index] = rule;
+            return true;
+        }
+        return false;
+    }
+
+    bool insert_rule(size_t index, const PriorityRule& rule, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index <= custom_rules.size()) {
+            custom_rules.insert(custom_rules.begin() + index, rule);
+            return true;
+        }
+        return false;
+    }
+
+    bool remove_rule(size_t index, const Talents& talents, sim::Race race = sim::Race::HUMAN) {
+        enable_custom_apl(talents, race);
+        if (index < custom_rules.size()) {
+            custom_rules.erase(custom_rules.begin() + index);
+            return true;
+        }
+        return false;
+    }
 };
 
 inline std::vector<PriorityRule> PolicyConfig::get_priority_rules(const Talents& talents, sim::Race race) const {
+    if (use_custom_apl && !custom_rules.empty()) {
+        return custom_rules;
+    }
+    return build_preset_rules(talents, race);
+}
+
+inline std::vector<PriorityRule> PolicyConfig::build_preset_rules(const Talents& talents, sim::Race race) const {
     std::vector<PriorityRule> rules;
 
     // 1. Off-GCD Cooldowns & Emergency Mana

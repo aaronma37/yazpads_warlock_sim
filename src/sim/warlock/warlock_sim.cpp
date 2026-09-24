@@ -1,4 +1,5 @@
 #include "warlock_sim.hpp"
+#include "viper_oracle.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -348,6 +349,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         queue.push(0.3, EventType::PET_CAST_FINISH);
     }
 
+    if (record_timeline) {
+        result.timeline.push_back({0.0, 0.0, SpellID::NONE, false, false, player_mana, 0});
+    }
+
     // Helper to get active school multiplier with procs
     auto get_current_shadow_multiplier = [&](double now) {
         double mult = shadow_multiplier;
@@ -380,6 +385,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     // Decision maker using Rule-Based Action Priority List (APL)
     std::vector<PriorityRule> priority_rules = policy.get_priority_rules(talents, race);
     RotationChoice eff_rotation = policy.rotation;
+    size_t decision_step_count = 0;
 
     auto decide_next_action = [&](double now) {
         if (is_casting || now < gcd_ready_time) return;
@@ -392,6 +398,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             player_mana = std::min(stats.max_mana, player_mana + mana_gain);
             result.mana_gained += mana_gain;
             potion_cd_ready = now + 120.0;
+            if (record_timeline) {
+                result.timeline.push_back({now, 0.0, SpellID::POTION_MANA, false, false, player_mana, target.isb_charges});
+            }
         }
         if (buffs.use_demonic_runes && now >= rune_cd_ready && (stats.max_mana - player_mana) >= 1200.0 && player_health > 1500.0) {
             double mana_gain = rng.range(900.0, 1500.0);
@@ -399,6 +408,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             player_health -= mana_gain;
             result.mana_gained += mana_gain;
             rune_cd_ready = now + 120.0;
+            if (record_timeline) {
+                result.timeline.push_back({now, 0.0, SpellID::DEMONIC_RUNE, false, false, player_mana, target.isb_charges});
+            }
         }
 
         // 2. Off-GCD Trinket on-use
@@ -518,6 +530,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     gcd_ready_time = now + mechanics.base_gcd;
                     queue.push(gcd_ready_time, EventType::GCD_READY);
                     if (record_timeline) {
+                        result.timeline.push_back({now, 0.0, SpellID::BANE_OF_HAVOC, false, false, player_mana, target.isb_charges});
                         result.cast_sequence.push_back({now, SpellID::BANE_OF_HAVOC, 0.0, false, false, 0.0, "Bane of Havoc (T2)"});
                     }
                     return;
@@ -559,6 +572,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
+                                result.timeline.push_back({now, 0.0, SpellID::CORRUPTION, false, false, player_mana, target.isb_charges});
                                 result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, 0.0, "Multi-DoT Corruption"});
                             }
                             return;
@@ -579,9 +593,140 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        // 4. Sequential Rule-Based Priority Evaluation
-        for (const auto& rule : priority_rules) {
+        // Helper to extract normalized state observation for ML / VIPER
+        auto get_current_observation = [&]() -> sim::SimObservation {
+            sim::SimObservation obs;
+            obs.player_mana_pct = static_cast<float>(std::clamp(player_mana / std::max(1.0, stats.max_mana), 0.0, 1.0));
+            obs.player_hp_pct = static_cast<float>(std::clamp(player_health / std::max(1.0, stats.max_health), 0.0, 1.0));
+            obs.fight_progress_pct = static_cast<float>(std::clamp(now / std::max(0.1, effective_duration), 0.0, 1.0));
+            obs.time_remaining_sec = static_cast<float>(std::max(0.0, effective_duration - now));
+            obs.target_hp_pct = static_cast<float>(std::clamp(1.0 - (now / std::max(0.1, effective_duration)), 0.0, 1.0));
+            
+            obs.num_targets = static_cast<float>(num_targets);
+            obs.target2_has_havoc = (num_targets >= 2 && target_states[1].has_bane_of_havoc && now < target_states[1].bane_of_havoc_expire) ? 1.0f : 0.0f;
+            
+            obs.nightfall_proc_active = (now < shadow_trance_expire) ? 1.0f : 0.0f;
+            obs.decimation_rem_sec = static_cast<float>(std::max(0.0, decimation_buff_expire - now));
+            obs.shadow_and_flame_rem_sec = static_cast<float>(std::max(0.0, shadow_and_flame_fire_expire - now));
+            obs.trinket_rem_sec = static_cast<float>(std::max(0.0, trinket_expire_time - now));
+            obs.racial_rem_sec = static_cast<float>(std::max(0.0, racial_expire_time - now));
+            obs.eureka_charges = static_cast<float>(eureka_charges);
+            
+            obs.dot_corruption_rem_sec = (dot_corruption.active && now < dot_corruption.expire_time)
+                ? static_cast<float>(dot_corruption.expire_time - now) : 0.0f;
+            obs.dot_agony_rem_sec = (dot_agony.active && now < dot_agony.expire_time)
+                ? static_cast<float>(dot_agony.expire_time - now) : 0.0f;
+            obs.dot_doom_rem_sec = (doom_tick_time > now) ? static_cast<float>(doom_tick_time - now) : 0.0f;
+            obs.dot_immolate_rem_sec = (dot_immolate.active && now < dot_immolate.expire_time)
+                ? static_cast<float>(dot_immolate.expire_time - now) : 0.0f;
+            obs.dot_siphon_life_rem_sec = (dot_siphon_life.active && now < dot_siphon_life.expire_time)
+                ? static_cast<float>(dot_siphon_life.expire_time - now) : 0.0f;
+            obs.dot_wrack_rem_sec = (now < drain_hope_channel_end)
+                ? static_cast<float>(drain_hope_channel_end - now) : 0.0f;
+            bool isb_active = (target.isb_expire_time > now && (target.isb_charges > 0 || target.isb_charges == -1));
+            obs.isb_charges_rem = isb_active ? (target.isb_charges == -1 ? 4.0f : static_cast<float>(target.isb_charges)) : 0.0f;
+            
+            obs.cd_conflagrate_sec = static_cast<float>(std::max(0.0, conflagrate_cd_ready - now));
+            obs.cd_shadowburn_sec = static_cast<float>(std::max(0.0, shadowburn_cd_ready - now));
+            obs.cd_curse_of_doom_sec = static_cast<float>(std::max(0.0, doom_tick_time - now));
+            obs.cd_amplify_curse_sec = static_cast<float>(std::max(0.0, amplify_curse_cd_ready - now));
+            obs.cd_racial_sec = static_cast<float>(std::max(0.0, racial_cd_ready - now));
+            obs.cd_potion_sec = static_cast<float>(std::max(0.0, potion_cd_ready - now));
+            obs.cd_demonic_rune_sec = static_cast<float>(std::max(0.0, rune_cd_ready - now));
+            
+            return obs;
+        };
+
+        auto log_viper_sample = [&](PriorityAction act, const std::string& name) {
+            result.action_history.push_back(act);
+            decision_step_count++;
+            if (record_viper_samples) {
+                sim::VIPERStep step;
+                step.state = get_current_observation();
+                step.oracle_action = static_cast<uint8_t>(act);
+                step.action_name = name;
+                step.sample_weight = 1.0f;
+                viper_dataset.add_sample(step);
+            }
+        };
+
+        // 4. Action Selection: Forced Rollout Prefix vs Live Online Greedy Oracle vs Sequential Rule-Based Priority Evaluation
+        bool is_forced = (decision_step_count < forced_action_prefix.size());
+        std::vector<PriorityRule> rules_to_evaluate;
+        
+        bool is_oracle = (use_oracle_execution_policy || policy.use_oracle_execution_policy);
+        std::vector<PriorityRule> dynamic_oracle_rules;
+        if (is_oracle && !is_forced) {
+            sim::SimObservation cur_obs = get_current_observation();
+            auto candidates = VIPEROracle::get_candidate_actions();
+            std::vector<std::pair<double, PriorityAction>> scored;
+            scored.reserve(candidates.size());
+            for (const auto& [act, _] : candidates) {
+                if (act == PriorityAction::RACIAL_EUREKA ||
+                    act == PriorityAction::RACIAL_BLOOD_FURY ||
+                    act == PriorityAction::RACIAL_BERSERKING ||
+                    act == PriorityAction::AMPLIFY_CURSE ||
+                    act == PriorityAction::BANE_OF_HAVOC) {
+                    continue; // Handled off-GCD
+                }
+                if (VIPEROracle::is_action_legal(act, cur_obs, talents)) {
+                    double q = VIPEROracle::estimate_local_q_value(cur_obs, act, talents);
+                    scored.push_back({q, act});
+                }
+            }
+            std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+                return a.first > b.first;
+            });
+            for (const auto& [q_val, act] : scored) {
+                if (q_val <= -900.0) continue;
+                PriorityRule r;
+                r.action = act;
+                r.spell_id = VIPEROracle::get_spell_id(act);
+                r.name = VIPEROracle::get_action_name(act);
+                r.enabled = true;
+                r.use_custom_thresholds = false;
+                dynamic_oracle_rules.push_back(r);
+            }
+        }
+
+        if (is_forced) {
+            PriorityAction forced_act = forced_action_prefix[decision_step_count];
+            PriorityRule r;
+            r.action = forced_act;
+            r.spell_id = VIPEROracle::get_spell_id(forced_act);
+            r.name = VIPEROracle::get_action_name(forced_act);
+            r.enabled = true;
+            r.use_custom_thresholds = false;
+            rules_to_evaluate.push_back(r);
+
+            // Append fallback priority rules in case forced action cannot be cast (e.g. cooldown / resource constraint)
+            for (const auto& fallback_rule : (is_oracle ? dynamic_oracle_rules : priority_rules)) {
+                rules_to_evaluate.push_back(fallback_rule);
+            }
+        } else {
+            rules_to_evaluate = is_oracle ? dynamic_oracle_rules : priority_rules;
+        }
+
+        for (const auto& rule : rules_to_evaluate) {
             if (!rule.enabled) continue;
+            bool is_rule_forced = (is_forced && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
+
+            // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS)
+            if (rule.use_custom_thresholds && !is_rule_forced) {
+                float cur_mana_pct = static_cast<float>(player_mana / std::max(1.0, stats.max_mana));
+                float cur_hp_pct = static_cast<float>(player_health / std::max(1.0, stats.max_health));
+                float cur_time_rem = static_cast<float>(std::max(0.0, effective_duration - now));
+                float cur_target_hp = static_cast<float>(std::clamp(1.0 - (now / std::max(0.1, effective_duration)), 0.0, 1.0));
+
+                if (cur_mana_pct > rule.max_mana_pct || cur_mana_pct < rule.min_mana_pct) continue;
+                if (cur_hp_pct < rule.min_hp_pct) continue;
+                if (cur_target_hp > rule.max_target_hp_pct || cur_target_hp < rule.min_target_hp_pct) continue;
+                if (cur_time_rem < rule.min_time_remaining || cur_time_rem > rule.max_time_remaining) continue;
+                if (rule.require_isb_active) {
+                    bool isb_active = (target.isb_expire_time > now && (target.isb_charges > 0 || target.isb_charges == -1));
+                    if (!isb_active) continue;
+                }
+            }
 
             switch (rule.action) {
                 case PriorityAction::RACIAL_EUREKA:
@@ -595,7 +740,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::LIFE_TAP: {
                     double mana_pct = (player_mana / stats.max_mana) * 100.0;
                     bool gnome_last_charge_tap = (race == Race::GNOME && eureka_charges == 1 && mana_pct < 70.0);
-                    if ((mana_pct <= policy.life_tap_threshold_pct || gnome_last_charge_tap) && player_health > 600.0) {
+                    bool should_tap = is_rule_forced
+                        ? (player_mana < stats.max_mana - 10.0 && player_health > 450.0)
+                        : (is_oracle
+                            ? (mana_pct <= 50.0)
+                            : (rule.use_custom_thresholds 
+                                ? (mana_pct <= static_cast<double>(rule.max_mana_pct * 100.0f))
+                                : (mana_pct <= policy.life_tap_threshold_pct || gnome_last_charge_tap)));
+
+                    if (should_tap && player_health > 450.0) {
+                        log_viper_sample(rule.action, "Life Tap");
                         double health_cost = 430.0;
                         double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
                         player_mana = std::min(stats.max_mana, player_mana + mana_gained);
@@ -623,9 +777,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::CURSE_OF_AGONY: {
-                    if (!dot_agony.active) {
+                    bool should_cast_agony = !dot_agony.active || (rule.use_custom_thresholds && (dot_agony.expire_time - now) <= rule.max_dot_rem_sec);
+                    if (should_cast_agony) {
                         double mana_cost = 215.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Curse of Agony");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -663,6 +819,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
+                                result.timeline.push_back({now, 0.0, SpellID::CURSE_OF_AGONY, false, false, player_mana, target.isb_charges});
                                 result.cast_sequence.push_back({now, SpellID::CURSE_OF_AGONY, 0.0, false, false, 0.0, (now < 1.0) ? "Opener DoT" : "Curse DoT"});
                             }
                             return;
@@ -672,11 +829,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::CURSE_OF_DOOM: {
-                    double time_left = fight_duration - now;
-                    // Cast Curse of Doom only if at least 60s remain in the fight (or if user explicitly set CURSE_OF_DOOM)
-                    if (!dot_agony.active && (time_left >= 60.0 || policy.curse == CurseChoice::CURSE_OF_DOOM)) {
+                    double time_left = effective_duration - now;
+                    bool should_cast_doom = !dot_agony.active && (is_oracle 
+                        ? (time_left >= 60.0)
+                        : (rule.use_custom_thresholds 
+                            ? (time_left >= static_cast<double>(rule.min_time_remaining)) 
+                            : (time_left >= 60.0 || policy.curse == CurseChoice::CURSE_OF_DOOM)));
+
+                    if (should_cast_doom) {
                         double mana_cost = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Curse of Doom");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -699,6 +862,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
+                                result.timeline.push_back({now, 0.0, SpellID::CURSE_OF_DOOM, false, false, player_mana, target.isb_charges});
                                 result.cast_sequence.push_back({now, SpellID::CURSE_OF_DOOM, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Curse" : "Curse of Doom"});
                             }
                             return;
@@ -712,6 +876,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         shadow_trance_active = false;
                         double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Nightfall Shadow Bolt");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -728,6 +893,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
+                                result.timeline.push_back({now, 0.0, SpellID::SHADOW_BOLT, false, false, player_mana, target.isb_charges});
                                 result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, 0.0, "Nightfall Instant"});
                             }
                             return;
@@ -737,9 +903,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::DECIMATION_SEARING_PAIN: {
-                    if (execute_phase && talents.demo.decimation > 0 && now >= decimation_buff_expire) {
+                    bool is_decim_target = rule.use_custom_thresholds 
+                        ? ((1.0 - (now / effective_duration)) <= static_cast<double>(rule.max_target_hp_pct))
+                        : execute_phase;
+
+                    if (is_decim_target && talents.demo.decimation > 0 && now >= decimation_buff_expire) {
                         double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= sp_mana) {
+                            log_viper_sample(rule.action, "Decimation Searing Pain");
                             double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
                             is_casting = true;
                             current_casting_spell = SpellID::SEARING_PAIN;
@@ -760,6 +931,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (talents.demo.demonic_brand > 0 && (demonic_brand_charges == 0 || now >= demonic_brand_expire)) {
                         double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= sp_mana) {
+                            log_viper_sample(rule.action, "Demonic Brand Searing Pain");
                             double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
                             is_casting = true;
                             current_casting_spell = SpellID::SEARING_PAIN;
@@ -777,9 +949,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::DECIMATION_SOUL_FIRE: {
-                    if (execute_phase && talents.demo.decimation > 0 && now < decimation_buff_expire && now >= soul_fire_cd_ready) {
+                    bool is_decim_target = rule.use_custom_thresholds 
+                        ? ((1.0 - (now / effective_duration)) <= static_cast<double>(rule.max_target_hp_pct))
+                        : execute_phase;
+
+                    if (is_decim_target && talents.demo.decimation > 0 && now < decimation_buff_expire && now >= soul_fire_cd_ready) {
                         double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= sf_mana) {
+                            log_viper_sample(rule.action, "Decimation Soul Fire");
                             double cast_time = std::max(0.5, (6.0 - 0.4 * talents.destro.bane) * (1.0 - 0.20 * talents.demo.decimation) * get_haste_mult(now));
                             is_casting = true;
                             current_casting_spell = SpellID::SOUL_FIRE;
@@ -797,9 +974,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::SIPHON_LIFE: {
-                    if (talents.aff.siphon_life > 0 && !dot_siphon_life.active) {
+                    bool should_cast_sl = talents.aff.siphon_life > 0 && (!dot_siphon_life.active || (rule.use_custom_thresholds && (dot_siphon_life.expire_time - now) <= rule.max_dot_rem_sec));
+                    if (should_cast_sl) {
                         double mana_cost = 365.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Siphon Life");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -825,6 +1004,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             gcd_ready_time = now + mechanics.base_gcd;
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
+                                result.timeline.push_back({now, 0.0, SpellID::SIPHON_LIFE, false, false, player_mana, target.isb_charges});
                                 result.cast_sequence.push_back({now, SpellID::SIPHON_LIFE, 0.0, false, false, 0.0, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
                             }
                             return;
@@ -837,6 +1017,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (talents.aff.drain_hope > 0 && now >= drain_hope_channel_end) {
                         double dh_mana = 240.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= dh_mana) {
+                            log_viper_sample(rule.action, "Drain Hope");
                             player_mana -= dh_mana;
                             result.mana_spent += dh_mana;
                             result.total_casts++;
@@ -853,6 +1034,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
                                 queue.push(gcd_ready_time, EventType::GCD_READY);
                                 if (record_timeline) {
+                                    result.timeline.push_back({now, 0.0, SpellID::DRAIN_HOPE, false, false, player_mana, target.isb_charges});
                                     result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, 0.0, "Instant DoT"});
                                 }
                                 return;
@@ -870,6 +1052,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 }
                                 queue.push(gcd_ready_time, EventType::GCD_READY);
                                 if (record_timeline) {
+                                    result.timeline.push_back({now, 0.0, SpellID::DRAIN_HOPE, false, false, player_mana, target.isb_charges});
                                     result.cast_sequence.push_back({now, SpellID::DRAIN_HOPE, 0.0, false, false, total_channel_time, "Channel DoT"});
                                 }
                                 return;
@@ -880,9 +1063,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::IMMOLATE: {
-                    if (!dot_immolate.active) {
+                    bool should_cast_immo = !dot_immolate.active || (rule.use_custom_thresholds && (dot_immolate.expire_time - now) <= rule.max_dot_rem_sec);
+                    if (should_cast_immo) {
                         double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Immolate");
                             double cast_time = std::max(1.0, (2.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 1.5s with 5/5 Bane
                             is_casting = true;
                             current_casting_spell = SpellID::IMMOLATE;
@@ -903,6 +1088,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (talents.destro.conflagrate > 0 && dot_immolate.active && now >= conflagrate_cd_ready) {
                         double mana_cost = 265.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Conflagrate");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -937,6 +1123,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.dmg_conflagrate += dmg;
                                 result.record_spell_hit(SpellID::CONFLAGRATE, dmg, is_crit);
                                 result.total_damage += dmg;
+                                if (record_timeline) {
+                                    result.timeline.push_back({now, dmg, SpellID::CONFLAGRATE, is_crit, false, player_mana, target.isb_charges});
+                                }
                                 apply_havoc_cleave(dmg, 0);
 
                                 if (talents.destro.shadow_and_flame > 0) {
@@ -969,17 +1158,21 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     break;
                 }
 
-                case PriorityAction::SHADOWBURN: {
+                case PriorityAction::SHADOWBURN:
+                case PriorityAction::SHADOWBURN_ISB: {
                     bool sb_cond = true;
-                    if (eff_rotation == RotationChoice::FIRE_DESTRO || eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2) {
-                        sb_cond = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
-                    } else if (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY) {
-                        sb_cond = execute_phase;
+                    if (!is_oracle && !policy.use_custom_apl) {
+                        if (eff_rotation == RotationChoice::FIRE_DESTRO || eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2) {
+                            sb_cond = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
+                        } else if (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY) {
+                            sb_cond = execute_phase;
+                        }
                     }
 
                     if (talents.destro.shadowburn > 0 && sb_cond && now >= shadowburn_cd_ready) {
                         double mana_cost = 365.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Shadowburn");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -1018,6 +1211,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.dmg_shadowburn += dmg;
                                 result.record_spell_hit(SpellID::SHADOWBURN, dmg, crit);
                                 result.total_damage += dmg;
+                                if (record_timeline) {
+                                    result.timeline.push_back({now, dmg, SpellID::SHADOWBURN, crit, false, player_mana, target.isb_charges});
+                                }
                                 apply_havoc_cleave(dmg, 0);
 
                                 if (talents.destro.shadow_and_flame > 0) {
@@ -1040,9 +1236,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::CORRUPTION: {
-                    if (!dot_corruption.active) {
+                    bool should_cast_corr = !dot_corruption.active || (rule.use_custom_thresholds && (dot_corruption.expire_time - now) <= rule.max_dot_rem_sec);
+                    if (should_cast_corr) {
                         double mana_cost = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
+                            log_viper_sample(rule.action, "Corruption");
                             double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
                             if (cast_time == 0.0) {
                                 player_mana -= mana_cost;
@@ -1069,6 +1267,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 gcd_ready_time = now + mechanics.base_gcd;
                                 queue.push(gcd_ready_time, EventType::GCD_READY);
                                 if (record_timeline) {
+                                    result.timeline.push_back({now, 0.0, SpellID::CORRUPTION, false, false, player_mana, target.isb_charges});
                                     result.cast_sequence.push_back({now, SpellID::CORRUPTION, 0.0, false, false, 0.0, (now < 3.0) ? "Opener DoT" : "DoT Refresh"});
                                 }
                                 return;
@@ -1093,6 +1292,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::SEARING_PAIN_FILLER: {
                     double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= sp_mana) {
+                        log_viper_sample(rule.action, "Searing Pain");
                         double cast_time = std::max(1.0, 1.5 * get_haste_mult(now));
                         is_casting = true;
                         current_casting_spell = SpellID::SEARING_PAIN;
@@ -1112,6 +1312,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (talents.destro.incinerate > 0) {
                         double inc_mana = 325.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= inc_mana) {
+                            log_viper_sample(rule.action, "Incinerate");
                             double cast_time = std::max(1.0, (2.5 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.0s with 5/5 Bane
                             is_casting = true;
                             current_casting_spell = SpellID::INCINERATE;
@@ -1131,6 +1332,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::DRAIN_LIFE_FILLER: {
                     double dl_mana = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= dl_mana) {
+                        log_viper_sample(rule.action, "Drain Life");
                         player_mana -= dl_mana;
                         result.mana_spent += dl_mana;
                         result.total_casts++;
@@ -1149,6 +1351,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         queue.push(gcd_ready_time, EventType::GCD_READY);
                         if (record_timeline) {
+                            result.timeline.push_back({now, 0.0, SpellID::DRAIN_LIFE, false, false, player_mana, target.isb_charges});
                             result.cast_sequence.push_back({now, SpellID::DRAIN_LIFE, 0.0, false, false, total_channel_time, "Drain Life (Filler)"});
                         }
                         return;
@@ -1159,6 +1362,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::DRAIN_SOUL_FILLER: {
                     double ds_mana = 290.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= ds_mana) {
+                        log_viper_sample(rule.action, "Drain Soul");
                         player_mana -= ds_mana;
                         result.mana_spent += ds_mana;
                         result.total_casts++;
@@ -1177,6 +1381,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                         queue.push(gcd_ready_time, EventType::GCD_READY);
                         if (record_timeline) {
+                            result.timeline.push_back({now, 0.0, SpellID::DRAIN_SOUL, false, false, player_mana, target.isb_charges});
                             result.cast_sequence.push_back({now, SpellID::DRAIN_SOUL, 0.0, false, false, total_channel_time, "Drain Soul (Filler)"});
                         }
                         return;
@@ -1187,6 +1392,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::SHADOW_BOLT_FILLER: {
                     double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     if (player_mana >= sb_mana) {
+                        log_viper_sample(rule.action, "Shadow Bolt");
                         double cast_time = std::max(1.0, (3.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.5s with 5/5 Bane
                         is_casting = true;
                         current_casting_spell = SpellID::SHADOW_BOLT;
@@ -1254,6 +1460,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, 0.0, SpellID::SHADOW_BOLT, false, false, player_mana, target.isb_charges});
+                    }
                     uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
                     if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
@@ -1270,6 +1479,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sp_mana = 168.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sp_mana;
                     result.mana_spent += sp_mana;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, 0.0, SpellID::SEARING_PAIN, false, false, player_mana, target.isb_charges});
+                    }
                     uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
                     if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
@@ -1286,6 +1498,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double inc_mana = 355.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= inc_mana;
                     result.mana_spent += inc_mana;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, 0.0, SpellID::INCINERATE, false, false, player_mana, target.isb_charges});
+                    }
                     uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
                     if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
 
@@ -1298,6 +1513,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sf_mana = 335.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                     player_mana -= sf_mana;
                     result.mana_spent += sf_mana;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, 0.0, SpellID::SOUL_FIRE, false, false, player_mana, target.isb_charges});
+                    }
                     soul_fire_cd_ready = current_time + (60.0 * (1.0 - 0.45 * talents.demo.decimation));
                     uint16_t eureka_flag = (race == Race::GNOME && eureka_charges > 0) ? 1 : 0;
                     if (race == Race::GNOME && eureka_charges > 0) eureka_charges--;
@@ -1338,6 +1556,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.total_damage += dmg;
                         apply_havoc_cleave(dmg, 0);
 
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, dmg, SpellID::IMMOLATE, crit, false, player_mana, target.isb_charges});
+                        }
+
                         dot_immolate.active = true;
                         dot_immolate.expire_time = current_time + 15.0;
                         dot_immolate.ticks_remaining = 5;
@@ -1348,6 +1570,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     } else {
                         result.misses++;
                         result.record_spell_miss(SpellID::IMMOLATE);
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, 0.0, SpellID::IMMOLATE, false, true, player_mana, target.isb_charges});
+                        }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
                     double corr_mana = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
@@ -1355,6 +1580,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.mana_spent += corr_mana;
                     result.record_spell_cast(SpellID::CORRUPTION);
                     apply_touch_of_the_grave(current_time);
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, 0.0, SpellID::CORRUPTION, false, false, player_mana, target.isb_charges});
+                    }
                     bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                     if (eureka_active) eureka_charges--;
 
@@ -1693,6 +1921,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_hope += dmg;
                     result.record_spell_hit(SpellID::DRAIN_HOPE, dmg, is_crit);
                     result.total_damage += dmg;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, dmg, SpellID::DRAIN_HOPE, is_crit, false, player_mana, target.isb_charges});
+                    }
                     apply_havoc_cleave(dmg, 0);
 
                     // Nightfall proc check on Wrack ticks (2% per pt = 4% at 2/2)
@@ -1734,6 +1965,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_life += dmg;
                     result.record_spell_hit(SpellID::DRAIN_LIFE, dmg, is_crit);
                     result.total_damage += dmg;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, dmg, SpellID::DRAIN_LIFE, is_crit, false, player_mana, target.isb_charges});
+                    }
                     apply_havoc_cleave(dmg, 0);
 
                     // Health restored from Drain Life
@@ -1779,6 +2013,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.dmg_drain_soul += dmg;
                     result.record_spell_hit(SpellID::DRAIN_SOUL, dmg, is_crit);
                     result.total_damage += dmg;
+                    if (record_timeline) {
+                        result.timeline.push_back({current_time, dmg, SpellID::DRAIN_SOUL, is_crit, false, player_mana, target.isb_charges});
+                    }
                     apply_havoc_cleave(dmg, 0);
 
                     // Nightfall proc check on Drain Soul ticks (2% per pt = 4% at 2/2)
@@ -1834,6 +2071,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_corruption += dmg;
                         result.record_spell_hit(SpellID::CORRUPTION, dmg, is_crit);
                         result.total_damage += dmg;
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, dmg, SpellID::CORRUPTION, is_crit, false, player_mana, target.isb_charges});
+                        }
                         apply_havoc_cleave(dmg, t_idx);
 
                         // Nightfall proc check (2% per point = 4% at 2/2)
@@ -1897,6 +2137,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_curse += dmg;
                         result.record_spell_hit(SpellID::CURSE_OF_AGONY, dmg, is_crit);
                         result.total_damage += dmg;
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, dmg, SpellID::CURSE_OF_AGONY, is_crit, false, player_mana, target.isb_charges});
+                        }
                         apply_havoc_cleave(dmg, t_idx);
 
                         if (cur_agony.ticks_remaining > 0) {
@@ -1936,6 +2179,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_siphon_life += dmg;
                         result.record_spell_hit(SpellID::SIPHON_LIFE, dmg, is_crit);
                         result.total_damage += dmg;
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, dmg, SpellID::SIPHON_LIFE, is_crit, false, player_mana, target.isb_charges});
+                        }
                         apply_havoc_cleave(dmg, t_idx);
                         player_health = std::min(stats.max_health, player_health + dmg);
 
@@ -1969,6 +2215,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.dmg_immolate += dmg;
                         result.record_spell_hit(SpellID::IMMOLATE, dmg, is_crit);
                         result.total_damage += dmg;
+                        if (record_timeline) {
+                            result.timeline.push_back({current_time, dmg, SpellID::IMMOLATE, is_crit, false, player_mana, target.isb_charges});
+                        }
                         apply_havoc_cleave(dmg, t_idx);
 
                         if (cur_imm.ticks_remaining > 0) {

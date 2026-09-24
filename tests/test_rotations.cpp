@@ -841,4 +841,70 @@ TEST_CASE(Rotations, DemonologyShadowBrandWeave) {
     CHECK(res.shadow_bolt_casts > 0);
 }
 
+TEST_CASE(Rotations, CustomAplIndexManipulation) {
+    PolicyConfig policy;
+    Talents talents = Talents::create_forever_shadow_destro();
+    policy.rotation = RotationChoice::SHADOW_DESTRO;
+
+    size_t count = policy.rule_count(talents);
+    CHECK(count >= 5);
+    CHECK(!policy.use_custom_apl);
+
+    // Swap first two rules
+    PriorityRule r0_orig = policy.get_priority_rules(talents)[0];
+    PriorityRule r1_orig = policy.get_priority_rules(talents)[1];
+    
+    bool swapped = policy.swap_rules(0, 1, talents);
+    CHECK(swapped);
+    CHECK(policy.use_custom_apl);
+    
+    auto modified_rules = policy.get_priority_rules(talents);
+    CHECK_EQ(static_cast<int>(modified_rules[0].action), static_cast<int>(r1_orig.action));
+    CHECK_EQ(static_cast<int>(modified_rules[1].action), static_cast<int>(r0_orig.action));
+
+    // Move down index 0 -> should return to original order
+    policy.move_rule_down(0, talents);
+    auto restored_rules = policy.get_priority_rules(talents);
+    CHECK_EQ(static_cast<int>(restored_rules[0].action), static_cast<int>(r0_orig.action));
+    CHECK_EQ(static_cast<int>(restored_rules[1].action), static_cast<int>(r1_orig.action));
+
+    // Disable index 0
+    policy.set_rule_enabled(0, false, talents);
+    CHECK(!policy.get_priority_rules(talents)[0].enabled);
+
+    // Reset to preset
+    policy.reset_to_preset(talents);
+    CHECK(!policy.use_custom_apl);
+    CHECK(policy.get_priority_rules(talents)[0].enabled);
+}
+
+TEST_CASE(Rotations, CustomAplExecutionOverride) {
+    FastRNG rng1(42);
+    FastRNG rng2(42);
+    
+    WarlockSimulator sim1;
+    sim1.talents = Talents::create_forever_shadow_destro();
+    sim1.fight_duration = 60.0;
+    
+    WarlockSimulator sim2;
+    sim2.talents = sim1.talents;
+    sim2.fight_duration = 60.0;
+    
+    // Disable Corruption in sim2 using custom APL index manipulation
+    auto rules = sim2.policy.get_priority_rules(sim2.talents);
+    for (size_t i = 0; i < rules.size(); ++i) {
+        if (rules[i].action == PriorityAction::CORRUPTION) {
+            sim2.policy.set_rule_enabled(i, false, sim2.talents);
+            break;
+        }
+    }
+    CHECK(sim2.policy.use_custom_apl);
+
+    SimResult res1 = sim1.run_single_simulation(rng1);
+    SimResult res2 = sim2.run_single_simulation(rng2);
+
+    CHECK(res1.dmg_corruption > 0.0);
+    CHECK_EQ(res2.dmg_corruption, 0.0);
+}
+
 

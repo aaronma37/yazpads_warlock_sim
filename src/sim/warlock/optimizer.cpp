@@ -135,6 +135,8 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             sim.policy.pet = cand.pet;
             sim.policy.rotation = cand.rotation;
             sim.policy.maintain_immolate = cand.maintain_immolate;
+            sim.policy.use_custom_apl = false;
+            sim.policy.custom_rules.clear();
 
             BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
 
@@ -153,6 +155,8 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             res.isb_uptime = batch.mean_isb_uptime;
             res.talents = sim.talents;
             res.gear = sim.gear;
+            res.use_raw_stats = sim.use_raw_stats;
+            res.raw_stats = sim.raw_stats;
             res.buffs = sim.buffs;
             res.policy = sim.policy;
             res.mechanics = sim.mechanics;
@@ -335,6 +339,8 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
         res.isb_uptime = batch.mean_isb_uptime;
         res.talents = sim.talents;
         res.gear = sim.gear;
+        res.use_raw_stats = sim.use_raw_stats;
+        res.raw_stats = sim.raw_stats;
         res.policy = sim.policy;
         res.mechanics = sim.mechanics;
         res.batch = batch;
@@ -379,6 +385,8 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
         res_on.isb_uptime = b_on.mean_isb_uptime;
         res_on.talents = sim_on.talents;
         res_on.gear = sim_on.gear;
+        res_on.use_raw_stats = sim_on.use_raw_stats;
+        res_on.raw_stats = sim_on.raw_stats;
         res_on.policy = sim_on.policy;
         res_on.mechanics = sim_on.mechanics;
         results.push_back(res_on);
@@ -399,6 +407,8 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
         res_off.isb_uptime = b_off.mean_isb_uptime;
         res_off.talents = sim_off.talents;
         res_off.gear = sim_off.gear;
+        res_off.use_raw_stats = sim_off.use_raw_stats;
+        res_off.raw_stats = sim_off.raw_stats;
         res_off.policy = sim_off.policy;
         res_off.mechanics = sim_off.mechanics;
         results.push_back(res_off);
@@ -423,6 +433,8 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
         res_on.isb_uptime = b_on.mean_isb_uptime;
         res_on.talents = sim_on.talents;
         res_on.gear = sim_on.gear;
+        res_on.use_raw_stats = sim_on.use_raw_stats;
+        res_on.raw_stats = sim_on.raw_stats;
         res_on.policy = sim_on.policy;
         res_on.mechanics = sim_on.mechanics;
         results.push_back(res_on);
@@ -444,6 +456,8 @@ std::vector<CandidateResult> Optimizer::evaluate_snapshotting_impact(
         res_off.isb_uptime = b_off.mean_isb_uptime;
         res_off.talents = sim_off.talents;
         res_off.gear = sim_off.gear;
+        res_off.use_raw_stats = sim_off.use_raw_stats;
+        res_off.raw_stats = sim_off.raw_stats;
         res_off.policy = sim_off.policy;
         res_off.mechanics = sim_off.mechanics;
         results.push_back(res_off);
@@ -609,6 +623,8 @@ std::vector<CandidateResult> Optimizer::explore_combinatorial_talents(
             res.isb_uptime = batch.mean_isb_uptime;
             res.talents = sim.talents;
             res.gear = sim.gear;
+            res.use_raw_stats = sim.use_raw_stats;
+            res.raw_stats = sim.raw_stats;
             res.buffs = sim.buffs;
             res.policy = sim.policy;
             res.mechanics = sim.mechanics;
@@ -765,6 +781,8 @@ std::vector<CandidateResult> Optimizer::compare_consumable_tiers(
         res.isb_uptime = batch.mean_isb_uptime;
         res.talents = sim.talents;
         res.gear = sim.gear;
+        res.use_raw_stats = sim.use_raw_stats;
+        res.raw_stats = sim.raw_stats;
         res.buffs = sim.buffs;
         res.policy = sim.policy;
         res.mechanics = sim.mechanics;
@@ -1098,6 +1116,8 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
         res.isb_uptime = batch.mean_isb_uptime;
         res.talents = sim.talents;
         res.gear = sim.gear;
+        res.use_raw_stats = sim.use_raw_stats;
+        res.raw_stats = sim.raw_stats;
         res.buffs = sim.buffs;
         res.policy = sim.policy;
         res.mechanics = sim.mechanics;

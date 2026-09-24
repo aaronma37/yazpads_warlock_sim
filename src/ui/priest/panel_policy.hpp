@@ -1,5 +1,6 @@
 #pragma once
 #include "imgui.h"
+#include "asset_manager.hpp"
 #include "src/ui/common/wow_widgets.hpp"
 #include "src/sim/priest/policy.hpp"
 #include "src/sim/priest/talents.hpp"
@@ -77,6 +78,81 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
     // 1. Dynamic Action Priority Chain
     std::vector<PriorityRule> rules = policy.get_priority_rules(talents, race);
     render_priest_priority_chain_subpane(rules);
+
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Action Priority List (APL) Order & Customization", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (policy.use_custom_apl) {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Custom APL Active (Modified)");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset to Preset Defaults")) {
+                policy.reset_to_preset(talents, race);
+            }
+        } else {
+            ImGui::TextDisabled("Using standard preset ordering. Reorder or toggle any rule below to customize.");
+        }
+
+        if (ImGui::BeginTable("PriestAplTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 24.0f);
+            ImGui::TableSetupColumn("Order", ImGuiTableColumnFlags_WidthFixed, 56.0f);
+            ImGui::TableSetupColumn("Active", ImGuiTableColumnFlags_WidthFixed, 44.0f);
+            ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.45f);
+            ImGui::TableSetupColumn("Trigger Condition", ImGuiTableColumnFlags_WidthStretch, 0.55f);
+            ImGui::TableHeadersRow();
+
+            std::vector<PriorityRule> current_rules = policy.get_priority_rules(talents, race);
+            for (size_t i = 0; i < current_rules.size(); ++i) {
+                const auto& r = current_rules[i];
+                ImGui::TableNextRow();
+                ImGui::PushID(static_cast<int>(i));
+
+                // Col 0: Index
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextDisabled("%d", (int)i + 1);
+
+                // Col 1: Up / Down move buttons
+                ImGui::TableSetColumnIndex(1);
+                if (i > 0) {
+                    if (ImGui::SmallButton("^")) {
+                        policy.move_rule_up(i, talents, race);
+                    }
+                } else {
+                    ImGui::Dummy(ImVec2(16, 16));
+                }
+                ImGui::SameLine(0, 2);
+                if (i + 1 < current_rules.size()) {
+                    if (ImGui::SmallButton("v")) {
+                        policy.move_rule_down(i, talents, race);
+                    }
+                }
+
+                // Col 2: Active checkbox
+                ImGui::TableSetColumnIndex(2);
+                bool enabled = r.enabled;
+                if (ImGui::Checkbox("##Enabled", &enabled)) {
+                    policy.set_rule_enabled(i, enabled, talents, race);
+                }
+
+                // Col 3: Action / Spell Icon + Name
+                ImGui::TableSetColumnIndex(3);
+                Texture2D icon = warlock::AssetManager::get().get_icon(spell_id_to_icon(r.spell_id));
+                if (icon.id > 0) {
+                    ImGui::Image((ImTextureID)(uintptr_t)icon.id, ImVec2(16, 16));
+                    ImGui::SameLine(0, 4);
+                }
+                if (enabled)
+                    ImGui::Text("%s", r.name.c_str());
+                else
+                    ImGui::TextDisabled("%s (Disabled)", r.name.c_str());
+
+                // Col 4: Condition Summary
+                ImGui::TableSetColumnIndex(4);
+                ImGui::TextUnformatted(r.condition_summary.c_str());
+
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+    }
 
     ImGui::Spacing();
     ImGui::Separator();

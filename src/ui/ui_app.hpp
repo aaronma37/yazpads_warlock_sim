@@ -8,6 +8,7 @@
 #endif
 
 #include "asset_manager.hpp"
+#include "panel_analyze_apl.hpp"
 #include "panel_buffs.hpp"
 #include "panel_gear.hpp"
 #include "panel_imp_analysis.hpp"
@@ -111,8 +112,9 @@ class WarlockSimApp
   enum class AppTab {
     PRESETS = 0,
     SIMULATE = 1,
-    ABILITIES = 2,
-    THEORYCRAFTING = 3
+    ANALYZE_APL = 2,
+    ABILITIES = 3,
+    THEORYCRAFTING = 4
   };
 
   AppTab active_tab = AppTab::PRESETS;
@@ -132,16 +134,18 @@ class WarlockSimApp
     std::vector<TabDef> tabs;
     if (active_class == sim::PlayerClass::WARLOCK) {
       tabs = {
-        {"Presets", AppTab::PRESETS, 100.0f},
-        {"Simulate", AppTab::SIMULATE, 100.0f},
-        {"Abilities", AppTab::ABILITIES, 100.0f},
-        {"Theorycrafting", AppTab::THEORYCRAFTING, 136.0f}
+        {"Presets", AppTab::PRESETS, 90.0f},
+        {"Simulate", AppTab::SIMULATE, 95.0f},
+        {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
+        {"Abilities", AppTab::ABILITIES, 95.0f},
+        {"Theorycrafting", AppTab::THEORYCRAFTING, 130.0f}
       };
     } else {
       tabs = {
-        {"Presets", AppTab::PRESETS, 100.0f},
-        {"Simulate", AppTab::SIMULATE, 100.0f},
-        {"Abilities", AppTab::ABILITIES, 100.0f}
+        {"Presets", AppTab::PRESETS, 90.0f},
+        {"Simulate", AppTab::SIMULATE, 95.0f},
+        {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
+        {"Abilities", AppTab::ABILITIES, 95.0f}
       };
     }
 
@@ -479,6 +483,12 @@ class WarlockSimApp
         break;
       }
 
+      case AppTab::ANALYZE_APL:
+      {
+        render_panel_analyze_apl(sim);
+        break;
+      }
+
       case AppTab::ABILITIES:
       {
         render_panel_spellbook();
@@ -558,6 +568,19 @@ class WarlockSimApp
       {
         priest::render_priest_panel_optimizer(
             priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset);
+        break;
+      }
+
+      case AppTab::ANALYZE_APL:
+      {
+        BeginWowChild("PriestAPLAnalysis", ImVec2(0, 0), true);
+        ImGui::Spacing();
+        ImGui::Indent(20.0f);
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Priest APL Trace Analysis");
+        ImGui::Spacing();
+        ImGui::TextWrapped("APL vs. MCTS Trace Analysis is currently optimized for Warlock rotations. Switch to Warlock via the top-left class switcher to run full MCTS trace diagnostics.");
+        ImGui::Unindent(20.0f);
+        EndWowChild();
         break;
       }
 

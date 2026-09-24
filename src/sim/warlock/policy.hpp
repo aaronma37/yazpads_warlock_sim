@@ -327,6 +327,7 @@ enum class PriorityAction : uint8_t
   IMMOLATE,
   CONFLAGRATE,
   SHADOWBURN,
+  SHADOWBURN_ISB,
   INCINERATE_FILLER,
   SEARING_PAIN_FILLER,
   DRAIN_LIFE_FILLER,
@@ -347,6 +348,18 @@ struct PriorityRule
   std::string trigger_condition;
   std::string rule_explanation;
   bool enabled = true;
+
+  // Parameterized Continuous & Logical Predicates for VIPER / MCTS Extraction
+  bool use_custom_thresholds = false; // When true, simulator engine evaluates the continuous bounds below
+  float max_mana_pct = 1.0f;          // Trigger only if player mana <= max_mana_pct (e.g. 0.35 = 35%)
+  float min_mana_pct = 0.0f;          // Trigger only if player mana >= min_mana_pct
+  float max_target_hp_pct = 1.0f;     // Trigger only if target HP <= max_target_hp_pct (e.g. 0.35 = 35% execute)
+  float min_target_hp_pct = 0.0f;     // Trigger only if target HP >= min_target_hp_pct
+  float min_time_remaining = 0.0f;    // Trigger only if fight duration remaining >= min_time_remaining (e.g. 60.0s for CoD)
+  float max_time_remaining = 9999.0f; // Trigger only if fight duration remaining <= max_time_remaining
+  float max_dot_rem_sec = 0.0f;       // Refresh DoT if remaining duration <= max_dot_rem_sec (e.g. Pandemic refresh window)
+  float min_hp_pct = 0.15f;           // Player safety threshold (e.g. for Life Tap)
+  bool require_isb_active = false;    // When true, requires active ISB (+20% Shadow debuff) on target
 };
 
 struct PolicyConfig
@@ -373,8 +386,120 @@ struct PolicyConfig
   bool use_decimation_soul_fire = true;  // Execute phase Soul Fire procs (<35% HP)
   bool channel_drain_hope = true;        // Channel Wrack on cooldown if talented
 
+  // Dynamic & Custom APL properties
+  bool use_custom_apl = false;
+  bool use_oracle_execution_policy = false; // Live online greedy MCTS / Oracle controller
+  std::vector<PriorityRule> custom_rules;
+
   // Constructs the ordered priority rule list for display and execution
   std::vector<PriorityRule> get_priority_rules(const Talents& talents, Race race = Race::UNDEAD) const
+  {
+    if (use_custom_apl && !custom_rules.empty())
+    {
+      return custom_rules;
+    }
+    return build_preset_rules(talents, race);
+  }
+
+  void enable_custom_apl(const Talents& talents, Race race = Race::UNDEAD)
+  {
+    if (custom_rules.empty())
+    {
+      custom_rules = build_preset_rules(talents, race);
+    }
+    use_custom_apl = true;
+  }
+
+  void reset_to_preset(const Talents& talents, Race race = Race::UNDEAD)
+  {
+    custom_rules.clear();
+    use_custom_apl = false;
+  }
+
+  size_t rule_count(const Talents& talents, Race race = Race::UNDEAD) const
+  {
+    return get_priority_rules(talents, race).size();
+  }
+
+  bool move_rule_up(size_t index, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index > 0 && index < custom_rules.size())
+    {
+      std::swap(custom_rules[index], custom_rules[index - 1]);
+      return true;
+    }
+    return false;
+  }
+
+  bool move_rule_down(size_t index, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index + 1 < custom_rules.size())
+    {
+      std::swap(custom_rules[index], custom_rules[index + 1]);
+      return true;
+    }
+    return false;
+  }
+
+  bool swap_rules(size_t i, size_t j, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (i < custom_rules.size() && j < custom_rules.size())
+    {
+      std::swap(custom_rules[i], custom_rules[j]);
+      return true;
+    }
+    return false;
+  }
+
+  bool set_rule_enabled(size_t index, bool enabled, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index < custom_rules.size())
+    {
+      custom_rules[index].enabled = enabled;
+      return true;
+    }
+    return false;
+  }
+
+  bool set_rule(size_t index, const PriorityRule& rule, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index < custom_rules.size())
+    {
+      custom_rules[index] = rule;
+      return true;
+    }
+    return false;
+  }
+
+  bool insert_rule(size_t index, const PriorityRule& rule, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index <= custom_rules.size())
+    {
+      custom_rules.insert(custom_rules.begin() + index, rule);
+      return true;
+    }
+    return false;
+  }
+
+  bool remove_rule(size_t index, const Talents& talents, Race race = Race::UNDEAD)
+  {
+    enable_custom_apl(talents, race);
+    if (index < custom_rules.size())
+    {
+      custom_rules.erase(custom_rules.begin() + index);
+      return true;
+    }
+    return false;
+  }
+
+  // Generates preset rules based on selected rotation enum
+  std::vector<PriorityRule> build_preset_rules(const Talents& talents, Race race = Race::UNDEAD) const
   {
     std::vector<PriorityRule> rules;
     RotationChoice eff = rotation;
