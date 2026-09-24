@@ -2,6 +2,7 @@
 <html lang="en-us">
 <head>
   <meta charset="utf-8">
+  <script src="coi-serviceworker.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WoW: Forever - Classic Warlock & Priest Sim (ImGui Desktop)</title>
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
@@ -275,15 +276,7 @@
       }
     };
 
-    // Clean up any stale service workers (e.g. from previous pthread tests)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var r of registrations) {
-          r.unregister();
-        }
-      }).catch(function(e) { /* ignore */ });
-    }
-
+    // Error handling
     window.onerror = function(msg, url, lineNo, columnNo, error) {
       // Ignore non-fatal external script or extension warnings
       if (url && (url.includes('coi-serviceworker') || url.includes('chrome-extension'))) {

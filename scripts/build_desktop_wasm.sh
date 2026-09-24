@@ -8,7 +8,11 @@ echo "=== 1. Bundling & Filtering Web Assets ==="
 python3 "${ROOT_DIR}/scripts/bundle_web_assets.py"
 
 echo "=== 2. Activating Emscripten SDK ==="
-if [ -f "/home/deck/.local/opt/emsdk/emsdk_env.sh" ]; then
+if [ -f "${HOME}/emsdk/emsdk_env.sh" ]; then
+    source "${HOME}/emsdk/emsdk_env.sh"
+elif [ -f "${HOME}/.emsdk/emsdk_env.sh" ]; then
+    source "${HOME}/.emsdk/emsdk_env.sh"
+elif [ -f "/home/deck/.local/opt/emsdk/emsdk_env.sh" ]; then
     source /home/deck/.local/opt/emsdk/emsdk_env.sh
 elif [ -f "${EMSDK:-}/emsdk_env.sh" ]; then
     source "${EMSDK}/emsdk_env.sh"

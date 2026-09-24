@@ -10,8 +10,11 @@ if (MSVC)
     add_compile_options(/O2 /permissive-)
 elseif (EMSCRIPTEN)
     if (CMAKE_BUILD_TYPE STREQUAL "Release" OR NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pthread")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
     endif()
 else()
     if (CMAKE_BUILD_TYPE STREQUAL "Release" OR NOT CMAKE_BUILD_TYPE)
@@ -78,10 +81,13 @@ if (EMSCRIPTEN)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs"
     )
     target_link_options(warlock_sim PRIVATE
+        -pthread
+        -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
+        -sPTHREAD_POOL_SIZE_STRICT=0
         -sUSE_GLFW=3
         -sWASM=1
-        -sINITIAL_MEMORY=64MB
-        -sSTACK_SIZE=16MB
+        -sINITIAL_MEMORY=512MB
+        -sSTACK_SIZE=2MB
         -sALLOW_MEMORY_GROWTH=1
         -sMAX_WEBGL_VERSION=2
         --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets_web@/assets

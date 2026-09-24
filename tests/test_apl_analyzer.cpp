@@ -138,3 +138,38 @@ TEST_CASE(APLAnalyzerTests, HardCappedAdaptiveRolloutsEarlyStopping) {
     }
 }
 
+TEST_CASE(APLAnalyzerTests, MultithreadedBlunderAnalysisDeterministicEquivalence) {
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.fight_duration = 45.0;
+
+    // Run single-threaded blunder analysis (max_threads = 1)
+    APLAnalysisRun single_thread_run = APLAnalyzer::analyze_single_run(
+        sim, 1, 4242, 32, AnalysisMode::BLUNDERS_ONLY, true, nullptr, 1
+    );
+
+    // Run multi-threaded blunder analysis across all available hardware threads
+    APLAnalysisRun multi_thread_run = APLAnalyzer::analyze_single_run(
+        sim, 1, 4242, 32, AnalysisMode::BLUNDERS_ONLY, true, nullptr, 0
+    );
+
+    // Verify bit-for-bit identical results and determinism
+    CHECK_EQ(single_thread_run.total_decisions, multi_thread_run.total_decisions);
+    CHECK_EQ(single_thread_run.divergence_count, multi_thread_run.divergence_count);
+    CHECK_NEAR(single_thread_run.apl_dps, multi_thread_run.apl_dps, 1e-6);
+    CHECK_NEAR(single_thread_run.agreement_rate_pct, multi_thread_run.agreement_rate_pct, 1e-6);
+    CHECK_EQ(single_thread_run.events.size(), multi_thread_run.events.size());
+
+    for (size_t i = 0; i < single_thread_run.events.size(); ++i) {
+        const auto& ev_s = single_thread_run.events[i];
+        const auto& ev_m = multi_thread_run.events[i];
+        CHECK_EQ(ev_s.decision_step, ev_m.decision_step);
+        CHECK_EQ(ev_s.blunder_rank, ev_m.blunder_rank);
+        CHECK(ev_s.apl_action == ev_m.apl_action);
+        CHECK(ev_s.mcts_action == ev_m.mcts_action);
+        CHECK_NEAR(ev_s.delta_dps, ev_m.delta_dps, 1e-5);
+        CHECK_NEAR(ev_s.confidence_pct, ev_m.confidence_pct, 1e-5);
+    }
+}
+
+

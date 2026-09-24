@@ -10,6 +10,8 @@
 #include <cmath>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <optional>
 #include <unordered_map>
 
 namespace warlock {
@@ -645,6 +647,211 @@ public:
         }
     }
 
+    struct AsyncBlunderAnalysisSession {
+        WarlockSimulator base_sim;
+        size_t rollouts_per_action = 512;
+        bool adaptive_rollouts = true;
+        uint64_t seed = 42;
+
+        SimResult apl_res;
+        WarlockSimulator apl_sim;
+        size_t total_decision_steps = 0;
+
+        std::atomic<size_t> next_d{0};
+        std::atomic<size_t> completed_d{0};
+        std::vector<std::optional<APLDivergenceEvent>> decision_events;
+
+        bool initialized = false;
+        bool completed = false;
+
+        void init(const WarlockSimulator& sim, size_t rollouts = 512, bool adaptive = true, uint64_t base_seed = 42) {
+            base_sim = sim;
+            rollouts_per_action = rollouts;
+            adaptive_rollouts = adaptive;
+            seed = base_seed;
+
+            FastRNG rng(seed);
+            apl_sim = base_sim;
+            apl_sim.randomize_duration = false;
+            apl_sim.record_timeline = false;
+            apl_sim.record_viper_samples = true;
+            apl_sim.viper_dataset.clear();
+            apl_sim.use_oracle_execution_policy = false;
+            apl_sim.forced_action_prefix.clear();
+
+            apl_res = apl_sim.run_single_simulation(rng);
+            total_decision_steps = std::min(apl_res.action_history.size(), apl_sim.viper_dataset.samples.size());
+            decision_events.clear();
+            decision_events.resize(total_decision_steps);
+            next_d.store(0);
+            completed_d.store(0);
+            initialized = true;
+            completed = false;
+        }
+
+        void eval_decision(size_t d) {
+            if (d >= total_decision_steps) return;
+            const auto& apl_sample = apl_sim.viper_dataset.samples[d];
+            const sim::SimObservation& apl_state = apl_sample.state;
+            PriorityAction chosen_apl_act = apl_res.action_history[d];
+
+            auto candidate_actions = APLAnalyzer::get_candidate_actions();
+            std::vector<PriorityAction> legal_candidates;
+            for (const auto& [act, _] : candidate_actions) {
+                if (act == PriorityAction::RACIAL_EUREKA ||
+                    act == PriorityAction::RACIAL_BLOOD_FURY ||
+                    act == PriorityAction::RACIAL_BERSERKING ||
+                    act == PriorityAction::AMPLIFY_CURSE ||
+                    act == PriorityAction::BANE_OF_HAVOC) {
+                    continue;
+                }
+                if (APLAnalyzer::is_action_legal(act, apl_state, base_sim.talents)) {
+                    legal_candidates.push_back(act);
+                }
+            }
+            if (std::find(legal_candidates.begin(), legal_candidates.end(), chosen_apl_act) == legal_candidates.end()) {
+                legal_candidates.push_back(chosen_apl_act);
+            }
+
+            std::vector<PriorityAction> apl_prefix(apl_res.action_history.begin(), apl_res.action_history.begin() + d);
+
+            auto evaluated_branches = APLAnalyzer::evaluate_candidate_branches_crn(
+                base_sim,
+                apl_prefix,
+                legal_candidates,
+                rollouts_per_action,
+                seed + (d + 500) * 65537 + 19,
+                adaptive_rollouts
+            );
+
+            ActionMCTSEval best_eval = evaluated_branches.empty() ? ActionMCTSEval{} : evaluated_branches.front();
+            ActionMCTSEval apl_eval;
+            apl_eval.mean_dps = -1e9;
+
+            for (const auto& e : evaluated_branches) {
+                if (e.action == chosen_apl_act) {
+                    apl_eval = e;
+                    break;
+                }
+            }
+            if (apl_eval.mean_dps < -1e8) {
+                apl_eval = best_eval;
+            }
+
+            double delta_dps = std::max(0.0, best_eval.mean_dps - apl_eval.mean_dps);
+            double se_diff = std::sqrt(best_eval.std_error * best_eval.std_error + apl_eval.std_error * apl_eval.std_error);
+            double z_score = (se_diff > 1e-5) ? (delta_dps / se_diff) : 0.0;
+            double confidence = APLAnalyzer::compute_statistical_confidence(delta_dps, se_diff);
+
+            if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
+                APLDivergenceEvent ev;
+                ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
+                ev.decision_step = d;
+                ev.state = apl_state;
+
+                ev.apl_action = chosen_apl_act;
+                ev.apl_action_name = APLAnalyzer::get_action_name(chosen_apl_act);
+                ev.apl_expected_dps = apl_eval.mean_dps;
+                ev.apl_std_error = apl_eval.std_error;
+
+                ev.mcts_action = best_eval.action;
+                ev.mcts_action_name = APLAnalyzer::get_action_name(best_eval.action);
+                ev.mcts_expected_dps = best_eval.mean_dps;
+                ev.mcts_std_error = best_eval.std_error;
+
+                ev.delta_dps = delta_dps;
+                ev.delta_dps_ci_lower = std::max(0.0, delta_dps - 1.96 * se_diff);
+                ev.delta_dps_ci_upper = delta_dps + 1.96 * se_diff;
+                ev.confidence_pct = confidence;
+                ev.z_score = z_score;
+
+                ev.candidate_evals = evaluated_branches;
+                for (const auto& [act, _] : candidate_actions) {
+                    if (act == PriorityAction::RACIAL_EUREKA ||
+                        act == PriorityAction::RACIAL_BLOOD_FURY ||
+                        act == PriorityAction::RACIAL_BERSERKING ||
+                        act == PriorityAction::AMPLIFY_CURSE ||
+                        act == PriorityAction::BANE_OF_HAVOC) {
+                        continue;
+                    }
+                    if (std::find(legal_candidates.begin(), legal_candidates.end(), act) == legal_candidates.end()) {
+                        std::string reason;
+                        APLAnalyzer::check_action_legality(act, apl_state, base_sim.talents, reason);
+                        ActionMCTSEval skipped_eval;
+                        skipped_eval.action = act;
+                        skipped_eval.name = APLAnalyzer::get_action_name(act);
+                        skipped_eval.is_skipped = true;
+                        skipped_eval.skip_reason = reason.empty() ? "Conditions not met" : reason;
+                        ev.candidate_evals.push_back(std::move(skipped_eval));
+                    }
+                }
+
+                std::ostringstream alt_ss;
+                alt_ss << std::fixed << std::setprecision(1);
+                size_t alt_count = 0;
+                for (const auto& cand : evaluated_branches) {
+                    if (cand.action == chosen_apl_act) continue;
+                    if (alt_count > 0) alt_ss << ", ";
+                    double cand_gain = cand.mean_dps - apl_eval.mean_dps;
+                    alt_ss << cand.name << " (" << (cand_gain >= 0 ? "+" : "") << cand_gain << " DPS)";
+                    alt_count++;
+                    if (alt_count >= 3) break;
+                }
+                ev.top_alternatives_summary = alt_ss.str();
+
+                ev.rationale = APLAnalyzer::generate_rationale(chosen_apl_act, best_eval.action, apl_state, base_sim.talents, delta_dps, confidence);
+
+                decision_events[d] = std::move(ev);
+            }
+        }
+
+        APLAnalysisReport finalize() {
+            APLAnalysisRun run;
+            run.run_index = 1;
+            run.seed = seed;
+            run.fight_duration = apl_res.duration;
+            run.apl_dps = apl_res.dps;
+            run.total_decisions = total_decision_steps;
+
+            for (size_t d = 0; d < total_decision_steps; ++d) {
+                if (decision_events[d].has_value()) {
+                    run.events.push_back(std::move(decision_events[d].value()));
+                }
+            }
+
+            std::sort(run.events.begin(), run.events.end(), [](const APLDivergenceEvent& a, const APLDivergenceEvent& b) {
+                if (std::abs(a.delta_dps - b.delta_dps) > 1e-4) {
+                    return a.delta_dps > b.delta_dps;
+                }
+                return a.confidence_pct > b.confidence_pct;
+            });
+
+            for (size_t i = 0; i < run.events.size(); ++i) {
+                run.events[i].blunder_rank = i + 1;
+            }
+
+            run.divergence_count = run.events.size();
+            if (run.total_decisions > 0) {
+                size_t matching = (run.total_decisions > run.divergence_count) ? (run.total_decisions - run.divergence_count) : 0;
+                run.agreement_rate_pct = (static_cast<double>(matching) / static_cast<double>(run.total_decisions)) * 100.0;
+            } else {
+                run.agreement_rate_pct = 100.0;
+            }
+
+            APLAnalysisReport report;
+            report.total_runs = 1;
+            report.avg_apl_dps = run.apl_dps;
+            report.avg_mcts_dps = run.apl_dps;
+            report.total_decisions_evaluated = run.total_decisions;
+            report.total_divergences = run.divergence_count;
+            report.overall_agreement_pct = run.agreement_rate_pct;
+            report.runs.push_back(std::move(run));
+            report.is_valid = true;
+            completed = true;
+            return report;
+        }
+    };
+
     // Evaluates a single trace run using two distinct MCTS processes:
     // 1. Autonomous MCTS Policy Trajectory (Ghost reference playthrough for continuous timeline & max yield benchmark)
     // 2. APL Decision Judge & Blunder Detector (evaluates APL's exact decision points, states, and blunders ranked worst-first)
@@ -654,7 +861,9 @@ public:
         uint64_t seed,
         size_t rollouts_per_action = 256,
         AnalysisMode mode = AnalysisMode::BOTH,
-        bool adaptive_rollouts = true)
+        bool adaptive_rollouts = true,
+        std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
+        size_t max_threads = 0)
     {
         APLAnalysisRun run;
         run.run_index = run_idx;
@@ -765,14 +974,13 @@ public:
         // ---------------------------------------------------------------------
         // MCTS PROCESS 2: APL Decision Judge & Blunder Detector
         // Evaluates each action the APL made during its ACTUAL simulation run
+        // Massively multithreaded across all decision points
         // ---------------------------------------------------------------------
         if (mode == AnalysisMode::BOTH || mode == AnalysisMode::BLUNDERS_ONLY) {
-            std::vector<PriorityAction> apl_prefix;
-            apl_prefix.reserve(apl_res.action_history.size());
+            size_t total_decision_steps = std::min(apl_res.action_history.size(), apl_sim.viper_dataset.samples.size());
+            std::vector<std::optional<APLDivergenceEvent>> decision_events(total_decision_steps);
 
-            for (size_t d = 0; d < apl_res.action_history.size(); ++d) {
-                if (d >= apl_sim.viper_dataset.samples.size()) break;
-
+            auto eval_single_decision = [&](size_t d) {
                 const auto& apl_sample = apl_sim.viper_dataset.samples[d];
                 const sim::SimObservation& apl_state = apl_sample.state;
                 PriorityAction chosen_apl_act = apl_res.action_history[d];
@@ -793,6 +1001,8 @@ public:
                 if (std::find(legal_candidates.begin(), legal_candidates.end(), chosen_apl_act) == legal_candidates.end()) {
                     legal_candidates.push_back(chosen_apl_act);
                 }
+
+                std::vector<PriorityAction> apl_prefix(apl_res.action_history.begin(), apl_res.action_history.begin() + d);
 
                 // Execute Common Random Numbers (CRN) Monte Carlo Forward Rollouts from the APL prefix
                 auto evaluated_branches = evaluate_candidate_branches_crn(
@@ -884,10 +1094,73 @@ public:
 
                     ev.rationale = generate_rationale(chosen_apl_act, best_eval.action, apl_state, base_sim.talents, delta_dps, confidence);
 
-                    run.events.push_back(std::move(ev));
+                    decision_events[d] = std::move(ev);
                 }
+            };
 
-                apl_prefix.push_back(chosen_apl_act);
+            if (total_decision_steps > 0) {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+                for (size_t d = 0; d < total_decision_steps; ++d) {
+                    eval_single_decision(d);
+                    if (progress_cb) {
+                        float prog = 0.05f + 0.90f * (static_cast<float>(d + 1) / static_cast<float>(total_decision_steps));
+                        progress_cb(prog, "Evaluating APL Decision #" + std::to_string(d + 1) + " / " + std::to_string(total_decision_steps) + "...");
+                    }
+                }
+#else
+                unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
+#if defined(__EMSCRIPTEN__)
+                // In Emscripten, reserve 1 pool worker for the parent async thread to prevent pool deadlock
+                size_t avail_threads = (hw_threads > 1) ? (hw_threads - 1) : 1;
+#else
+                size_t avail_threads = hw_threads;
+#endif
+                size_t num_workers = (max_threads > 0) ? std::min(max_threads, avail_threads) : avail_threads;
+                num_workers = std::min(num_workers, total_decision_steps);
+
+                if (num_workers <= 1) {
+                    for (size_t d = 0; d < total_decision_steps; ++d) {
+                        eval_single_decision(d);
+                        if (progress_cb) {
+                            float prog = 0.05f + 0.90f * (static_cast<float>(d + 1) / static_cast<float>(total_decision_steps));
+                            progress_cb(prog, "Evaluating APL Decision #" + std::to_string(d + 1) + " / " + std::to_string(total_decision_steps) + "...");
+                        }
+                    }
+                } else {
+                    std::atomic<size_t> next_d{0};
+                    std::atomic<size_t> completed_d{0};
+                    std::vector<std::thread> workers;
+                    workers.reserve(num_workers);
+
+                    for (size_t t = 0; t < num_workers; ++t) {
+                        workers.emplace_back([&]() {
+                            while (true) {
+                                size_t d = next_d.fetch_add(1, std::memory_order_relaxed);
+                                if (d >= total_decision_steps) break;
+
+                                eval_single_decision(d);
+
+                                size_t done = completed_d.fetch_add(1, std::memory_order_relaxed) + 1;
+                                if (progress_cb) {
+                                    float prog = 0.05f + 0.90f * (static_cast<float>(done) / static_cast<float>(total_decision_steps));
+                                    progress_cb(prog, "Evaluating APL Decision #" + std::to_string(done) + " / " + std::to_string(total_decision_steps) + "...");
+                                }
+                            }
+                        });
+                    }
+
+                    for (auto& w : workers) {
+                        if (w.joinable()) w.join();
+                    }
+                }
+#endif
+            }
+
+            // Collect detected divergence events
+            for (size_t d = 0; d < total_decision_steps; ++d) {
+                if (decision_events[d].has_value()) {
+                    run.events.push_back(std::move(decision_events[d].value()));
+                }
             }
 
             // Rank blunders from WORST move to least severe (highest delta_dps loss first)
@@ -946,46 +1219,57 @@ public:
         report_progress(0.05f, start_msg);
 
         std::vector<APLAnalysisRun> thread_runs(report.total_runs);
-#if defined(__EMSCRIPTEN__)
-        for (size_t i = 0; i < report.total_runs; ++i) {
-            uint64_t run_seed = base_seed + i * 1337 + 7;
-            thread_runs[i] = analyze_single_run(sim, i + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts);
-            float prog = 0.05f + 0.90f * (static_cast<float>(i + 1) / static_cast<float>(report.total_runs));
-            std::string status = "Episode Trace #" + std::to_string(i + 1) + " / " + std::to_string(report.total_runs) + "...";
-            report_progress(prog, status);
-        }
+
+        if (report.total_runs == 1) {
+            // For a single run (such as standard Blunder Analysis), let analyze_single_run use all available CPU cores for decision-level parallelization
+            thread_runs[0] = analyze_single_run(sim, 1, base_seed + 7, rollouts_per_action, mode, adaptive_rollouts, report_progress, 0);
+        } else {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+            for (size_t i = 0; i < report.total_runs; ++i) {
+                uint64_t run_seed = base_seed + i * 1337 + 7;
+                thread_runs[i] = analyze_single_run(sim, i + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts);
+                float prog = 0.05f + 0.90f * (static_cast<float>(i + 1) / static_cast<float>(report.total_runs));
+                std::string status = "Episode Trace #" + std::to_string(i + 1) + " / " + std::to_string(report.total_runs) + "...";
+                report_progress(prog, status);
+            }
 #else
-        unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
-        size_t num_threads = std::min(static_cast<size_t>(hw_threads), report.total_runs);
-
-        std::vector<std::thread> workers;
-        std::atomic<size_t> completed_runs{0};
-
-        size_t runs_per_thread = report.total_runs / num_threads;
-        size_t rem_runs = report.total_runs % num_threads;
-
-        for (size_t t = 0; t < num_threads; ++t) {
-            size_t start_idx = t * runs_per_thread + std::min(t, rem_runs);
-            size_t count = runs_per_thread + (t < rem_runs ? 1 : 0);
-
-            workers.emplace_back([&, t, start_idx, count, mode, rollouts_per_action, adaptive_rollouts]() {
-                for (size_t i = 0; i < count; ++i) {
-                    size_t run_idx = start_idx + i;
-                    uint64_t run_seed = base_seed + run_idx * 1337 + 7;
-                    thread_runs[run_idx] = analyze_single_run(sim, run_idx + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts);
-                    
-                    size_t done = completed_runs.fetch_add(1) + 1;
-                    float prog = 0.05f + 0.90f * (static_cast<float>(done) / static_cast<float>(report.total_runs));
-                    std::string status = "Episode Trace #" + std::to_string(done) + " / " + std::to_string(report.total_runs) + "...";
-                    report_progress(prog, status);
-                }
-            });
-        }
-
-        for (auto& w : workers) {
-            if (w.joinable()) w.join();
-        }
+            unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
+#if defined(__EMSCRIPTEN__)
+            size_t avail_threads = (hw_threads > 1) ? (hw_threads - 1) : 1;
+#else
+            size_t avail_threads = hw_threads;
 #endif
+            size_t num_threads = std::min(avail_threads, report.total_runs);
+
+            std::vector<std::thread> workers;
+            std::atomic<size_t> completed_runs{0};
+
+            size_t runs_per_thread = report.total_runs / num_threads;
+            size_t rem_runs = report.total_runs % num_threads;
+
+            for (size_t t = 0; t < num_threads; ++t) {
+                size_t start_idx = t * runs_per_thread + std::min(t, rem_runs);
+                size_t count = runs_per_thread + (t < rem_runs ? 1 : 0);
+
+                workers.emplace_back([&, t, start_idx, count, mode, rollouts_per_action, adaptive_rollouts]() {
+                    for (size_t i = 0; i < count; ++i) {
+                        size_t run_idx = start_idx + i;
+                        uint64_t run_seed = base_seed + run_idx * 1337 + 7;
+                        thread_runs[run_idx] = analyze_single_run(sim, run_idx + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts, nullptr, 1);
+                        
+                        size_t done = completed_runs.fetch_add(1) + 1;
+                        float prog = 0.05f + 0.90f * (static_cast<float>(done) / static_cast<float>(report.total_runs));
+                        std::string status = "Episode Trace #" + std::to_string(done) + " / " + std::to_string(report.total_runs) + "...";
+                        report_progress(prog, status);
+                    }
+                });
+            }
+
+            for (auto& w : workers) {
+                if (w.joinable()) w.join();
+            }
+#endif
+        }
 
         report.runs = std::move(thread_runs);
 
