@@ -123,7 +123,7 @@ public:
     static inline SpellDefinition curse_of_doom_rank1() {
         SpellDefinition s;
         s.id = SpellID::CURSE_OF_DOOM;
-        s.name = "Curse of Doom";
+        s.name = "Bane of Doom";
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 300.0;
@@ -344,7 +344,7 @@ inline const char* spell_id_to_name(SpellID id) {
         case SpellID::CURSE_OF_SHADOWS: return "Curse of Shadows";
         case SpellID::CURSE_OF_ELEMENTS: return "Curse of the Elements";
         case SpellID::CURSE_OF_AGONY: return "Bane of Agony";
-        case SpellID::CURSE_OF_DOOM: return "Curse of Doom";
+        case SpellID::CURSE_OF_DOOM: return "Bane of Doom";
         case SpellID::BANE_OF_HAVOC: return "Bane of Havoc";
         case SpellID::IMMOLATE: return "Immolate";
         case SpellID::SEARING_PAIN: return "Searing Pain";

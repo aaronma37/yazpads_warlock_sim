@@ -487,7 +487,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (record_timeline) {
                     bool doom_active = (doom_tick_time > now);
                     double time_to_doom = doom_active ? (doom_tick_time - now) : 999.0;
-                    std::string note = (time_to_doom <= 14.0 && time_to_doom >= 0.0) ? "Blood Fury (Aligned with Curse of Doom)" : (execute_phase ? "Blood Fury (Execute Phase)" : "Blood Fury (+10% SP for 15s)");
+                    std::string note = (time_to_doom <= 14.0 && time_to_doom >= 0.0) ? "Blood Fury (Aligned with Bane of Doom)" : (execute_phase ? "Blood Fury (Execute Phase)" : "Blood Fury (+10% SP for 15s)");
                     result.cast_sequence.push_back({now, SpellID::RACIAL_BLOOD_FURY, 0.0, false, false, 0.0, note});
                 }
             } else if (race == Race::TROLL) {
@@ -502,7 +502,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 if (record_timeline) {
                     bool doom_active = (doom_tick_time > now);
                     double time_to_doom = doom_active ? (doom_tick_time - now) : 999.0;
-                    std::string note = (time_to_doom <= 6.0 && time_to_doom >= 0.0) ? "Eureka! (Aligned with Curse of Doom)" : (execute_phase ? "Eureka! (Execute -50% Mana, +10% Dmg)" : "Eureka! (-50% Mana, +10% Dmg 3 casts)");
+                    std::string note = (time_to_doom <= 6.0 && time_to_doom >= 0.0) ? "Eureka! (Aligned with Bane of Doom)" : (execute_phase ? "Eureka! (Execute -50% Mana, +10% Dmg)" : "Eureka! (-50% Mana, +10% Dmg 3 casts)");
                     result.cast_sequence.push_back({now, SpellID::RACIAL_EUREKA, 0.0, false, false, 0.0, note});
                 }
             }
@@ -711,18 +711,42 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             if (!rule.enabled) continue;
             bool is_rule_forced = (is_forced && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
 
-            // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS)
+            // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS / Custom APL)
             if (rule.use_custom_thresholds && !is_rule_forced) {
-                float cur_mana_pct = static_cast<float>(player_mana / std::max(1.0, stats.max_mana));
-                float cur_time_rem = static_cast<float>(std::max(0.0, effective_duration - now));
-                float cur_target_hp = static_cast<float>(std::clamp(1.0 - (now / std::max(0.1, effective_duration)), 0.0, 1.0));
-
-                if (cur_mana_pct > rule.max_mana_pct || cur_mana_pct < rule.min_mana_pct) continue;
-                if (cur_target_hp > rule.max_target_hp_pct || cur_target_hp < rule.min_target_hp_pct) continue;
-                if (cur_time_rem < rule.min_time_remaining || cur_time_rem > rule.max_time_remaining) continue;
-                if (rule.require_isb_active) {
-                    bool isb_active = (target.isb_expire_time > now && (target.isb_charges > 0 || target.isb_charges == -1));
+                if (rule.check_mana || rule.max_mana_pct < 0.999f || rule.min_mana_pct > 0.001f) {
+                    float cur_mana_pct = static_cast<float>(player_mana / std::max(1.0, stats.max_mana));
+                    if (cur_mana_pct > rule.max_mana_pct || cur_mana_pct < rule.min_mana_pct) continue;
+                }
+                if (rule.check_target_hp || rule.max_target_hp_pct < 0.999f || rule.min_target_hp_pct > 0.001f) {
+                    float cur_target_hp = static_cast<float>(std::clamp(1.0 - (now / std::max(0.1, effective_duration)), 0.0, 1.0));
+                    if (cur_target_hp > rule.max_target_hp_pct || cur_target_hp < rule.min_target_hp_pct) continue;
+                }
+                if (rule.check_fight_time || rule.min_time_remaining > 0.0f || rule.max_time_remaining < 9000.0f) {
+                    float cur_time_rem = static_cast<float>(std::max(0.0, effective_duration - now));
+                    if (cur_time_rem < rule.min_time_remaining || cur_time_rem > rule.max_time_remaining) continue;
+                }
+                if (rule.check_isb_debuff || rule.require_isb_active || rule.min_isb_rem_sec > 0.0f) {
+                    float isb_rem = static_cast<float>(std::max(0.0, target.isb_expire_time - now));
+                    bool isb_active = (target.isb_expire_time > now && isb_rem >= rule.min_isb_rem_sec && (target.isb_charges > 0 || target.isb_charges == -1));
                     if (!isb_active) continue;
+                }
+                if (rule.check_shadow_trance) {
+                    if (!shadow_trance_active || (now >= shadow_trance_expire && shadow_trance_expire > 0.0)) continue;
+                }
+                if (rule.check_decimation) {
+                    bool decim_active = (talents.demo.decimation > 0 && now < decimation_buff_expire);
+                    if (rule.require_decimation_active && !decim_active) continue;
+                    if (!rule.require_decimation_active && decim_active) continue;
+                }
+                if (rule.check_demonic_brand) {
+                    bool brand_active = (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && now < demonic_brand_expire);
+                    if (rule.require_demonic_brand_missing && brand_active) continue;
+                    if (!rule.require_demonic_brand_missing && !brand_active) continue;
+                }
+                if (rule.check_doom_debuff) {
+                    bool doom_active = (doom_tick_time > now);
+                    if (rule.require_doom_missing && doom_active) continue;
+                    if (!rule.require_doom_missing && !doom_active) continue;
                 }
             }
 
@@ -743,7 +767,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         : (is_oracle
                             ? (mana_pct <= 50.0)
                             : (rule.use_custom_thresholds 
-                                ? (mana_pct <= static_cast<double>(rule.max_mana_pct * 100.0f))
+                                ? (mana_pct <= static_cast<double>(rule.max_mana_pct * 100.0f) || gnome_last_charge_tap)
                                 : (mana_pct <= policy.life_tap_threshold_pct || gnome_last_charge_tap)));
 
                     if (should_tap) {
@@ -775,7 +799,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::CURSE_OF_AGONY: {
-                    bool should_cast_agony = !dot_agony.active || (rule.use_custom_thresholds && (dot_agony.expire_time - now) <= rule.max_dot_rem_sec);
+                    bool doom_active = (doom_tick_time > now);
+                    bool should_cast_agony = !doom_active && (!dot_agony.active || (rule.use_custom_thresholds && (dot_agony.expire_time - now) <= rule.max_dot_rem_sec));
                     if (should_cast_agony) {
                         double mana_cost = 215.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
@@ -837,7 +862,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (should_cast_doom) {
                         double mana_cost = 300.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.5 : 1.0);
                         if (player_mana >= mana_cost) {
-                            log_viper_sample(rule.action, "Curse of Doom");
+                            log_viper_sample(rule.action, "Bane of Doom");
                             player_mana -= mana_cost;
                             result.mana_spent += mana_cost;
                             result.total_casts++;
@@ -861,7 +886,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.timeline.push_back({now, 0.0, SpellID::CURSE_OF_DOOM, false, false, player_mana, target.isb_charges});
-                                result.cast_sequence.push_back({now, SpellID::CURSE_OF_DOOM, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Curse" : "Curse of Doom"});
+                                result.cast_sequence.push_back({now, SpellID::CURSE_OF_DOOM, 0.0, false, false, 0.0, (now < 1.0) ? "Opener Curse" : "Bane of Doom"});
                             }
                             return;
                         }

@@ -16,7 +16,8 @@ enum class AppTab {
     CONSTRAINED_SPEC_SEARCH = 2,
     ANALYZE_APL = 3,
     ABILITIES = 4,
-    THEORYCRAFTING = 5
+    THEORYCRAFTING = 5,
+    CHANGELOG = 6
 };
 
 // ============================================================================

@@ -73,13 +73,14 @@ inline std::vector<PriorityRule> get_available_warlock_actions(const Talents& ta
   std::vector<PriorityRule> list;
   list.push_back({PriorityAction::SHADOW_BOLT_FILLER, SpellID::SHADOW_BOLT, "Shadow Bolt", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Main Shadow direct damage spell."});
   list.push_back({PriorityAction::INCINERATE_FILLER, SpellID::INCINERATE, "Incinerate", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Main Fire direct damage spell (+25% bonus against Immolated targets)."});
-  list.push_back({PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN, "Searing Pain", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Fast 1.5s cast Fire damage spell."});
+  list.push_back({PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN, "Searing Pain", "Always / Filler", "Trigger when: Fire filler spell.", "Fast 1.5s cast Fire damage spell."});
   list.push_back({PriorityAction::DRAIN_SOUL_FILLER, SpellID::DRAIN_SOUL, "Drain Soul", "Always / Filler", "Trigger when: No higher priority spells are ready.", "Channeled Affliction shadow drain filler."});
-  list.push_back({PriorityAction::LIFE_TAP, SpellID::LIFE_TAP, "Life Tap", "Mana <= 30% & HP > 800", "Trigger when: Current Mana <= 30% and Health > 800.", "Converts health into mana on global cooldown."});
+  list.push_back({PriorityAction::LIFE_TAP, SpellID::LIFE_TAP, "Life Tap", "Mana <= 25%", "Trigger when: Current Mana <= configured threshold.", "Converts health into mana on global cooldown."});
   list.push_back({PriorityAction::CORRUPTION, SpellID::CORRUPTION, "Corruption", "DoT Expired / Missing", "Trigger when: Target does not have active Corruption.", "Maintains 18s ticking Shadow DoT."});
   list.push_back({PriorityAction::IMMOLATE, SpellID::IMMOLATE, "Immolate", "DoT Expired / Missing", "Trigger when: Target does not have active Immolate.", "Maintains 15s ticking Fire DoT and enables Incinerate/Conflagrate."});
   list.push_back({PriorityAction::CURSE_OF_AGONY, SpellID::CURSE_OF_AGONY, "Bane of Agony", "DoT Expired / Missing", "Trigger when: Target does not have active Bane of Agony.", "Maintains 24s ramping Shadow DoT."});
-  list.push_back({PriorityAction::CURSE_OF_DOOM, SpellID::CURSE_OF_DOOM, "Curse of Doom", "Target Missing Curse & >60s Left", "Trigger when: Target has no curse and >60s remain in combat.", "Deals massive delayed Shadow damage after 60s."});
+  list.push_back({PriorityAction::CURSE_OF_DOOM, SpellID::CURSE_OF_DOOM, "Bane of Doom", "Target Missing Curse & >60s Left", "Trigger when: Target has no curse and >60s remain in combat.", "Deals massive delayed Shadow damage after 60s."});
+  list.push_back({PriorityAction::NIGHTFALL_SHADOW_BOLT, SpellID::SHADOW_BOLT, "Nightfall Shadow Bolt", "Shadow Trance Active", "Trigger when: Shadow Trance buff is active.", "Instant cast Shadow Bolt on Nightfall proc."});
   if (talents.destro.conflagrate > 0)
     list.push_back({PriorityAction::CONFLAGRATE, SpellID::CONFLAGRATE, "Conflagrate", "Immolate Active & CD Ready", "Trigger when: Target is Immolated and Conflagrate CD is ready (10s).", "Consumes Immolate for instant Fire burst damage."});
   if (talents.destro.shadowburn > 0)
@@ -89,7 +90,12 @@ inline std::vector<PriorityRule> get_available_warlock_actions(const Talents& ta
   if (talents.aff.amplify_curse > 0)
     list.push_back({PriorityAction::AMPLIFY_CURSE, SpellID::AMPLIFY_CURSE, "Amplify Curse", "CD Ready & Curse Cast", "Trigger when: Amplify Curse CD is ready (180s).", "Boosts next Bane of Agony base damage by 50%."});
   if (talents.demo.decimation > 0)
-    list.push_back({PriorityAction::DECIMATION_SOUL_FIRE, SpellID::SOUL_FIRE, "Decimation: Soul Fire", "Target < 35% HP & Decimation Active", "Trigger when: Target HP < 35% and Decimation buff is active.", "Spams fast cast Soul Fire during execute phase."});
+  {
+    list.push_back({PriorityAction::DECIMATION_SEARING_PAIN, SpellID::SEARING_PAIN, "Decimation Trigger (Searing Pain)", "Target HP <= 35% & Decimation Inactive", "Trigger when: Target HP <= 35% and Decimation buff is inactive.", "Fast cast Searing Pain to trigger Decimation buff."});
+    list.push_back({PriorityAction::DECIMATION_SOUL_FIRE, SpellID::SOUL_FIRE, "Decimation Soul Fire", "Target HP <= 35% & Decimation Active", "Trigger when: Target HP <= 35% and Decimation buff is active.", "Spams fast cast Soul Fire during execute phase."});
+  }
+  if (talents.demo.demonic_brand > 0)
+    list.push_back({PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::SEARING_PAIN, "Demonic Brand (Searing Pain)", "Demonic Brand Down", "Trigger when: Target is missing Demonic Brand.", "Brands target to empower pet attacks."});
   if (talents.aff.drain_hope > 0)
     list.push_back({PriorityAction::DRAIN_HOPE, SpellID::DRAIN_HOPE, "Drain Hope", "Target < 20% HP", "Trigger when: Target HP < 20%.", "Channels execute drain on low health targets."});
   if (race == Race::ORC)
@@ -151,6 +157,11 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     }
   }
 
+  // Edit Conditions Modal State
+  static bool open_edit_conditions_modal = false;
+  static int editing_rule_index = -1;
+  static PriorityRule editing_rule;
+
   if (ImGui::BeginTable("WarlockAplTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
   {
     ImGui::TableSetupColumn("Action / Spell", ImGuiTableColumnFlags_WidthStretch, 0.44f);
@@ -177,9 +188,14 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
       }
       ImGui::Text("%s", r.name.c_str());
 
-      // Col 1: Condition Summary
+      // Col 1: Trigger Condition
       ImGui::TableSetColumnIndex(1);
-      ImGui::TextUnformatted(r.condition_summary.c_str());
+      std::string cond_display = r.format_condition_summary();
+      ImGui::TextUnformatted(cond_display.c_str());
+      if (!r.trigger_condition.empty() && ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("%s", r.trigger_condition.c_str());
+      }
 
       // Col 2: Modify button & popup
       ImGui::TableSetColumnIndex(2);
@@ -224,6 +240,79 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
         ImGui::Separator();
 
+        if (ImGui::MenuItem("⚙️ Edit Conditions..."))
+        {
+          open_edit_conditions_modal = true;
+          editing_rule_index = static_cast<int>(i);
+          editing_rule = r;
+          editing_rule.use_custom_thresholds = true;
+
+          // If the rule was using default preset triggers (no checkboxes enabled yet), initialize them intelligently:
+          if (!editing_rule.check_mana && !editing_rule.check_target_hp && !editing_rule.check_dot_refresh &&
+              !editing_rule.check_fight_time && !editing_rule.check_isb_debuff &&
+              !editing_rule.check_shadow_trance && !editing_rule.check_decimation && !editing_rule.check_demonic_brand &&
+              !editing_rule.check_doom_debuff)
+          {
+            if (editing_rule.action == PriorityAction::LIFE_TAP)
+            {
+              editing_rule.check_mana = true;
+              if (editing_rule.max_mana_pct >= 0.999f)
+              {
+                editing_rule.max_mana_pct = static_cast<float>(policy.life_tap_threshold_pct / 100.0);
+              }
+            }
+            else if (editing_rule.action == PriorityAction::NIGHTFALL_SHADOW_BOLT)
+            {
+              editing_rule.check_shadow_trance = true;
+            }
+            else if (editing_rule.action == PriorityAction::DECIMATION_SOUL_FIRE)
+            {
+              editing_rule.check_target_hp = true;
+              editing_rule.max_target_hp_pct = 0.35f;
+              editing_rule.check_decimation = true;
+              editing_rule.require_decimation_active = true;
+            }
+            else if (editing_rule.action == PriorityAction::DECIMATION_SEARING_PAIN)
+            {
+              editing_rule.check_target_hp = true;
+              editing_rule.max_target_hp_pct = 0.35f;
+              editing_rule.check_decimation = true;
+              editing_rule.require_decimation_active = false;
+            }
+            else if (editing_rule.action == PriorityAction::DEMONIC_BRAND_SEARING_PAIN)
+            {
+              editing_rule.check_demonic_brand = true;
+              editing_rule.require_demonic_brand_missing = true;
+            }
+            else if (editing_rule.action == PriorityAction::SHADOWBURN && policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY)
+            {
+              editing_rule.check_target_hp = true;
+              editing_rule.max_target_hp_pct = 0.20f;
+            }
+            else if (editing_rule.action == PriorityAction::CURSE_OF_DOOM)
+            {
+              editing_rule.check_fight_time = true;
+              editing_rule.min_time_remaining = 60.0f;
+            }
+            else if (editing_rule.action == PriorityAction::CURSE_OF_AGONY)
+            {
+              editing_rule.check_dot_refresh = true;
+              editing_rule.max_dot_rem_sec = 0.0f;
+              editing_rule.check_doom_debuff = true;
+              editing_rule.require_doom_missing = true;
+            }
+            else if (editing_rule.action == PriorityAction::CORRUPTION ||
+                     editing_rule.action == PriorityAction::IMMOLATE ||
+                     editing_rule.action == PriorityAction::SIPHON_LIFE)
+            {
+              editing_rule.check_dot_refresh = true;
+              editing_rule.max_dot_rem_sec = 0.0f;
+            }
+          }
+        }
+
+        ImGui::Separator();
+
         if (ImGui::BeginMenu("➕ Add Rule Above"))
         {
           for (const auto& avail : available_rules)
@@ -263,6 +352,228 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     ImGui::EndTable();
   }
 
+  // Edit Conditions Modal Dialog
+  if (open_edit_conditions_modal)
+  {
+    ImGui::OpenPopup("Edit Rule Conditions##AplModal");
+    open_edit_conditions_modal = false;
+  }
+
+  if (ImGui::BeginPopupModal("Edit Rule Conditions##AplModal", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+  {
+    Texture2D modal_icon = AssetManager::get().get_icon(spell_id_to_icon(editing_rule.spell_id));
+    if (modal_icon.id > 0)
+    {
+      ImGui::Image((ImTextureID)(uintptr_t)modal_icon.id, ImVec2(24, 24));
+      ImGui::SameLine(0, 8);
+    }
+    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Configure Trigger Conditions: %s", editing_rule.name.c_str());
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // 1. Procs & Buff / Debuff States
+    ImGui::TextColored(ImVec4(0.85f, 0.80f, 1.0f, 1.0f), "Procs & Buff States:");
+    WowCheckbox("Require Shadow Trance (Nightfall Proc) Active##AplModal", &editing_rule.check_shadow_trance);
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("Only casts when Nightfall's instant cast Shadow Trance buff is active.");
+    }
+
+    WowCheckbox("Check Decimation Buff State##AplModal", &editing_rule.check_decimation);
+    if (editing_rule.check_decimation)
+    {
+      ImGui::Indent(20.0f);
+      int decim_mode = editing_rule.require_decimation_active ? 0 : 1;
+      const char* decim_modes[] = {"Require Decimation Buff Active (e.g. for Soul Fire)", "Require Decimation Buff Inactive (e.g. for Trigger Cast)"};
+      ImGui::SetNextItemWidth(340.0f);
+      if (ImGui::Combo("##DecimModeCombo", &decim_mode, decim_modes, IM_ARRAYSIZE(decim_modes)))
+      {
+        editing_rule.require_decimation_active = (decim_mode == 0);
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    WowCheckbox("Check Demonic Brand Debuff State##AplModal", &editing_rule.check_demonic_brand);
+    if (editing_rule.check_demonic_brand)
+    {
+      ImGui::Indent(20.0f);
+      int brand_mode = editing_rule.require_demonic_brand_missing ? 0 : 1;
+      const char* brand_modes[] = {"Trigger when Demonic Brand is Down / Expired", "Require Demonic Brand Active"};
+      ImGui::SetNextItemWidth(340.0f);
+      if (ImGui::Combo("##BrandModeCombo", &brand_mode, brand_modes, IM_ARRAYSIZE(brand_modes)))
+      {
+        editing_rule.require_demonic_brand_missing = (brand_mode == 0);
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    WowCheckbox("Check Bane of Doom Debuff State##AplModal", &editing_rule.check_doom_debuff);
+    if (editing_rule.check_doom_debuff)
+    {
+      ImGui::Indent(20.0f);
+      int doom_mode = editing_rule.require_doom_missing ? 0 : 1;
+      const char* doom_modes[] = {"Trigger when Bane of Doom is NOT Active (e.g. for Bane of Agony)", "Require Bane of Doom Active"};
+      ImGui::SetNextItemWidth(340.0f);
+      if (ImGui::Combo("##DoomModeCombo", &doom_mode, doom_modes, IM_ARRAYSIZE(doom_modes)))
+      {
+        editing_rule.require_doom_missing = (doom_mode == 0);
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // 2. Mana Thresholds
+    ImGui::TextColored(ImVec4(0.85f, 0.80f, 1.0f, 1.0f), "Player Resources:");
+    WowCheckbox("Player Mana Thresholds##AplModal", &editing_rule.check_mana);
+    if (editing_rule.check_mana)
+    {
+      ImGui::Indent(20.0f);
+      float max_m = editing_rule.max_mana_pct * 100.0f;
+      if (ImGui::SliderFloat("Trigger when Mana <= X%##AplModal", &max_m, 0.0f, 100.0f, "%.0f%%"))
+      {
+        editing_rule.max_mana_pct = max_m / 100.0f;
+      }
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Only triggers this spell if player mana is at or below this percentage (e.g. 25%% for Life Tap).");
+      }
+
+      float min_m = editing_rule.min_mana_pct * 100.0f;
+      if (ImGui::SliderFloat("Trigger only if Mana >= X%##AplModal", &min_m, 0.0f, 100.0f, "%.0f%%"))
+      {
+        editing_rule.min_mana_pct = min_m / 100.0f;
+      }
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Only triggers this spell if player mana is at or above this percentage (prevents casting expensive spells when OOM).");
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    // 3. Target Health / Execute Phase
+    ImGui::TextColored(ImVec4(0.85f, 0.80f, 1.0f, 1.0f), "Target & Combat States:");
+    WowCheckbox("Target Health / Execute Phase##AplModal", &editing_rule.check_target_hp);
+    if (editing_rule.check_target_hp)
+    {
+      ImGui::Indent(20.0f);
+      float max_hp = editing_rule.max_target_hp_pct * 100.0f;
+      if (ImGui::SliderFloat("Trigger when Target HP <= X%##AplModal", &max_hp, 0.0f, 100.0f, "%.0f%%"))
+      {
+        editing_rule.max_target_hp_pct = max_hp / 100.0f;
+      }
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Set to 35%% for Decimation Soul Fire / Searing Pain, or 20%% for Shadowburn execute.");
+      }
+
+      float min_hp = editing_rule.min_target_hp_pct * 100.0f;
+      if (ImGui::SliderFloat("Trigger only if Target HP >= X%##AplModal", &min_hp, 0.0f, 100.0f, "%.0f%%"))
+      {
+        editing_rule.min_target_hp_pct = min_hp / 100.0f;
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+
+    // 4. DoT Duration & Refresh Window
+    WowCheckbox("DoT Duration / Refresh Window##AplModal", &editing_rule.check_dot_refresh);
+    if (editing_rule.check_dot_refresh)
+    {
+      ImGui::Indent(20.0f);
+      ImGui::SliderFloat("Refresh when DoT remaining <= X sec##AplModal", &editing_rule.max_dot_rem_sec, 0.0f, 10.0f, "%.1f sec");
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("0.0s = Only refresh when DoT has expired.\n> 0.0s = Allows Pandemic pre-refresh before DoT expires.");
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+
+    // 5. Combat Duration Remaining
+    WowCheckbox("Combat Duration Remaining##AplModal", &editing_rule.check_fight_time);
+    if (editing_rule.check_fight_time)
+    {
+      ImGui::Indent(20.0f);
+      ImGui::SliderFloat("Require at least X sec remaining in fight##AplModal", &editing_rule.min_time_remaining, 0.0f, 120.0f, "%.0f sec");
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("Only casts if at least X seconds remain before boss death (e.g. 60s for Bane of Doom).");
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+
+    // 6. ISB Debuff Remaining Duration
+    WowCheckbox("Improved Shadow Bolt (ISB) Debuff Remaining##AplModal", &editing_rule.check_isb_debuff);
+    if (editing_rule.check_isb_debuff)
+    {
+      ImGui::Indent(20.0f);
+      ImGui::SliderFloat("Require ISB debuff with at least X sec remaining##AplModal", &editing_rule.min_isb_rem_sec, 0.0f, 12.0f, "%.1f sec");
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::SetTooltip("0.0s = Any active ISB debuff charges.\n> 0.0s = Requires at least X seconds of ISB debuff duration remaining on the boss.");
+      }
+      ImGui::Unindent(20.0f);
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("Condition Summary Preview: ");
+    ImGui::SameLine();
+    std::string preview_str = editing_rule.format_condition_summary();
+    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "%s", preview_str.c_str());
+
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    if (WowBiggerButton(" Save & Apply ", ImVec2(120, 26)))
+    {
+      editing_rule.condition_summary = editing_rule.format_condition_summary();
+      policy.set_rule(editing_rule_index, editing_rule, talents, race);
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Clear All Conditions", ImVec2(145, 26)))
+    {
+      editing_rule.check_shadow_trance = false;
+      editing_rule.check_decimation = false;
+      editing_rule.require_decimation_active = true;
+      editing_rule.check_demonic_brand = false;
+      editing_rule.require_demonic_brand_missing = true;
+      editing_rule.check_doom_debuff = false;
+      editing_rule.require_doom_missing = true;
+      editing_rule.check_mana = false;
+      editing_rule.max_mana_pct = 1.0f;
+      editing_rule.min_mana_pct = 0.0f;
+      editing_rule.check_target_hp = false;
+      editing_rule.max_target_hp_pct = 1.0f;
+      editing_rule.min_target_hp_pct = 0.0f;
+      editing_rule.check_dot_refresh = false;
+      editing_rule.max_dot_rem_sec = 0.0f;
+      editing_rule.check_fight_time = false;
+      editing_rule.min_time_remaining = 0.0f;
+      editing_rule.max_time_remaining = 9999.0f;
+      editing_rule.check_isb_debuff = false;
+      editing_rule.min_isb_rem_sec = 0.0f;
+      editing_rule.require_isb_active = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", ImVec2(80, 26)))
+    {
+      ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::EndPopup();
+  }
+
   // 2. Racial Ability Strategy
   if (race == Race::GNOME || race == Race::ORC || race == Race::TROLL)
   {
@@ -274,7 +585,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
         "Execute Phase (<35% HP) — Save for execute abilities burst",
         "On Cooldown (Opener) — Fire at combat start and on CD",
         "Smart Execute Alignment — Opener if fight length allows recast in execute, else <35% HP",
-        "Align with Curse of Doom — Pop 0-6s before Doom tick, else Execute/CD"};
+        "Align with Bane of Doom — Pop 0-6s before Doom tick, else Execute/CD"};
     ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
     if (ImGui::Combo("##RacialPolicyCombo", &racial_idx, racial_names, IM_ARRAYSIZE(racial_names)))
     {

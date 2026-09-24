@@ -290,7 +290,7 @@ std::vector<CandidateResult> Optimizer::optimize_policy(
     {
         PolicyConfig p = base_sim.policy;
         p.curse = CurseChoice::CURSE_OF_DOOM;
-        candidates.push_back({"Curse: Curse of Doom (60s Burst)", p});
+        candidates.push_back({"Curse: Bane of Doom (60s Burst)", p});
     }
     {
         PolicyConfig p = base_sim.policy;
@@ -988,7 +988,7 @@ std::vector<CandidateResult> Optimizer::perturb_preset(
 
         auto p_doom = base_sim.policy;
         p_doom.curse = CurseChoice::CURSE_OF_DOOM;
-        candidates.push_back({"[APL] Curse: Curse of Doom (1-min Burst)", base_sim.talents, p_doom, base_sim.buffs});
+        candidates.push_back({"[APL] Curse: Bane of Doom (1-min Burst)", base_sim.talents, p_doom, base_sim.buffs});
 
         auto p_none = base_sim.policy;
         p_none.curse = CurseChoice::NONE;

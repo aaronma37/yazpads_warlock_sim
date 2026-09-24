@@ -24,6 +24,7 @@
 #include "panel_talents.hpp"
 #include "panel_target.hpp"
 #include "panel_theorycrafting.hpp"
+#include "panel_changelog.hpp"
 #include "ui_theme.hpp"
 #include "wow_widgets.hpp"
 
@@ -131,7 +132,7 @@ class WarlockSimApp
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
-        {"Theorycrafting", AppTab::THEORYCRAFTING, 125.0f}
+        {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
     } else {
       tabs = {
@@ -139,7 +140,8 @@ class WarlockSimApp
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
-        {"Abilities", AppTab::ABILITIES, 85.0f}
+        {"Abilities", AppTab::ABILITIES, 85.0f},
+        {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
     }
 
@@ -518,6 +520,12 @@ class WarlockSimApp
         break;
       }
 
+      case AppTab::CHANGELOG:
+      {
+        render_panel_changelog();
+        break;
+      }
+
       case AppTab::THEORYCRAFTING:
       {
         render_panel_theorycrafting(sim);
@@ -617,6 +625,12 @@ class WarlockSimApp
       case AppTab::ABILITIES:
       {
         priest::render_priest_spellbook_panel();
+        break;
+      }
+
+      case AppTab::CHANGELOG:
+      {
+        render_panel_changelog();
         break;
       }
 

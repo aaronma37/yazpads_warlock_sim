@@ -278,7 +278,7 @@ int run_headless(int argc, char* argv[]) {
     if (batch.pct_shadow_bolt > 0.001) std::cout << "  Shadow Bolt:   " << batch.pct_shadow_bolt << "%\n";
     if (batch.pct_corruption > 0.001)  std::cout << "  Corruption:    " << batch.pct_corruption << "%\n";
     if (batch.pct_agony > 0.001)       std::cout << "  Bane of Agony: " << batch.pct_agony << "%\n";
-    if (batch.pct_doom > 0.001)        std::cout << "  Curse of Doom: " << batch.pct_doom << "%\n";
+    if (batch.pct_doom > 0.001)        std::cout << "  Bane of Doom:  " << batch.pct_doom << "%\n";
     if (batch.pct_siphon_life > 0.001) std::cout << "  Siphon Life:   " << batch.pct_siphon_life << "%\n";
     if (batch.pct_immolate > 0.001)    std::cout << "  Immolate:      " << batch.pct_immolate << "%\n";
     if (batch.pct_shadowburn > 0.001)  std::cout << "  Shadowburn:    " << batch.pct_shadowburn << "%\n";

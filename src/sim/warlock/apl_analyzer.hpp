@@ -179,8 +179,8 @@ public:
             case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Searing Pain (Brand)";
             case PriorityAction::CORRUPTION: return "Corruption";
             case PriorityAction::SIPHON_LIFE: return "Siphon Life";
-            case PriorityAction::CURSE_OF_AGONY: return "Curse of Agony";
-            case PriorityAction::CURSE_OF_DOOM: return "Curse of Doom";
+            case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony";
+            case PriorityAction::CURSE_OF_DOOM: return "Bane of Doom";
             case PriorityAction::IMMOLATE: return "Immolate";
             case PriorityAction::CONFLAGRATE: return "Conflagrate";
             case PriorityAction::SHADOWBURN: return "Shadowburn";
@@ -232,13 +232,13 @@ public:
                 return true;
             case PriorityAction::CURSE_OF_AGONY:
                 if (obs.time_remaining_sec < 6.0f) { out_reason = "Fight Ending (<6s)"; return false; }
-                if (obs.dot_doom_rem_sec > 0.0f) { out_reason = "Curse of Doom Active"; return false; }
+                if (obs.dot_doom_rem_sec > 0.0f) { out_reason = "Bane of Doom Active"; return false; }
                 if (obs.dot_agony_rem_sec > 0.5f) { out_reason = "DoT Active (" + std::to_string(static_cast<int>(obs.dot_agony_rem_sec)) + "s left)"; return false; }
                 return true;
             case PriorityAction::CURSE_OF_DOOM:
                 if (obs.time_remaining_sec < 60.0f) { out_reason = "Fight Ending (<60s)"; return false; }
                 if (obs.cd_curse_of_doom_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
-                if (obs.dot_agony_rem_sec > 0.0f) { out_reason = "Curse of Agony Active"; return false; }
+                if (obs.dot_agony_rem_sec > 0.0f) { out_reason = "Bane of Agony Active"; return false; }
                 return true;
             case PriorityAction::IMMOLATE:
                 if (obs.time_remaining_sec < 3.0f) { out_reason = "Fight Ending (<3s)"; return false; }
@@ -343,13 +343,13 @@ public:
         }
 
         if (mcts_act == PriorityAction::CURSE_OF_DOOM) {
-            ss << "Fight duration remaining (" << obs.time_remaining_sec << "s) >= 65s. Curse of Doom provides massive DPE and saves GCD casting budget over Curse of Agony (+"
+            ss << "Fight duration remaining (" << obs.time_remaining_sec << "s) >= 65s. Bane of Doom provides massive DPE and saves GCD casting budget over Bane of Agony (+"
                << delta_dps << " DPS).";
             return ss.str();
         }
 
         if (mcts_act == PriorityAction::CURSE_OF_AGONY) {
-            ss << "Curse of Agony expiring (" << obs.dot_agony_rem_sec << "s left). MCTS maintains curse uptime (+" << delta_dps << " DPS).";
+            ss << "Bane of Agony expiring (" << obs.dot_agony_rem_sec << "s left). MCTS maintains curse uptime (+" << delta_dps << " DPS).";
             return ss.str();
         }
 

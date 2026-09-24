@@ -223,7 +223,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
           net_delta_nobane_curve[p] = doom_policy_nobane_curve[p] - agony_curve[p];
         }
 
-        if (ImPlot::BeginPlot("Curse of Doom vs Curse of Agony (60s Window)", ImVec2(-1, 290)))
+        if (ImPlot::BeginPlot("Bane of Doom vs Bane of Agony (60s Window)", ImVec2(-1, 290)))
         {
           ImPlot::SetupAxes("Spell Power", "Total Damage in 60s Window");
           ImPlot::SetupAxisLimits(ImAxis_X1, 0, 2000, ImPlotCond_Once);
@@ -235,7 +235,7 @@ inline void render_panel_theorycrafting(const WarlockSimulator& sim)
                            sp_vals.data(),
                            doom_policy_nobane_curve.data(),
                            plot_points);
-          ImPlot::PlotLine("Curse of Agony 2.5x (2/2 Imp BoA = +10% Total, Slope: 4.400)",
+          ImPlot::PlotLine("Bane of Agony 2.5x (2/2 Imp BoA = +10% Total, Slope: 4.400)",
                            sp_vals.data(),
                            agony_curve.data(),
                            plot_points);

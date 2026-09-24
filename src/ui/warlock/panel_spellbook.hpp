@@ -73,7 +73,7 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries()
        "Tick Damage = ((552.0 / 12.0) + (SpellPower + ShadowSpellPower) * (1.596 / 12.0)) * Ramp * Multipliers",
        "spell_shadow_curseofsargeras"},
       {SpellID::CURSE_OF_DOOM,
-       "Curse of Doom",
+       "Bane of Doom",
        "Rank 1",
        "Shadow",
        "Instant",

@@ -94,8 +94,8 @@ public:
             case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand Searing Pain";
             case PriorityAction::CORRUPTION: return "Corruption DoT Upkeep";
             case PriorityAction::SIPHON_LIFE: return "Siphon Life DoT Upkeep";
-            case PriorityAction::CURSE_OF_AGONY: return "Curse of Agony Upkeep";
-            case PriorityAction::CURSE_OF_DOOM: return "Curse of Doom (>=60s remaining)";
+            case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony Upkeep";
+            case PriorityAction::CURSE_OF_DOOM: return "Bane of Doom (>=60s remaining)";
             case PriorityAction::IMMOLATE: return "Immolate DoT Upkeep";
             case PriorityAction::CONFLAGRATE: return "Conflagrate (Consume Immolate)";
             case PriorityAction::SHADOWBURN: return "Shadowburn (On Cooldown)";

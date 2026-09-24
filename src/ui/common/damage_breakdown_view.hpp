@@ -58,7 +58,7 @@ inline void render_damage_breakdown_bars(const BatchSimResult& batch, float bar_
         {"Corruption",     batch.pct_corruption,         get_spell_breakdown_color(SpellID::CORRUPTION),         SpellID::CORRUPTION,         false},
         {"Immolate",       batch.pct_immolate,           get_spell_breakdown_color(SpellID::IMMOLATE),           SpellID::IMMOLATE,           false},
         {"Bane of Agony",  batch.pct_agony,              get_spell_breakdown_color(SpellID::CURSE_OF_AGONY),     SpellID::CURSE_OF_AGONY,     false},
-        {"Curse of Doom",  batch.pct_doom,               get_spell_breakdown_color(SpellID::CURSE_OF_DOOM),      SpellID::CURSE_OF_DOOM,      false},
+        {"Bane of Doom",   batch.pct_doom,               get_spell_breakdown_color(SpellID::CURSE_OF_DOOM),      SpellID::CURSE_OF_DOOM,      false},
         {"Bane of Havoc",  batch.pct_bane_of_havoc,      get_spell_breakdown_color(SpellID::BANE_OF_HAVOC),      SpellID::BANE_OF_HAVOC,      false},
         {"Siphon Life",    batch.pct_siphon_life,        get_spell_breakdown_color(SpellID::SIPHON_LIFE),        SpellID::SIPHON_LIFE,        false},
         {"Soul Fire",      batch.pct_soul_fire,          get_spell_breakdown_color(SpellID::SOUL_FIRE),          SpellID::SOUL_FIRE,          false},

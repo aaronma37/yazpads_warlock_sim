@@ -456,7 +456,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     }
 
     ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "Action Priority List (APL) Policy Optimization:");
-    ImGui::TextDisabled("Directly evolves discrete rule priorities and tunes continuous activation levers (Life Tap, Curse of Doom, Pandemic DoT windows) under strict structural constraints.");
+    ImGui::TextDisabled("Directly evolves discrete rule priorities and tunes continuous activation levers (Life Tap, Bane of Doom, Pandemic DoT windows) under strict structural constraints.");
     ImGui::Spacing();
 
     bool is_busy = a_worker.is_running.load();
@@ -847,7 +847,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
               } else if (rule.action == PriorityAction::CURSE_OF_DOOM) {
                 ImGui::Text("Fight Time Left >= %.0fs & CD ready", res.curse_of_doom_cutoff);
               } else if (rule.action == PriorityAction::CURSE_OF_AGONY) {
-                ImGui::Text("Target Agony <= %.2fs & Curse of Doom not active", res.dot_pandemic_window);
+                ImGui::Text("Target Agony <= %.2fs & Bane of Doom not active", res.dot_pandemic_window);
               } else {
                 ImGui::TextDisabled("Rotational Filler / Resource Generation");
               }
@@ -957,10 +957,10 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
             ImGui::TableSetColumnIndex(3);
             ImGui::TextWrapped("Permits opportunistic resource buffering with min 20s combat remaining.");
 
-            // Row 3: Curse of Doom Cutoff
+            // Row 3: Bane of Doom Cutoff
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::TextColored(ImVec4(0.9f, 0.5f, 1.0f, 1.0f), "Curse of Doom Cutoff");
+            ImGui::TextColored(ImVec4(0.9f, 0.5f, 1.0f, 1.0f), "Bane of Doom Cutoff");
             ImGui::TableSetColumnIndex(1);
             ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%.1fs Remaining", res.curse_of_doom_cutoff);
             ImGui::TableSetColumnIndex(2);

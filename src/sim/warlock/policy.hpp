@@ -14,10 +14,11 @@ enum class CurseChoice : uint8_t
 {
   NONE = 0,
   BANE_OF_AGONY,
-  CURSE_OF_DOOM,
+  BANE_OF_DOOM,
 
   // Backward compatibility aliases
-  CURSE_OF_AGONY = BANE_OF_AGONY
+  CURSE_OF_AGONY = BANE_OF_AGONY,
+  CURSE_OF_DOOM = BANE_OF_DOOM
 };
 
 inline const char* curse_choice_to_string(CurseChoice c)
@@ -28,8 +29,8 @@ inline const char* curse_choice_to_string(CurseChoice c)
       return "None";
     case CurseChoice::BANE_OF_AGONY:
       return "Bane of Agony (CoA)";
-    case CurseChoice::CURSE_OF_DOOM:
-      return "Curse of Doom";
+    case CurseChoice::BANE_OF_DOOM:
+      return "Bane of Doom";
     default:
       return "Unknown";
   }
@@ -54,7 +55,7 @@ enum class RacialPolicy : uint8_t
   EXECUTE_ONLY = 0,  // Trigger during execute phase (<35% target HP)
   ON_COOLDOWN,       // Trigger on cooldown (immediately at combat start)
   ALIGN_EXECUTE,     // Trigger on opener if fight duration allows recast in execute, else hold for <35% HP
-  ALIGN_DOOM         // Pop 0-6s before Curse/Bane of Doom ticks, else execute/cooldown
+  ALIGN_DOOM         // Pop 0-6s before Bane of Doom ticks, else execute/cooldown
 };
 
 inline const char* racial_policy_to_string(RacialPolicy p)
@@ -68,7 +69,7 @@ inline const char* racial_policy_to_string(RacialPolicy p)
     case RacialPolicy::ALIGN_EXECUTE:
       return "Smart Execute Alignment";
     case RacialPolicy::ALIGN_DOOM:
-      return "Align with Curse of Doom (0-6s before tick)";
+      return "Align with Bane of Doom (0-6s before tick)";
     default:
       return "Execute Phase";
   }
@@ -336,6 +337,7 @@ enum class PriorityAction : uint8_t
 
   // Aliases
   BANE_OF_AGONY = CURSE_OF_AGONY,
+  BANE_OF_DOOM = CURSE_OF_DOOM,
   WRACK = DRAIN_HOPE
 };
 
@@ -351,15 +353,182 @@ struct PriorityRule
 
   // Parameterized Continuous & Logical Predicates for VIPER / MCTS Extraction
   bool use_custom_thresholds = false; // When true, simulator engine evaluates the continuous bounds below
+
+  // Condition category toggles
+  bool check_mana = false;
   float max_mana_pct = 1.0f;          // Trigger only if player mana <= max_mana_pct (e.g. 0.35 = 35%)
   float min_mana_pct = 0.0f;          // Trigger only if player mana >= min_mana_pct
+
+  bool check_target_hp = false;
   float max_target_hp_pct = 1.0f;     // Trigger only if target HP <= max_target_hp_pct (e.g. 0.35 = 35% execute)
   float min_target_hp_pct = 0.0f;     // Trigger only if target HP >= min_target_hp_pct
+
+  bool check_dot_refresh = false;
+  float max_dot_rem_sec = 0.0f;       // Refresh DoT if remaining duration <= max_dot_rem_sec (e.g. Pandemic refresh window)
+
+  bool check_fight_time = false;
   float min_time_remaining = 0.0f;    // Trigger only if fight duration remaining >= min_time_remaining (e.g. 60.0s for CoD)
   float max_time_remaining = 9999.0f; // Trigger only if fight duration remaining <= max_time_remaining
-  float max_dot_rem_sec = 0.0f;       // Refresh DoT if remaining duration <= max_dot_rem_sec (e.g. Pandemic refresh window)
+
+  bool check_isb_debuff = false;
+  float min_isb_rem_sec = 0.0f;       // Require active ISB with at least X sec remaining (0.0s = active)
+  bool require_isb_active = false;    // Backward compatibility alias
+
+  // Buff & Proc state toggles
+  bool check_shadow_trance = false;   // Require Shadow Trance (Nightfall) proc active
+  bool check_decimation = false;      // Check Decimation proc state
+  bool require_decimation_active = true; // true = require active buff, false = require inactive (e.g. for trigger cast)
+  bool check_demonic_brand = false;   // Check Demonic Brand debuff state
+  bool require_demonic_brand_missing = true; // true = trigger when brand is down / expired
+  bool check_doom_debuff = false;     // Check Bane of Doom debuff state
+  bool require_doom_missing = true;   // true = trigger when Bane of Doom is NOT active on target
+
   float min_hp_pct = 0.15f;           // Player safety threshold (e.g. for Life Tap)
-  bool require_isb_active = false;    // When true, requires active ISB (+20% Shadow debuff) on target
+
+  std::string format_condition_summary() const
+  {
+    if (!use_custom_thresholds)
+    {
+      return condition_summary.empty() ? "Always / On Cooldown" : condition_summary;
+    }
+
+    std::vector<std::string> parts;
+    if (check_shadow_trance)
+    {
+      parts.push_back("Shadow Trance Active");
+    }
+
+    if (check_decimation)
+    {
+      if (require_decimation_active)
+      {
+        parts.push_back("Decimation Active");
+      }
+      else
+      {
+        parts.push_back("Decimation Inactive");
+      }
+    }
+
+    if (check_demonic_brand)
+    {
+      if (require_demonic_brand_missing)
+      {
+        parts.push_back("Demonic Brand Down");
+      }
+      else
+      {
+        parts.push_back("Demonic Brand Active");
+      }
+    }
+
+    if (check_doom_debuff)
+    {
+      if (require_doom_missing)
+      {
+        parts.push_back("Bane of Doom Not Active");
+      }
+      else
+      {
+        parts.push_back("Bane of Doom Active");
+      }
+    }
+
+    if (check_mana)
+    {
+      if (max_mana_pct < 0.999f && min_mana_pct > 0.001f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "%.0f%% <= Mana <= %.0f%%", min_mana_pct * 100.0f, max_mana_pct * 100.0f);
+        parts.push_back(b);
+      }
+      else if (max_mana_pct < 0.999f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "Mana <= %.0f%%", max_mana_pct * 100.0f);
+        parts.push_back(b);
+      }
+      else if (min_mana_pct > 0.001f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "Mana >= %.0f%%", min_mana_pct * 100.0f);
+        parts.push_back(b);
+      }
+    }
+
+    if (check_target_hp)
+    {
+      if (max_target_hp_pct < 0.999f && min_target_hp_pct > 0.001f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "%.0f%% <= Target HP <= %.0f%%", min_target_hp_pct * 100.0f, max_target_hp_pct * 100.0f);
+        parts.push_back(b);
+      }
+      else if (max_target_hp_pct < 0.999f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "Target HP <= %.0f%%", max_target_hp_pct * 100.0f);
+        parts.push_back(b);
+      }
+      else if (min_target_hp_pct > 0.001f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "Target HP >= %.0f%%", min_target_hp_pct * 100.0f);
+        parts.push_back(b);
+      }
+    }
+
+    if (check_dot_refresh)
+    {
+      if (max_dot_rem_sec > 0.0f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "DoT Rem <= %.1fs", max_dot_rem_sec);
+        parts.push_back(b);
+      }
+      else
+      {
+        parts.push_back("DoT Expired / Missing");
+      }
+    }
+
+    if (check_fight_time)
+    {
+      if (min_time_remaining > 0.0f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "Fight Time >= %.0fs", min_time_remaining);
+        parts.push_back(b);
+      }
+    }
+
+    if (check_isb_debuff || require_isb_active)
+    {
+      if (min_isb_rem_sec > 0.0f)
+      {
+        char b[64];
+        std::snprintf(b, sizeof(b), "ISB Rem >= %.1fs", min_isb_rem_sec);
+        parts.push_back(b);
+      }
+      else
+      {
+        parts.push_back("Require ISB Active");
+      }
+    }
+
+    if (!parts.empty())
+    {
+      std::string res;
+      for (size_t i = 0; i < parts.size(); ++i)
+      {
+        if (i > 0) res += " & ";
+        res += parts[i];
+      }
+      return res;
+    }
+
+    return "Always / On Cooldown";
+  }
 };
 
 struct PolicyConfig
@@ -507,15 +676,18 @@ struct PolicyConfig
     // 1. Life Tap Rule (always top emergency resource)
     {
       char buf[64];
-      std::snprintf(buf, sizeof(buf), "Mana <= %.0f%% & HP > 800", life_tap_threshold_pct);
-      rules.push_back(
-          {PriorityAction::LIFE_TAP,
-           SpellID::LIFE_TAP,
-           "Life Tap",
-           buf,
-           "Trigger when: Current Mana <= " + std::to_string((int)life_tap_threshold_pct) +
-               "% AND Player Health > 800.",
-           "Instantly converts player health into mana on global cooldown to maintain spellcasting resources."});
+      std::snprintf(buf, sizeof(buf), "Mana <= %.0f%%", life_tap_threshold_pct);
+      PriorityRule tap_rule;
+      tap_rule.action = PriorityAction::LIFE_TAP;
+      tap_rule.spell_id = SpellID::LIFE_TAP;
+      tap_rule.name = "Life Tap";
+      tap_rule.condition_summary = buf;
+      tap_rule.trigger_condition = "Trigger when: Current Mana <= " + std::to_string((int)life_tap_threshold_pct) + "%.";
+      tap_rule.rule_explanation = "Instantly converts player health into mana on global cooldown to maintain spellcasting resources.";
+      tap_rule.use_custom_thresholds = false;
+      tap_rule.check_mana = true;
+      tap_rule.max_mana_pct = static_cast<float>(life_tap_threshold_pct / 100.0);
+      rules.push_back(tap_rule);
     }
 
     // Helper lambdas for common rule additions
@@ -531,7 +703,7 @@ struct PolicyConfig
           : (racial_policy == RacialPolicy::ALIGN_EXECUTE)
               ? "Trigger when: Opener (if fight length allows recast in execute) or Target <35% HP."
           : (racial_policy == RacialPolicy::ALIGN_DOOM)
-              ? "Trigger when: 0-6s before Curse of Doom damage tick, or during Execute."
+              ? "Trigger when: 0-6s before Bane of Doom damage tick, or during Execute."
               : "Trigger when: Racial cooldown is ready.";
       if (race == Race::GNOME)
       {
@@ -622,10 +794,10 @@ struct PolicyConfig
           eff == RotationChoice::DP_AF_SHADOW || eff == RotationChoice::DP_AF_SHADOW_NO_SOUL_FIRE ||
           eff == RotationChoice::DEMONOLOGY_EXECUTE || eff == RotationChoice::DP_AF_SHADOW_NO_CORRUPTION)
       {
-        // Adaptive / Smart Bane: Cast Curse of Doom if >60s left in fight; otherwise Bane of Agony
+        // Adaptive / Smart Bane: Cast Bane of Doom if >60s left in fight; otherwise Bane of Agony
         rules.push_back({PriorityAction::CURSE_OF_DOOM,
                          SpellID::CURSE_OF_DOOM,
-                         "Curse of Doom",
+                         "Bane of Doom",
                          "Target Missing Curse & >60s Left",
                          "Trigger when: Target has no active curse and more than 60 seconds remain in combat.",
                          "Deals massive delayed Shadow damage after 60 seconds (1,742 base + 400% SP)."});
@@ -639,21 +811,26 @@ struct PolicyConfig
                "Trigger when: Amplify Curse cooldown is ready (180s) and Bane of Agony is about to be cast.",
                "Instant off-GCD ability. Increases the base damage of your next Bane of Agony by 50%."});
         }
-        rules.push_back({PriorityAction::CURSE_OF_AGONY,
-                         SpellID::CURSE_OF_AGONY,
-                         "Bane of Agony",
-                         "DoT Expired / Missing (<=60s Left)",
-                         "Trigger when: Bane of Agony is not active on target and 60 seconds or less remain.",
-                         "Deals ticking Shadow damage over 24 seconds alongside target curses, benefiting from "
-                         "Pandemic DoT crits."});
+        PriorityRule agony_rule;
+        agony_rule.action = PriorityAction::CURSE_OF_AGONY;
+        agony_rule.spell_id = SpellID::CURSE_OF_AGONY;
+        agony_rule.name = "Bane of Agony";
+        agony_rule.condition_summary = "DoT Expired & Bane of Doom Not Active";
+        agony_rule.trigger_condition = "Trigger when: Bane of Agony is not active on target AND Bane of Doom is not active.";
+        agony_rule.rule_explanation = "Deals ticking Shadow damage over 24 seconds alongside target curses, benefiting from Pandemic DoT crits.";
+        agony_rule.check_doom_debuff = true;
+        agony_rule.require_doom_missing = true;
+        agony_rule.check_dot_refresh = true;
+        agony_rule.max_dot_rem_sec = 0.0f;
+        rules.push_back(agony_rule);
       }
-      else if (curse == CurseChoice::CURSE_OF_DOOM)
+      else if (curse == CurseChoice::BANE_OF_DOOM)
       {
         rules.push_back({PriorityAction::CURSE_OF_DOOM,
                          SpellID::CURSE_OF_DOOM,
-                         "Curse of Doom",
+                         "Bane of Doom",
                          "DoT Expired / Missing",
-                         "Trigger when: Curse of Doom is not active on target and cooldown is ready (60s).",
+                         "Trigger when: Bane of Doom is not active on target and cooldown is ready (60s).",
                          "Deals massive delayed Shadow damage after 60 seconds."});
       }
     };

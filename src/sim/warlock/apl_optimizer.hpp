@@ -130,8 +130,8 @@ public:
             case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand Searing Pain";
             case PriorityAction::CORRUPTION: return "Corruption DoT Upkeep";
             case PriorityAction::SIPHON_LIFE: return "Siphon Life DoT Upkeep";
-            case PriorityAction::CURSE_OF_AGONY: return "Curse of Agony Upkeep";
-            case PriorityAction::CURSE_OF_DOOM: return "Curse of Doom (>=60s remaining)";
+            case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony Upkeep";
+            case PriorityAction::CURSE_OF_DOOM: return "Bane of Doom (>=60s remaining)";
             case PriorityAction::IMMOLATE: return "Immolate DoT Upkeep";
             case PriorityAction::CONFLAGRATE: return "Conflagrate (Consume Immolate)";
             case PriorityAction::SHADOWBURN: return "Shadowburn (On Cooldown)";
@@ -265,13 +265,13 @@ public:
         } else if (action == PriorityAction::RACIAL_EUREKA) {
             r.name = "Eureka! (Gnome)";
             r.condition_summary = "Align 0-6s Before Doom Tick / Execute";
-            r.trigger_condition = "Trigger when: 0-6s before Curse of Doom damage tick, or during Execute (<35% HP), or on cooldown.";
-            r.rule_explanation = "Instant off-GCD racial. Aligns with Curse of Doom detonation ticks (+10% damage, -50% mana) and execute phase.";
+            r.trigger_condition = "Trigger when: 0-6s before Bane of Doom damage tick, or during Execute (<35% HP), or on cooldown.";
+            r.rule_explanation = "Instant off-GCD racial. Aligns with Bane of Doom detonation ticks (+10% damage, -50% mana) and execute phase.";
         } else if (action == PriorityAction::RACIAL_BLOOD_FURY) {
             r.name = "Blood Fury (Orc)";
             r.condition_summary = "Align 0-14s Before Doom Tick / Execute";
-            r.trigger_condition = "Trigger when: 0-14s before Curse of Doom damage tick, or during Execute (<35% HP), or on cooldown.";
-            r.rule_explanation = "Instant off-GCD racial (+10% SP for 15s). Aligns with Curse of Doom detonation ticks and execute phase.";
+            r.trigger_condition = "Trigger when: 0-14s before Bane of Doom damage tick, or during Execute (<35% HP), or on cooldown.";
+            r.rule_explanation = "Instant off-GCD racial (+10% SP for 15s). Aligns with Bane of Doom detonation ticks and execute phase.";
         } else if (action == PriorityAction::RACIAL_BERSERKING) {
             r.name = "Berserking (Troll)";
             r.condition_summary = "Smart Execute & CD Ready (180s)";
