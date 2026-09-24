@@ -100,3 +100,41 @@ TEST_CASE(APLAnalyzerTests, DetectsFlawedSuboptimalRotationAPL) {
     }
     CHECK(found_tap_divergence);
 }
+
+TEST_CASE(APLAnalyzerTests, HardCappedAdaptiveRolloutsEarlyStopping) {
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.fight_duration = 30.0;
+
+    std::vector<PriorityAction> legal_cands = {
+        PriorityAction::SHADOW_BOLT_FILLER,
+        PriorityAction::LIFE_TAP,
+        PriorityAction::CORRUPTION
+    };
+
+    size_t hard_cap = 64;
+    size_t min_rollouts = 16;
+
+    // Test Adaptive Mode: Should respect hard cap and record valid rollout counts
+    auto adaptive_evals = APLAnalyzer::evaluate_candidate_branches_crn(
+        sim, {}, legal_cands, hard_cap, 12345, true, min_rollouts
+    );
+
+    CHECK_EQ(adaptive_evals.size(), legal_cands.size());
+    for (const auto& ev : adaptive_evals) {
+        CHECK(ev.rollout_count >= min_rollouts);
+        CHECK(ev.rollout_count <= hard_cap);
+        CHECK(ev.mean_dps >= 0.0);
+    }
+
+    // Test Fixed Mode: All candidates must receive exactly hard_cap rollouts
+    auto fixed_evals = APLAnalyzer::evaluate_candidate_branches_crn(
+        sim, {}, legal_cands, hard_cap, 12345, false, min_rollouts
+    );
+
+    CHECK_EQ(fixed_evals.size(), legal_cands.size());
+    for (const auto& ev : fixed_evals) {
+        CHECK_EQ(ev.rollout_count, hard_cap);
+    }
+}
+

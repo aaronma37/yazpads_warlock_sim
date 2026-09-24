@@ -144,7 +144,7 @@ public:
     static bool is_action_legal(PriorityAction action, const sim::SimObservation& obs, const Talents& talents) {
         switch (action) {
             case PriorityAction::LIFE_TAP:
-                return obs.player_hp_pct > 0.15f;
+                return true;
             case PriorityAction::RACIAL_EUREKA:
                 return obs.eureka_charges > 0.0f;
             case PriorityAction::RACIAL_BLOOD_FURY:
@@ -185,7 +185,7 @@ public:
             case PriorityAction::DRAIN_SOUL_FILLER:
                 return talents.aff.drain_hope > 0;
             case PriorityAction::DRAIN_LIFE_FILLER:
-                return talents.aff.improved_drains > 0 || obs.player_hp_pct < 0.35f;
+                return talents.aff.improved_drains > 0;
             case PriorityAction::SHADOW_BOLT_FILLER:
                 return true;
             default:

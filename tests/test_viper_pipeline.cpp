@@ -64,11 +64,10 @@ TEST_CASE(VIPERPipeline, OracleLegalityChecks) {
     sim::SimObservation obs;
     Talents talents = Talents::create_forever_shadow_destro();
 
-    // With 0 mana / 0 HP
+    // Life Tap is always legal regardless of HP (healers cover HP cost)
     obs.player_hp_pct = 0.05f;
-    CHECK(!VIPEROracle::is_action_legal(PriorityAction::LIFE_TAP, obs, talents));
+    CHECK(VIPEROracle::is_action_legal(PriorityAction::LIFE_TAP, obs, talents));
 
-    // With HP > 15%
     obs.player_hp_pct = 0.50f;
     CHECK(VIPEROracle::is_action_legal(PriorityAction::LIFE_TAP, obs, talents));
 

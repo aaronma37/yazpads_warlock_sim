@@ -110,7 +110,7 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
                                      float& progress)
 {
   render_common_sim_control<WarlockSimulator, BatchSimResult, ParallelSimRunner>(
-      sim, iterations, thread_count, last_result, is_running, progress, "RUN DES SIMULATION");
+      sim, iterations, thread_count, last_result, is_running, progress, "RUN SIMULATIONS");
 }
 
 }  // namespace warlock

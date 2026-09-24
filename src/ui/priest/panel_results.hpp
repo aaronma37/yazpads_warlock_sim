@@ -359,7 +359,7 @@ inline void render_priest_build_sim_results(const BatchSimResult& batch) {
 
     ImGui::Spacing();
     static bool open_detailed_modal = false;
-    if (warlock::WowButton("🔍 Detailed View", ImVec2(-1, 26))) {
+    if (warlock::WowButton("Detailed View", ImVec2(-1, 26))) {
         open_detailed_modal = true;
         ImGui::OpenPopup("Detailed Simulation Results##Priest");
     }

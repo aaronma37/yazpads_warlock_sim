@@ -714,12 +714,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS)
             if (rule.use_custom_thresholds && !is_rule_forced) {
                 float cur_mana_pct = static_cast<float>(player_mana / std::max(1.0, stats.max_mana));
-                float cur_hp_pct = static_cast<float>(player_health / std::max(1.0, stats.max_health));
                 float cur_time_rem = static_cast<float>(std::max(0.0, effective_duration - now));
                 float cur_target_hp = static_cast<float>(std::clamp(1.0 - (now / std::max(0.1, effective_duration)), 0.0, 1.0));
 
                 if (cur_mana_pct > rule.max_mana_pct || cur_mana_pct < rule.min_mana_pct) continue;
-                if (cur_hp_pct < rule.min_hp_pct) continue;
                 if (cur_target_hp > rule.max_target_hp_pct || cur_target_hp < rule.min_target_hp_pct) continue;
                 if (cur_time_rem < rule.min_time_remaining || cur_time_rem > rule.max_time_remaining) continue;
                 if (rule.require_isb_active) {
@@ -741,19 +739,19 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double mana_pct = (player_mana / stats.max_mana) * 100.0;
                     bool gnome_last_charge_tap = (race == Race::GNOME && eureka_charges == 1 && mana_pct < 70.0);
                     bool should_tap = is_rule_forced
-                        ? (player_mana < stats.max_mana - 10.0 && player_health > 450.0)
+                        ? (player_mana < stats.max_mana - 10.0)
                         : (is_oracle
                             ? (mana_pct <= 50.0)
                             : (rule.use_custom_thresholds 
                                 ? (mana_pct <= static_cast<double>(rule.max_mana_pct * 100.0f))
                                 : (mana_pct <= policy.life_tap_threshold_pct || gnome_last_charge_tap)));
 
-                    if (should_tap && player_health > 450.0) {
+                    if (should_tap) {
                         log_viper_sample(rule.action, "Life Tap");
                         double health_cost = 430.0;
                         double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
                         player_mana = std::min(stats.max_mana, player_mana + mana_gained);
-                        player_health -= health_cost;
+                        player_health = std::max(1.0, player_health - health_cost);
                         result.life_taps++;
                         result.mana_gained += mana_gained;
 

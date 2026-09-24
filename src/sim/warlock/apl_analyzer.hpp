@@ -14,6 +14,12 @@
 
 namespace warlock {
 
+enum class AnalysisMode {
+    BOTH = 0,
+    BLUNDERS_ONLY = 1,
+    FULL_MCTS_ONLY = 2
+};
+
 // Detailed statistical evaluation for a single candidate action branch in MCTS
 struct ActionMCTSEval {
     PriorityAction action = PriorityAction::SHADOW_BOLT_FILLER;
@@ -24,6 +30,8 @@ struct ActionMCTSEval {
     double ci_lower_95 = 0.0;
     double ci_upper_95 = 0.0;
     size_t rollout_count = 0;
+    bool is_skipped = false;
+    std::string skip_reason;
 };
 
 // A single decision-point discrepancy where APL differed from the optimal MCTS choice
@@ -157,34 +165,38 @@ public:
         };
     }
 
-    static const char* get_action_name(PriorityAction action) {
+    static const char* get_action_clean_name(PriorityAction action) {
         switch (action) {
-            case PriorityAction::LIFE_TAP: return "Life Tap (Mana Management)";
-            case PriorityAction::RACIAL_EUREKA: return "Racial: Eureka (Gnome)";
-            case PriorityAction::RACIAL_BLOOD_FURY: return "Racial: Blood Fury (Orc)";
-            case PriorityAction::RACIAL_BERSERKING: return "Racial: Berserking (Troll)";
+            case PriorityAction::LIFE_TAP: return "Life Tap";
+            case PriorityAction::RACIAL_EUREKA: return "Eureka";
+            case PriorityAction::RACIAL_BLOOD_FURY: return "Blood Fury";
+            case PriorityAction::RACIAL_BERSERKING: return "Berserking";
             case PriorityAction::AMPLIFY_CURSE: return "Amplify Curse";
-            case PriorityAction::BANE_OF_HAVOC: return "Bane of Havoc (Secondary)";
-            case PriorityAction::NIGHTFALL_SHADOW_BOLT: return "Shadow Trance / Nightfall Instant SB";
-            case PriorityAction::DECIMATION_SOUL_FIRE: return "Decimation Soul Fire (Execute)";
-            case PriorityAction::DECIMATION_SEARING_PAIN: return "Decimation Searing Pain (Proc Trigger)";
-            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand Searing Pain";
-            case PriorityAction::CORRUPTION: return "Corruption DoT Upkeep";
-            case PriorityAction::SIPHON_LIFE: return "Siphon Life DoT Upkeep";
-            case PriorityAction::CURSE_OF_AGONY: return "Curse of Agony Upkeep";
-            case PriorityAction::CURSE_OF_DOOM: return "Curse of Doom (>=60s remaining)";
-            case PriorityAction::IMMOLATE: return "Immolate DoT Upkeep";
-            case PriorityAction::CONFLAGRATE: return "Conflagrate (Consume Immolate)";
-            case PriorityAction::SHADOWBURN: return "Shadowburn (On Cooldown)";
-            case PriorityAction::SHADOWBURN_ISB: return "Shadowburn (ISB Active)";
-            case PriorityAction::DRAIN_HOPE: return "Drain Hope Channel";
-            case PriorityAction::INCINERATE_FILLER: return "Incinerate Filler";
-            case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain Filler";
-            case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life Filler";
-            case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul Filler";
-            case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt Filler";
-            default: return "Unknown Action";
+            case PriorityAction::BANE_OF_HAVOC: return "Bane of Havoc";
+            case PriorityAction::NIGHTFALL_SHADOW_BOLT: return "Shadow Bolt (Trance)";
+            case PriorityAction::DECIMATION_SOUL_FIRE: return "Soul Fire (Decimate)";
+            case PriorityAction::DECIMATION_SEARING_PAIN: return "Searing Pain (Decimate)";
+            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Searing Pain (Brand)";
+            case PriorityAction::CORRUPTION: return "Corruption";
+            case PriorityAction::SIPHON_LIFE: return "Siphon Life";
+            case PriorityAction::CURSE_OF_AGONY: return "Curse of Agony";
+            case PriorityAction::CURSE_OF_DOOM: return "Curse of Doom";
+            case PriorityAction::IMMOLATE: return "Immolate";
+            case PriorityAction::CONFLAGRATE: return "Conflagrate";
+            case PriorityAction::SHADOWBURN: return "Shadowburn";
+            case PriorityAction::SHADOWBURN_ISB: return "Shadowburn (ISB)";
+            case PriorityAction::DRAIN_HOPE: return "Drain Hope";
+            case PriorityAction::INCINERATE_FILLER: return "Incinerate";
+            case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain";
+            case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life";
+            case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul";
+            case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt";
+            default: return "Unknown";
         }
+    }
+
+    static const char* get_action_name(PriorityAction action) {
+        return get_action_clean_name(action);
     }
 
     static SpellID get_action_spell_id(PriorityAction action) {
@@ -195,50 +207,89 @@ public:
     }
 
     static bool is_action_legal(PriorityAction action, const sim::SimObservation& obs, const Talents& talents) {
+        std::string reason;
+        return check_action_legality(action, obs, talents, reason);
+    }
+
+    static bool check_action_legality(PriorityAction action, const sim::SimObservation& obs, const Talents& talents, std::string& out_reason) {
         switch (action) {
             case PriorityAction::LIFE_TAP:
-                return obs.player_hp_pct > 0.15f;
+                return true; // No HP constraints; healers cover Life Tap costs in raid simulation
             case PriorityAction::RACIAL_EUREKA:
-                return obs.eureka_charges > 0.0f;
+                if (obs.eureka_charges <= 0.0f) { out_reason = "No Eureka Charges"; return false; }
+                return true;
             case PriorityAction::RACIAL_BLOOD_FURY:
             case PriorityAction::RACIAL_BERSERKING:
-                return obs.cd_racial_sec <= 0.0f;
+                if (obs.cd_racial_sec > 0.0f) { out_reason = "Racial On Cooldown"; return false; }
+                return true;
             case PriorityAction::AMPLIFY_CURSE:
-                return talents.aff.amplify_curse > 0 && obs.cd_amplify_curse_sec <= 0.0f;
+                if (talents.aff.amplify_curse <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.cd_amplify_curse_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
+                return true;
             case PriorityAction::CORRUPTION:
-                return obs.time_remaining_sec >= 4.0f && obs.dot_corruption_rem_sec <= 0.5f;
+                if (obs.time_remaining_sec < 4.0f) { out_reason = "Fight Ending (<4s)"; return false; }
+                if (obs.dot_corruption_rem_sec > 0.5f) { out_reason = "DoT Active (" + std::to_string(static_cast<int>(obs.dot_corruption_rem_sec)) + "s left)"; return false; }
+                return true;
             case PriorityAction::CURSE_OF_AGONY:
-                return obs.time_remaining_sec >= 6.0f && obs.dot_agony_rem_sec <= 0.5f && obs.dot_doom_rem_sec <= 0.0f;
+                if (obs.time_remaining_sec < 6.0f) { out_reason = "Fight Ending (<6s)"; return false; }
+                if (obs.dot_doom_rem_sec > 0.0f) { out_reason = "Curse of Doom Active"; return false; }
+                if (obs.dot_agony_rem_sec > 0.5f) { out_reason = "DoT Active (" + std::to_string(static_cast<int>(obs.dot_agony_rem_sec)) + "s left)"; return false; }
+                return true;
             case PriorityAction::CURSE_OF_DOOM:
-                return obs.time_remaining_sec >= 65.0f && obs.cd_curse_of_doom_sec <= 0.0f && obs.dot_agony_rem_sec <= 0.0f;
+                if (obs.time_remaining_sec < 60.0f) { out_reason = "Fight Ending (<60s)"; return false; }
+                if (obs.cd_curse_of_doom_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
+                if (obs.dot_agony_rem_sec > 0.0f) { out_reason = "Curse of Agony Active"; return false; }
+                return true;
             case PriorityAction::IMMOLATE:
-                return obs.time_remaining_sec >= 3.0f && obs.dot_immolate_rem_sec <= 0.5f;
+                if (obs.time_remaining_sec < 3.0f) { out_reason = "Fight Ending (<3s)"; return false; }
+                if (obs.dot_immolate_rem_sec > 0.5f) { out_reason = "DoT Active (" + std::to_string(static_cast<int>(obs.dot_immolate_rem_sec)) + "s left)"; return false; }
+                return true;
             case PriorityAction::CONFLAGRATE:
-                return talents.destro.conflagrate > 0 && obs.dot_immolate_rem_sec > 0.0f && obs.cd_conflagrate_sec <= 0.0f;
+                if (talents.destro.conflagrate <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.dot_immolate_rem_sec <= 0.0f) { out_reason = "No Immolate on Target"; return false; }
+                if (obs.cd_conflagrate_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
+                return true;
             case PriorityAction::SHADOWBURN:
-                return talents.destro.shadowburn > 0 && obs.cd_shadowburn_sec <= 0.0f;
+                if (talents.destro.shadowburn <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.cd_shadowburn_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
+                return true;
             case PriorityAction::SHADOWBURN_ISB:
-                return talents.destro.shadowburn > 0 && obs.cd_shadowburn_sec <= 0.0f && obs.isb_charges_rem > 0.0f;
+                if (talents.destro.shadowburn <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.cd_shadowburn_sec > 0.0f) { out_reason = "On Cooldown"; return false; }
+                if (obs.isb_charges_rem <= 0.0f) { out_reason = "No ISB Charges"; return false; }
+                return true;
             case PriorityAction::NIGHTFALL_SHADOW_BOLT:
-                return obs.nightfall_proc_active > 0.5f;
+                if (obs.nightfall_proc_active <= 0.5f) { out_reason = "No Shadow Trance Proc"; return false; }
+                return true;
             case PriorityAction::DECIMATION_SOUL_FIRE:
-                return (talents.demo.decimation > 0 || obs.decimation_rem_sec > 0.0f) && obs.target_hp_pct <= 0.35f;
+                if (talents.demo.decimation <= 0 && obs.decimation_rem_sec <= 0.0f) { out_reason = "Not Talented"; return false; }
+                if (obs.target_hp_pct > 0.35f) { out_reason = "Target HP > 35%"; return false; }
+                return true;
             case PriorityAction::DECIMATION_SEARING_PAIN:
-                return talents.demo.decimation > 0 && obs.target_hp_pct <= 0.35f && obs.decimation_rem_sec <= 0.0f;
+                if (talents.demo.decimation <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.target_hp_pct > 0.35f) { out_reason = "Target HP > 35%"; return false; }
+                if (obs.decimation_rem_sec > 0.0f) { out_reason = "Decimation Buff Active"; return false; }
+                return true;
             case PriorityAction::SIPHON_LIFE:
-                return talents.aff.siphon_life > 0 && obs.time_remaining_sec >= 6.0f && obs.dot_siphon_life_rem_sec <= 0.5f;
+                if (talents.aff.siphon_life <= 0) { out_reason = "Not Talented"; return false; }
+                if (obs.time_remaining_sec < 6.0f) { out_reason = "Fight Ending (<6s)"; return false; }
+                if (obs.dot_siphon_life_rem_sec > 0.5f) { out_reason = "DoT Active (" + std::to_string(static_cast<int>(obs.dot_siphon_life_rem_sec)) + "s left)"; return false; }
+                return true;
             case PriorityAction::DRAIN_HOPE:
-                return talents.aff.drain_hope > 0;
+                if (talents.aff.drain_hope <= 0) { out_reason = "Not Talented"; return false; }
+                return true;
             case PriorityAction::DEMONIC_BRAND_SEARING_PAIN:
-                return talents.demo.demonic_brand > 0;
+                if (talents.demo.demonic_brand <= 0) { out_reason = "Not Talented"; return false; }
+                return true;
             case PriorityAction::INCINERATE_FILLER:
-                return talents.destro.incinerate > 0;
+                if (talents.destro.incinerate <= 0) { out_reason = "Not Talented"; return false; }
+                return true;
             case PriorityAction::SEARING_PAIN_FILLER:
-                return talents.demo.demonic_brand > 0;
+                return true;
             case PriorityAction::DRAIN_SOUL_FILLER:
-                return talents.aff.drain_hope > 0;
+                return true;
             case PriorityAction::DRAIN_LIFE_FILLER:
-                return talents.aff.improved_drains > 0 || obs.player_hp_pct < 0.35f;
+                return true;
             case PriorityAction::SHADOW_BOLT_FILLER:
                 return true;
             default:
@@ -363,56 +414,124 @@ public:
     }
 
     // Evaluates all candidate action branches simultaneously using Common Random Numbers (CRN)
+    // Supports Hard-Capped Adaptive Rollouts with statistical confidence early-stopping and branch pruning
     static std::vector<ActionMCTSEval> evaluate_candidate_branches_crn(
         const WarlockSimulator& base_sim,
         const std::vector<PriorityAction>& prefix,
         const std::vector<PriorityAction>& candidate_actions,
-        size_t rollouts_count = 32,
-        uint64_t base_seed = 42)
+        size_t rollouts_count = 256,
+        uint64_t base_seed = 42,
+        bool adaptive_rollouts = true,
+        size_t min_rollouts = 16)
     {
         size_t K = candidate_actions.size();
-        std::vector<ActionMCTSEval> results(K);
+        if (K == 0) return {};
 
+        std::vector<ActionMCTSEval> results(K);
         for (size_t k = 0; k < K; ++k) {
             results[k].action = candidate_actions[k];
             results[k].name = get_action_name(candidate_actions[k]);
-            results[k].rollout_count = std::max(size_t(2), rollouts_count);
+            results[k].rollout_count = 0;
         }
 
-        std::vector<std::vector<double>> sample_dps(K, std::vector<double>(rollouts_count, 0.0));
+        size_t max_rollouts = std::max(size_t(2), rollouts_count);
+        size_t pilot = std::min(max_rollouts, std::max(size_t(4), min_rollouts));
+        size_t step_batch = 16;
 
-        // Common Random Number (CRN) loop: Every candidate action is evaluated on the IDENTICAL random stream
-        for (size_t r = 0; r < rollouts_count; ++r) {
-            uint64_t rollout_seed = base_seed + r * 7919 + 17;
+        std::vector<double> sum_dps(K, 0.0);
+        std::vector<double> sum_sq_dps(K, 0.0);
+        std::vector<size_t> counts(K, 0);
+        std::vector<bool> is_active(K, true);
 
-            for (size_t k = 0; k < K; ++k) {
-                FastRNG rollout_rng(rollout_seed); // CRN: exact same seed for all candidate branches in trial r!
-                WarlockSimulator rollout_sim = base_sim;
-                rollout_sim.randomize_duration = false;
-                rollout_sim.record_timeline = false;
-                rollout_sim.record_viper_samples = false;
-                rollout_sim.use_oracle_execution_policy = false;
-                
-                std::vector<PriorityAction> branch_prefix = prefix;
-                branch_prefix.push_back(candidate_actions[k]);
-                rollout_sim.forced_action_prefix = std::move(branch_prefix);
+        size_t current_rollout = 0;
 
-                SimResult res = rollout_sim.run_single_simulation(rollout_rng);
-                sample_dps[k][r] = res.dps;
+        while (current_rollout < max_rollouts) {
+            size_t batch_target = (current_rollout == 0)
+                ? pilot
+                : std::min(max_rollouts, current_rollout + step_batch);
+
+            for (size_t r = current_rollout; r < batch_target; ++r) {
+                uint64_t rollout_seed = base_seed + r * 7919 + 17;
+
+                for (size_t k = 0; k < K; ++k) {
+                    if (!is_active[k]) continue;
+
+                    FastRNG rollout_rng(rollout_seed); // CRN: exact same seed for all candidate branches in trial r!
+                    WarlockSimulator rollout_sim = base_sim;
+                    rollout_sim.randomize_duration = false;
+                    rollout_sim.record_timeline = false;
+                    rollout_sim.record_viper_samples = false;
+                    rollout_sim.use_oracle_execution_policy = false;
+                    
+                    std::vector<PriorityAction> branch_prefix = prefix;
+                    branch_prefix.push_back(candidate_actions[k]);
+                    rollout_sim.forced_action_prefix = std::move(branch_prefix);
+
+                    SimResult res = rollout_sim.run_single_simulation(rollout_rng);
+                    sum_dps[k] += res.dps;
+                    sum_sq_dps[k] += res.dps * res.dps;
+                    counts[k]++;
+                }
+            }
+
+            current_rollout = batch_target;
+
+            // If adaptive early stopping is enabled and we have evaluated at least pilot rollouts
+            if (adaptive_rollouts && current_rollout >= pilot && current_rollout < max_rollouts) {
+                struct CandStat {
+                    size_t idx;
+                    double mean;
+                    double se;
+                };
+                std::vector<CandStat> active_stats;
+                for (size_t k = 0; k < K; ++k) {
+                    if (counts[k] > 0 && is_active[k]) {
+                        double n = static_cast<double>(counts[k]);
+                        double mean = sum_dps[k] / n;
+                        double var = (n > 1.0) ? std::max(0.0, (sum_sq_dps[k] - (sum_dps[k] * sum_dps[k] / n)) / (n - 1.0)) : 0.0;
+                        double se = std::sqrt(var) / std::sqrt(n);
+                        active_stats.push_back({k, mean, se});
+                    }
+                }
+
+                if (active_stats.size() >= 2) {
+                    std::sort(active_stats.begin(), active_stats.end(), [](const CandStat& a, const CandStat& b) {
+                        return a.mean > b.mean;
+                    });
+
+                    double delta = active_stats[0].mean - active_stats[1].mean;
+                    double se_diff = std::sqrt(active_stats[0].se * active_stats[0].se + active_stats[1].se * active_stats[1].se);
+
+                    // 1. Decisive winner: Z-score >= 2.576 (99% confidence separation)
+                    if (se_diff > 1e-5 && (delta / se_diff) >= 2.576) {
+                        break;
+                    }
+
+                    // 2. Statistical tie: negligible difference (<0.05 DPS) with tight error bound (<0.05 DPS)
+                    if (delta < 0.05 && se_diff < 0.05) {
+                        break;
+                    }
+
+                    // 3. Prune clearly inferior candidate branches from subsequent rollout batches
+                    double best_ci_lower = active_stats[0].mean - 2.576 * active_stats[0].se;
+                    for (size_t i = 1; i < active_stats.size(); ++i) {
+                        double cand_ci_upper = active_stats[i].mean + 2.576 * active_stats[i].se;
+                        if (cand_ci_upper < best_ci_lower) {
+                            is_active[active_stats[i].idx] = false;
+                        }
+                    }
+                } else if (active_stats.size() <= 1) {
+                    break;
+                }
             }
         }
 
-        // Calculate sample statistics for each branch
-        double n = static_cast<double>(rollouts_count);
+        // Calculate final sample statistics for each branch
         for (size_t k = 0; k < K; ++k) {
-            double sum = 0.0;
-            double sum_sq = 0.0;
-            for (size_t r = 0; r < rollouts_count; ++r) {
-                sum += sample_dps[k][r];
-                sum_sq += sample_dps[k][r] * sample_dps[k][r];
-            }
-            results[k].mean_dps = sum / n;
-            double var = (n > 1.0) ? std::max(0.0, (sum_sq - (sum * sum / n)) / (n - 1.0)) : 0.0;
+            double n = static_cast<double>(std::max(size_t(1), counts[k]));
+            results[k].rollout_count = counts[k];
+            results[k].mean_dps = sum_dps[k] / n;
+            double var = (n > 1.0) ? std::max(0.0, (sum_sq_dps[k] - (sum_dps[k] * sum_dps[k] / n)) / (n - 1.0)) : 0.0;
             results[k].stddev_dps = std::sqrt(var);
             results[k].std_error = results[k].stddev_dps / std::sqrt(n);
             results[k].ci_lower_95 = results[k].mean_dps - 1.96 * results[k].std_error;
@@ -533,7 +652,9 @@ public:
         const WarlockSimulator& base_sim,
         size_t run_idx,
         uint64_t seed,
-        size_t rollouts_per_action = 32)
+        size_t rollouts_per_action = 256,
+        AnalysisMode mode = AnalysisMode::BOTH,
+        bool adaptive_rollouts = true)
     {
         APLAnalysisRun run;
         run.run_index = run_idx;
@@ -548,7 +669,7 @@ public:
         FastRNG rng(seed);
         WarlockSimulator apl_sim = base_sim;
         apl_sim.randomize_duration = false;
-        apl_sim.record_timeline = true;
+        apl_sim.record_timeline = (mode != AnalysisMode::BLUNDERS_ONLY);
         apl_sim.record_viper_samples = true;
         apl_sim.viper_dataset.clear();
         apl_sim.use_oracle_execution_policy = false;
@@ -559,213 +680,243 @@ public:
         run.fight_duration = apl_res.duration;
         run.total_decisions = apl_sim.viper_dataset.samples.size();
 
+        SimResult mcts_res;
+
         // ---------------------------------------------------------------------
         // MCTS PROCESS 1: Autonomous MCTS Trajectory ("Ghost" Optimal Playthrough)
         // ---------------------------------------------------------------------
-        std::vector<PriorityAction> mcts_optimal_action_sequence;
-        mcts_optimal_action_sequence.reserve(std::max(size_t(32), run.total_decisions));
+        if (mode == AnalysisMode::BOTH || mode == AnalysisMode::FULL_MCTS_ONLY) {
+            std::vector<PriorityAction> mcts_optimal_action_sequence;
+            mcts_optimal_action_sequence.reserve(std::max(size_t(32), run.total_decisions));
 
-        size_t mcts_step = 0;
-        const size_t max_allowed_decisions = 250;
+            size_t mcts_step = 0;
+            const size_t max_allowed_decisions = 250;
 
-        while (mcts_step < max_allowed_decisions) {
-            FastRNG live_rng(seed);
-            WarlockSimulator live_sim = base_sim;
-            live_sim.randomize_duration = false;
-            live_sim.record_timeline = false;
-            live_sim.record_viper_samples = true;
-            live_sim.viper_dataset.clear();
-            live_sim.use_oracle_execution_policy = false;
-            live_sim.forced_action_prefix = mcts_optimal_action_sequence;
+            while (mcts_step < max_allowed_decisions) {
+                FastRNG live_rng(seed);
+                WarlockSimulator live_sim = base_sim;
+                live_sim.randomize_duration = false;
+                live_sim.record_timeline = false;
+                live_sim.record_viper_samples = true;
+                live_sim.viper_dataset.clear();
+                live_sim.use_oracle_execution_policy = false;
+                live_sim.forced_action_prefix = mcts_optimal_action_sequence;
 
-            SimResult step_probe_res = live_sim.run_single_simulation(live_rng);
+                SimResult step_probe_res = live_sim.run_single_simulation(live_rng);
 
-            if (step_probe_res.action_history.size() <= mcts_optimal_action_sequence.size()) {
-                break;
-            }
-
-            const auto& live_sample = live_sim.viper_dataset.samples[mcts_step];
-            const sim::SimObservation& live_obs = live_sample.state;
-            PriorityAction default_act = (mcts_step < step_probe_res.action_history.size())
-                                             ? step_probe_res.action_history[mcts_step]
-                                             : static_cast<PriorityAction>(live_sample.oracle_action);
-
-            std::vector<PriorityAction> legal_candidates;
-            for (const auto& [act, _] : candidate_actions) {
-                if (act == PriorityAction::RACIAL_EUREKA ||
-                    act == PriorityAction::RACIAL_BLOOD_FURY ||
-                    act == PriorityAction::RACIAL_BERSERKING ||
-                    act == PriorityAction::AMPLIFY_CURSE ||
-                    act == PriorityAction::BANE_OF_HAVOC) {
-                    continue;
+                if (step_probe_res.action_history.size() <= mcts_optimal_action_sequence.size()) {
+                    break;
                 }
-                if (is_action_legal(act, live_obs, base_sim.talents)) {
-                    legal_candidates.push_back(act);
+
+                const auto& live_sample = live_sim.viper_dataset.samples[mcts_step];
+                const sim::SimObservation& live_obs = live_sample.state;
+                PriorityAction default_act = (mcts_step < step_probe_res.action_history.size())
+                                                 ? step_probe_res.action_history[mcts_step]
+                                                 : static_cast<PriorityAction>(live_sample.oracle_action);
+
+                std::vector<PriorityAction> legal_candidates;
+                for (const auto& [act, _] : candidate_actions) {
+                    if (act == PriorityAction::RACIAL_EUREKA ||
+                        act == PriorityAction::RACIAL_BLOOD_FURY ||
+                        act == PriorityAction::RACIAL_BERSERKING ||
+                        act == PriorityAction::AMPLIFY_CURSE ||
+                        act == PriorityAction::BANE_OF_HAVOC) {
+                        continue;
+                    }
+                    if (is_action_legal(act, live_obs, base_sim.talents)) {
+                        legal_candidates.push_back(act);
+                    }
                 }
-            }
-            if (std::find(legal_candidates.begin(), legal_candidates.end(), default_act) == legal_candidates.end()) {
-                legal_candidates.push_back(default_act);
+                if (std::find(legal_candidates.begin(), legal_candidates.end(), default_act) == legal_candidates.end()) {
+                    legal_candidates.push_back(default_act);
+                }
+
+                auto evals = evaluate_candidate_branches_crn(
+                    base_sim,
+                    mcts_optimal_action_sequence,
+                    legal_candidates,
+                    rollouts_per_action,
+                    seed + mcts_step * 65537 + 13,
+                    adaptive_rollouts
+                );
+
+                PriorityAction chosen_action = default_act;
+                if (!evals.empty()) {
+                    chosen_action = evals[0].action; // evals are sorted descending by mean_dps
+                }
+                mcts_optimal_action_sequence.push_back(chosen_action);
+                mcts_step++;
             }
 
-            auto evals = evaluate_candidate_branches_crn(
-                base_sim,
-                mcts_optimal_action_sequence,
-                legal_candidates,
-                rollouts_per_action,
-                seed + mcts_step * 65537 + 13
-            );
+            // Run full MCTS simulation to get timeline and spell sequence
+            FastRNG mcts_rng(seed);
+            WarlockSimulator mcts_sim = base_sim;
+            mcts_sim.randomize_duration = false;
+            mcts_sim.record_timeline = true;
+            mcts_sim.record_viper_samples = false;
+            mcts_sim.use_oracle_execution_policy = false;
+            mcts_sim.forced_action_prefix = mcts_optimal_action_sequence;
 
-            PriorityAction chosen_action = default_act;
-            if (!evals.empty()) {
-                chosen_action = evals[0].action; // evals are sorted descending by mean_dps
-            }
-            mcts_optimal_action_sequence.push_back(chosen_action);
-            mcts_step++;
+            mcts_res = mcts_sim.run_single_simulation(mcts_rng);
+            run.mcts_dps = mcts_res.dps;
+            run.dps_difference = run.mcts_dps - run.apl_dps;
         }
-
-        // Run full MCTS simulation to get timeline and spell sequence
-        FastRNG mcts_rng(seed);
-        WarlockSimulator mcts_sim = base_sim;
-        mcts_sim.randomize_duration = false;
-        mcts_sim.record_timeline = true;
-        mcts_sim.record_viper_samples = false;
-        mcts_sim.use_oracle_execution_policy = false;
-        mcts_sim.forced_action_prefix = mcts_optimal_action_sequence;
-
-        SimResult mcts_res = mcts_sim.run_single_simulation(mcts_rng);
-        run.mcts_dps = mcts_res.dps;
-        run.dps_difference = run.mcts_dps - run.apl_dps;
 
         // ---------------------------------------------------------------------
         // MCTS PROCESS 2: APL Decision Judge & Blunder Detector
         // Evaluates each action the APL made during its ACTUAL simulation run
         // ---------------------------------------------------------------------
-        std::vector<PriorityAction> apl_prefix;
-        apl_prefix.reserve(apl_res.action_history.size());
+        if (mode == AnalysisMode::BOTH || mode == AnalysisMode::BLUNDERS_ONLY) {
+            std::vector<PriorityAction> apl_prefix;
+            apl_prefix.reserve(apl_res.action_history.size());
 
-        for (size_t d = 0; d < apl_res.action_history.size(); ++d) {
-            if (d >= apl_sim.viper_dataset.samples.size()) break;
+            for (size_t d = 0; d < apl_res.action_history.size(); ++d) {
+                if (d >= apl_sim.viper_dataset.samples.size()) break;
 
-            const auto& apl_sample = apl_sim.viper_dataset.samples[d];
-            const sim::SimObservation& apl_state = apl_sample.state;
-            PriorityAction chosen_apl_act = apl_res.action_history[d];
+                const auto& apl_sample = apl_sim.viper_dataset.samples[d];
+                const sim::SimObservation& apl_state = apl_sample.state;
+                PriorityAction chosen_apl_act = apl_res.action_history[d];
 
-            std::vector<PriorityAction> legal_candidates;
-            for (const auto& [act, _] : candidate_actions) {
-                if (act == PriorityAction::RACIAL_EUREKA ||
-                    act == PriorityAction::RACIAL_BLOOD_FURY ||
-                    act == PriorityAction::RACIAL_BERSERKING ||
-                    act == PriorityAction::AMPLIFY_CURSE ||
-                    act == PriorityAction::BANE_OF_HAVOC) {
-                    continue;
+                std::vector<PriorityAction> legal_candidates;
+                for (const auto& [act, _] : candidate_actions) {
+                    if (act == PriorityAction::RACIAL_EUREKA ||
+                        act == PriorityAction::RACIAL_BLOOD_FURY ||
+                        act == PriorityAction::RACIAL_BERSERKING ||
+                        act == PriorityAction::AMPLIFY_CURSE ||
+                        act == PriorityAction::BANE_OF_HAVOC) {
+                        continue;
+                    }
+                    if (is_action_legal(act, apl_state, base_sim.talents)) {
+                        legal_candidates.push_back(act);
+                    }
                 }
-                if (is_action_legal(act, apl_state, base_sim.talents)) {
-                    legal_candidates.push_back(act);
+                if (std::find(legal_candidates.begin(), legal_candidates.end(), chosen_apl_act) == legal_candidates.end()) {
+                    legal_candidates.push_back(chosen_apl_act);
                 }
-            }
-            if (std::find(legal_candidates.begin(), legal_candidates.end(), chosen_apl_act) == legal_candidates.end()) {
-                legal_candidates.push_back(chosen_apl_act);
-            }
 
-            // Execute Common Random Numbers (CRN) Monte Carlo Forward Rollouts from the APL prefix
-            auto evals = evaluate_candidate_branches_crn(
-                base_sim,
-                apl_prefix,
-                legal_candidates,
-                rollouts_per_action,
-                seed + (d + 500) * 65537 + 19
-            );
+                // Execute Common Random Numbers (CRN) Monte Carlo Forward Rollouts from the APL prefix
+                auto evaluated_branches = evaluate_candidate_branches_crn(
+                    base_sim,
+                    apl_prefix,
+                    legal_candidates,
+                    rollouts_per_action,
+                    seed + (d + 500) * 65537 + 19,
+                    adaptive_rollouts
+                );
 
-            // evals is already sorted descending by mean_dps
-            ActionMCTSEval best_eval = evals.empty() ? ActionMCTSEval{} : evals.front();
-            ActionMCTSEval apl_eval;
-            apl_eval.mean_dps = -1e9;
+                ActionMCTSEval best_eval = evaluated_branches.empty() ? ActionMCTSEval{} : evaluated_branches.front();
+                ActionMCTSEval apl_eval;
+                apl_eval.mean_dps = -1e9;
 
-            for (const auto& e : evals) {
-                if (e.action == chosen_apl_act) {
-                    apl_eval = e;
-                    break;
+                for (const auto& e : evaluated_branches) {
+                    if (e.action == chosen_apl_act) {
+                        apl_eval = e;
+                        break;
+                    }
                 }
-            }
-            if (apl_eval.mean_dps < -1e8) {
-                apl_eval = best_eval;
-            }
-
-            double delta_dps = std::max(0.0, best_eval.mean_dps - apl_eval.mean_dps);
-            double se_diff = std::sqrt(best_eval.std_error * best_eval.std_error + apl_eval.std_error * apl_eval.std_error);
-            double z_score = (se_diff > 1e-5) ? (delta_dps / se_diff) : 0.0;
-            double confidence = compute_statistical_confidence(delta_dps, se_diff);
-
-            // If MCTS found a statistically superior action over what the APL did at this exact state
-            if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
-                APLDivergenceEvent ev;
-                ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
-                ev.decision_step = d;
-                ev.state = apl_state;
-
-                ev.apl_action = chosen_apl_act;
-                ev.apl_action_name = get_action_name(chosen_apl_act);
-                ev.apl_expected_dps = apl_eval.mean_dps;
-                ev.apl_std_error = apl_eval.std_error;
-
-                ev.mcts_action = best_eval.action;
-                ev.mcts_action_name = get_action_name(best_eval.action);
-                ev.mcts_expected_dps = best_eval.mean_dps;
-                ev.mcts_std_error = best_eval.std_error;
-
-                ev.delta_dps = delta_dps;
-                ev.delta_dps_ci_lower = std::max(0.0, delta_dps - 1.96 * se_diff);
-                ev.delta_dps_ci_upper = delta_dps + 1.96 * se_diff;
-                ev.confidence_pct = confidence;
-                ev.z_score = z_score;
-
-                // Summarize top alternative actions evaluated at this state
-                std::ostringstream alt_ss;
-                alt_ss << std::fixed << std::setprecision(1);
-                size_t alt_count = 0;
-                for (const auto& cand : evals) {
-                    if (cand.action == chosen_apl_act) continue;
-                    if (alt_count > 0) alt_ss << ", ";
-                    double cand_gain = cand.mean_dps - apl_eval.mean_dps;
-                    alt_ss << cand.name << " (" << (cand_gain >= 0 ? "+" : "") << cand_gain << " DPS)";
-                    alt_count++;
-                    if (alt_count >= 3) break;
+                if (apl_eval.mean_dps < -1e8) {
+                    apl_eval = best_eval;
                 }
-                ev.top_alternatives_summary = alt_ss.str();
 
-                ev.rationale = generate_rationale(chosen_apl_act, best_eval.action, apl_state, base_sim.talents, delta_dps, confidence);
-                ev.candidate_evals = std::move(evals);
+                double delta_dps = std::max(0.0, best_eval.mean_dps - apl_eval.mean_dps);
+                double se_diff = std::sqrt(best_eval.std_error * best_eval.std_error + apl_eval.std_error * apl_eval.std_error);
+                double z_score = (se_diff > 1e-5) ? (delta_dps / se_diff) : 0.0;
+                double confidence = compute_statistical_confidence(delta_dps, se_diff);
 
-                run.events.push_back(std::move(ev));
+                // If MCTS found a statistically superior action over what the APL did at this exact state
+                if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
+                    APLDivergenceEvent ev;
+                    ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
+                    ev.decision_step = d;
+                    ev.state = apl_state;
+
+                    ev.apl_action = chosen_apl_act;
+                    ev.apl_action_name = get_action_name(chosen_apl_act);
+                    ev.apl_expected_dps = apl_eval.mean_dps;
+                    ev.apl_std_error = apl_eval.std_error;
+
+                    ev.mcts_action = best_eval.action;
+                    ev.mcts_action_name = get_action_name(best_eval.action);
+                    ev.mcts_expected_dps = best_eval.mean_dps;
+                    ev.mcts_std_error = best_eval.std_error;
+
+                    ev.delta_dps = delta_dps;
+                    ev.delta_dps_ci_lower = std::max(0.0, delta_dps - 1.96 * se_diff);
+                    ev.delta_dps_ci_upper = delta_dps + 1.96 * se_diff;
+                    ev.confidence_pct = confidence;
+                    ev.z_score = z_score;
+
+                    // Build full candidate action list: Evaluated actions first (sorted by DPS), followed by Skipped actions
+                    ev.candidate_evals = evaluated_branches;
+                    for (const auto& [act, _] : candidate_actions) {
+                        if (act == PriorityAction::RACIAL_EUREKA ||
+                            act == PriorityAction::RACIAL_BLOOD_FURY ||
+                            act == PriorityAction::RACIAL_BERSERKING ||
+                            act == PriorityAction::AMPLIFY_CURSE ||
+                            act == PriorityAction::BANE_OF_HAVOC) {
+                            continue;
+                        }
+                        if (std::find(legal_candidates.begin(), legal_candidates.end(), act) == legal_candidates.end()) {
+                            std::string reason;
+                            check_action_legality(act, apl_state, base_sim.talents, reason);
+                            ActionMCTSEval skipped_eval;
+                            skipped_eval.action = act;
+                            skipped_eval.name = get_action_name(act);
+                            skipped_eval.is_skipped = true;
+                            skipped_eval.skip_reason = reason.empty() ? "Conditions not met" : reason;
+                            ev.candidate_evals.push_back(std::move(skipped_eval));
+                        }
+                    }
+
+                    // Summarize top alternative actions evaluated at this state
+                    std::ostringstream alt_ss;
+                    alt_ss << std::fixed << std::setprecision(1);
+                    size_t alt_count = 0;
+                    for (const auto& cand : evaluated_branches) {
+                        if (cand.action == chosen_apl_act) continue;
+                        if (alt_count > 0) alt_ss << ", ";
+                        double cand_gain = cand.mean_dps - apl_eval.mean_dps;
+                        alt_ss << cand.name << " (" << (cand_gain >= 0 ? "+" : "") << cand_gain << " DPS)";
+                        alt_count++;
+                        if (alt_count >= 3) break;
+                    }
+                    ev.top_alternatives_summary = alt_ss.str();
+
+                    ev.rationale = generate_rationale(chosen_apl_act, best_eval.action, apl_state, base_sim.talents, delta_dps, confidence);
+
+                    run.events.push_back(std::move(ev));
+                }
+
+                apl_prefix.push_back(chosen_apl_act);
             }
 
-            apl_prefix.push_back(chosen_apl_act);
-        }
+            // Rank blunders from WORST move to least severe (highest delta_dps loss first)
+            std::sort(run.events.begin(), run.events.end(), [](const APLDivergenceEvent& a, const APLDivergenceEvent& b) {
+                if (std::abs(a.delta_dps - b.delta_dps) > 1e-4) {
+                    return a.delta_dps > b.delta_dps;
+                }
+                return a.confidence_pct > b.confidence_pct;
+            });
 
-        // Rank blunders from WORST move to least severe (highest delta_dps loss first)
-        std::sort(run.events.begin(), run.events.end(), [](const APLDivergenceEvent& a, const APLDivergenceEvent& b) {
-            if (std::abs(a.delta_dps - b.delta_dps) > 1e-4) {
-                return a.delta_dps > b.delta_dps;
+            for (size_t i = 0; i < run.events.size(); ++i) {
+                run.events[i].blunder_rank = i + 1;
             }
-            return a.confidence_pct > b.confidence_pct;
-        });
 
-        for (size_t i = 0; i < run.events.size(); ++i) {
-            run.events[i].blunder_rank = i + 1;
-        }
-
-        run.divergence_count = run.events.size();
-        if (run.total_decisions > 0) {
-            size_t matching = (run.total_decisions > run.divergence_count) ? (run.total_decisions - run.divergence_count) : 0;
-            run.agreement_rate_pct = (static_cast<double>(matching) / static_cast<double>(run.total_decisions)) * 100.0;
-        } else {
-            run.agreement_rate_pct = 100.0;
+            run.divergence_count = run.events.size();
+            if (run.total_decisions > 0) {
+                size_t matching = (run.total_decisions > run.divergence_count) ? (run.total_decisions - run.divergence_count) : 0;
+                run.agreement_rate_pct = (static_cast<double>(matching) / static_cast<double>(run.total_decisions)) * 100.0;
+            } else {
+                run.agreement_rate_pct = 100.0;
+            }
         }
 
         // ---------------------------------------------------------------------
         // STEP 4: Construct Aligned Timeline Time Series & Spell Gantt Blocks
         // ---------------------------------------------------------------------
-        build_run_timeline_data(run, apl_res, mcts_res, run.fight_duration);
+        if (mode == AnalysisMode::BOTH || mode == AnalysisMode::FULL_MCTS_ONLY) {
+            build_run_timeline_data(run, apl_res, mcts_res, run.fight_duration);
+        }
 
         return run;
     }
@@ -774,9 +925,11 @@ public:
     static APLAnalysisReport run_analysis(
         const WarlockSimulator& sim,
         size_t num_runs = 5,
-        size_t rollouts_per_action = 32,
+        size_t rollouts_per_action = 256,
         std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
-        uint64_t base_seed = 42)
+        uint64_t base_seed = 42,
+        AnalysisMode mode = AnalysisMode::BOTH,
+        bool adaptive_rollouts = true)
     {
         APLAnalysisReport report;
         report.total_runs = std::max(size_t(1), num_runs);
@@ -785,7 +938,12 @@ public:
             if (progress_cb) progress_cb(p, msg);
         };
 
-        report_progress(0.05f, "Launching True MCTS Forward Rollout Workers with CRN & Confidence Bounds...");
+        const char* start_msg = (mode == AnalysisMode::BLUNDERS_ONLY)
+            ? "Launching APL Decision Blunder Rollout Workers..."
+            : (mode == AnalysisMode::FULL_MCTS_ONLY)
+                ? "Launching Autonomous MCTS Optimal Policy Rollout Workers..."
+                : "Launching Parallel MCTS Trace Workers...";
+        report_progress(0.05f, start_msg);
 
         unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
         size_t num_threads = std::min(static_cast<size_t>(hw_threads), report.total_runs);
@@ -801,15 +959,15 @@ public:
             size_t start_idx = t * runs_per_thread + std::min(t, rem_runs);
             size_t count = runs_per_thread + (t < rem_runs ? 1 : 0);
 
-            workers.emplace_back([&, t, start_idx, count]() {
+            workers.emplace_back([&, t, start_idx, count, mode, rollouts_per_action, adaptive_rollouts]() {
                 for (size_t i = 0; i < count; ++i) {
                     size_t run_idx = start_idx + i;
                     uint64_t run_seed = base_seed + run_idx * 1337 + 7;
-                    thread_runs[run_idx] = analyze_single_run(sim, run_idx + 1, run_seed, rollouts_per_action);
+                    thread_runs[run_idx] = analyze_single_run(sim, run_idx + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts);
                     
                     size_t done = completed_runs.fetch_add(1) + 1;
                     float prog = 0.05f + 0.90f * (static_cast<float>(done) / static_cast<float>(report.total_runs));
-                    std::string status = "MCTS Rollout Trace #" + std::to_string(done) + " / " + std::to_string(report.total_runs) + "...";
+                    std::string status = "Episode Trace #" + std::to_string(done) + " / " + std::to_string(report.total_runs) + "...";
                     report_progress(prog, status);
                 }
             });
@@ -897,8 +1055,30 @@ public:
         });
 
         report.is_valid = true;
-        report_progress(1.0f, "True MCTS Policy Analysis Complete!");
+        report_progress(1.0f, "Analysis Complete!");
         return report;
+    }
+
+    static APLAnalysisReport run_blunder_analysis(
+        const WarlockSimulator& sim,
+        size_t num_runs = 1,
+        size_t rollouts_per_action = 256,
+        std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
+        uint64_t base_seed = 42,
+        bool adaptive_rollouts = true)
+    {
+        return run_analysis(sim, num_runs, rollouts_per_action, progress_cb, base_seed, AnalysisMode::BLUNDERS_ONLY, adaptive_rollouts);
+    }
+
+    static APLAnalysisReport run_full_mcts_analysis(
+        const WarlockSimulator& sim,
+        size_t num_runs = 3,
+        size_t rollouts_per_action = 256,
+        std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
+        uint64_t base_seed = 42,
+        bool adaptive_rollouts = true)
+    {
+        return run_analysis(sim, num_runs, rollouts_per_action, progress_cb, base_seed, AnalysisMode::FULL_MCTS_ONLY, adaptive_rollouts);
     }
 };
 

@@ -124,7 +124,7 @@ inline void render_panel_sim_config(SimType& sim,
 
     ImGui::Spacing();
     static bool open_modal = false;
-    if (WowButton("🔍 Detailed View", ImVec2(140.0f, 24.0f)))
+    if (WowButton("Detailed View", ImVec2(140.0f, 24.0f)))
     {
       open_modal = true;
       ImGui::OpenPopup("Detailed Simulation Results##UnderTalentsModal");
