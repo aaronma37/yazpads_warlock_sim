@@ -39,7 +39,9 @@
       box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(123, 44, 191, 0.25);
       border-radius: 2px;
       image-rendering: -webkit-optimize-contrast;
+      image-rendering: -moz-crisp-edges;
       image-rendering: crisp-edges;
+      image-rendering: pixelated;
     }
 
     /* Floating navigation overlay (does not affect canvas dimensions or cause aspect squishing) */
@@ -159,7 +161,6 @@
       <div class="spinner" id="spinner"></div>
       <span id="status">Initializing WebAssembly...</span>
     </div>
-    <button class="toolbar-btn" id="btn-fullscreen" onclick="toggleFullscreen()">🖵 Fullscreen</button>
   </div>
 
   <main id="canvas-container">
@@ -198,17 +199,24 @@
       if (canvas.width !== 1650) canvas.width = 1650;
       if (canvas.height !== 960) canvas.height = 960;
 
-      const targetAspect = 1650 / 960;
+      const targetW = 1650;
+      const targetH = 960;
+      const targetAspect = targetW / targetH;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const windowAspect = vw / vh;
 
-      if (windowAspect > targetAspect) {
-        // Window is wider than target -> fit height, pillarbox left & right
+      // When viewport is at least 1650x960, keep EXACT 1:1 pixel display (no stretching/blurring)
+      if (vw >= targetW && vh >= targetH) {
+        canvas.style.width = targetW + 'px';
+        canvas.style.height = targetH + 'px';
+        return;
+      }
+
+      // If screen is smaller than default app window, downscale proportionally to fit
+      if (vw / vh > targetAspect) {
         canvas.style.height = vh + 'px';
         canvas.style.width = Math.round(vh * targetAspect) + 'px';
       } else {
-        // Window is taller than target -> fit width, letterbox top & bottom
         canvas.style.width = vw + 'px';
         canvas.style.height = Math.round(vw / targetAspect) + 'px';
       }

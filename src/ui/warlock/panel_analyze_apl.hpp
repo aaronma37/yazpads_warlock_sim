@@ -190,6 +190,25 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         int r_cnt = blunder_rollouts_per_action;
         bool adapt = blunder_adaptive_rollouts;
 
+#if defined(__EMSCRIPTEN__)
+        auto& w = get_blunder_analyzer_worker_state();
+        APLAnalysisReport res = APLAnalyzer::run_blunder_analysis(
+            sim_copy,
+            runs_cnt,
+            r_cnt,
+            [&](float p, const std::string& status) {
+              w.progress = p;
+              w.current_status = status;
+            },
+            1337,
+            adapt);
+        {
+          std::lock_guard<std::mutex> lock(w.mtx);
+          w.live_report = std::move(res);
+          w.has_result = true;
+          w.is_running = false;
+        }
+#else
         blunder_worker.worker = std::thread([sim_copy, runs_cnt, r_cnt, adapt]() {
           auto& w = get_blunder_analyzer_worker_state();
           APLAnalysisReport res = APLAnalyzer::run_blunder_analysis(
@@ -210,6 +229,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             w.is_running = false;
           }
         });
+#endif
       }
       if (is_any_busy) ImGui::EndDisabled();
     }
@@ -289,6 +309,25 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         int r_cnt = mcts_rollouts_per_step;
         bool adapt = mcts_adaptive_rollouts;
 
+#if defined(__EMSCRIPTEN__)
+        auto& w = get_full_mcts_analyzer_worker_state();
+        APLAnalysisReport res = APLAnalyzer::run_full_mcts_analysis(
+            sim_copy,
+            runs_cnt,
+            r_cnt,
+            [&](float p, const std::string& status) {
+              w.progress = p;
+              w.current_status = status;
+            },
+            1337,
+            adapt);
+        {
+          std::lock_guard<std::mutex> lock(w.mtx);
+          w.live_report = std::move(res);
+          w.has_result = true;
+          w.is_running = false;
+        }
+#else
         mcts_worker.worker = std::thread([sim_copy, runs_cnt, r_cnt, adapt]() {
           auto& w = get_full_mcts_analyzer_worker_state();
           APLAnalysisReport res = APLAnalyzer::run_full_mcts_analysis(
@@ -309,6 +348,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             w.is_running = false;
           }
         });
+#endif
       }
       if (is_any_busy) ImGui::EndDisabled();
     }

@@ -511,9 +511,6 @@ public:
         StatSummary summary;
         if (iterations == 0) return summary;
 
-        unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
-        size_t num_threads = std::min(static_cast<size_t>(hw_threads), iterations);
-
         struct WorkerResult {
             double sum_dps = 0.0;
             double sum_sq_dps = 0.0;
@@ -521,6 +518,32 @@ public:
             double max_dps = 0.0;
             size_t count = 0;
         };
+
+#if defined(__EMSCRIPTEN__)
+        WorkerResult r;
+        sim::FastRNG rng(seed);
+        WarlockSimulator local_sim = sim_copy;
+        local_sim.record_timeline = false;
+        local_sim.record_viper_samples = false;
+
+        for (size_t i = 0; i < iterations; ++i) {
+            SimResult res = local_sim.run_single_simulation(rng);
+            r.sum_dps += res.dps;
+            r.sum_sq_dps += res.dps * res.dps;
+            if (res.dps < r.min_dps) r.min_dps = res.dps;
+            if (res.dps > r.max_dps) r.max_dps = res.dps;
+            r.count++;
+        }
+
+        summary.mean_dps = (r.count > 0) ? (r.sum_dps / r.count) : 0.0;
+        double variance = (r.count > 0) ? ((r.sum_sq_dps / r.count) - (summary.mean_dps * summary.mean_dps)) : 0.0;
+        summary.stddev_dps = (variance > 0.0) ? std::sqrt(variance) : 0.0;
+        summary.min_dps = (r.count > 0) ? r.min_dps : 0.0;
+        summary.max_dps = (r.count > 0) ? r.max_dps : 0.0;
+        return summary;
+#else
+        unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
+        size_t num_threads = std::min(static_cast<size_t>(hw_threads), iterations);
 
         std::vector<WorkerResult> results(num_threads);
         std::vector<std::thread> workers;
@@ -567,6 +590,7 @@ public:
         double variance = std::max(0.0, (total_sq / static_cast<double>(iterations)) - (summary.mean_dps * summary.mean_dps));
         summary.stddev_dps = std::sqrt(variance);
         return summary;
+#endif
     }
 
     // Main Genetic APL Policy Optimization Pipeline

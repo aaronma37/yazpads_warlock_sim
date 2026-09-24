@@ -945,10 +945,19 @@ public:
                 : "Launching Parallel MCTS Trace Workers...";
         report_progress(0.05f, start_msg);
 
+        std::vector<APLAnalysisRun> thread_runs(report.total_runs);
+#if defined(__EMSCRIPTEN__)
+        for (size_t i = 0; i < report.total_runs; ++i) {
+            uint64_t run_seed = base_seed + i * 1337 + 7;
+            thread_runs[i] = analyze_single_run(sim, i + 1, run_seed, rollouts_per_action, mode, adaptive_rollouts);
+            float prog = 0.05f + 0.90f * (static_cast<float>(i + 1) / static_cast<float>(report.total_runs));
+            std::string status = "Episode Trace #" + std::to_string(i + 1) + " / " + std::to_string(report.total_runs) + "...";
+            report_progress(prog, status);
+        }
+#else
         unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
         size_t num_threads = std::min(static_cast<size_t>(hw_threads), report.total_runs);
 
-        std::vector<APLAnalysisRun> thread_runs(report.total_runs);
         std::vector<std::thread> workers;
         std::atomic<size_t> completed_runs{0};
 
@@ -976,6 +985,7 @@ public:
         for (auto& w : workers) {
             if (w.joinable()) w.join();
         }
+#endif
 
         report.runs = std::move(thread_runs);
 
