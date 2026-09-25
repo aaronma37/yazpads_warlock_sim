@@ -135,6 +135,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
   static bool blunder_adaptive_rollouts = true;
   static int blunder_rollouts_per_action = 512;
   static char blunder_filter[64] = "";
+  static std::unordered_map<size_t, ContrastiveTrajectoryDiff> blunder_diff_cache;
+  static size_t selected_diff_step = size_t(-1);
+  static bool open_diff_modal = false;
 
   static int mcts_num_runs = 5;
   static bool mcts_continuous = false;
@@ -235,6 +238,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
       if (WowButton("Run Blunder Analysis", ImVec2(180.0f, 26.0f)))
       {
         active_view = ActiveAnalysisView::BLUNDER;
+        blunder_diff_cache.clear();
+        selected_diff_step = size_t(-1);
+        open_diff_modal = false;
         blunder_worker.has_result = false;
         blunder_worker.is_running = true;
         blunder_worker.set_status(0.05f, "Initializing simulation episode...");
@@ -635,15 +641,16 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         std::transform(filter_str.begin(), filter_str.end(), filter_str.begin(), ::tolower);
 
         static ImGuiTableFlags table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
-        if (ImGui::BeginTable("CombinedBlundersTable", 7, table_flags, ImVec2(0, 0)))
+        if (ImGui::BeginTable("CombinedBlundersTable", 8, table_flags, ImVec2(0, 0)))
         {
           ImGui::TableSetupColumn("Rank / Severity", ImGuiTableColumnFlags_WidthFixed, 115.0f);
           ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed, 55.0f);
-          ImGui::TableSetupColumn("Combat Context", ImGuiTableColumnFlags_WidthFixed, 220.0f);
-          ImGui::TableSetupColumn("APL Move Made", ImGuiTableColumnFlags_WidthFixed, 160.0f);
-          ImGui::TableSetupColumn("MCTS Optimal Choice & Branch Evaluations", ImGuiTableColumnFlags_WidthStretch);
-          ImGui::TableSetupColumn("DPS Loss (95% CI)", ImGuiTableColumnFlags_WidthFixed, 130.0f);
-          ImGui::TableSetupColumn("Confidence", ImGuiTableColumnFlags_WidthFixed, 85.0f);
+          ImGui::TableSetupColumn("Combat Context", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+          ImGui::TableSetupColumn("APL Move Made", ImGuiTableColumnFlags_WidthFixed, 155.0f);
+          ImGui::TableSetupColumn("MCTS Optimal Choice & Alternatives", ImGuiTableColumnFlags_WidthStretch);
+          ImGui::TableSetupColumn("DPS Loss (95% CI)", ImGuiTableColumnFlags_WidthFixed, 125.0f);
+          ImGui::TableSetupColumn("Confidence", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+          ImGui::TableSetupColumn("Trajectory Diff", ImGuiTableColumnFlags_WidthFixed, 105.0f);
           ImGui::TableHeadersRow();
 
           size_t display_rank = 1;
@@ -807,8 +814,375 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             ImGui::TextColored(conf_col, "%.1f%%", ev.confidence_pct);
             ImGui::SameLine(0, 4.0f);
             ImGui::TextDisabled("(Z=%.1f)", ev.z_score);
+
+            // Col 7: Trajectory Diff Inspector Modal Trigger
+            ImGui::TableNextColumn();
+            char pv_btn_id[64];
+            snprintf(pv_btn_id, sizeof(pv_btn_id), "Compare PV##pv_btn_%zu", ev.decision_step);
+            if (WowButton(pv_btn_id, ImVec2(95.0f, 22.0f)))
+            {
+              size_t n_rollouts = static_cast<size_t>(std::max(16, blunder_rollouts_per_action));
+              auto it = blunder_diff_cache.find(ev.decision_step);
+              if (it == blunder_diff_cache.end() || !it->second.computed)
+              {
+                blunder_diff_cache[ev.decision_step] = APLAnalyzer::compute_contrastive_trajectory_diff(
+                    sim, ev.seed, ev.decision_step, ev.action_prefix, ev.apl_action, ev.mcts_action, n_rollouts
+                );
+              }
+              selected_diff_step = ev.decision_step;
+              open_diff_modal = true;
+            }
           }
           ImGui::EndTable();
+        }
+
+        // Contrastive Trajectory Diff Popup Modal
+        if (open_diff_modal)
+        {
+          ImGui::OpenPopup("Contrastive Trajectory Analysis & PV Diff##Modal");
+        }
+        ImGui::SetNextWindowSize(ImVec2(940, 690), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Contrastive Trajectory Analysis & PV Diff##Modal", &open_diff_modal, ImGuiWindowFlags_None))
+        {
+          auto it = blunder_diff_cache.find(selected_diff_step);
+          if (it != blunder_diff_cache.end() && it->second.computed)
+          {
+            const auto& diff = it->second;
+            const auto& ma = diff.apl_branch.metrics;
+            const auto& mb = diff.mcts_branch.metrics;
+
+            // Header Banner
+            ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "FULL-ENCOUNTER CONTRASTIVE TRAJECTORY & COMBAT METRICS DIFF (%zu Rollouts Ensemble)", diff.ensemble_size);
+            ImGui::SameLine(0, 16.0f);
+            if (diff.net_damage_delta > 0.0) {
+              ImGui::TextColored(ImVec4(0.25f, 0.95f, 0.35f, 1.0f), "Encounter Advantage: +%.0f Total Dmg (+%.1f DPS | +%.1f%% Value)",
+                                 diff.net_damage_delta, diff.net_dps_delta,
+                                 (ma.total_damage > 0.0 ? (diff.net_damage_delta / ma.total_damage * 100.0) : 0.0));
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Section 1: Combat Metrics Table
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Encounter Lifetime Combat Metrics (Averaged across %zu CRN Rollouts):", diff.ensemble_size);
+            ImGui::Spacing();
+
+            static ImGuiTableFlags metric_tbl_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit;
+            if (ImGui::BeginTable("BlunderMetricsModalTable", 4, metric_tbl_flags))
+            {
+              ImGui::TableSetupColumn("Combat Performance Metric", ImGuiTableColumnFlags_WidthFixed, 230.0f);
+              char col1_hdr[96], col2_hdr[96];
+              snprintf(col1_hdr, sizeof(col1_hdr), "Path A (APL: %s)", diff.apl_branch.root_action_name.c_str());
+              snprintf(col2_hdr, sizeof(col2_hdr), "Path B (MCTS: %s)", diff.mcts_branch.root_action_name.c_str());
+              ImGui::TableSetupColumn(col1_hdr, ImGuiTableColumnFlags_WidthFixed, 180.0f);
+              ImGui::TableSetupColumn(col2_hdr, ImGuiTableColumnFlags_WidthFixed, 180.0f);
+              ImGui::TableSetupColumn("Trajectory Net Delta (B - A)", ImGuiTableColumnFlags_WidthStretch);
+              ImGui::TableHeadersRow();
+
+              // Total Damage & DPS
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn(); ImGui::Text("Total Encounter Damage / DPS");
+              ImGui::TableNextColumn(); ImGui::Text("%.0f dmg (%.1f DPS)", ma.total_damage, ma.dps);
+              ImGui::TableNextColumn(); ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.0f dmg (%.1f DPS)", mb.total_damage, mb.dps);
+              ImGui::TableNextColumn();
+              if (diff.net_damage_delta > 0.0) {
+                ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.4f, 1.0f), "+%.0f dmg (+%.1f DPS)", diff.net_damage_delta, diff.net_dps_delta);
+              } else {
+                ImGui::TextDisabled("%.0f dmg", diff.net_damage_delta);
+              }
+
+              // Final Mana Reserves
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn(); ImGui::Text("Final Mana Reserves (End of Fight)");
+              ImGui::TableNextColumn(); ImGui::Text("%.0f mana (%.1f%%)", ma.final_mana, ma.final_mana_pct);
+              ImGui::TableNextColumn(); ImGui::Text("%.0f mana (%.1f%%)", mb.final_mana, mb.final_mana_pct);
+              ImGui::TableNextColumn();
+              double d_mana = mb.final_mana - ma.final_mana;
+              if (std::abs(d_mana) >= 50.0) {
+                if (d_mana < -100.0) {
+                  ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.4f, 1.0f), "Path B converts %s%.0f excess mana into damage", (d_mana < 0 ? "-" : "+"), std::abs(d_mana));
+                } else {
+                  ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s%.0f mana", (d_mana >= 0 ? "+" : ""), d_mana);
+                }
+              } else {
+                ImGui::TextDisabled("Equivalent final mana");
+              }
+
+              // Corruption Uptime
+              if (ma.corruption_uptime_pct > 0.0 || mb.corruption_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Corruption DoT Uptime");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.corruption_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.corruption_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_corr = mb.corruption_uptime_pct - ma.corruption_uptime_pct;
+                if (std::abs(d_corr) >= 0.1) {
+                  ImGui::TextColored(d_corr > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_corr > 0 ? "+" : "", d_corr);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Immolate Uptime
+              if (ma.immolate_uptime_pct > 0.0 || mb.immolate_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Immolate DoT Uptime");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.immolate_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.immolate_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_immo = mb.immolate_uptime_pct - ma.immolate_uptime_pct;
+                if (std::abs(d_immo) >= 0.1) {
+                  ImGui::TextColored(d_immo > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_immo > 0 ? "+" : "", d_immo);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Curse Uptime
+              if (ma.curse_uptime_pct > 0.0 || mb.curse_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Curse Uptime (Doom/Agony)");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.curse_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.curse_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_curse = mb.curse_uptime_pct - ma.curse_uptime_pct;
+                if (std::abs(d_curse) >= 0.1) {
+                  ImGui::TextColored(d_curse > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_curse > 0 ? "+" : "", d_curse);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Siphon Life Uptime
+              if (ma.siphon_life_uptime_pct > 0.0 || mb.siphon_life_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Siphon Life Uptime");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.siphon_life_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.siphon_life_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_sl = mb.siphon_life_uptime_pct - ma.siphon_life_uptime_pct;
+                if (std::abs(d_sl) >= 0.1) {
+                  ImGui::TextColored(d_sl > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_sl > 0 ? "+" : "", d_sl);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // ISB Vulnerability Uptime
+              if (ma.isb_uptime_pct > 0.0 || mb.isb_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("ISB Vulnerability Uptime (+20%%)");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.isb_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.isb_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_isb = mb.isb_uptime_pct - ma.isb_uptime_pct;
+                if (std::abs(d_isb) >= 0.1) {
+                  ImGui::TextColored(d_isb > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_isb > 0 ? "+" : "", d_isb);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Shadow and Flame Uptime
+              if (ma.shadow_and_flame_uptime_pct > 0.0 || mb.shadow_and_flame_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Shadow and Flame Uptime (+10%%)");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.shadow_and_flame_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.shadow_and_flame_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_snf = mb.shadow_and_flame_uptime_pct - ma.shadow_and_flame_uptime_pct;
+                if (std::abs(d_snf) >= 0.1) {
+                  ImGui::TextColored(d_snf > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_snf > 0 ? "+" : "", d_snf);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Decimation Buff Uptime
+              if (ma.decimation_uptime_pct > 0.0 || mb.decimation_uptime_pct > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Decimation Buff Uptime");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", ma.decimation_uptime_pct);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f%%", mb.decimation_uptime_pct);
+                ImGui::TableNextColumn();
+                double d_decim = mb.decimation_uptime_pct - ma.decimation_uptime_pct;
+                if (std::abs(d_decim) >= 0.1) {
+                  ImGui::TextColored(d_decim > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f%%", d_decim > 0 ? "+" : "", d_decim);
+                } else { ImGui::TextDisabled("0.0%%"); }
+              }
+
+              // Life Tap Tax
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn(); ImGui::Text("Life Tap Tax (Wasted GCD Time)");
+              ImGui::TableNextColumn(); ImGui::Text("%.1f taps (%.1fs GCD)", ma.total_life_taps, ma.tap_gcd_seconds);
+              ImGui::TableNextColumn(); ImGui::Text("%.1f taps (%.1fs GCD)", mb.total_life_taps, mb.tap_gcd_seconds);
+              ImGui::TableNextColumn();
+              double d_taps = ma.total_life_taps - mb.total_life_taps;
+              if (d_taps > 0.1) {
+                ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.4f, 1.0f), "Path B saves %.1f Life Tap(s) (%.1fs free cast time)", d_taps, d_taps * 1.5);
+              } else if (d_taps < -0.1) {
+                ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "Path B weaves +%.1f taps (%.1fs)", -d_taps, -d_taps * 1.5);
+              } else { ImGui::TextDisabled("Identical Tap Volume"); }
+
+              // Execute Phase Performance (<35% HP)
+              if (ma.execute_damage > 0.0 || mb.execute_damage > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Execute Phase Yield (<35%% HP)");
+                ImGui::TableNextColumn(); ImGui::Text("%.0f dmg (%.1f SF)", ma.execute_damage, ma.execute_soul_fire_casts);
+                ImGui::TableNextColumn(); ImGui::Text("%.0f dmg (%.1f SF)", mb.execute_damage, mb.execute_soul_fire_casts);
+                ImGui::TableNextColumn();
+                double d_exec = mb.execute_damage - ma.execute_damage;
+                if (std::abs(d_exec) >= 50.0) {
+                  ImGui::TextColored(d_exec > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.0f execute dmg", d_exec > 0 ? "+" : "", d_exec);
+                } else { ImGui::TextDisabled("0 dmg"); }
+              }
+
+              // Key Spender Volume
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn(); ImGui::Text("Key Spender Volume (SB / Incin / Conflag)");
+              ImGui::TableNextColumn();
+              ImGui::Text("%.1f SB, %.1f Incin, %.1f Conflag", ma.shadow_bolt_casts, ma.incinerate_casts, ma.conflagrate_casts);
+              ImGui::TableNextColumn();
+              ImGui::Text("%.1f SB, %.1f Incin, %.1f Conflag", mb.shadow_bolt_casts, mb.incinerate_casts, mb.conflagrate_casts);
+              ImGui::TableNextColumn();
+              double d_conflag = mb.conflagrate_casts - ma.conflagrate_casts;
+              double d_sb = mb.shadow_bolt_casts - ma.shadow_bolt_casts;
+              if (std::abs(d_conflag) >= 0.2 || std::abs(d_sb) >= 0.2) {
+                ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%s%.1f Conflag, %s%.1f SB",
+                                   d_conflag >= 0 ? "+" : "", d_conflag, d_sb >= 0 ? "+" : "", d_sb);
+              } else { ImGui::TextDisabled("Equivalent Spender Output"); }
+
+              // Nightfall Proc Efficiency
+              if (ma.nightfall_procs > 0.0 || mb.nightfall_procs > 0.0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("Shadow Trance Procs Consumed");
+                ImGui::TableNextColumn(); ImGui::Text("%.1f / %.1f procs", ma.nightfall_procs_consumed, ma.nightfall_procs);
+                ImGui::TableNextColumn(); ImGui::Text("%.1f / %.1f procs", mb.nightfall_procs_consumed, mb.nightfall_procs);
+                ImGui::TableNextColumn();
+                double d_nf = mb.nightfall_procs_consumed - ma.nightfall_procs_consumed;
+                if (std::abs(d_nf) >= 0.1) {
+                  ImGui::TextColored(d_nf > 0 ? ImVec4(0.3f, 0.95f, 0.4f, 1.0f) : ImVec4(0.9f, 0.4f, 0.4f, 1.0f),
+                                     "%s%.1f consumed", d_nf > 0 ? "+" : "", d_nf);
+                } else { ImGui::TextDisabled("Identical Proc Efficiency"); }
+              }
+
+              ImGui::EndTable();
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Section 2: Immediate Execution Mechanics
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Immediate Execution Mechanics (Next 6-8 GCDs starting at t=%.1fs):", diff.divergence_time);
+            ImGui::Spacing();
+
+            ImGui::BeginGroup();
+            ImGui::TextColored(ImVec4(0.5f, 0.75f, 1.0f, 1.0f), "PATH A (APL Action: %s)", diff.apl_branch.root_action_name.c_str());
+            ImGui::Spacing();
+            if (diff.apl_branch.preview_steps.empty()) {
+              ImGui::TextDisabled("No subsequent casts recorded.");
+            } else {
+              for (size_t s = 0; s < diff.apl_branch.preview_steps.size(); ++s) {
+                const auto& step = diff.apl_branch.preview_steps[s];
+                ImGui::TextDisabled("+%04.1fs", step.time - diff.divergence_time);
+                ImGui::SameLine(0, 5.0f);
+                const auto& icon = AssetManager::get().get_icon(spell_id_to_icon(step.spell_id));
+                rlImGuiImageSize(&icon, 14, 14);
+                ImGui::SameLine(0, 4.0f);
+                ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), "%s", step.spell_name.c_str());
+                ImGui::SameLine(0, 6.0f);
+                if (step.damage > 0.0) {
+                  if (step.is_crit) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.0f dmg (Crit)", step.damage);
+                  } else {
+                    ImGui::TextColored(ImVec4(0.75f, 0.9f, 0.75f, 1.0f), "%.0f dmg", step.damage);
+                  }
+                } else if (step.spell_id == SpellID::LIFE_TAP) {
+                  ImGui::TextColored(ImVec4(0.35f, 0.7f, 1.0f, 1.0f), "[Life Tap]");
+                } else {
+                  ImGui::TextDisabled("[Cast]");
+                }
+                if (step.isb_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(0.7f, 0.4f, 0.9f, 1.0f), "[ISB %d]", step.isb_charges);
+                }
+                if (step.nightfall_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[Trance]");
+                }
+                if (step.decimation_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "[Decimate]");
+                }
+              }
+            }
+            ImGui::EndGroup();
+
+            ImGui::SameLine(0, 40.0f);
+
+            ImGui::BeginGroup();
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "PATH B (Optimal MCTS: %s)", diff.mcts_branch.root_action_name.c_str());
+            ImGui::Spacing();
+            if (diff.mcts_branch.preview_steps.empty()) {
+              ImGui::TextDisabled("No subsequent casts recorded.");
+            } else {
+              for (size_t s = 0; s < diff.mcts_branch.preview_steps.size(); ++s) {
+                const auto& step = diff.mcts_branch.preview_steps[s];
+                ImGui::TextDisabled("+%04.1fs", step.time - diff.divergence_time);
+                ImGui::SameLine(0, 5.0f);
+                const auto& icon = AssetManager::get().get_icon(spell_id_to_icon(step.spell_id));
+                rlImGuiImageSize(&icon, 14, 14);
+                ImGui::SameLine(0, 4.0f);
+                ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.5f, 1.0f), "%s", step.spell_name.c_str());
+                ImGui::SameLine(0, 6.0f);
+                if (step.damage > 0.0) {
+                  if (step.is_crit) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.0f dmg (Crit)", step.damage);
+                  } else {
+                    ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.4f, 1.0f), "%.0f dmg", step.damage);
+                  }
+                } else if (step.spell_id == SpellID::LIFE_TAP) {
+                  ImGui::TextColored(ImVec4(0.35f, 0.7f, 1.0f, 1.0f), "[Life Tap]");
+                } else {
+                  ImGui::TextDisabled("[Cast]");
+                }
+                if (step.isb_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(0.7f, 0.4f, 0.9f, 1.0f), "[ISB %d]", step.isb_charges);
+                }
+                if (step.nightfall_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[Trance]");
+                }
+                if (step.decimation_active) {
+                  ImGui::SameLine(0, 4.0f);
+                  ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.2f, 1.0f), "[Decimate]");
+                }
+              }
+            }
+            ImGui::EndGroup();
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Section 3: Diagnostic Root Causes
+            ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Diagnostic Root Cause & Divergence Breakdown:");
+            for (const auto& takeaway : diff.takeaways) {
+              ImGui::Bullet();
+              ImGui::SameLine(0, 4.0f);
+              ImGui::TextWrapped("%s", takeaway.c_str());
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            if (WowButton("Close Diff Window", ImVec2(160.0f, 28.0f)))
+            {
+              open_diff_modal = false;
+              ImGui::CloseCurrentPopup();
+            }
+          }
+          ImGui::EndPopup();
         }
       }
     }

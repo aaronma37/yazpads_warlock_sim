@@ -212,4 +212,32 @@ TEST_CASE(APLAnalyzerTests, ReportStatisticalConfidenceBoundsAndOptimality) {
     CHECK(report.optimality_pct_ci_upper >= report.optimality_pct);
 }
 
+TEST_CASE(APLAnalyzerTests, ContrastiveTrajectoryDiffEvaluation) {
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_destro();
+    sim.fight_duration = 60.0;
+
+    std::vector<PriorityAction> prefix = { PriorityAction::CORRUPTION, PriorityAction::IMMOLATE };
+    auto diff = APLAnalyzer::compute_contrastive_trajectory_diff(
+        sim, 42, 2, prefix,
+        PriorityAction::LIFE_TAP,           // Suboptimal APL action when mana is full
+        PriorityAction::SHADOW_BOLT_FILLER, // Optimal MCTS action
+        16                                  // 16 ensemble rollouts
+    );
+
+    CHECK(diff.computed);
+    CHECK(diff.apl_branch.root_action == PriorityAction::LIFE_TAP);
+    CHECK(diff.mcts_branch.root_action == PriorityAction::SHADOW_BOLT_FILLER);
+    CHECK(diff.mcts_branch.metrics.total_damage >= diff.apl_branch.metrics.total_damage);
+    CHECK(diff.mcts_branch.metrics.dps >= diff.apl_branch.metrics.dps);
+    CHECK(!diff.takeaways.empty());
+    CHECK(diff.apl_branch.metrics.immolate_uptime_pct >= 0.0);
+    CHECK(diff.mcts_branch.metrics.immolate_uptime_pct >= 0.0);
+    CHECK(diff.apl_branch.metrics.corruption_uptime_pct >= 0.0);
+    CHECK(diff.mcts_branch.metrics.corruption_uptime_pct >= 0.0);
+    CHECK(diff.apl_branch.metrics.final_mana >= 0.0);
+    CHECK(diff.mcts_branch.metrics.final_mana >= 0.0);
+}
+
+
 

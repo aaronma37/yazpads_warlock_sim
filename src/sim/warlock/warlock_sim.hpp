@@ -77,12 +77,29 @@ struct SimResult {
     int life_taps = 0;
     double mana_spent = 0.0;
     double mana_gained = 0.0;
+    double final_mana = 0.0;
+    double final_mana_percent = 0.0;
 
     int isb_procs = 0;
     int isb_consumed = 0;
     double isb_uptime_percent = 0.0;
 
     int nightfall_procs = 0;
+    int nightfall_procs_consumed = 0;
+    int nightfall_procs_wasted = 0;
+
+    // Aura & DoT Uptime Percentages
+    double corruption_uptime_percent = 0.0;
+    double immolate_uptime_percent = 0.0;
+    double curse_uptime_percent = 0.0;
+    double siphon_life_uptime_percent = 0.0;
+    double decimation_uptime_percent = 0.0;
+    double shadow_and_flame_uptime_percent = 0.0;
+
+    // Execute Phase Performance (<35% HP)
+    double execute_damage = 0.0;
+    int execute_casts = 0;
+    int execute_soul_fire_casts = 0;
 
     // Damage breakdown by spell
     double dmg_shadow_bolt = 0.0;

@@ -352,6 +352,48 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         }
     };
 
+    // Continuous Aura & DoT Uptime integration
+    double total_corruption_uptime = 0.0;
+    double total_immolate_uptime = 0.0;
+    double total_agony_uptime = 0.0;
+    double total_siphon_life_uptime = 0.0;
+    double total_decimation_uptime = 0.0;
+    double total_shadow_and_flame_uptime = 0.0;
+    double last_combat_metric_update = 0.0;
+
+    auto update_combat_metric_uptimes = [&](double now) {
+        double dt = now - last_combat_metric_update;
+        if (dt > 0.0) {
+            if (dot_corruption.active && last_combat_metric_update < dot_corruption.expire_time) {
+                double active_dt = std::min(now, dot_corruption.expire_time) - std::min(last_combat_metric_update, dot_corruption.expire_time);
+                if (active_dt > 0.0) total_corruption_uptime += active_dt;
+            }
+            if (dot_immolate.active && last_combat_metric_update < dot_immolate.expire_time) {
+                double active_dt = std::min(now, dot_immolate.expire_time) - std::min(last_combat_metric_update, dot_immolate.expire_time);
+                if (active_dt > 0.0) total_immolate_uptime += active_dt;
+            }
+            double curse_expire = std::max(dot_agony.active ? dot_agony.expire_time : 0.0, doom_tick_time);
+            if (curse_expire > last_combat_metric_update) {
+                double active_dt = std::min(now, curse_expire) - std::min(last_combat_metric_update, curse_expire);
+                if (active_dt > 0.0) total_agony_uptime += active_dt;
+            }
+            if (dot_siphon_life.active && last_combat_metric_update < dot_siphon_life.expire_time) {
+                double active_dt = std::min(now, dot_siphon_life.expire_time) - std::min(last_combat_metric_update, dot_siphon_life.expire_time);
+                if (active_dt > 0.0) total_siphon_life_uptime += active_dt;
+            }
+            if (last_combat_metric_update < decimation_buff_expire) {
+                double active_dt = std::min(now, decimation_buff_expire) - std::min(last_combat_metric_update, decimation_buff_expire);
+                if (active_dt > 0.0) total_decimation_uptime += active_dt;
+            }
+            double snf_expire = std::max(shadow_and_flame_shadow_expire, shadow_and_flame_fire_expire);
+            if (last_combat_metric_update < snf_expire) {
+                double active_dt = std::min(now, snf_expire) - std::min(last_combat_metric_update, snf_expire);
+                if (active_dt > 0.0) total_shadow_and_flame_uptime += active_dt;
+            }
+        }
+        last_combat_metric_update = now;
+    };
+
     // Setup FastEventQueue
     FastEventQueue<256> queue;
     queue.push(effective_duration, EventType::SIMULATION_END);
@@ -1535,6 +1577,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         Event ev = queue.pop();
         current_time = ev.time;
         target.update_isb_uptime(current_time);
+        update_combat_metric_uptimes(current_time);
 
         if (ev.type == EventType::SIMULATION_END) {
             break;
@@ -2592,8 +2635,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
     // Finalize metrics
     target.update_isb_uptime(effective_duration);
+    update_combat_metric_uptimes(effective_duration);
     result.dps = result.total_damage / effective_duration;
     result.isb_uptime_percent = (target.total_isb_uptime / effective_duration) * 100.0;
+    result.corruption_uptime_percent = (total_corruption_uptime / effective_duration) * 100.0;
+    result.immolate_uptime_percent = (total_immolate_uptime / effective_duration) * 100.0;
+    result.curse_uptime_percent = (total_agony_uptime / effective_duration) * 100.0;
+    result.siphon_life_uptime_percent = (total_siphon_life_uptime / effective_duration) * 100.0;
+    result.decimation_uptime_percent = (total_decimation_uptime / effective_duration) * 100.0;
+    result.shadow_and_flame_uptime_percent = (total_shadow_and_flame_uptime / effective_duration) * 100.0;
+    result.final_mana = player_mana;
+    result.final_mana_percent = (stats.max_mana > 0.0) ? (player_mana / stats.max_mana * 100.0) : 0.0;
 
     return result;
 }

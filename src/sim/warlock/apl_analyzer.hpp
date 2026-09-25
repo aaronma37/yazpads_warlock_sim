@@ -59,9 +59,98 @@ struct APLDivergenceEvent {
     double confidence_pct = 0.0;        // Statistical confidence that MCTS action is strictly superior
     double z_score = 0.0;
 
+    uint64_t seed = 0;
+    std::vector<PriorityAction> action_prefix;
+
     std::vector<ActionMCTSEval> candidate_evals; // Full distribution of all evaluated branches (sorted best to worst)
     std::string top_alternatives_summary;        // Quick text summary of the highest value alternative actions
     std::string rationale;
+};
+
+// Step snapshot in a Principal Variation (PV) trajectory rollout
+struct TrajectoryStepSnapshot {
+    double time = 0.0;
+    double duration = 1.5;
+    SpellID spell_id = SpellID::NONE;
+    std::string spell_name;
+    double damage = 0.0;
+    bool is_crit = false;
+    bool is_miss = false;
+    double mana_pct = 1.0;
+
+    // Key active buffs / state at time of action
+    bool isb_active = false;
+    int isb_charges = 0;
+    bool nightfall_active = false;
+    bool decimation_active = false;
+    bool immolate_active = false;
+    bool corruption_active = false;
+    std::string tag;
+};
+
+// Aggregated combat performance metrics for an entire encounter rollout ensemble
+struct TrajectoryCombatMetrics {
+    // 1. Damage & Throughput
+    double total_damage = 0.0;
+    double dps = 0.0;
+
+    // 2. Aura & DoT Uptime Percentages
+    double immolate_uptime_pct = 0.0;
+    double corruption_uptime_pct = 0.0;
+    double curse_uptime_pct = 0.0;
+    double siphon_life_uptime_pct = 0.0;
+    double isb_uptime_pct = 0.0;
+    double decimation_uptime_pct = 0.0;
+    double shadow_and_flame_uptime_pct = 0.0;
+
+    // 3. Resource & GCD Economy
+    double total_life_taps = 0.0;
+    double tap_gcd_seconds = 0.0; // taps * 1.5s
+    double mana_spent = 0.0;
+    double final_mana = 0.0;
+    double final_mana_pct = 0.0;
+
+    // 4. Ability Cast Counts
+    double shadow_bolt_casts = 0.0;
+    double incinerate_casts = 0.0;
+    double conflagrate_casts = 0.0;
+    double soul_fire_casts = 0.0;
+    double shadowburn_casts = 0.0;
+    double total_casts = 0.0;
+
+    // 5. Execute Phase Performance (<35% HP)
+    double execute_damage = 0.0;
+    double execute_soul_fire_casts = 0.0;
+
+    // 6. Proc Utilization
+    double nightfall_procs = 0.0;
+    double nightfall_procs_consumed = 0.0;
+    double isb_procs = 0.0;
+};
+
+// Branch rollout summary for contrastive trajectory comparison
+struct TrajectoryPVBranch {
+    PriorityAction root_action = PriorityAction::SHADOW_BOLT_FILLER;
+    std::string root_action_name;
+    TrajectoryCombatMetrics metrics;
+    std::vector<TrajectoryStepSnapshot> preview_steps;
+};
+
+// Full-fight contrastive ensemble trajectory diff between Path A (APL choice) and Path B (Optimal MCTS choice)
+struct ContrastiveTrajectoryDiff {
+    double divergence_time = 0.0;
+    double fight_duration = 180.0;
+    size_t ensemble_size = 32;
+
+    TrajectoryPVBranch apl_branch;
+    TrajectoryPVBranch mcts_branch;
+
+    // Net differences (MCTS - APL) across full fight
+    double net_damage_delta = 0.0;
+    double net_dps_delta = 0.0;
+
+    std::vector<std::string> takeaways;
+    bool computed = false;
 };
 
 // Spell Cast event for timeline Gantt/lane rendering
@@ -817,6 +906,314 @@ public:
         }
     }
 
+    // Computes full-encounter contrastive Principal Variation (PV) trajectory rollout comparison
+    // between Path A (APL decision) and Path B (Optimal MCTS decision) from the exact state prefix.
+    // Simulates an ensemble of N Common Random Number (CRN) full-fight rollouts to extract robust
+    // mean combat metrics (DoT uptimes, Life Tap tax, execute yield, spender counts, total damage).
+    static ContrastiveTrajectoryDiff compute_contrastive_trajectory_diff(
+        const WarlockSimulator& base_sim,
+        uint64_t base_seed,
+        size_t decision_step,
+        const std::vector<PriorityAction>& prefix,
+        PriorityAction apl_act,
+        PriorityAction mcts_act,
+        size_t ensemble_size = 32)
+    {
+        ContrastiveTrajectoryDiff diff;
+        diff.ensemble_size = std::max(size_t(1), ensemble_size);
+        diff.fight_duration = base_sim.fight_duration;
+
+        double sum_apl_dmg = 0.0, sum_mcts_dmg = 0.0;
+        double sum_apl_dps = 0.0, sum_mcts_dps = 0.0;
+        double sum_apl_immo = 0.0, sum_mcts_immo = 0.0;
+        double sum_apl_corr = 0.0, sum_mcts_corr = 0.0;
+        double sum_apl_curse = 0.0, sum_mcts_curse = 0.0;
+        double sum_apl_sl = 0.0, sum_mcts_sl = 0.0;
+        double sum_apl_isb = 0.0, sum_mcts_isb = 0.0;
+        double sum_apl_decim = 0.0, sum_mcts_decim = 0.0;
+        double sum_apl_snf = 0.0, sum_mcts_snf = 0.0;
+        double sum_apl_taps = 0.0, sum_mcts_taps = 0.0;
+        double sum_apl_mana = 0.0, sum_mcts_mana = 0.0;
+        double sum_apl_final_mana = 0.0, sum_mcts_final_mana = 0.0;
+        double sum_apl_final_mana_pct = 0.0, sum_mcts_final_mana_pct = 0.0;
+        double sum_apl_sb = 0.0, sum_mcts_sb = 0.0;
+        double sum_apl_incin = 0.0, sum_mcts_incin = 0.0;
+        double sum_apl_conflag = 0.0, sum_mcts_conflag = 0.0;
+        double sum_apl_sf = 0.0, sum_mcts_sf = 0.0;
+        double sum_apl_sb_burn = 0.0, sum_mcts_sb_burn = 0.0;
+        double sum_apl_casts = 0.0, sum_mcts_casts = 0.0;
+        double sum_apl_exec_dmg = 0.0, sum_mcts_exec_dmg = 0.0;
+        double sum_apl_exec_sf = 0.0, sum_mcts_exec_sf = 0.0;
+        double sum_apl_nf = 0.0, sum_mcts_nf = 0.0;
+        double sum_apl_nf_cons = 0.0, sum_mcts_nf_cons = 0.0;
+        double sum_apl_isb_p = 0.0, sum_mcts_isb_p = 0.0;
+
+        diff.apl_branch.root_action = apl_act;
+        diff.apl_branch.root_action_name = get_action_name(apl_act);
+        diff.mcts_branch.root_action = mcts_act;
+        diff.mcts_branch.root_action_name = get_action_name(mcts_act);
+
+        // Run full ensemble rollouts
+        for (size_t r = 0; r < diff.ensemble_size; ++r) {
+            uint64_t seed_r = base_seed + r * 7919 + 17;
+
+            // Path A
+            WarlockSimulator sim_a = base_sim;
+            sim_a.randomize_duration = false;
+            sim_a.record_timeline = (r == 0);
+            sim_a.record_viper_samples = (r == 0);
+            if (r == 0) sim_a.viper_dataset.clear();
+            std::vector<PriorityAction> prefix_a = prefix;
+            prefix_a.push_back(apl_act);
+            sim_a.forced_action_prefix = prefix_a;
+
+            FastRNG rng_a(seed_r);
+            SimResult res_a = sim_a.run_single_simulation(rng_a);
+
+            // Path B
+            WarlockSimulator sim_b = base_sim;
+            sim_b.randomize_duration = false;
+            sim_b.record_timeline = (r == 0);
+            sim_b.record_viper_samples = (r == 0);
+            if (r == 0) sim_b.viper_dataset.clear();
+            std::vector<PriorityAction> prefix_b = prefix;
+            prefix_b.push_back(mcts_act);
+            sim_b.forced_action_prefix = prefix_b;
+
+            FastRNG rng_b(seed_r);
+            SimResult res_b = sim_b.run_single_simulation(rng_b);
+
+            // Accumulate Path A
+            sum_apl_dmg += res_a.total_damage;
+            sum_apl_dps += res_a.dps;
+            sum_apl_immo += res_a.immolate_uptime_percent;
+            sum_apl_corr += res_a.corruption_uptime_percent;
+            sum_apl_curse += res_a.curse_uptime_percent;
+            sum_apl_sl += res_a.siphon_life_uptime_percent;
+            sum_apl_isb += res_a.isb_uptime_percent;
+            sum_apl_decim += res_a.decimation_uptime_percent;
+            sum_apl_snf += res_a.shadow_and_flame_uptime_percent;
+            sum_apl_taps += res_a.life_taps;
+            sum_apl_mana += res_a.mana_spent;
+            sum_apl_final_mana += res_a.final_mana;
+            sum_apl_final_mana_pct += res_a.final_mana_percent;
+            sum_apl_sb += res_a.shadow_bolt_casts;
+            sum_apl_incin += res_a.spell_stats[static_cast<size_t>(SpellID::INCINERATE)].casts;
+            sum_apl_conflag += res_a.spell_stats[static_cast<size_t>(SpellID::CONFLAGRATE)].casts;
+            sum_apl_sf += res_a.spell_stats[static_cast<size_t>(SpellID::SOUL_FIRE)].casts;
+            sum_apl_sb_burn += res_a.spell_stats[static_cast<size_t>(SpellID::SHADOWBURN)].casts;
+            sum_apl_casts += res_a.total_casts;
+            sum_apl_exec_dmg += res_a.execute_damage;
+            sum_apl_exec_sf += res_a.execute_soul_fire_casts;
+            sum_apl_nf += res_a.nightfall_procs;
+            sum_apl_nf_cons += res_a.nightfall_procs_consumed;
+            sum_apl_isb_p += res_a.isb_procs;
+
+            // Accumulate Path B
+            sum_mcts_dmg += res_b.total_damage;
+            sum_mcts_dps += res_b.dps;
+            sum_mcts_immo += res_b.immolate_uptime_percent;
+            sum_mcts_corr += res_b.corruption_uptime_percent;
+            sum_mcts_curse += res_b.curse_uptime_percent;
+            sum_mcts_sl += res_b.siphon_life_uptime_percent;
+            sum_mcts_isb += res_b.isb_uptime_percent;
+            sum_mcts_decim += res_b.decimation_uptime_percent;
+            sum_mcts_snf += res_b.shadow_and_flame_uptime_percent;
+            sum_mcts_taps += res_b.life_taps;
+            sum_mcts_mana += res_b.mana_spent;
+            sum_mcts_final_mana += res_b.final_mana;
+            sum_mcts_final_mana_pct += res_b.final_mana_percent;
+            sum_mcts_sb += res_b.shadow_bolt_casts;
+            sum_mcts_incin += res_b.spell_stats[static_cast<size_t>(SpellID::INCINERATE)].casts;
+            sum_mcts_conflag += res_b.spell_stats[static_cast<size_t>(SpellID::CONFLAGRATE)].casts;
+            sum_mcts_sf += res_b.spell_stats[static_cast<size_t>(SpellID::SOUL_FIRE)].casts;
+            sum_mcts_sb_burn += res_b.spell_stats[static_cast<size_t>(SpellID::SHADOWBURN)].casts;
+            sum_mcts_casts += res_b.total_casts;
+            sum_mcts_exec_dmg += res_b.execute_damage;
+            sum_mcts_exec_sf += res_b.execute_soul_fire_casts;
+            sum_mcts_nf += res_b.nightfall_procs;
+            sum_mcts_nf_cons += res_b.nightfall_procs_consumed;
+            sum_mcts_isb_p += res_b.isb_procs;
+
+            // On first iteration, extract start time t0 and preview step sequences
+            if (r == 0) {
+                double t0 = 0.0;
+                if (decision_step < sim_a.viper_dataset.samples.size()) {
+                    t0 = sim_a.viper_dataset.samples[decision_step].state.fight_progress_pct * base_sim.fight_duration;
+                } else if (!sim_a.viper_dataset.samples.empty()) {
+                    t0 = sim_a.viper_dataset.samples.back().state.fight_progress_pct * base_sim.fight_duration;
+                }
+                diff.divergence_time = t0;
+
+                auto extract_preview = [&](const SimResult& res, const WarlockSimulator& sim_inst, std::vector<TrajectoryStepSnapshot>& out_steps) {
+                    out_steps.clear();
+                    size_t count = 0;
+                    for (const auto& log : res.cast_sequence) {
+                        if (log.time < t0 - 0.05) continue;
+                        if (log.event_type == "Cast") {
+                            TrajectoryStepSnapshot step;
+                            step.time = log.time;
+                            step.duration = (log.cast_time > 0.0) ? log.cast_time : 1.5;
+                            step.spell_id = log.spell_id;
+                            step.spell_name = spell_id_to_name(log.spell_id);
+                            step.damage = log.damage;
+                            step.is_crit = log.is_crit;
+                            step.is_miss = log.is_miss;
+                            step.tag = log.tag;
+
+                            for (const auto& sample : sim_inst.viper_dataset.samples) {
+                                double sample_time = sample.state.fight_progress_pct * base_sim.fight_duration;
+                                if (std::abs(sample_time - log.time) <= 0.35) {
+                                    step.mana_pct = sample.state.player_mana_pct;
+                                    step.isb_active = (sample.state.isb_charges_rem > 0.0f);
+                                    step.isb_charges = static_cast<int>(sample.state.isb_charges_rem);
+                                    step.nightfall_active = (sample.state.nightfall_proc_active > 0.5f);
+                                    step.decimation_active = (sample.state.decimation_rem_sec > 0.0f);
+                                    step.immolate_active = (sample.state.dot_immolate_rem_sec > 0.0f);
+                                    step.corruption_active = (sample.state.dot_corruption_rem_sec > 0.0f);
+                                    break;
+                                }
+                            }
+                            out_steps.push_back(step);
+                            count++;
+                            if (count >= 8) break;
+                        }
+                    }
+                };
+
+                extract_preview(res_a, sim_a, diff.apl_branch.preview_steps);
+                extract_preview(res_b, sim_b, diff.mcts_branch.preview_steps);
+            }
+        }
+
+        double n = static_cast<double>(diff.ensemble_size);
+
+        // Path A Metrics
+        auto& ma = diff.apl_branch.metrics;
+        ma.total_damage = sum_apl_dmg / n;
+        ma.dps = sum_apl_dps / n;
+        ma.immolate_uptime_pct = sum_apl_immo / n;
+        ma.corruption_uptime_pct = sum_apl_corr / n;
+        ma.curse_uptime_pct = sum_apl_curse / n;
+        ma.siphon_life_uptime_pct = sum_apl_sl / n;
+        ma.isb_uptime_pct = sum_apl_isb / n;
+        ma.decimation_uptime_pct = sum_apl_decim / n;
+        ma.shadow_and_flame_uptime_pct = sum_apl_snf / n;
+        ma.total_life_taps = sum_apl_taps / n;
+        ma.tap_gcd_seconds = ma.total_life_taps * 1.5;
+        ma.mana_spent = sum_apl_mana / n;
+        ma.final_mana = sum_apl_final_mana / n;
+        ma.final_mana_pct = sum_apl_final_mana_pct / n;
+        ma.shadow_bolt_casts = sum_apl_sb / n;
+        ma.incinerate_casts = sum_apl_incin / n;
+        ma.conflagrate_casts = sum_apl_conflag / n;
+        ma.soul_fire_casts = sum_apl_sf / n;
+        ma.shadowburn_casts = sum_apl_sb_burn / n;
+        ma.total_casts = sum_apl_casts / n;
+        ma.execute_damage = sum_apl_exec_dmg / n;
+        ma.execute_soul_fire_casts = sum_apl_exec_sf / n;
+        ma.nightfall_procs = sum_apl_nf / n;
+        ma.nightfall_procs_consumed = sum_apl_nf_cons / n;
+        ma.isb_procs = sum_apl_isb_p / n;
+
+        // Path B Metrics
+        auto& mb = diff.mcts_branch.metrics;
+        mb.total_damage = sum_mcts_dmg / n;
+        mb.dps = sum_mcts_dps / n;
+        mb.immolate_uptime_pct = sum_mcts_immo / n;
+        mb.corruption_uptime_pct = sum_mcts_corr / n;
+        mb.curse_uptime_pct = sum_mcts_curse / n;
+        mb.siphon_life_uptime_pct = sum_mcts_sl / n;
+        mb.isb_uptime_pct = sum_mcts_isb / n;
+        mb.decimation_uptime_pct = sum_mcts_decim / n;
+        mb.shadow_and_flame_uptime_pct = sum_mcts_snf / n;
+        mb.total_life_taps = sum_mcts_taps / n;
+        mb.tap_gcd_seconds = mb.total_life_taps * 1.5;
+        mb.mana_spent = sum_mcts_mana / n;
+        mb.final_mana = sum_mcts_final_mana / n;
+        mb.final_mana_pct = sum_mcts_final_mana_pct / n;
+        mb.shadow_bolt_casts = sum_mcts_sb / n;
+        mb.incinerate_casts = sum_mcts_incin / n;
+        mb.conflagrate_casts = sum_mcts_conflag / n;
+        mb.soul_fire_casts = sum_mcts_sf / n;
+        mb.shadowburn_casts = sum_mcts_sb_burn / n;
+        mb.total_casts = sum_mcts_casts / n;
+        mb.execute_damage = sum_mcts_exec_dmg / n;
+        mb.execute_soul_fire_casts = sum_mcts_exec_sf / n;
+        mb.nightfall_procs = sum_mcts_nf / n;
+        mb.nightfall_procs_consumed = sum_mcts_nf_cons / n;
+        mb.isb_procs = sum_mcts_isb_p / n;
+
+        diff.net_damage_delta = mb.total_damage - ma.total_damage;
+        diff.net_dps_delta = mb.dps - ma.dps;
+
+        // Generate Deep Diagnostic Takeaways
+        std::ostringstream ss_yield;
+        ss_yield << std::fixed << std::setprecision(1);
+        ss_yield << "Encounter Throughput: Path B yields +" << std::setprecision(0) << diff.net_damage_delta
+                 << " dmg (+" << std::setprecision(1) << diff.net_dps_delta << " DPS) over the full fight ("
+                 << std::setprecision(0) << mb.total_damage << " vs " << ma.total_damage << " total damage across " << diff.ensemble_size << " rollouts).";
+        diff.takeaways.push_back(ss_yield.str());
+
+        if (std::abs(mb.immolate_uptime_pct - ma.immolate_uptime_pct) >= 1.5) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1);
+            ss << "Immolate Uptime: Path B achieved " << mb.immolate_uptime_pct << "% uptime vs " << ma.immolate_uptime_pct
+               << "% in Path A (" << (mb.immolate_uptime_pct >= ma.immolate_uptime_pct ? "+" : "") << (mb.immolate_uptime_pct - ma.immolate_uptime_pct) << "% delta).";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (std::abs(mb.corruption_uptime_pct - ma.corruption_uptime_pct) >= 1.5) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1);
+            ss << "Corruption Uptime: Path B achieved " << mb.corruption_uptime_pct << "% uptime vs " << ma.corruption_uptime_pct
+               << "% in Path A (" << (mb.corruption_uptime_pct >= ma.corruption_uptime_pct ? "+" : "") << (mb.corruption_uptime_pct - ma.corruption_uptime_pct) << "% delta).";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (std::abs(mb.isb_uptime_pct - ma.isb_uptime_pct) >= 1.5) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1);
+            ss << "ISB Shadow Vulnerability: Path B maintained " << mb.isb_uptime_pct << "% uptime vs " << ma.isb_uptime_pct << "% in Path A.";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (std::abs(ma.total_life_taps - mb.total_life_taps) >= 0.5) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1);
+            ss << "Life Tap Tax: Path A spent " << ma.total_life_taps << " Life Taps (" << ma.tap_gcd_seconds
+               << "s lost GCDs) vs Path B's " << mb.total_life_taps << " Life Taps (" << mb.tap_gcd_seconds << "s lost GCDs).";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (ma.final_mana >= mb.final_mana + 400.0 && ma.total_life_taps > mb.total_life_taps) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(0);
+            ss << "Mana Overcap / Over-Tapping: Path A ended the encounter with " << ma.final_mana << " mana (" << std::setprecision(1) << ma.final_mana_pct
+               << "%) after casting " << std::setprecision(1) << ma.total_life_taps << " Life Taps, wasting GCDs on excess unspent mana vs Path B ("
+               << std::setprecision(0) << mb.final_mana << " mana, " << std::setprecision(1) << mb.final_mana_pct << "%).";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (std::abs(mb.conflagrate_casts - ma.conflagrate_casts) >= 0.5) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(1);
+            ss << "Cooldown Drift: Path B completed " << mb.conflagrate_casts << " Conflagrate casts vs " << ma.conflagrate_casts << " in Path A.";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        if (mb.execute_damage > ma.execute_damage + 200.0) {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(0);
+            ss << "Execute Phase Yield: Path B delivered +" << (mb.execute_damage - ma.execute_damage) << " damage during the <35% HP execute window ("
+               << mb.execute_damage << " vs " << ma.execute_damage << " dmg).";
+            diff.takeaways.push_back(ss.str());
+        }
+
+        diff.computed = true;
+        return diff;
+    }
+
     struct AsyncBlunderAnalysisSession {
         WarlockSimulator base_sim;
         size_t rollouts_per_action = 512;
@@ -915,6 +1312,8 @@ public:
 
             if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
                 APLDivergenceEvent ev;
+                ev.seed = seed;
+                ev.action_prefix = apl_prefix;
                 ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
                 ev.decision_step = d;
                 ev.state = apl_state;
@@ -1206,6 +1605,8 @@ public:
                 // If MCTS found a statistically superior action over what the APL did at this exact state
                 if (best_eval.action != chosen_apl_act && delta_dps >= 1.0 && confidence >= 60.0) {
                     APLDivergenceEvent ev;
+                    ev.seed = seed;
+                    ev.action_prefix = apl_prefix;
                     ev.timestamp = apl_state.fight_progress_pct * base_sim.fight_duration;
                     ev.decision_step = d;
                     ev.state = apl_state;
