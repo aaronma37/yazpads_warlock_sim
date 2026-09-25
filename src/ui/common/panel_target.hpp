@@ -9,6 +9,7 @@
 #include "src/ui/common/damage_breakdown_view.hpp"
 #include "src/ui/common/panel_results.hpp"
 #include "src/ui/priest/panel_results.hpp"
+#include "src/sim/build_export.hpp"
 #include <array>
 #include <algorithm>
 #include <thread>
@@ -96,6 +97,63 @@ inline void render_panel_sim_config(SimType& sim,
   {
     ImGui::Spacing();
     ImGui::ProgressBar(progress, ImVec2(left_w, 6));
+  }
+
+  ImGui::Spacing();
+  float export_btn_w = (left_w - 6.0f) * 0.5f;
+  static float export_timer = 0.0f;
+  static std::string export_status_msg = "";
+
+  if (export_timer > 0.0f) {
+    export_timer -= ImGui::GetIO().DeltaTime;
+  }
+
+  if (WowButton("Copy to Clipboard", ImVec2(export_btn_w, 26.0f)))
+  {
+    std::string json_str;
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>) {
+      json_str = build_export::export_build_json(sim, &last_result, iterations, thread_count);
+    } else {
+      json_str = priest::build_export::export_build_json(sim, &last_result, iterations, thread_count);
+    }
+    ImGui::SetClipboardText(json_str.c_str());
+    export_status_msg = "Copied to clipboard!";
+    export_timer = 3.0f;
+  }
+  if (ImGui::IsItemHovered())
+  {
+    ImGui::SetTooltip("Export all configuration, buffs, target stats, talents, and sim results to clipboard (JSON)");
+  }
+
+  ImGui::SameLine(0.0f, 6.0f);
+
+  if (WowButton("Save to File", ImVec2(export_btn_w, 26.0f)))
+  {
+    std::string json_str;
+    std::string filename;
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>) {
+      json_str = build_export::export_build_json(sim, &last_result, iterations, thread_count);
+      filename = "warlock_sim_export.json";
+    } else {
+      json_str = priest::build_export::export_build_json(sim, &last_result, iterations, thread_count);
+      filename = "priest_sim_export.json";
+    }
+    if (build_export::save_export_to_file(filename, json_str)) {
+      export_status_msg = "Saved to " + filename;
+    } else {
+      export_status_msg = "Failed to save file";
+    }
+    export_timer = 3.0f;
+  }
+  if (ImGui::IsItemHovered())
+  {
+    ImGui::SetTooltip("Save all configuration, buffs, target stats, talents, and sim results to JSON file");
+  }
+
+  if (export_timer > 0.0f && !export_status_msg.empty())
+  {
+    ImGui::Spacing();
+    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%s", export_status_msg.c_str());
   }
 
   ImGui::EndGroup();

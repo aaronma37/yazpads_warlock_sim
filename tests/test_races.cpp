@@ -166,6 +166,9 @@ TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     // Cataclysm = 0 so SB base cost = 380
     sim_gnome.talents.destro.cataclysm = 0;
     sim_gnome.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+    sim_gnome.policy.curse = CurseChoice::NONE;
+    sim_gnome.policy.corruption = DotPolicy::NEVER;
+    sim_gnome.policy.maintain_immolate = false;
     sim_gnome.policy.racial_policy = RacialPolicy::ON_COOLDOWN;
     // 3.0s cast with 0/5 Bane -> 3 casts take ~9s (duration 10s gives exactly 3 SB casts)
     sim_gnome.talents.destro.bane = 0;
@@ -182,8 +185,8 @@ TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     CHECK_EQ(res_gnome.shadow_bolt_casts, 3);
     CHECK_EQ(res_human.shadow_bolt_casts, 3);
 
-    // Gnome spent 50% mana per cast (190 * 3 = 570), Human spent 380 * 3 = 1140
-    CHECK_NEAR(res_gnome.mana_spent, 570.0, 0.01);
+    // Gnome spent 10% less mana per cast (342 * 3 = 1026), Human spent 380 * 3 = 1140
+    CHECK_NEAR(res_gnome.mana_spent, 1026.0, 0.01);
     CHECK_NEAR(res_human.mana_spent, 1140.0, 0.01);
 
     // Damage bonus: all 3 Gnome SB casts get +10% Eureka damage bonus
@@ -198,8 +201,8 @@ TEST_CASE(Races, GnomeEurekaManaAndDamageBonus) {
     SimResult res_human4 = sim_human.run_single_simulation(rng_human4);
 
     CHECK_EQ(res_gnome4.shadow_bolt_casts, 4);
-    // 3 discounted (190 * 3 = 570) + 1 regular (380) = 950
-    CHECK_NEAR(res_gnome4.mana_spent, 950.0, 0.01);
+    // 3 discounted (342 * 3 = 1026) + 1 regular (380) = 1406
+    CHECK_NEAR(res_gnome4.mana_spent, 1406.0, 0.01);
     CHECK_NEAR(res_human4.mana_spent, 1520.0, 0.01);
 }
 

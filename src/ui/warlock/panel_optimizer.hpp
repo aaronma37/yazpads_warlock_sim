@@ -10,6 +10,8 @@
 #include "src/sim/warlock/genetic_optimizer.hpp"
 #include "src/sim/warlock/surrogate_evaluator.hpp"
 #include "src/sim/warlock/viper_oracle.hpp"
+#include "src/sim/build_export.hpp"
+#include "src/sim/common/zip_writer.hpp"
 #include <algorithm>
 #include <atomic>
 #include <mutex>
@@ -1200,6 +1202,42 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   }
   else if (opt_mode == 1)
   {
+    static float specs_export_timer = 0.0f;
+    static std::string specs_export_msg = "";
+    if (specs_export_timer > 0.0f)
+    {
+      specs_export_timer -= ImGui::GetIO().DeltaTime;
+    }
+
+    auto get_current_specs = [&]() -> std::vector<CandidateResult> {
+      if (!optimizer_results.empty()) return optimizer_results;
+      std::vector<CandidateResult> default_specs;
+      const auto& presets = standard_spec_presets();
+      for (size_t i = 0; i < presets.size(); ++i) {
+        const auto& p = presets[i];
+        CandidateResult cand;
+        cand.rank = static_cast<int>(i + 1);
+        cand.name = p.display_name;
+        cand.category = "Talents";
+        cand.race = sim.race;
+        cand.talents = p.make_talents();
+        cand.gear = sim.gear;
+        cand.buffs = sim.buffs;
+        cand.buffs.sacrifice_succubus = p.sac_succubus;
+        cand.buffs.sacrifice_imp = p.sac_imp;
+        cand.policy = sim.policy;
+        cand.policy.rotation = p.rotation;
+        cand.policy.pet = p.pet;
+        cand.policy.maintain_immolate = p.maintain_immolate;
+        cand.mechanics = sim.mechanics;
+        cand.use_raw_stats = sim.use_raw_stats;
+        cand.raw_stats = sim.raw_stats;
+        default_specs.push_back(cand);
+      }
+      return default_specs;
+    };
+
+#if defined(__EMSCRIPTEN__)
     if (WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing))
     {
       is_optimizing = true;
@@ -1216,6 +1254,88 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           calculate_stat_weights);
       is_optimizing = false;
       opt_progress = 1.0f;
+    }
+#else
+    auto& worker = get_opt_worker_state();
+    bool is_busy = worker.is_running.load();
+    if (!is_busy)
+    {
+      if (WowButton("Simulate Standard Specs", ImVec2(240, 28)))
+      {
+        WarlockSimulator sim_copy = sim;
+        int iters = iters_per_candidate;
+        bool all_races = compare_all_races;
+        bool calc_weights = calculate_stat_weights;
+
+        worker.is_running = true;
+        worker.stop_requested = false;
+        worker.progress = 0.0f;
+        worker.current_status = "Starting Standard Specs Simulation...";
+        is_optimizing = true;
+        opt_progress = 0.0f;
+        current_opt_target = worker.current_status;
+
+        if (worker.worker.joinable())
+          worker.worker.join();
+
+        worker.worker = std::thread(
+            [sim_copy, iters, all_races, calc_weights]()
+            {
+              auto& w = get_opt_worker_state();
+              auto results = Optimizer::optimize_talents(
+                  sim_copy,
+                  iters,
+                  [&w](float p, const std::string& name)
+                  {
+                    w.progress = p;
+                    std::lock_guard<std::mutex> lk(w.mtx);
+                    w.current_status = name;
+                  },
+                  all_races,
+                  calc_weights);
+
+              {
+                std::lock_guard<std::mutex> lk(w.mtx);
+                w.live_results = results;
+                w.has_new_results = true;
+                w.is_running = false;
+              }
+            });
+      }
+    }
+    else
+    {
+      if (WowButton("Stop Simulation", ImVec2(240, 28)))
+      {
+        worker.stop_requested = true;
+      }
+    }
+#endif
+
+    ImGui::SameLine(0.0f, 12.0f);
+    if (WowButton("Save All Specs (ZIP)", ImVec2(220, 28)))
+    {
+      auto specs = get_current_specs();
+      auto zip = build_export::create_specs_batch_zip(specs, &sim);
+      if (zip.save_to_file("warlock_specs_comparison.zip"))
+      {
+        specs_export_msg = "Saved warlock_specs_comparison.zip!";
+      }
+      else
+      {
+        specs_export_msg = "Failed to save ZIP file";
+      }
+      specs_export_timer = 3.0f;
+    }
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("Save ZIP archive containing individual JSON configs and results for all specs shown, manifest.json, and leaderboard.csv");
+    }
+
+    if (specs_export_timer > 0.0f && !specs_export_msg.empty())
+    {
+      ImGui::Spacing();
+      ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%s", specs_export_msg.c_str());
     }
   }
   else

@@ -7,6 +7,8 @@
 #include "src/ui/priest/panel_policy.hpp"
 #include "src/sim/priest/optimizer.hpp"
 #include "src/sim/priest/talent_graph.hpp"
+#include "src/sim/priest/build_export.hpp"
+#include "src/sim/common/zip_writer.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -439,6 +441,36 @@ inline void render_priest_panel_optimizer(
             }
         }
     } else {
+        static float priest_specs_export_timer = 0.0f;
+        static std::string priest_specs_export_msg = "";
+        if (priest_specs_export_timer > 0.0f) {
+            priest_specs_export_timer -= ImGui::GetIO().DeltaTime;
+        }
+
+        auto get_current_priest_specs = [&]() -> std::vector<CandidateResult> {
+            if (!optimizer_results.empty()) return optimizer_results;
+            std::vector<CandidateResult> default_specs;
+            const auto& presets = standard_spec_presets();
+            for (size_t i = 0; i < presets.size(); ++i) {
+                CandidateResult c;
+                c.rank = static_cast<int>(i + 1);
+                c.name = presets[i].display_name;
+                c.category = "Talents";
+                c.race = sim.race;
+                c.talents = presets[i].make_talents();
+                c.gear = sim.gear;
+                c.buffs = sim.buffs;
+                c.policy = sim.policy;
+                c.policy.rotation = presets[i].rotation;
+                c.mechanics = sim.mechanics;
+                c.use_raw_stats = sim.use_raw_stats;
+                c.raw_stats = sim.raw_stats;
+                default_specs.push_back(c);
+            }
+            return default_specs;
+        };
+
+#if defined(__EMSCRIPTEN__)
         if (warlock::WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing)) {
             is_optimizing = true;
             opt_progress = 0.0f;
@@ -454,7 +486,71 @@ inline void render_priest_panel_optimizer(
             is_optimizing = false;
             opt_progress = 1.0f;
         }
-        if (is_optimizing) ImGui::EndDisabled();
+#else
+        auto& worker = get_priest_opt_worker_state();
+        bool is_busy = worker.is_running.load();
+        if (!is_busy) {
+            if (warlock::WowButton("Simulate Standard Specs", ImVec2(240, 28))) {
+                PriestSimulator sim_copy = sim;
+                int iters = iters_per_candidate;
+                bool all_races = compare_all_races;
+
+                worker.is_running = true;
+                worker.stop_requested = false;
+                worker.progress = 0.0f;
+                worker.current_status = "Starting Standard Specs Simulation...";
+                is_optimizing = true;
+                opt_progress = 0.0f;
+                current_opt_target = worker.current_status;
+
+                if (worker.worker.joinable()) worker.worker.join();
+
+                worker.worker = std::thread([sim_copy, iters, all_races]() {
+                    auto& w = get_priest_opt_worker_state();
+                    auto results = Optimizer::optimize_talents(
+                        sim_copy,
+                        iters,
+                        [&w](float p, const std::string& name) {
+                            w.progress = p;
+                            std::lock_guard<std::mutex> lk(w.mtx);
+                            w.current_status = name;
+                        },
+                        all_races
+                    );
+                    {
+                        std::lock_guard<std::mutex> lk(w.mtx);
+                        w.live_results = results;
+                        w.has_new_results = true;
+                        w.is_running = false;
+                    }
+                });
+            }
+        } else {
+            if (warlock::WowButton("Stop Simulation", ImVec2(240, 28))) {
+                worker.stop_requested = true;
+            }
+        }
+#endif
+
+        ImGui::SameLine(0.0f, 12.0f);
+        if (warlock::WowButton("Save All Specs (ZIP)", ImVec2(220, 28))) {
+            auto specs = get_current_priest_specs();
+            auto zip = build_export::create_specs_batch_zip(specs, &sim);
+            if (zip.save_to_file("priest_specs_comparison.zip")) {
+                priest_specs_export_msg = "Saved priest_specs_comparison.zip!";
+            } else {
+                priest_specs_export_msg = "Failed to save ZIP file";
+            }
+            priest_specs_export_timer = 3.0f;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Save ZIP archive containing individual JSON configs and results for all specs shown, manifest.json, and leaderboard.csv");
+        }
+
+        if (priest_specs_export_timer > 0.0f && !priest_specs_export_msg.empty()) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%s", priest_specs_export_msg.c_str());
+        }
     }
 
     if (is_optimizing) {

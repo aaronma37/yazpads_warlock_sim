@@ -22,6 +22,7 @@ inline void render_panel_changelog() {
     if (WowCollapsingHeader("Changelog - 9/24/26: Engine Alignment & Mechanics Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Spacing();
         ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/24/26):");
+        ImGui::BulletText("Eureka! (Gnome Racial): Mana discount reduced from 50%% to 10%% per charge, matching the Forever Beta patch. Damage bonus (+10%% per charge) unchanged.");
         ImGui::BulletText("Spell Piercing (Penetration): Implemented sub-zero target resistance scaling (spell_piercing_below_zero = true). When caster Spell Piercing reduces target resistance below 0, spells deal amplified damage (+0.575%% per point of negative resistance), matching empirical Forever Beta findings.");
         ImGui::BulletText("Spell Hit Cap: Updated default max_spell_hit to 1.00 (100%% true hit cap / 0%% miss floor) matching Forever Beta character sheet and empirical testing where 17%% spell hit eliminates all misses against level 63 boss targets.");
         ImGui::BulletText("Touch of the Grave (Undead Racial): Aligned proc mechanics with empirical testing findings (1.0s internal cooldown, procs on spell casts/channels/wand hits only with no periodic DoT tick triggers, and deals flat 5%% Max HP damage/healing unaffected by Shadow multipliers).");
@@ -151,10 +152,10 @@ inline void render_panel_changelog() {
             // Row 13: Eureka! (Gnome Racial)
             ImGui::TableNextRow();
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::White, "Eureka! (Gnome Racial)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-50%% Mana)");
-            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-50%% Mana)");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-10%% Mana)");
+            ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "+10%% Dmg until 3 casts (-10%% Mana)");
             ImGui::TableNextColumn(); ImGui::TextColored(wow_colors::GreenBuff, "Aligned");
-            ImGui::TableNextColumn(); ImGui::TextWrapped("Damage is amplified by +10%% continuously until 3 discrete spells are cast to consume the charges (allowing active DoT ticks to receive uninterrupted +10%% amplification if casting is paused).");
+            ImGui::TableNextColumn(); ImGui::TextWrapped("Mana discount updated to 10%% per charge (was 50%%) per Forever Beta patch. Damage is still amplified by +10%% continuously until 3 discrete spells consume the charges.");
 
             ImGui::EndTable();
         }
@@ -178,7 +179,7 @@ inline void render_panel_changelog() {
         // Detailed Section 2: Racial Mechanics
         if (WowCollapsingHeader("2. Racial Mechanics (Touch of the Grave & Eureka)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::BulletText("Touch of the Grave (Undead): 10%% proc chance on spell cast/application for casters (5%% for melee), 1.0s ICD, flat 5%% Max HP heal/dmg. Does not proc on DoT ticks or scale with Shadow multipliers.");
-            ImGui::BulletText("Eureka! (Gnome): Provides 3 charges (-50%% mana cost). Nuance: All outgoing damage is amplified by +10%% continuously until 3 discrete spells are cast to consume the charges. Because DoT ticks update dynamically and do not consume charges, idling or delaying casts maintains persistent +10%% DoT tick amplification. Fully aligned in simulator engine.");
+            ImGui::BulletText("Eureka! (Gnome): Provides 3 charges (-10%% mana cost, updated from -50%% per Forever Beta patch). All outgoing damage is amplified by +10%% continuously until 3 discrete spells are cast to consume the charges. Because DoT ticks update dynamically and do not consume charges, idling or delaying casts maintains persistent +10%% DoT tick amplification. Fully aligned in simulator engine.");
             ImGui::Spacing();
         }
 

@@ -8,17 +8,15 @@
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
 #endif
-#include "warlock_sim.hpp"
+#include "priest_sim.hpp"
 #include "parallel_runner.hpp"
 #include "optimizer.hpp"
+#include "spec_presets.hpp"
 #include "src/sim/common/zip_writer.hpp"
 
-namespace warlock {
+namespace priest {
 namespace build_export {
 
-// Serializes the full preset build (race, gear or raw stats, talents,
-// buffs, pet, rotation policy, mechanics, target, fight duration, and optional simulation results)
-// to JSON so it can be copied to the clipboard, saved to file, or shared.
 inline std::string json_escape(const std::string& s) {
     std::string out;
     out.reserve(s.size() + 2);
@@ -48,26 +46,22 @@ inline std::string json_double(double v) {
     return buf;
 }
 
-inline const char* dot_policy_to_string_local(DotPolicy d) {
-    switch (d) {
-        case DotPolicy::ALWAYS: return "always";
-        case DotPolicy::ONLY_WITH_DEBUFF_SLOT: return "only_with_debuff_slot";
-        default: return "never";
+inline void append_tree_points(std::ostringstream& json,
+                               const std::array<TalentNodeDef, 18>& nodes,
+                               const DisciplineTalents& t) {
+    bool first = true;
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        int pts = t.get_points_by_index(i);
+        if (pts == 0) continue;
+        if (!first) json << ", ";
+        first = false;
+        json << "\"" << nodes[i].id << "\": " << pts;
     }
 }
 
-inline const char* shadowburn_policy_to_string_local(ShadowburnPolicy s) {
-    switch (s) {
-        case ShadowburnPolicy::ON_COOLDOWN: return "on_cooldown";
-        case ShadowburnPolicy::EXECUTE_ONLY: return "execute_only";
-        default: return "never";
-    }
-}
-
-// Only nonzero talents are exported; a missing key means 0 points.
 inline void append_tree_points(std::ostringstream& json,
                                const std::array<TalentNodeDef, 17>& nodes,
-                               const AfflictionTalents& t) {
+                               const HolyTalents& t) {
     bool first = true;
     for (size_t i = 0; i < nodes.size(); ++i) {
         int pts = t.get_points_by_index(i);
@@ -79,21 +73,8 @@ inline void append_tree_points(std::ostringstream& json,
 }
 
 inline void append_tree_points(std::ostringstream& json,
-                               const std::array<TalentNodeDef, 19>& nodes,
-                               const DemonologyTalents& t) {
-    bool first = true;
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        int pts = t.get_points_by_index(i);
-        if (pts == 0) continue;
-        if (!first) json << ", ";
-        first = false;
-        json << "\"" << nodes[i].id << "\": " << pts;
-    }
-}
-
-inline void append_tree_points(std::ostringstream& json,
-                               const std::array<TalentNodeDef, 16>& nodes,
-                               const DestructionTalents& t) {
+                               const std::array<TalentNodeDef, 18>& nodes,
+                               const ShadowTalents& t) {
     bool first = true;
     for (size_t i = 0; i < nodes.size(); ++i) {
         int pts = t.get_points_by_index(i);
@@ -134,14 +115,14 @@ inline bool save_export_to_file(const std::string& filepath, const std::string& 
 #endif
 }
 
-inline std::string export_build_json(const WarlockSimulator& sim,
+inline std::string export_build_json(const PriestSimulator& sim,
                                     const BatchSimResult* last_result = nullptr,
                                     int iterations = 0,
                                     int thread_count = 0) {
     std::ostringstream json;
     json << "{\n";
-    json << "  \"format\": \"warlock-build/1\",\n";
-    json << "  \"class\": \"Warlock\",\n";
+    json << "  \"format\": \"priest-build/1\",\n";
+    json << "  \"class\": \"Priest\",\n";
     json << "  \"race\": \"" << race_to_string(sim.race) << "\",\n";
     json << "  \"fight_duration\": " << json_double(sim.fight_duration) << ",\n";
     json << "  \"duration_variance\": " << json_double(sim.duration_variance) << ",\n";
@@ -157,17 +138,16 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "  },\n";
     }
 
-    // Stats source: equipped gear or direct raw stats.
     json << "  \"stats_mode\": \"" << (sim.use_raw_stats ? "raw" : "gear") << "\",\n";
     if (sim.use_raw_stats) {
-        const Stats& s = sim.raw_stats;
+        const sim::Stats& s = sim.raw_stats;
         json << "  \"raw_stats\": {\n";
         json << "    \"stamina\": " << json_double(s.stamina) << ", ";
         json << "\"intellect\": " << json_double(s.intellect) << ", ";
         json << "\"spirit\": " << json_double(s.spirit) << ",\n";
         json << "    \"spell_power\": " << json_double(s.spell_power) << ", ";
         json << "\"shadow_power\": " << json_double(s.shadow_power) << ", ";
-        json << "\"fire_power\": " << json_double(s.fire_power) << ",\n";
+        json << "\"holy_power\": " << json_double(s.holy_power) << ",\n";
         json << "    \"spell_hit_percent\": " << json_double(s.spell_hit_percent) << ", ";
         json << "\"spell_crit_percent\": " << json_double(s.spell_crit_percent) << ", ";
         json << "\"spell_haste_percent\": " << json_double(s.spell_haste_percent) << ", ";
@@ -177,34 +157,32 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "  \"gear\": {\n";
         json << "    \"loadout_name\": \"" << json_escape(sim.gear.name) << "\",\n";
         json << "    \"slots\": {\n";
-        for (size_t i = 0; i < static_cast<size_t>(Slot::COUNT); ++i) {
-            Slot slot = static_cast<Slot>(i);
-            const Item& item = sim.gear.get(slot);
-            json << "      \"" << slot_to_name(slot) << "\": \"" << json_escape(item.name) << "\"";
-            json << (i + 1 < static_cast<size_t>(Slot::COUNT) ? ",\n" : "\n");
+        for (size_t i = 0; i < static_cast<size_t>(sim::Slot::COUNT); ++i) {
+            sim::Slot slot = static_cast<sim::Slot>(i);
+            const sim::Item& item = sim.gear.get(slot);
+            json << "      \"" << sim::slot_to_name(slot) << "\": \"" << json_escape(item.name) << "\"";
+            json << (i + 1 < static_cast<size_t>(sim::Slot::COUNT) ? ",\n" : "\n");
         }
         json << "    }\n";
         json << "  },\n";
     }
 
-    // Talents (nonzero only; missing key = 0 points).
     json << "  \"talents\": {\n";
-    json << "    \"affliction\": { ";
-    append_tree_points(json, FOREVER_AFFLICTION_NODES, sim.talents.aff);
+    json << "    \"discipline\": { ";
+    append_tree_points(json, get_disc_nodes(), sim.talents.disc);
     json << " },\n";
-    json << "    \"demonology\": { ";
-    append_tree_points(json, FOREVER_DEMONOLOGY_NODES, sim.talents.demo);
+    json << "    \"holy\": { ";
+    append_tree_points(json, get_holy_nodes(), sim.talents.holy);
     json << " },\n";
-    json << "    \"destruction\": { ";
-    append_tree_points(json, FOREVER_DESTRUCTION_NODES, sim.talents.destro);
+    json << "    \"shadow\": { ";
+    append_tree_points(json, get_shadow_nodes(), sim.talents.shadow);
     json << " }\n";
     json << "  },\n";
 
-    // Buffs / consumables / debuffs / sacrifice.
     json << "  \"buffs\": {\n    ";
     {
         bool first = true;
-        const BuffConfig& b = sim.buffs;
+        const sim::BuffConfig& b = sim.buffs;
         append_bool(json, "arcane_intellect", b.arcane_intellect, first);
         append_bool(json, "blessing_of_kings", b.blessing_of_kings, first);
         append_bool(json, "blessing_of_wisdom", b.blessing_of_wisdom, first);
@@ -215,7 +193,6 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         append_bool(json, "flask_of_the_titans", b.flask_of_the_titans, first);
         append_bool(json, "greater_arcane_elixir", b.greater_arcane_elixir, first);
         append_bool(json, "elixir_of_shadow_power", b.elixir_of_shadow_power, first);
-        append_bool(json, "elixir_of_greater_firepower", b.elixir_of_greater_firepower, first);
         append_bool(json, "elixir_of_the_owl", b.elixir_of_the_owl, first);
         append_bool(json, "elixir_of_the_sages", b.elixir_of_the_sages, first);
         append_bool(json, "mageblood_elixir", b.mageblood_elixir, first);
@@ -232,86 +209,58 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         append_bool(json, "curse_of_elements", b.curse_of_elements, first);
         append_bool(json, "shadow_weaving", b.shadow_weaving, first);
         append_bool(json, "nightfall_axe", b.nightfall_axe, first);
-        append_bool(json, "sacrifice_imp", b.sacrifice_imp, first);
-        append_bool(json, "sacrifice_succubus", b.sacrifice_succubus, first);
     }
     json << "\n  },\n";
 
-    // Rotation policy + active pet.
     {
         const PolicyConfig& p = sim.policy;
         json << "  \"policy\": {\n";
         json << "    \"rotation\": \"" << rotation_choice_to_string(p.rotation) << "\",\n";
-        json << "    \"curse\": \"" << curse_choice_to_string(p.curse) << "\",\n";
-        json << "    \"corruption\": \"" << dot_policy_to_string_local(p.corruption) << "\",\n";
-        json << "    \"maintain_immolate\": " << (p.maintain_immolate ? "true" : "false") << ",\n";
-        json << "    \"shadowburn\": \"" << shadowburn_policy_to_string_local(p.shadowburn) << "\",\n";
-        json << "    \"pet\": \"" << pet_choice_to_string(p.pet) << "\",\n";
-        json << "    \"life_tap_threshold_pct\": " << json_double(p.life_tap_threshold_pct) << ",\n";
-        json << "    \"use_trinkets_on_cooldown\": " << (p.use_trinkets_on_cooldown ? "true" : "false") << ",\n";
-        json << "    \"cast_nightfall_procs\": " << (p.cast_nightfall_procs ? "true" : "false") << ",\n";
-        json << "    \"use_conflagrate\": " << (p.use_conflagrate ? "true" : "false") << ",\n";
-        json << "    \"use_incinerate\": " << (p.use_incinerate ? "true" : "false") << ",\n";
-        json << "    \"use_decimation_soul_fire\": " << (p.use_decimation_soul_fire ? "true" : "false") << ",\n";
-        json << "    \"channel_drain_hope\": " << (p.channel_drain_hope ? "true" : "false") << ",\n";
-        json << "    \"multi_dot_corruption\": " << (p.multi_dot_corruption ? "true" : "false") << ",\n";
-        json << "    \"auto_bane_of_havoc\": " << (p.auto_bane_of_havoc ? "true" : "false") << ",\n";
-        json << "    \"racial_policy\": \"" << racial_policy_to_string(p.racial_policy) << "\"\n";
+        json << "    \"maintain_swp\": " << (p.maintain_swp ? "true" : "false") << ",\n";
+        json << "    \"cast_mind_blast\": " << (p.cast_mind_blast ? "true" : "false") << ",\n";
+        json << "    \"cast_sw_death\": " << (p.cast_sw_death ? "true" : "false") << ",\n";
+        json << "    \"execute_sw_death_only\": " << (p.execute_sw_death_only ? "true" : "false") << ",\n";
+        json << "    \"cast_devouring_plague\": " << (p.cast_devouring_plague ? "true" : "false") << ",\n";
+        json << "    \"cast_vampiric_embrace\": " << (p.cast_vampiric_embrace ? "true" : "false") << ",\n";
+        json << "    \"cast_holy_fire\": " << (p.cast_holy_fire ? "true" : "false") << ",\n";
+        json << "    \"cast_penance\": " << (p.cast_penance ? "true" : "false") << ",\n";
+        json << "    \"use_inner_focus\": " << (p.use_inner_focus ? "true" : "false") << ",\n";
+        json << "    \"use_power_infusion\": " << (p.use_power_infusion ? "true" : "false") << ",\n";
+        json << "    \"mana_potion_threshold\": " << json_double(p.mana_potion_threshold) << ",\n";
+        json << "    \"demonic_rune_threshold\": " << json_double(p.demonic_rune_threshold) << "\n";
         json << "  },\n";
     }
 
-    // Mechanics toggles.
     {
         const MechanicsConfig& m = sim.mechanics;
         json << "  \"mechanics\": {\n";
-        json << "    \"snapshot_dots\": " << (m.snapshot_dots ? "true" : "false") << ", ";
-        json << "\"spell_batching\": " << (m.spell_batching ? "true" : "false") << ", ";
-        json << "\"batch_window_ms\": " << json_double(m.batch_window_ms) << ",\n";
-        json << "    \"debuff_limit\": " << m.debuff_limit << ", ";
-        json << "\"enforce_debuff_slots\": " << (m.enforce_debuff_slots ? "true" : "false") << ", ";
-        json << "\"personal_shadow_weaving\": " << (m.personal_shadow_weaving ? "true" : "false") << ",\n";
-        json << "    \"partial_resists_enabled\": " << (m.partial_resists_enabled ? "true" : "false") << ", ";
-        json << "\"isb_has_charges\": " << (m.isb_has_charges ? "true" : "false") << ", ";
-        json << "\"isb_all_shadow_sources\": " << (m.isb_all_shadow_sources ? "true" : "false") << ",\n";
+        json << "    \"shadow_weaving_personal\": " << (m.shadow_weaving_personal ? "true" : "false") << ", ";
+        json << "\"snapshot_dots\": " << (m.snapshot_dots ? "true" : "false") << ", ";
+        json << "\"spell_batching\": " << (m.spell_batching ? "true" : "false") << ",\n";
+        json << "    \"batch_window_ms\": " << json_double(m.batch_window_ms) << ", ";
+        json << "\"debuff_limit\": " << m.debuff_limit << ", ";
+        json << "\"enforce_debuff_slots\": " << (m.enforce_debuff_slots ? "true" : "false") << ",\n";
         json << "    \"base_hit_vs_boss\": " << json_double(m.base_hit_vs_boss) << ", ";
         json << "\"max_spell_hit\": " << json_double(m.max_spell_hit) << ", ";
         json << "\"base_spell_crit_multiplier\": " << json_double(m.base_spell_crit_multiplier) << ",\n";
-        json << "    \"nightfall_enabled\": " << (m.nightfall_enabled ? "true" : "false") << ", ";
-        json << "\"nightfall_proc_chance\": " << json_double(m.nightfall_proc_chance) << ",\n";
-        json << "    \"projectile_travel_time\": " << (m.projectile_travel_time ? "true" : "false") << ", ";
-        json << "\"default_boss_distance_yards\": " << json_double(m.default_boss_distance_yards) << ", ";
-        json << "\"projectile_speed_yards_per_sec\": " << json_double(m.projectile_speed_yards_per_sec) << ",\n";
         json << "    \"base_gcd\": " << json_double(m.base_gcd) << ", ";
         json << "\"haste_affects_gcd\": " << (m.haste_affects_gcd ? "true" : "false") << ", ";
-        json << "\"instant_drain_hope\": " << (m.instant_drain_hope ? "true" : "false") << ",\n";
-        json << "    \"corruption_sp_coefficient\": " << json_double(m.corruption_sp_coefficient) << ",\n";
-        json << "    \"pet_scaling\": " << (m.pet_scaling ? "true" : "false") << ", ";
-        json << "\"pet_sp_ratio\": " << json_double(m.pet_sp_ratio) << ", ";
-        json << "\"pet_ap_ratio\": " << json_double(m.pet_ap_ratio) << ",\n";
-        json << "    \"pet_mana_management\": " << (m.pet_mana_management ? "true" : "false") << ", ";
-        json << "\"imp_base_mana\": " << json_double(m.imp_base_mana) << ", ";
-        json << "\"succubus_base_mana\": " << json_double(m.succubus_base_mana) << ",\n";
-        json << "    \"imp_firebolt_cost\": " << json_double(m.imp_firebolt_cost) << ", ";
-        json << "\"succubus_lop_cost\": " << json_double(m.succubus_lop_cost) << ", ";
-        json << "\"pet_base_mp5\": " << json_double(m.pet_base_mp5) << ",\n";
-        json << "    \"imp_firebolt_modern_scaling\": " << (m.imp_firebolt_modern_scaling ? "true" : "false") << "\n";
+        json << "\"allow_mind_flay_clipping\": " << (m.allow_mind_flay_clipping ? "true" : "false") << "\n";
         json << "  },\n";
     }
 
-    // Target encounter.
     {
-        const TargetConfig& t = sim.target_config;
+        const sim::TargetConfig& t = sim.target_config;
         json << "  \"target\": {\n";
         json << "    \"target_count\": " << t.target_count << ",\n";
         json << "    \"level\": " << t.level << ",\n";
-        json << "    \"creature_type\": \"" << creature_type_to_string(t.creature_type) << "\",\n";
+        json << "    \"creature_type\": \"" << sim::creature_type_to_string(t.creature_type) << "\",\n";
         json << "    \"base_shadow_resistance\": " << json_double(t.base_shadow_resistance) << ",\n";
         json << "    \"base_fire_resistance\": " << json_double(t.base_fire_resistance) << ",\n";
         json << "    \"is_beast\": " << (t.is_beast ? "true" : "false") << "\n";
         json << "  }";
     }
 
-    // Simulation Results if available
     if (last_result && last_result->total_iterations > 0) {
         const BatchSimResult& r = *last_result;
         json << ",\n  \"simulation_results\": {\n";
@@ -324,46 +273,27 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "    \"std_dev_dps\": " << json_double(r.std_dev_dps) << ",\n";
         json << "    \"median_dps\": " << json_double(r.p50_dps) << ",\n";
         json << "    \"percentiles\": {\n";
-        json << "      \"p1\": " << json_double(r.p1_dps) << ", ";
-        json << "\"p5\": " << json_double(r.p5_dps) << ", ";
-        json << "\"p25\": " << json_double(r.p25_dps) << ", ";
+        json << "      \"p5\": " << json_double(r.p5_dps) << ", ";
         json << "\"p50\": " << json_double(r.p50_dps) << ", ";
-        json << "\"p75\": " << json_double(r.p75_dps) << ", ";
-        json << "\"p95\": " << json_double(r.p95_dps) << ", ";
-        json << "\"p99\": " << json_double(r.p99_dps) << "\n";
+        json << "\"p95\": " << json_double(r.p95_dps) << "\n";
         json << "    },\n";
         json << "    \"crit_percent\": " << json_double(r.crit_percent) << ",\n";
         json << "    \"miss_percent\": " << json_double(r.miss_percent) << ",\n";
-        json << "    \"mean_isb_uptime\": " << json_double(r.mean_isb_uptime) << ",\n";
-        json << "    \"mean_shadow_bolts\": " << json_double(r.mean_shadow_bolts) << ",\n";
-        json << "    \"mean_crits\": " << json_double(r.mean_crits) << ",\n";
-        json << "    \"mean_life_taps\": " << json_double(r.mean_life_taps) << ",\n";
         json << "    \"mean_mana_spent\": " << json_double(r.mean_mana_spent) << ",\n";
-        json << "    \"mean_pet_dps\": " << json_double(r.mean_pet_dps) << ",\n";
+        json << "    \"mean_mana_gained\": " << json_double(r.mean_mana_gained) << ",\n";
         json << "    \"damage_breakdown\": {\n";
-        json << "      \"pct_shadow_bolt\": " << json_double(r.pct_shadow_bolt) << ",\n";
-        json << "      \"pct_corruption\": " << json_double(r.pct_corruption) << ",\n";
-        json << "      \"pct_curse\": " << json_double(r.pct_curse) << ",\n";
-        json << "      \"pct_agony\": " << json_double(r.pct_agony) << ",\n";
-        json << "      \"pct_doom\": " << json_double(r.pct_doom) << ",\n";
-        json << "      \"pct_bane_of_havoc\": " << json_double(r.pct_bane_of_havoc) << ",\n";
-        json << "      \"pct_siphon_life\": " << json_double(r.pct_siphon_life) << ",\n";
-        json << "      \"pct_immolate\": " << json_double(r.pct_immolate) << ",\n";
-        json << "      \"pct_shadowburn\": " << json_double(r.pct_shadowburn) << ",\n";
-        json << "      \"pct_conflagrate\": " << json_double(r.pct_conflagrate) << ",\n";
-        json << "      \"pct_incinerate\": " << json_double(r.pct_incinerate) << ",\n";
-        json << "      \"pct_searing_pain\": " << json_double(r.pct_searing_pain) << ",\n";
-        json << "      \"pct_soul_fire\": " << json_double(r.pct_soul_fire) << ",\n";
-        json << "      \"pct_drain_hope\": " << json_double(r.pct_drain_hope) << ",\n";
-        json << "      \"pct_drain_life\": " << json_double(r.pct_drain_life) << ",\n";
-        json << "      \"pct_drain_soul\": " << json_double(r.pct_drain_soul) << ",\n";
-        json << "      \"pct_pet\": " << json_double(r.pct_pet) << ",\n";
-        json << "      \"pct_pet_imp\": " << json_double(r.pct_pet_imp) << ",\n";
-        json << "      \"pct_pet_succubus\": " << json_double(r.pct_pet_succubus) << ",\n";
-        json << "      \"pct_pet_melee\": " << json_double(r.pct_pet_melee) << ",\n";
-        json << "      \"pct_pet_lash_of_pain\": " << json_double(r.pct_pet_lash_of_pain) << ",\n";
-        json << "      \"pct_pet_firebolt\": " << json_double(r.pct_pet_firebolt) << ",\n";
-        json << "      \"pct_demonic_brand\": " << json_double(r.pct_demonic_brand) << ",\n";
+        json << "      \"pct_sw_pain\": " << json_double(r.pct_sw_pain) << ",\n";
+        json << "      \"pct_mind_flay\": " << json_double(r.pct_mind_flay) << ",\n";
+        json << "      \"pct_mind_blast\": " << json_double(r.pct_mind_blast) << ",\n";
+        json << "      \"pct_sw_death\": " << json_double(r.pct_sw_death) << ",\n";
+        json << "      \"pct_devouring_plague\": " << json_double(r.pct_devouring_plague) << ",\n";
+        json << "      \"pct_smite\": " << json_double(r.pct_smite) << ",\n";
+        json << "      \"pct_holy_fire\": " << json_double(r.pct_holy_fire) << ",\n";
+        json << "      \"pct_penance\": " << json_double(r.pct_penance) << ",\n";
+        json << "      \"pct_holy_nova\": " << json_double(r.pct_holy_nova) << ",\n";
+        json << "      \"pct_starshards\": " << json_double(r.pct_starshards) << ",\n";
+        json << "      \"pct_chastise\": " << json_double(r.pct_chastise) << ",\n";
+        json << "      \"pct_shadowguard\": " << json_double(r.pct_shadowguard) << ",\n";
         json << "      \"pct_touch_of_the_grave\": " << json_double(r.pct_touch_of_the_grave) << "\n";
         json << "    }\n";
         json << "  }\n";
@@ -375,10 +305,10 @@ inline std::string export_build_json(const WarlockSimulator& sim,
     return json.str();
 }
 
-inline std::string export_candidate_json(const CandidateResult& cand, const TargetConfig& target = TargetConfig{}) {
-    WarlockSimulator sim;
+inline std::string export_candidate_json(const CandidateResult& cand, const sim::TargetConfig& target = sim::TargetConfig{}) {
+    PriestSimulator sim;
     sim.race = cand.race;
-    sim.base_attrs = get_base_attributes_for_race(cand.race);
+    sim.base_attrs = sim::get_base_attributes_for_class_and_race(sim::PlayerClass::PRIEST, cand.race);
     sim.talents = cand.talents;
     sim.gear = cand.gear;
     sim.buffs = cand.buffs;
@@ -409,31 +339,19 @@ inline std::string sanitize_filename(const std::string& name) {
 
 inline std::string export_specs_batch_csv(const std::vector<CandidateResult>& results) {
     std::ostringstream csv;
-    csv << "Rank,Spec Name,Race,Mean DPS,Min DPS,Max DPS,StdDev,ISB Uptime,DPS/SP,DPS/Hit,DPS/Crit,DPS/Haste,DPS/Int,DPS/Spirit\n";
+    csv << "Rank,Spec Name,Race,Mean DPS,Min DPS,Max DPS,StdDev\n";
     for (const auto& r : results) {
         csv << r.rank << ",\"" << json_escape(r.name) << "\"," << race_to_string(r.race) << ","
-            << r.mean_dps << "," << r.min_dps << "," << r.max_dps << "," << r.std_dev_dps << ","
-            << (r.isb_uptime * 100.0) << "%";
-        if (r.stat_weights.valid) {
-            csv << "," << r.stat_weights.dps_per_sp
-                << "," << r.stat_weights.dps_per_hit
-                << "," << r.stat_weights.dps_per_crit
-                << "," << r.stat_weights.dps_per_haste
-                << "," << r.stat_weights.dps_per_int
-                << "," << r.stat_weights.dps_per_spirit;
-        } else {
-            csv << ",,,,,,";
-        }
-        csv << "\n";
+            << r.mean_dps << "," << r.min_dps << "," << r.max_dps << "," << r.std_dev_dps << "\n";
     }
     return csv.str();
 }
 
 inline std::string export_specs_batch_json(const std::vector<CandidateResult>& results,
-                                          const WarlockSimulator* base_sim = nullptr) {
+                                          const PriestSimulator* base_sim = nullptr) {
     std::ostringstream json;
     json << "{\n";
-    json << "  \"format\": \"warlock-specs-batch/1\",\n";
+    json << "  \"format\": \"priest-specs-batch/1\",\n";
     json << "  \"total_specs\": " << results.size() << ",\n";
     json << "  \"specs\": [\n";
     for (size_t i = 0; i < results.size(); ++i) {
@@ -446,22 +364,8 @@ inline std::string export_specs_batch_json(const std::vector<CandidateResult>& r
         json << "      \"min_dps\": " << json_double(r.min_dps) << ",\n";
         json << "      \"max_dps\": " << json_double(r.max_dps) << ",\n";
         json << "      \"std_dev_dps\": " << json_double(r.std_dev_dps) << ",\n";
-        json << "      \"isb_uptime\": " << json_double(r.isb_uptime) << ",\n";
-        if (r.stat_weights.valid) {
-            json << "      \"stat_weights\": {\n";
-            json << "        \"dps_per_sp\": " << json_double(r.stat_weights.dps_per_sp) << ",\n";
-            json << "        \"dps_per_hit\": " << json_double(r.stat_weights.dps_per_hit) << ",\n";
-            json << "        \"dps_per_crit\": " << json_double(r.stat_weights.dps_per_crit) << ",\n";
-            json << "        \"dps_per_haste\": " << json_double(r.stat_weights.dps_per_haste) << ",\n";
-            json << "        \"dps_per_int\": " << json_double(r.stat_weights.dps_per_int) << ",\n";
-            json << "        \"dps_per_spirit\": " << json_double(r.stat_weights.dps_per_spirit) << "\n";
-            json << "      },\n";
-        }
-        TargetConfig target = base_sim ? base_sim->target_config : TargetConfig{};
+        sim::TargetConfig target = base_sim ? base_sim->target_config : sim::TargetConfig{};
         std::string full_cfg = export_candidate_json(r, target);
-        // Indent full configuration
-        std::istringstream cfg_stream(full_cfg);
-        std::string line;
         json << "      \"full_configuration\": ";
         json << full_cfg;
         json << (i + 1 < results.size() ? "    },\n" : "    }\n");
@@ -472,26 +376,23 @@ inline std::string export_specs_batch_json(const std::vector<CandidateResult>& r
 }
 
 inline sim::ZipArchive create_specs_batch_zip(const std::vector<CandidateResult>& results,
-                                              const WarlockSimulator* base_sim = nullptr) {
+                                              const PriestSimulator* base_sim = nullptr) {
     sim::ZipArchive zip;
 
-    // 1. Add individual JSON files for each spec shown
     for (size_t i = 0; i < results.size(); ++i) {
         const auto& r = results[i];
         char rank_prefix[16];
         std::snprintf(rank_prefix, sizeof(rank_prefix), "%02zu_", i + 1);
         std::string filename = std::string(rank_prefix) + sanitize_filename(r.name) + ".json";
 
-        TargetConfig target = base_sim ? base_sim->target_config : TargetConfig{};
+        sim::TargetConfig target = base_sim ? base_sim->target_config : sim::TargetConfig{};
         std::string spec_json = export_candidate_json(r, target);
         zip.add_file(filename, spec_json);
     }
 
-    // 2. Add summary manifest JSON
     std::string batch_json = export_specs_batch_json(results, base_sim);
     zip.add_file("manifest.json", batch_json);
 
-    // 3. Add leaderboard CSV
     std::string batch_csv = export_specs_batch_csv(results);
     zip.add_file("leaderboard.csv", batch_csv);
 
@@ -499,4 +400,4 @@ inline sim::ZipArchive create_specs_batch_zip(const std::vector<CandidateResult>
 }
 
 } // namespace build_export
-} // namespace warlock
+} // namespace priest
