@@ -128,6 +128,26 @@ struct APLAnalysisReport {
     double avg_dps_loss = 0.0;
     double avg_dps_loss_pct = 0.0;
 
+    // Statistical dispersion and 95% confidence intervals
+    double apl_dps_stddev = 0.0;
+    double apl_dps_stderr = 0.0;
+    double apl_dps_ci_lower = 0.0;
+    double apl_dps_ci_upper = 0.0;
+
+    double mcts_dps_stddev = 0.0;
+    double mcts_dps_stderr = 0.0;
+    double mcts_dps_ci_lower = 0.0;
+    double mcts_dps_ci_upper = 0.0;
+
+    double dps_loss_stddev = 0.0;
+    double dps_loss_stderr = 0.0;
+    double dps_loss_ci_lower = 0.0;
+    double dps_loss_ci_upper = 0.0;
+
+    double optimality_pct = 100.0; // % of MCTS optimal ceiling
+    double optimality_pct_ci_lower = 100.0;
+    double optimality_pct_ci_upper = 100.0;
+
     size_t total_runs = 0;
     size_t total_decisions_evaluated = 0;
     size_t total_divergences = 0;
@@ -135,6 +155,156 @@ struct APLAnalysisReport {
 
     std::vector<APLRuleMismatchStat> top_mismatches;
     bool is_valid = false;
+
+    void recompute_summary() {
+        total_runs = runs.size();
+        if (runs.empty()) {
+            avg_apl_dps = 0.0;
+            avg_mcts_dps = 0.0;
+            avg_dps_loss = 0.0;
+            avg_dps_loss_pct = 0.0;
+            apl_dps_stddev = apl_dps_stderr = apl_dps_ci_lower = apl_dps_ci_upper = 0.0;
+            mcts_dps_stddev = mcts_dps_stderr = mcts_dps_ci_lower = mcts_dps_ci_upper = 0.0;
+            dps_loss_stddev = dps_loss_stderr = dps_loss_ci_lower = dps_loss_ci_upper = 0.0;
+            optimality_pct = optimality_pct_ci_lower = optimality_pct_ci_upper = 100.0;
+            total_decisions_evaluated = 0;
+            total_divergences = 0;
+            overall_agreement_pct = 100.0;
+            top_mismatches.clear();
+            is_valid = false;
+            return;
+        }
+
+        double sum_apl = 0.0;
+        double sum_mcts = 0.0;
+        double sum_loss = 0.0;
+        size_t total_decisions = 0;
+        size_t total_divs = 0;
+
+        for (const auto& r : runs) {
+            sum_apl += r.apl_dps;
+            sum_mcts += r.mcts_dps;
+            sum_loss += (r.mcts_dps - r.apl_dps);
+            total_decisions += r.total_decisions;
+            total_divs += r.divergence_count;
+        }
+
+        double n = static_cast<double>(runs.size());
+        avg_apl_dps = sum_apl / n;
+        avg_mcts_dps = sum_mcts / n;
+        avg_dps_loss = std::max(0.0, sum_loss / n);
+        avg_dps_loss_pct = (avg_mcts_dps > 0.0) ? (avg_dps_loss / avg_mcts_dps * 100.0) : 0.0;
+
+        optimality_pct = (avg_mcts_dps > 0.0) ? std::min(100.0, (avg_apl_dps / avg_mcts_dps) * 100.0) : 100.0;
+
+        double sum_sq_apl = 0.0;
+        double sum_sq_mcts = 0.0;
+        double sum_sq_loss = 0.0;
+
+        for (const auto& r : runs) {
+            double diff_apl = r.apl_dps - avg_apl_dps;
+            sum_sq_apl += diff_apl * diff_apl;
+
+            double diff_mcts = r.mcts_dps - avg_mcts_dps;
+            sum_sq_mcts += diff_mcts * diff_mcts;
+
+            double diff_loss = (r.mcts_dps - r.apl_dps) - avg_dps_loss;
+            sum_sq_loss += diff_loss * diff_loss;
+        }
+
+        if (runs.size() > 1) {
+            apl_dps_stddev = std::sqrt(sum_sq_apl / (n - 1.0));
+            apl_dps_stderr = apl_dps_stddev / std::sqrt(n);
+
+            mcts_dps_stddev = std::sqrt(sum_sq_mcts / (n - 1.0));
+            mcts_dps_stderr = mcts_dps_stddev / std::sqrt(n);
+
+            dps_loss_stddev = std::sqrt(sum_sq_loss / (n - 1.0));
+            dps_loss_stderr = dps_loss_stddev / std::sqrt(n);
+        } else {
+            apl_dps_stddev = apl_dps_stderr = 0.0;
+            mcts_dps_stddev = mcts_dps_stderr = 0.0;
+            dps_loss_stddev = dps_loss_stderr = 0.0;
+        }
+
+        apl_dps_ci_lower = std::max(0.0, avg_apl_dps - 1.96 * apl_dps_stderr);
+        apl_dps_ci_upper = avg_apl_dps + 1.96 * apl_dps_stderr;
+
+        mcts_dps_ci_lower = std::max(0.0, avg_mcts_dps - 1.96 * mcts_dps_stderr);
+        mcts_dps_ci_upper = avg_mcts_dps + 1.96 * mcts_dps_stderr;
+
+        dps_loss_ci_lower = std::max(0.0, avg_dps_loss - 1.96 * dps_loss_stderr);
+        dps_loss_ci_upper = avg_dps_loss + 1.96 * dps_loss_stderr;
+
+        double opt_delta = (avg_mcts_dps > 0.0 && runs.size() > 1) ? ((1.96 * dps_loss_stderr / avg_mcts_dps) * 100.0) : 0.0;
+        optimality_pct_ci_lower = std::clamp(optimality_pct - opt_delta, 0.0, 100.0);
+        optimality_pct_ci_upper = std::clamp(optimality_pct + opt_delta, 0.0, 100.0);
+
+        total_decisions_evaluated = total_decisions;
+        total_divergences = total_divs;
+        if (total_decisions > 0) {
+            size_t matching = (total_decisions > total_divergences) ? (total_decisions - total_divergences) : 0;
+            overall_agreement_pct = (static_cast<double>(matching) / static_cast<double>(total_decisions)) * 100.0;
+        } else {
+            overall_agreement_pct = 100.0;
+        }
+
+        struct MismatchAgg {
+            PriorityAction apl_act;
+            std::string apl_name;
+            PriorityAction mcts_act;
+            std::string mcts_name;
+            size_t count = 0;
+            double sum_dps_loss = 0.0;
+            double sum_confidence = 0.0;
+            std::string sample_rationale;
+        };
+        std::unordered_map<std::string, MismatchAgg> mismatch_map;
+
+        for (const auto& r : runs) {
+            for (const auto& ev : r.events) {
+                std::string key = ev.apl_action_name + " -> " + ev.mcts_action_name;
+                auto& item = mismatch_map[key];
+                item.apl_act = ev.apl_action;
+                item.apl_name = ev.apl_action_name;
+                item.mcts_act = ev.mcts_action;
+                item.mcts_name = ev.mcts_action_name;
+                item.count++;
+                item.sum_dps_loss += ev.delta_dps;
+                item.sum_confidence += ev.confidence_pct;
+                if (item.sample_rationale.empty()) {
+                    item.sample_rationale = ev.rationale;
+                }
+            }
+        }
+
+        top_mismatches.clear();
+        for (const auto& [_, agg] : mismatch_map) {
+            APLRuleMismatchStat stat;
+            stat.apl_action = agg.apl_act;
+            stat.apl_action_name = agg.apl_name;
+            stat.preferred_mcts_action = agg.mcts_act;
+            stat.preferred_mcts_action_name = agg.mcts_name;
+            stat.occurrences = agg.count;
+            stat.total_dps_loss = agg.sum_dps_loss;
+            stat.avg_dps_loss = agg.sum_dps_loss / static_cast<double>(std::max(size_t(1), agg.count));
+            stat.avg_confidence_pct = agg.sum_confidence / static_cast<double>(std::max(size_t(1), agg.count));
+            stat.primary_cause = agg.sample_rationale;
+            top_mismatches.push_back(stat);
+        }
+
+        std::sort(top_mismatches.begin(), top_mismatches.end(), [](const auto& a, const auto& b) {
+            if (a.occurrences != b.occurrences) return a.occurrences > b.occurrences;
+            return a.total_dps_loss > b.total_dps_loss;
+        });
+
+        is_valid = true;
+    }
+
+    void add_run(APLAnalysisRun run) {
+        runs.push_back(std::move(run));
+        recompute_summary();
+    }
 };
 
 class APLAnalyzer {
@@ -1272,83 +1442,7 @@ public:
         }
 
         report.runs = std::move(thread_runs);
-
-        // Compute aggregate metrics
-        double total_apl_dps = 0.0;
-        double total_mcts_dps = 0.0;
-        size_t total_decisions = 0;
-        size_t total_divergences = 0;
-
-        struct MismatchAgg {
-            PriorityAction apl_act;
-            std::string apl_name;
-            PriorityAction mcts_act;
-            std::string mcts_name;
-            size_t count = 0;
-            double sum_dps_loss = 0.0;
-            double sum_confidence = 0.0;
-            std::string sample_rationale;
-        };
-        std::unordered_map<std::string, MismatchAgg> mismatch_map;
-
-        for (const auto& r : report.runs) {
-            total_apl_dps += r.apl_dps;
-            total_mcts_dps += r.mcts_dps;
-            total_decisions += r.total_decisions;
-            total_divergences += r.divergence_count;
-
-            for (const auto& ev : r.events) {
-                std::string key = ev.apl_action_name + " -> " + ev.mcts_action_name;
-                auto& item = mismatch_map[key];
-                item.apl_act = ev.apl_action;
-                item.apl_name = ev.apl_action_name;
-                item.mcts_act = ev.mcts_action;
-                item.mcts_name = ev.mcts_action_name;
-                item.count++;
-                item.sum_dps_loss += ev.delta_dps;
-                item.sum_confidence += ev.confidence_pct;
-                if (item.sample_rationale.empty()) {
-                    item.sample_rationale = ev.rationale;
-                }
-            }
-        }
-
-        report.avg_apl_dps = total_apl_dps / static_cast<double>(report.total_runs);
-        report.avg_mcts_dps = total_mcts_dps / static_cast<double>(report.total_runs);
-        report.avg_dps_loss = std::max(0.0, report.avg_mcts_dps - report.avg_apl_dps);
-        report.avg_dps_loss_pct = (report.avg_dps_loss / std::max(1.0, report.avg_apl_dps)) * 100.0;
-
-        report.total_decisions_evaluated = total_decisions;
-        report.total_divergences = total_divergences;
-
-        if (total_decisions > 0) {
-            size_t matching = (total_decisions > total_divergences) ? (total_decisions - total_divergences) : 0;
-            report.overall_agreement_pct = (static_cast<double>(matching) / static_cast<double>(total_decisions)) * 100.0;
-        } else {
-            report.overall_agreement_pct = 100.0;
-        }
-
-        // Build top mismatches list
-        for (const auto& [_, agg] : mismatch_map) {
-            APLRuleMismatchStat stat;
-            stat.apl_action = agg.apl_act;
-            stat.apl_action_name = agg.apl_name;
-            stat.preferred_mcts_action = agg.mcts_act;
-            stat.preferred_mcts_action_name = agg.mcts_name;
-            stat.occurrences = agg.count;
-            stat.total_dps_loss = agg.sum_dps_loss;
-            stat.avg_dps_loss = agg.sum_dps_loss / static_cast<double>(std::max(size_t(1), agg.count));
-            stat.avg_confidence_pct = agg.sum_confidence / static_cast<double>(std::max(size_t(1), agg.count));
-            stat.primary_cause = agg.sample_rationale;
-            report.top_mismatches.push_back(stat);
-        }
-
-        std::sort(report.top_mismatches.begin(), report.top_mismatches.end(), [](const auto& a, const auto& b) {
-            if (a.occurrences != b.occurrences) return a.occurrences > b.occurrences;
-            return a.total_dps_loss > b.total_dps_loss;
-        });
-
-        report.is_valid = true;
+        report.recompute_summary();
         report_progress(1.0f, "Analysis Complete!");
         return report;
     }

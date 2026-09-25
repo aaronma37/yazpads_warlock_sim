@@ -31,6 +31,7 @@ struct APLAnalyzerWorkerState
   std::thread worker;
   std::mutex mtx;
   std::atomic<bool> is_running{false};
+  std::atomic<bool> stop_requested{false};
   std::atomic<float> progress{0.0f};
   std::string current_status;
   APLAnalysisReport live_report;
@@ -47,6 +48,11 @@ struct APLAnalyzerWorkerState
   {
     std::lock_guard<std::mutex> lock(mtx);
     return current_status;
+  }
+
+  void request_stop()
+  {
+    stop_requested.store(true, std::memory_order_relaxed);
   }
 };
 
@@ -130,9 +136,10 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
   static int blunder_rollouts_per_action = 512;
   static char blunder_filter[64] = "";
 
-  static int mcts_num_runs = 3;
+  static int mcts_num_runs = 5;
+  static bool mcts_continuous = false;
   static bool mcts_adaptive_rollouts = true;
-  static int mcts_rollouts_per_step = 512;
+  static int mcts_rollouts_per_step = 256;
   static int selected_mcts_run_idx = 0;
   static float timeline_zoom_px_per_sec = 16.0f;
 
@@ -343,10 +350,23 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
     WowResetTextBaseline();
     ImGui::Text("Runs:");
     ImGui::SetNextItemWidth(55.0f);
-    if (is_any_busy) ImGui::BeginDisabled();
+    if (is_any_busy || mcts_continuous) ImGui::BeginDisabled();
     WowInputInt("##FullMCTSNumRunsInput", &mcts_num_runs, 1, 5);
     if (mcts_num_runs < 1) mcts_num_runs = 1;
-    if (mcts_num_runs > 20) mcts_num_runs = 20;
+    if (mcts_num_runs > 500) mcts_num_runs = 500;
+    if (is_any_busy || mcts_continuous) ImGui::EndDisabled();
+    ImGui::EndGroup();
+
+    ImGui::SameLine(0, 8.0f);
+    ImGui::BeginGroup();
+    WowResetTextBaseline();
+    ImGui::Dummy(ImVec2(0, 1.0f));
+    if (is_any_busy) ImGui::BeginDisabled();
+    WowCheckbox("Run Until Stop", &mcts_continuous);
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("Continuously simulates MCTS episodes and streams live statistical updates\n(confidence intervals, optimality ratio, DPS gap) until you click Stop.");
+    }
     if (is_any_busy) ImGui::EndDisabled();
     ImGui::EndGroup();
 
@@ -380,18 +400,36 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
     if (is_mcts_busy)
     {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.72f, 0.22f, 0.22f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.28f, 0.28f, 1.0f));
+      ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.16f, 0.16f, 1.0f));
+      if (WowButton(mcts_worker.stop_requested.load() ? "Stopping..." : "Stop Analysis", ImVec2(130.0f, 26.0f)))
+      {
+        mcts_worker.request_stop();
+        mcts_worker.set_status(mcts_worker.progress.load(), "Stopping after current episodes finish...");
+      }
+      ImGui::PopStyleColor(3);
+
+      ImGui::SameLine(0, 8.0f);
       std::string m_status = mcts_worker.get_status();
       ImGui::ProgressBar(mcts_worker.progress.load(), ImVec2(180.0f, 26.0f), m_status.c_str());
     }
     else
     {
       if (is_any_busy) ImGui::BeginDisabled();
-      if (WowButton("Run Full MCTS Analysis", ImVec2(180.0f, 26.0f)))
+      const char* btn_label = mcts_continuous ? "Start Continuous Trace" : "Run Full MCTS Analysis";
+      if (WowButton(btn_label, ImVec2(180.0f, 26.0f)))
       {
         mcts_worker.is_running = true;
-        mcts_worker.set_status(0.05f, "Launching autonomous MCTS rollout workers...");
+        mcts_worker.stop_requested = false;
         mcts_worker.has_result = false;
+        {
+          std::lock_guard<std::mutex> lock(mcts_worker.mtx);
+          mcts_worker.live_report = APLAnalysisReport();
+        }
+        mcts_worker.set_status(0.02f, "Launching autonomous MCTS rollout workers...");
         active_view = ActiveAnalysisView::FULL_MCTS;
+        selected_mcts_run_idx = 0;
 
         if (mcts_worker.worker.joinable())
         {
@@ -399,48 +437,94 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         }
 
         WarlockSimulator sim_copy = sim;
-        int runs_cnt = mcts_num_runs;
+        int target_runs = mcts_continuous ? -1 : mcts_num_runs;
         int r_cnt = mcts_rollouts_per_step;
         bool adapt = mcts_adaptive_rollouts;
 
-#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-        auto& w = get_full_mcts_analyzer_worker_state();
-        APLAnalysisReport res = APLAnalyzer::run_full_mcts_analysis(
-            sim_copy,
-            runs_cnt,
-            r_cnt,
-            [&](float p, const std::string& status) {
-              w.set_status(p, status);
-            },
-            1337,
-            adapt);
-        {
-          std::lock_guard<std::mutex> lock(w.mtx);
-          w.live_report = std::move(res);
-          w.has_result = true;
-          w.is_running = false;
-        }
-#else
-        mcts_worker.worker = std::thread([sim_copy, runs_cnt, r_cnt, adapt]() {
+        mcts_worker.worker = std::thread([sim_copy, target_runs, r_cnt, adapt]() {
           auto& w = get_full_mcts_analyzer_worker_state();
-          APLAnalysisReport res = APLAnalyzer::run_full_mcts_analysis(
-              sim_copy,
-              runs_cnt,
-              r_cnt,
-              [&](float p, const std::string& status) {
-                w.set_status(p, status);
-              },
-              1337,
-              adapt);
+
+          unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
+#if defined(__EMSCRIPTEN__)
+          size_t avail_threads = (hw_threads > 1) ? (hw_threads - 1) : 1;
+#else
+          size_t avail_threads = hw_threads;
+#endif
+          bool is_continuous = (target_runs <= 0);
+          size_t num_workers = is_continuous ? avail_threads : std::min(avail_threads, static_cast<size_t>(target_runs));
+          if (num_workers < 1) num_workers = 1;
+
+          std::atomic<size_t> next_run_idx{0};
+          std::atomic<size_t> completed_count{0};
+          uint64_t base_seed = 1337;
+
+          auto worker_loop = [&](size_t /*worker_id*/) {
+            while (!w.stop_requested.load(std::memory_order_relaxed)) {
+              size_t run_idx = next_run_idx.fetch_add(1, std::memory_order_relaxed);
+              if (!is_continuous && run_idx >= static_cast<size_t>(target_runs)) {
+                break;
+              }
+
+              uint64_t run_seed = base_seed + run_idx * 1337 + 7;
+              APLAnalysisRun single_run = APLAnalyzer::analyze_single_run(
+                  sim_copy,
+                  run_idx + 1,
+                  run_seed,
+                  r_cnt,
+                  AnalysisMode::FULL_MCTS_ONLY,
+                  adapt,
+                  nullptr,
+                  1
+              );
+
+              if (w.stop_requested.load(std::memory_order_relaxed) && single_run.apl_dps <= 0.0) {
+                break;
+              }
+
+              // Safely add to live report under lock
+              {
+                std::lock_guard<std::mutex> lock(w.mtx);
+                w.live_report.add_run(std::move(single_run));
+                w.has_result = true;
+              }
+
+              size_t done = completed_count.fetch_add(1, std::memory_order_relaxed) + 1;
+              float prog = 0.0f;
+              std::string msg;
+              if (is_continuous) {
+                prog = 0.5f;
+                std::ostringstream ss;
+                ss << "Run #" << done << " finished (Running continuously)...";
+                msg = ss.str();
+              } else {
+                prog = 0.05f + 0.95f * (static_cast<float>(done) / static_cast<float>(target_runs));
+                std::ostringstream ss;
+                ss << "Completed Run #" << done << " / " << target_runs << "...";
+                msg = ss.str();
+              }
+              w.set_status(prog, msg);
+            }
+          };
+
+          std::vector<std::thread> workers;
+          workers.reserve(num_workers);
+          for (size_t t = 0; t < num_workers; ++t) {
+            workers.emplace_back(worker_loop, t);
+          }
+
+          for (auto& worker : workers) {
+            if (worker.joinable()) {
+              worker.join();
+            }
+          }
 
           {
             std::lock_guard<std::mutex> lock(w.mtx);
-            w.live_report = std::move(res);
-            w.has_result = true;
+            w.live_report.is_valid = !w.live_report.runs.empty();
             w.is_running = false;
           }
+          w.set_status(1.0f, w.stop_requested.load() ? "Analysis Stopped" : "Analysis Complete!");
         });
-#endif
       }
       if (is_any_busy) ImGui::EndDisabled();
     }
@@ -728,146 +812,259 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         }
       }
     }
-    else if (active_view == ActiveAnalysisView::FULL_MCTS && mcts_worker.has_result)
+    else if (active_view == ActiveAnalysisView::FULL_MCTS && (mcts_worker.has_result || is_mcts_busy))
     {
       // ---------------------------------------------------------------------
       // VIEW B: FULL MCTS OPTIMAL POLICY TRACE RESULTS (FULL WIDTH)
       // ---------------------------------------------------------------------
-      const auto& report = mcts_worker.live_report;
-
-      // Top KPI Cards
-      float avail_w = ImGui::GetContentRegionAvail().x;
-      float card_w = (avail_w - 2.0f * 10.0f) / 3.0f;
-      float card_h = 66.0f;
-
-      BeginWowChild("MCTSKPI1", ImVec2(card_w, card_h), true);
+      APLAnalysisReport report;
       {
-        ImGui::TextDisabled("ACTIVE APL MEAN DPS");
-        ImGui::TextColored(ImVec4(0.4f, 0.75f, 1.0f, 1.0f), "%.1f DPS", report.avg_apl_dps);
-        ImGui::TextDisabled("Current priority list throughput");
+        std::lock_guard<std::mutex> lock(mcts_worker.mtx);
+        report = mcts_worker.live_report;
       }
-      EndWowChild();
 
-      ImGui::SameLine(0, 10.0f);
-
-      BeginWowChild("MCTSKPI2", ImVec2(card_w, card_h), true);
+      if (report.runs.empty())
       {
-        ImGui::TextDisabled("MCTS OPTIMAL POLICY CEILING");
-        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS", report.avg_mcts_dps);
-        ImGui::TextDisabled("Empirical forward rollout ceiling");
-      }
-      EndWowChild();
-
-      ImGui::SameLine(0, 10.0f);
-
-      BeginWowChild("MCTSKPI3", ImVec2(card_w, card_h), true);
-      {
-        ImGui::TextDisabled("DPS GAP (OPTIMIZATION POTENTIAL)");
-        ImVec4 gap_color = (report.avg_dps_loss < 3.0) ? ImVec4(0.2f, 0.9f, 0.3f, 1.0f) : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
-        ImGui::TextColored(gap_color, "+%.1f DPS (+%.1f%%)", report.avg_dps_loss, report.avg_dps_loss_pct);
-        ImGui::TextDisabled("Potential rotational yield");
-      }
-      EndWowChild();
-
-      ImGui::Spacing();
-
-      // Multi-Run Summary Table
-      if (report.runs.size() > 1)
-      {
-        ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "MCTS Multi-Episode Comparison Summary:");
-        if (ImGui::BeginTable("MCTSRunsSummaryTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
-        {
-          ImGui::TableSetupColumn("Episode", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-          ImGui::TableSetupColumn("RNG Seed", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-          ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-          ImGui::TableSetupColumn("APL DPS", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-          ImGui::TableSetupColumn("MCTS DPS Ceiling", ImGuiTableColumnFlags_WidthFixed, 130.0f);
-          ImGui::TableSetupColumn("Optimization Delta", ImGuiTableColumnFlags_WidthStretch);
-          ImGui::TableHeadersRow();
-
-          for (size_t i = 0; i < report.runs.size(); ++i)
-          {
-            const auto& r = report.runs[i];
-            ImGui::TableNextRow();
-
-            // Col 0: Episode
-            ImGui::TableNextColumn();
-            bool is_sel = (selected_mcts_run_idx == static_cast<int>(i));
-            char sel_label[32];
-            snprintf(sel_label, sizeof(sel_label), "Run #%zu%s", i + 1, is_sel ? " *" : "");
-            if (ImGui::Selectable(sel_label, is_sel, ImGuiSelectableFlags_SpanAllColumns))
-            {
-              selected_mcts_run_idx = static_cast<int>(i);
-            }
-
-            // Col 1: Seed
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("0x%llX", (unsigned long long)r.seed);
-
-            // Col 2: Duration
-            ImGui::TableNextColumn();
-            ImGui::Text("%.1fs", r.fight_duration);
-
-            // Col 3: APL DPS
-            ImGui::TableNextColumn();
-            ImGui::TextColored(ImVec4(0.4f, 0.75f, 1.0f, 1.0f), "%.1f DPS", r.apl_dps);
-
-            // Col 4: MCTS DPS
-            ImGui::TableNextColumn();
-            ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS", r.mcts_dps);
-
-            // Col 5: Delta
-            ImGui::TableNextColumn();
-            double diff = r.mcts_dps - r.apl_dps;
-            double pct = (r.apl_dps > 0) ? (diff / r.apl_dps * 100.0) : 0.0;
-            if (diff > 0.1)
-            {
-              ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.3f, 1.0f), "+%.1f DPS (+%.1f%%)", diff, pct);
-            }
-            else if (diff < -0.1)
-            {
-              ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.4f, 1.0f), "%.1f DPS (%.1f%%)", diff, pct);
-            }
-            else
-            {
-              ImGui::TextDisabled("%s", "0.0 DPS (0.0%)");
-            }
-          }
-          ImGui::EndTable();
-        }
         ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "MCTS Autonomous Simulation Initializing...");
+        ImGui::Spacing();
+        ImGui::TextDisabled("Simulating initial episodes and evaluating forward rollouts in background...");
+        ImGui::ProgressBar(mcts_worker.progress.load(), ImVec2(-1, 24.0f), mcts_worker.get_status().c_str());
       }
-
-      // Episode Selector & Zoom Toolbar
-      BeginWowChild("MCTSNavBar", ImVec2(0, 38.0f), true);
+      else
       {
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("Select Episode for Timeline:");
-        ImGui::SameLine();
+        // Top KPI Cards (4 side-by-side cards)
+        float avail_w = ImGui::GetContentRegionAvail().x;
+        float card_w = (avail_w - 3.0f * 10.0f) / 4.0f;
+        float card_h = 76.0f;
 
-        for (size_t i = 0; i < report.runs.size(); ++i)
+        // Card 1: Active APL Mean DPS
+        BeginWowChild("MCTSKPI1", ImVec2(card_w, card_h), true);
         {
-          if (i > 0) ImGui::SameLine(0, 6.0f);
-          std::string label = "Run #" + std::to_string(i + 1);
-          bool is_selected = (selected_mcts_run_idx == static_cast<int>(i));
-          if (WowTabButton(label.c_str(), is_selected, 85.0f, 24.0f))
-          {
-            selected_mcts_run_idx = static_cast<int>(i);
+          ImGui::TextDisabled("ACTIVE APL MEAN DPS");
+          ImGui::TextColored(ImVec4(0.4f, 0.75f, 1.0f, 1.0f), "%.1f DPS", report.avg_apl_dps);
+          if (report.runs.size() > 1) {
+            ImGui::TextDisabled("95%% CI: [%.1f, %.1f] (±%.1f)", report.apl_dps_ci_lower, report.apl_dps_ci_upper, report.apl_dps_stderr * 1.96);
+          } else {
+            ImGui::TextDisabled("Single episode baseline");
           }
         }
+        EndWowChild();
 
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 180.0f);
-        ImGui::BeginGroup();
-        WowResetTextBaseline();
-        ImGui::Text("Zoom (px/s):");
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(75.0f);
-        WowInputFloat("##MCTSZoomInput", &timeline_zoom_px_per_sec, 2.0f, 10.0f, "%.0f");
-        if (timeline_zoom_px_per_sec < 4.0f) timeline_zoom_px_per_sec = 4.0f;
-        if (timeline_zoom_px_per_sec > 100.0f) timeline_zoom_px_per_sec = 100.0f;
-        ImGui::EndGroup();
+        ImGui::SameLine(0, 10.0f);
+
+        // Card 2: MCTS Optimal Ceiling
+        BeginWowChild("MCTSKPI2", ImVec2(card_w, card_h), true);
+        {
+          ImGui::TextDisabled("MCTS OPTIMAL CEILING");
+          ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS", report.avg_mcts_dps);
+          if (report.runs.size() > 1) {
+            ImGui::TextDisabled("95%% CI: [%.1f, %.1f] (±%.1f)", report.mcts_dps_ci_lower, report.mcts_dps_ci_upper, report.mcts_dps_stderr * 1.96);
+          } else {
+            ImGui::TextDisabled("Empirical rollout ceiling");
+          }
+        }
+        EndWowChild();
+
+        ImGui::SameLine(0, 10.0f);
+
+        // Card 3: DPS Gap (Optimization Potential)
+        BeginWowChild("MCTSKPI3", ImVec2(card_w, card_h), true);
+        {
+          ImGui::TextDisabled("DPS GAP (OPTIMIZATION POTENTIAL)");
+          ImVec4 gap_color = (report.avg_dps_loss < 5.0) ? ImVec4(0.2f, 0.9f, 0.3f, 1.0f) :
+                             (report.avg_dps_loss < 25.0) ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+          ImGui::TextColored(gap_color, "+%.1f DPS (+%.1f%%)", report.avg_dps_loss, report.avg_dps_loss_pct);
+          if (report.runs.size() > 1) {
+            ImGui::TextDisabled("95%% CI: [%+.1f, %+.1f] DPS", report.dps_loss_ci_lower, report.dps_loss_ci_upper);
+          } else {
+            ImGui::TextDisabled("Potential rotational yield");
+          }
+        }
+        EndWowChild();
+
+        ImGui::SameLine(0, 10.0f);
+
+        // Card 4: APL % of Optimal Ceiling (Prominent & Bold with 95% Confidence Interval)
+        BeginWowChild("MCTSKPI4", ImVec2(card_w, card_h), true);
+        {
+          ImGui::TextDisabled("APL %% OF OPTIMAL");
+          ImVec4 opt_color = (report.optimality_pct >= 97.0) ? ImVec4(0.25f, 1.0f, 0.35f, 1.0f) :
+                             (report.optimality_pct >= 90.0) ? ImVec4(1.0f, 0.85f, 0.2f, 1.0f) : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+          ImGui::TextColored(opt_color, "%.2f%%", report.optimality_pct);
+          if (report.runs.size() > 1) {
+            double margin = (report.avg_mcts_dps > 0.0) ? ((1.96 * report.dps_loss_stderr / report.avg_mcts_dps) * 100.0) : 0.0;
+            ImGui::TextDisabled("95%% CI: [%.2f%%, %.2f%%] (±%.2f%%)", report.optimality_pct_ci_lower, report.optimality_pct_ci_upper, margin);
+            if (ImGui::IsItemHovered())
+            {
+              ImGui::BeginTooltip();
+              ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "Statistical Confidence in %% of Optimal:");
+              ImGui::Separator();
+              ImGui::Text(" • Estimated APL Optimality: %.2f%% of MCTS ceiling", report.optimality_pct);
+              ImGui::Text(" • 95%% Confidence Interval: [%.2f%%, %.2f%%]", report.optimality_pct_ci_lower, report.optimality_pct_ci_upper);
+              ImGui::Text(" • Margin of Error: ±%.2f%% across %zu sample runs", margin, report.runs.size());
+              ImGui::Spacing();
+              ImGui::TextDisabled("As more runs complete, the confidence interval narrows tighter,\nincreasing precision in your exact APL rating.");
+              ImGui::EndTooltip();
+            }
+          } else {
+            ImGui::TextDisabled("Single episode (Run more for CI)");
+          }
+        }
+        EndWowChild();
+
+        ImGui::Spacing();
+
+        // Multi-Run Summary Table
+        if (report.runs.size() > 1)
+        {
+          ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Multi-Episode Trace Comparison (%zu Episodes%s):", 
+                             report.runs.size(), is_mcts_busy ? " - Live Updating..." : "");
+          if (ImGui::BeginTable("MCTSRunsSummaryTable", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY, ImVec2(0, 150.0f)))
+          {
+            ImGui::TableSetupColumn("Episode", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+            ImGui::TableSetupColumn("RNG Seed", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Duration", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+            ImGui::TableSetupColumn("APL DPS", ImGuiTableColumnFlags_WidthFixed, 95.0f);
+            ImGui::TableSetupColumn("MCTS DPS Ceiling", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Optimization Delta", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            ImGui::TableSetupColumn("% of Optimal", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+
+            for (size_t i = 0; i < report.runs.size(); ++i)
+            {
+              const auto& r = report.runs[i];
+              ImGui::TableNextRow();
+
+              // Col 0: Episode
+              ImGui::TableNextColumn();
+              bool is_sel = (selected_mcts_run_idx == static_cast<int>(i));
+              char sel_label[32];
+              snprintf(sel_label, sizeof(sel_label), "Run #%zu%s", i + 1, is_sel ? " *" : "");
+              if (ImGui::Selectable(sel_label, is_sel, ImGuiSelectableFlags_SpanAllColumns))
+              {
+                selected_mcts_run_idx = static_cast<int>(i);
+              }
+
+              // Col 1: Seed
+              ImGui::TableNextColumn();
+              ImGui::TextDisabled("0x%llX", (unsigned long long)r.seed);
+
+              // Col 2: Duration
+              ImGui::TableNextColumn();
+              ImGui::Text("%.1fs", r.fight_duration);
+
+              // Col 3: APL DPS
+              ImGui::TableNextColumn();
+              ImGui::TextColored(ImVec4(0.4f, 0.75f, 1.0f, 1.0f), "%.1f DPS", r.apl_dps);
+
+              // Col 4: MCTS DPS
+              ImGui::TableNextColumn();
+              ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS", r.mcts_dps);
+
+              // Col 5: Delta
+              ImGui::TableNextColumn();
+              double diff = r.mcts_dps - r.apl_dps;
+              double pct = (r.apl_dps > 0) ? (diff / r.apl_dps * 100.0) : 0.0;
+              if (diff > 0.1)
+              {
+                ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.3f, 1.0f), "+%.1f DPS (+%.1f%%)", diff, pct);
+              }
+              else if (diff < -0.1)
+              {
+                ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.4f, 1.0f), "%.1f DPS (%.1f%%)", diff, pct);
+              }
+              else
+              {
+                ImGui::TextDisabled("%s", "0.0 DPS (0.0%)");
+              }
+
+              // Col 6: % of Optimal (Clean number only, without redundant text)
+              ImGui::TableNextColumn();
+              double opt_ratio = (r.mcts_dps > 0.0) ? ((r.apl_dps / r.mcts_dps) * 100.0) : 100.0;
+              ImVec4 row_opt_c = (opt_ratio >= 97.0) ? ImVec4(0.2f, 0.9f, 0.3f, 1.0f) :
+                                 (opt_ratio >= 90.0) ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+              ImGui::TextColored(row_opt_c, "%.1f%%", opt_ratio);
+            }
+            ImGui::EndTable();
+          }
+          ImGui::Spacing();
+        }
+
+        // Clamp selected episode index
+        if (selected_mcts_run_idx >= static_cast<int>(report.runs.size()))
+        {
+          selected_mcts_run_idx = static_cast<int>(report.runs.size()) - 1;
+        }
+        if (selected_mcts_run_idx < 0) selected_mcts_run_idx = 0;
+
+        // Episode Selector & Zoom Toolbar
+        BeginWowChild("MCTSNavBar", ImVec2(0, 38.0f), true);
+        {
+          ImGui::AlignTextToFramePadding();
+          ImGui::Text("Timeline Episode (%zu):", report.runs.size());
+          ImGui::SameLine();
+
+          if (report.runs.size() <= 8)
+          {
+            for (size_t i = 0; i < report.runs.size(); ++i)
+            {
+              if (i > 0) ImGui::SameLine(0, 6.0f);
+              std::string label = "Run #" + std::to_string(i + 1);
+              bool is_selected = (selected_mcts_run_idx == static_cast<int>(i));
+              if (WowTabButton(label.c_str(), is_selected, 75.0f, 24.0f))
+              {
+                selected_mcts_run_idx = static_cast<int>(i);
+              }
+            }
+          }
+          else
+          {
+            ImGui::SetNextItemWidth(170.0f);
+            std::string combo_label = "Run #" + std::to_string(selected_mcts_run_idx + 1) + " (" +
+                                      std::to_string(static_cast<int>(report.runs[selected_mcts_run_idx].apl_dps)) + " DPS)";
+            if (ImGui::BeginCombo("##SelectedMCTSEpisodeCombo", combo_label.c_str()))
+            {
+              for (size_t i = 0; i < report.runs.size(); ++i)
+              {
+                bool is_selected = (selected_mcts_run_idx == static_cast<int>(i));
+                std::string item_label = "Run #" + std::to_string(i + 1) + " (" +
+                                         std::to_string(static_cast<int>(report.runs[i].apl_dps)) + " vs " +
+                                         std::to_string(static_cast<int>(report.runs[i].mcts_dps)) + " DPS)";
+                if (ImGui::Selectable(item_label.c_str(), is_selected))
+                {
+                  selected_mcts_run_idx = static_cast<int>(i);
+                }
+                if (is_selected) ImGui::SetItemDefaultFocus();
+              }
+              ImGui::EndCombo();
+            }
+
+            ImGui::SameLine(0, 6.0f);
+            if (WowButton("<", ImVec2(32.0f, 24.0f)) && selected_mcts_run_idx > 0)
+            {
+              selected_mcts_run_idx--;
+            }
+            ImGui::SameLine(0, 4.0f);
+            if (WowButton(">", ImVec2(32.0f, 24.0f)) && selected_mcts_run_idx + 1 < static_cast<int>(report.runs.size()))
+            {
+              selected_mcts_run_idx++;
+            }
+          }
+
+          ImGui::SameLine(ImGui::GetContentRegionAvail().x - 180.0f);
+          ImGui::BeginGroup();
+          WowResetTextBaseline();
+          ImGui::Text("Zoom (px/s):");
+          ImGui::SameLine();
+          ImGui::SetNextItemWidth(75.0f);
+          WowInputFloat("##MCTSZoomInput", &timeline_zoom_px_per_sec, 2.0f, 10.0f, "%.0f");
+          if (timeline_zoom_px_per_sec < 4.0f) timeline_zoom_px_per_sec = 4.0f;
+          if (timeline_zoom_px_per_sec > 100.0f) timeline_zoom_px_per_sec = 100.0f;
+          ImGui::EndGroup();
+        }
+        EndWowChild();
       }
-      EndWowChild();
 
       ImGui::Spacing();
 

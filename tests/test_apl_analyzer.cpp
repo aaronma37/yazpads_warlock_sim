@@ -172,4 +172,44 @@ TEST_CASE(APLAnalyzerTests, MultithreadedBlunderAnalysisDeterministicEquivalence
     }
 }
 
+TEST_CASE(APLAnalyzerTests, ReportStatisticalConfidenceBoundsAndOptimality) {
+    APLAnalysisReport report;
+    CHECK_EQ(report.total_runs, 0);
+
+    APLAnalysisRun r1;
+    r1.run_index = 1;
+    r1.apl_dps = 2000.0;
+    r1.mcts_dps = 2100.0;
+    r1.total_decisions = 50;
+    r1.divergence_count = 2;
+    report.add_run(r1);
+
+    CHECK_EQ(report.total_runs, 1);
+    CHECK_NEAR(report.avg_apl_dps, 2000.0, 1e-6);
+    CHECK_NEAR(report.avg_mcts_dps, 2100.0, 1e-6);
+    CHECK_NEAR(report.avg_dps_loss, 100.0, 1e-6);
+    CHECK_NEAR(report.optimality_pct, (2000.0 / 2100.0) * 100.0, 1e-4);
+    CHECK_EQ(report.apl_dps_stderr, 0.0);
+
+    APLAnalysisRun r2;
+    r2.run_index = 2;
+    r2.apl_dps = 2050.0;
+    r2.mcts_dps = 2150.0;
+    r2.total_decisions = 50;
+    r2.divergence_count = 1;
+    report.add_run(r2);
+
+    CHECK_EQ(report.total_runs, 2);
+    CHECK_NEAR(report.avg_apl_dps, 2025.0, 1e-6);
+    CHECK_NEAR(report.avg_mcts_dps, 2125.0, 1e-6);
+    CHECK_NEAR(report.avg_dps_loss, 100.0, 1e-6);
+    CHECK(report.apl_dps_stddev > 0.0);
+    CHECK(report.apl_dps_stderr > 0.0);
+    CHECK(report.apl_dps_ci_lower < report.avg_apl_dps);
+    CHECK(report.apl_dps_ci_upper > report.avg_apl_dps);
+    CHECK(report.optimality_pct > 90.0 && report.optimality_pct <= 100.0);
+    CHECK(report.optimality_pct_ci_lower <= report.optimality_pct);
+    CHECK(report.optimality_pct_ci_upper >= report.optimality_pct);
+}
+
 
