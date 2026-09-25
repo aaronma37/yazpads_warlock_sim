@@ -91,10 +91,6 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
   // -------------------------------------------------------------------------
   BeginWowChild("TopCard_SynthesizeAPL", ImVec2(0, top_h), true);
   {
-    ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "APL Policy Synthesis Engine (MCTS-Guided DAgger & Continuous Levers)");
-
-    ImGui::Spacing();
-
     // Group 0: Threads
     ImGui::BeginGroup();
     WowResetTextBaseline();

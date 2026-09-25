@@ -15,11 +15,10 @@ struct CommonSpellBookEntry
   std::string rank;
   std::string school_str;
   std::string base_cast_str;
+  std::string base_cd_str;
   std::string base_mana_str;
-  std::string direct_dmg_str;
-  std::string dot_dmg_str;
+  std::string damage_effect_str;
   std::string coeff_str;
-  std::string sim_formula;
   std::string icon_name;
 };
 
@@ -42,11 +41,11 @@ inline void render_unified_spellbook_table(const char* table_id,
     ImGui::TableSetupColumn("Spell", ImGuiTableColumnFlags_WidthFixed, 180.0f);
     ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 70.0f);
     ImGui::TableSetupColumn("School", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-    ImGui::TableSetupColumn("Cast Time", ImGuiTableColumnFlags_WidthFixed, 105.0f);
-    ImGui::TableSetupColumn("Mana Cost", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-    ImGui::TableSetupColumn("Base Damage / Effect", ImGuiTableColumnFlags_WidthFixed, 260.0f);
+    ImGui::TableSetupColumn("Cast Time", ImGuiTableColumnFlags_WidthFixed, 95.0f);
+    ImGui::TableSetupColumn("CD", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+    ImGui::TableSetupColumn("Mana Cost", ImGuiTableColumnFlags_WidthFixed, 95.0f);
+    ImGui::TableSetupColumn("Base Damage / Effect", ImGuiTableColumnFlags_WidthStretch);
     ImGui::TableSetupColumn("SP Coefficient", ImGuiTableColumnFlags_WidthFixed, 115.0f);
-    ImGui::TableSetupColumn("Formula", ImGuiTableColumnFlags_WidthStretch);
     ImGui::TableHeadersRow();
 
     std::string query = search_filter;
@@ -116,32 +115,46 @@ inline void render_unified_spellbook_table(const char* table_id,
       ImGui::AlignTextToFramePadding();
       ImGui::Text("%s", sp.base_cast_str.c_str());
 
-      // Col 4: Mana Cost
+      // Col 4: CD
       ImGui::TableSetColumnIndex(4);
+      ImGui::AlignTextToFramePadding();
+      if (sp.base_cd_str == "---" || sp.base_cd_str.empty())
+      {
+        ImGui::TextColored(ImVec4(0.50f, 0.50f, 0.50f, 1.0f), "---");
+      }
+      else
+      {
+        ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.40f, 1.0f), "%s", sp.base_cd_str.c_str());
+      }
+
+      // Col 5: Mana Cost
+      ImGui::TableSetColumnIndex(5);
       ImGui::AlignTextToFramePadding();
       ImGui::TextColored(ImVec4(0.40f, 0.75f, 1.0f, 1.0f), "%s", sp.base_mana_str.c_str());
 
-      // Col 5: Base Damage / Effect
-      ImGui::TableSetColumnIndex(5);
-      ImGui::AlignTextToFramePadding();
-      if (!sp.direct_dmg_str.empty() && sp.direct_dmg_str != "None")
-      {
-        ImGui::Text("%s", sp.direct_dmg_str.c_str());
-      }
-      if (!sp.dot_dmg_str.empty() && sp.dot_dmg_str != "None")
-      {
-        ImGui::TextColored(ImVec4(0.50f, 0.90f, 0.50f, 1.0f), "%s", sp.dot_dmg_str.c_str());
-      }
-
-      // Col 6: SP Coefficient
+      // Col 6: Base Damage / Effect
       ImGui::TableSetColumnIndex(6);
       ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.40f, 1.0f), "%s", sp.coeff_str.c_str());
+      if (sp.damage_effect_str == "---" || sp.damage_effect_str.empty())
+      {
+        ImGui::TextColored(ImVec4(0.50f, 0.50f, 0.50f, 1.0f), "---");
+      }
+      else
+      {
+        ImGui::Text("%s", sp.damage_effect_str.c_str());
+      }
 
-      // Col 7: Formula
+      // Col 7: SP Coefficient
       ImGui::TableSetColumnIndex(7);
       ImGui::AlignTextToFramePadding();
-      ImGui::TextColored(ImVec4(0.40f, 0.90f, 1.0f, 1.0f), "%s", sp.sim_formula.c_str());
+      if (sp.coeff_str == "---" || sp.coeff_str.empty())
+      {
+        ImGui::TextColored(ImVec4(0.50f, 0.50f, 0.50f, 1.0f), "---");
+      }
+      else
+      {
+        ImGui::TextColored(ImVec4(1.0f, 0.80f, 0.40f, 1.0f), "%s", sp.coeff_str.c_str());
+      }
     }
 
     ImGui::EndTable();

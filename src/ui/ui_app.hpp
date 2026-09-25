@@ -476,15 +476,19 @@ class WarlockSimApp
 
       case AppTab::COMPARE_STANDARD_SPECS:
       {
+        BeginWowChild("CompareSpecsPane", ImVec2(0, full_height), true);
         render_panel_optimizer(
             sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset, 1);
+        EndWowChild();
         break;
       }
 
       case AppTab::CONSTRAINED_SPEC_SEARCH:
       {
+        BeginWowChild("ConstrainedSearchPane", ImVec2(0, full_height), true);
         render_panel_optimizer(
             sim, optimizer_results, is_optimizing, opt_progress, opt_task_name, &request_switch_to_preset, 0);
+        EndWowChild();
         break;
       }
 
@@ -583,15 +587,19 @@ class WarlockSimApp
 
       case AppTab::COMPARE_STANDARD_SPECS:
       {
+        BeginWowChild("PriestCompareSpecsPane", ImVec2(0, full_height), true);
         priest::render_priest_panel_optimizer(
             priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset, 1);
+        EndWowChild();
         break;
       }
 
       case AppTab::CONSTRAINED_SPEC_SEARCH:
       {
+        BeginWowChild("PriestConstrainedSearchPane", ImVec2(0, full_height), true);
         priest::render_priest_panel_optimizer(
             priest_sim, priest_optimizer_results, is_priest_optimizing, priest_opt_progress, priest_opt_task_name, &request_priest_switch_to_preset, 0);
+        EndWowChild();
         break;
       }
 

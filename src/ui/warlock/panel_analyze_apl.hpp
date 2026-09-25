@@ -818,7 +818,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             // Col 7: Trajectory Diff Inspector Modal Trigger
             ImGui::TableNextColumn();
             char pv_btn_id[64];
-            snprintf(pv_btn_id, sizeof(pv_btn_id), "Compare PV##pv_btn_%zu", ev.decision_step);
+            snprintf(pv_btn_id, sizeof(pv_btn_id), "Compare##blunder_diff_%zu", ev.decision_step);
             if (WowButton(pv_btn_id, ImVec2(95.0f, 22.0f)))
             {
               size_t n_rollouts = static_cast<size_t>(std::max(16, blunder_rollouts_per_action));
@@ -853,12 +853,6 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
             // Header Banner
             ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "FULL-ENCOUNTER CONTRASTIVE TRAJECTORY & COMBAT METRICS DIFF (%zu Rollouts Ensemble)", diff.ensemble_size);
-            ImGui::SameLine(0, 16.0f);
-            if (diff.net_damage_delta > 0.0) {
-              ImGui::TextColored(ImVec4(0.25f, 0.95f, 0.35f, 1.0f), "Encounter Advantage: +%.0f Total Dmg (+%.1f DPS | +%.1f%% Value)",
-                                 diff.net_damage_delta, diff.net_dps_delta,
-                                 (ma.total_damage > 0.0 ? (diff.net_damage_delta / ma.total_damage * 100.0) : 0.0));
-            }
 
             ImGui::Spacing();
             ImGui::Separator();
@@ -1684,17 +1678,6 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
       // ---------------------------------------------------------------------
       // VIEW C: IDLE INSTRUCTIONS (BEFORE EITHER IS RUN)
       // ---------------------------------------------------------------------
-      ImGui::Spacing();
-      ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "APL Strategy & Policy Trace Analyzer");
-      ImGui::Spacing();
-      ImGui::TextWrapped(
-          "Choose an analysis tool above to evaluate your active priority list against dynamic Monte Carlo Tree Search rollouts:\n\n"
-          " • APL Blunder Action Analysis: Single-episode evaluation across every decision step using Common Random Numbers (CRN) to isolate rotational blunders.\n"
-          " • APL vs. Full MCTS Policy Trace: Simulates an autonomous MCTS AI play-through from start to finish to construct the optimal throughput ceiling and full combat timeline.");
-      ImGui::Spacing();
-      ImGui::Separator();
-      ImGui::Spacing();
-
       ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "Instructions:");
       ImGui::Spacing();
 
