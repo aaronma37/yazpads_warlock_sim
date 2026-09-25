@@ -1006,6 +1006,9 @@ inline void DrawWowItemSlot(
 // ============================================================================
 // Classic WoW Talent Slot Rendering with Authentic Blizzard Rank Badges
 // ============================================================================
+// ============================================================================
+// Classic WoW Talent Slot Rendering with Smooth Anti-Aliased Glow & Crisp Rank Badges
+// ============================================================================
 inline void DrawWowTalentSlot(
     ImDrawList* drawList,
     ImTextureID iconTex,
@@ -1022,7 +1025,7 @@ inline void DrawWowTalentSlot(
     // 1. Dark Slot Inset Well
     drawList->AddRectFilled(pMin, pMax, IM_COL32(18, 14, 12, 255), 3.0f);
 
-    // 2. Icon Texture (drawn cleanly without overlay)
+    // 2. Icon Texture
     if (iconTex) {
         drawList->AddImage(iconTex, pMin, pMax);
     }
@@ -1032,28 +1035,24 @@ inline void DrawWowTalentSlot(
         drawList->AddRectFilled(pMin, pMax, IM_COL32(0, 0, 0, 130), 2.0f);
     }
 
-    // 4. Action / Talent Border
-    // Gold border when maxed, green border when points invested, silver/brass when available, dark when locked
-    ImU32 borderCol;
-    float borderThickness = 1.5f;
+    // 4. Smooth Anti-Aliased Outlines (Thinner & Crisp)
     if (currentPts == maxPts && maxPts > 0) {
-        borderCol = IM_COL32(255, 209, 0, 255); // WoW Gold
-        borderThickness = 2.0f;
+        // Gold (Maxed) - subtle soft anti-aliased feather + crisp 1.2px gold core
+        drawList->AddRect(ImVec2(pMin.x - 1.0f, pMin.y - 1.0f), ImVec2(pMax.x + 1.0f, pMax.y + 1.0f), IM_COL32(255, 210, 0, 65), 3.5f, 0, 1.0f);
+        drawList->AddRect(pMin, pMax, IM_COL32(255, 215, 0, 255), 2.5f, 0, 1.2f);
     } else if (currentPts > 0) {
-        borderCol = IM_COL32(31, 230, 31, 255); // WoW Green
-        borderThickness = 2.0f;
+        // Green (Points Invested) - subtle soft anti-aliased feather + crisp 1.2px green core
+        drawList->AddRect(ImVec2(pMin.x - 1.0f, pMin.y - 1.0f), ImVec2(pMax.x + 1.0f, pMax.y + 1.0f), IM_COL32(30, 230, 30, 65), 3.5f, 0, 1.0f);
+        drawList->AddRect(pMin, pMax, IM_COL32(35, 230, 35, 255), 2.5f, 0, 1.2f);
     } else if (isUnlocked && prereqMet) {
-        borderCol = IM_COL32(190, 175, 140, 240); // Silver / Brass Available
-        borderThickness = 1.5f;
+        // Available (Silver / Brass)
+        drawList->AddRect(ImVec2(pMin.x - 0.5f, pMin.y - 0.5f), ImVec2(pMax.x + 0.5f, pMax.y + 0.5f), IM_COL32(10, 8, 6, 200), 3.0f, 0, 1.0f);
+        drawList->AddRect(pMin, pMax, IM_COL32(180, 165, 130, 230), 2.5f, 0, 1.0f);
     } else {
-        borderCol = IM_COL32(65, 55, 48, 200);   // Dark Slate Locked
-        borderThickness = 1.0f;
+        // Locked (Dark Slate)
+        drawList->AddRect(ImVec2(pMin.x - 0.5f, pMin.y - 0.5f), ImVec2(pMax.x + 0.5f, pMax.y + 0.5f), IM_COL32(10, 8, 6, 180), 3.0f, 0, 1.0f);
+        drawList->AddRect(pMin, pMax, IM_COL32(60, 50, 44, 190), 2.0f, 0, 1.0f);
     }
-
-    // Outer shadow / frame
-    drawList->AddRect(ImVec2(pMin.x - 1.0f, pMin.y - 1.0f), ImVec2(pMax.x + 1.0f, pMax.y + 1.0f), IM_COL32(10, 8, 6, 220), 3.0f, 0, 1.0f);
-    // Beveled talent border
-    drawList->AddRect(pMin, pMax, borderCol, 2.0f, 0, borderThickness);
 
     // 5. Hover Gloss Highlight
     if (isHovered) {
@@ -1061,43 +1060,39 @@ inline void DrawWowTalentSlot(
         drawList->AddRect(pMin, pMax, IM_COL32(255, 235, 140, 240), 2.0f, 0, 2.0f);
     }
 
-    // 6. Authentic Blizzard Rank Badge in Bottom-Right Corner
-    float badgeW = 22.0f;
-    float badgeH = 15.0f;
-    ImVec2 badgeMin(pMax.x - badgeW + 3.0f, pMax.y - badgeH + 3.0f);
-    ImVec2 badgeMax(badgeMin.x + badgeW, badgeMin.y + badgeH);
-
-    const Texture2D& fallbackTex = AssetManager::get().get_fallback();
-    const Texture2D& rankBorder = AssetManager::get().get_texture("TalentFrame-RankBorder");
-    if (rankBorder.id > 0 && rankBorder.id != fallbackTex.id) {
-        drawList->AddImage((ImTextureID)(uintptr_t)rankBorder.id, badgeMin, badgeMax);
-    } else {
-        drawList->AddRectFilled(badgeMin, badgeMax, IM_COL32(10, 8, 6, 230), 2.0f);
-        drawList->AddRect(badgeMin, badgeMax, IM_COL32(85, 70, 40, 230), 2.0f, 0, 1.0f);
-    }
-
-    // Badge text: e.g. "5/5" or "1/1"
+    // 6. Crisp Rank Badge in Bottom-Right Corner (Borderless, Compact)
     char buf[16];
     snprintf(buf, sizeof(buf), "%d/%d", currentPts, maxPts);
     ImVec2 textSz = ImGui::CalcTextSize(buf);
+    float badgeW = textSz.x + 3.0f;
+    float badgeH = textSz.y - 1.0f;
+    ImVec2 badgeMin(pMax.x - badgeW + 1.0f, pMax.y - badgeH + 1.0f);
+    ImVec2 badgeMax(badgeMin.x + badgeW, badgeMin.y + badgeH);
+
+    // Solid dark rounded background (borderless)
+    drawList->AddRectFilled(badgeMin, badgeMax, IM_COL32(0, 0, 0, 225), 2.5f);
+
     ImVec2 textPos(
         badgeMin.x + (badgeW - textSz.x) * 0.5f,
-        badgeMin.y + (badgeH - textSz.y) * 0.5f - 1.0f
+        badgeMin.y + (badgeH - textSz.y) * 0.5f - 0.5f
     );
 
-    ImU32 textCol = (currentPts == maxPts) ? IM_COL32(255, 209, 0, 255)
-                  : (currentPts > 0)      ? IM_COL32(31, 230, 31, 255)
-                  : (isUnlocked && prereqMet) ? IM_COL32(220, 220, 220, 255)
-                                              : IM_COL32(130, 130, 130, 255);
+    ImU32 textCol = (currentPts == maxPts && maxPts > 0) ? IM_COL32(255, 215, 40, 255)
+                  : (currentPts > 0)                    ? IM_COL32(50, 245, 50, 255)
+                  : (isUnlocked && prereqMet)           ? IM_COL32(220, 220, 220, 255)
+                                                        : IM_COL32(130, 130, 130, 255);
 
-    // Subtle drop shadow + text
-    drawList->AddText(ImVec2(textPos.x + 1.0f, textPos.y + 1.0f), IM_COL32(0, 0, 0, 240), buf);
+    // 4-way black outline for razor-sharp readability
+    drawList->AddText(ImVec2(textPos.x + 1.0f, textPos.y), IM_COL32(0, 0, 0, 255), buf);
+    drawList->AddText(ImVec2(textPos.x - 1.0f, textPos.y), IM_COL32(0, 0, 0, 255), buf);
+    drawList->AddText(ImVec2(textPos.x, textPos.y + 1.0f), IM_COL32(0, 0, 0, 255), buf);
+    drawList->AddText(ImVec2(textPos.x, textPos.y - 1.0f), IM_COL32(0, 0, 0, 255), buf);
     drawList->AddText(textPos, textCol, buf);
 }
 
 // ============================================================================
 // Classic WoW Talent Tree Frame Header & Border
-// Renders an authentic WoW Spec Header Bar (Dark Stone bar, gold title, gold filigree, red reset button)
+// Renders an authentic WoW Spec Header Bar with compact rounded point capacity badge
 // ============================================================================
 inline bool DrawWowTalentTreeHeader(
     ImDrawList* drawList,
@@ -1119,16 +1114,37 @@ inline bool DrawWowTalentTreeHeader(
     // Subtle top highlight
     drawList->AddLine(ImVec2(hMin.x + 1, hMin.y + 1), ImVec2(hMax.x - 1, hMin.y + 1), IM_COL32(95, 75, 42, 200), 1.0f);
 
-    // 2. Title and Point Count
-    char titleBuf[64];
-    snprintf(titleBuf, sizeof(titleBuf), "%s (%d)", treeName, points);
-    ImVec2 titleSz = ImGui::CalcTextSize(titleBuf);
+    // 2. Title and Point Capacity Badge (Borderless, Compact)
+    char nameBuf[64];
+    snprintf(nameBuf, sizeof(nameBuf), "%s", treeName);
+    ImVec2 nameSz = ImGui::CalcTextSize(nameBuf);
     float textX = hMin.x + 10.0f;
-    float textY = hMin.y + (headerH - titleSz.y) * 0.5f;
+    float textY = hMin.y + (headerH - nameSz.y) * 0.5f;
 
     ImU32 colU32 = ImGui::ColorConvertFloat4ToU32(titleCol);
-    drawList->AddText(ImVec2(textX + 1.0f, textY + 1.0f), IM_COL32(0, 0, 0, 220), titleBuf);
-    drawList->AddText(ImVec2(textX, textY), colU32, titleBuf);
+    drawList->AddText(ImVec2(textX + 1.0f, textY + 1.0f), IM_COL32(0, 0, 0, 220), nameBuf);
+    drawList->AddText(ImVec2(textX, textY), colU32, nameBuf);
+
+    // Tree points capacity compact borderless rounded black badge
+    char ptsBuf[16];
+    snprintf(ptsBuf, sizeof(ptsBuf), "%d", points);
+    ImVec2 ptsSz = ImGui::CalcTextSize(ptsBuf);
+    float pBadgeW = ptsSz.x + 6.0f;
+    float pBadgeH = ptsSz.y + 1.0f;
+    float pBadgeX = textX + nameSz.x + 6.0f;
+    float pBadgeY = hMin.y + (headerH - pBadgeH) * 0.5f;
+    ImVec2 pbMin(pBadgeX, pBadgeY);
+    ImVec2 pbMax(pBadgeX + pBadgeW, pBadgeY + pBadgeH);
+
+    // Solid black rounded background (borderless)
+    drawList->AddRectFilled(pbMin, pbMax, IM_COL32(0, 0, 0, 220), 2.5f);
+
+    ImVec2 ptTextPos(pbMin.x + (pBadgeW - ptsSz.x) * 0.5f, pbMin.y + (pBadgeH - ptsSz.y) * 0.5f - 0.5f);
+    drawList->AddText(ImVec2(ptTextPos.x + 1.0f, ptTextPos.y), IM_COL32(0, 0, 0, 255), ptsBuf);
+    drawList->AddText(ImVec2(ptTextPos.x - 1.0f, ptTextPos.y), IM_COL32(0, 0, 0, 255), ptsBuf);
+    drawList->AddText(ImVec2(ptTextPos.x, ptTextPos.y + 1.0f), IM_COL32(0, 0, 0, 255), ptsBuf);
+    drawList->AddText(ImVec2(ptTextPos.x, ptTextPos.y - 1.0f), IM_COL32(0, 0, 0, 255), ptsBuf);
+    drawList->AddText(ptTextPos, (points > 0 ? IM_COL32(255, 215, 40, 255) : IM_COL32(160, 160, 160, 255)), ptsBuf);
 
     // 3. Reset Button ("Red X" close button on the right)
     float btnSz = 18.0f;
@@ -1142,6 +1158,43 @@ inline bool DrawWowTalentTreeHeader(
     }
 
     return resetPressed;
+}
+
+// ============================================================================
+// Render a compact borderless rounded black badge for talent capacity numbers (e.g. "Points: 31 / 51")
+// ============================================================================
+inline void DrawWowPointsBadge(int currentPts, int maxPts = 51) {
+    char ptsStr[32];
+    snprintf(ptsStr, sizeof(ptsStr), "%d / %d", currentPts, maxPts);
+    ImVec2 textSz = ImGui::CalcTextSize(ptsStr);
+    
+    float padX = 5.0f;
+    float padY = 1.0f;
+    float badgeW = textSz.x + padX * 2.0f;
+    float badgeH = textSz.y + padY * 2.0f;
+    
+    ImVec2 cPos = ImGui::GetCursorScreenPos();
+    ImVec2 bMin(cPos.x, cPos.y);
+    ImVec2 bMax(cPos.x + badgeW, cPos.y + badgeH);
+    
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    // Solid dark rounded background (borderless)
+    drawList->AddRectFilled(bMin, bMax, IM_COL32(0, 0, 0, 220), 3.0f);
+    
+    ImU32 textCol = (currentPts == maxPts) ? IM_COL32(50, 245, 50, 255)
+                  : (currentPts > maxPts)  ? IM_COL32(255, 70, 70, 255)
+                  : (currentPts > 0)       ? IM_COL32(255, 215, 40, 255)
+                                           : IM_COL32(160, 160, 160, 255);
+                                           
+    ImVec2 tPos(bMin.x + padX, bMin.y + padY - 0.5f);
+    // 4-way dark outline for crisp readability
+    drawList->AddText(ImVec2(tPos.x + 1.0f, tPos.y), IM_COL32(0, 0, 0, 255), ptsStr);
+    drawList->AddText(ImVec2(tPos.x - 1.0f, tPos.y), IM_COL32(0, 0, 0, 255), ptsStr);
+    drawList->AddText(ImVec2(tPos.x, tPos.y + 1.0f), IM_COL32(0, 0, 0, 255), ptsStr);
+    drawList->AddText(ImVec2(tPos.x, tPos.y - 1.0f), IM_COL32(0, 0, 0, 255), ptsStr);
+    drawList->AddText(tPos, textCol, ptsStr);
+    
+    ImGui::Dummy(ImVec2(badgeW, badgeH));
 }
 
 // ============================================================================

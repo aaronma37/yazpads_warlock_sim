@@ -581,6 +581,12 @@ inline void render_armory_panel(SimType& sim,
 
       ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
       ImGui::TableNextColumn();
+      render_stat_entry("Spell Penetration", "##RawSpellPen", &sim.raw_stats.spell_penetration, "%.0f");
+      ImGui::TableNextColumn();
+      render_stat_entry("MP5", "##RawMP5", &sim.raw_stats.mp5, "%.0f");
+
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 38.0f);
+      ImGui::TableNextColumn();
       render_stat_entry("Intellect", "##RawIntellect", &sim.raw_stats.intellect, "%.0f");
       ImGui::TableNextColumn();
       render_stat_entry("Stamina", "##RawStamina", &sim.raw_stats.stamina, "%.0f");
@@ -589,7 +595,6 @@ inline void render_armory_panel(SimType& sim,
       ImGui::TableNextColumn();
       render_stat_entry("Spirit", "##RawSpirit", &sim.raw_stats.spirit, "%.0f");
       ImGui::TableNextColumn();
-      render_stat_entry("MP5", "##RawMP5", &sim.raw_stats.mp5, "%.0f");
 
       ImGui::EndTable();
     }
@@ -617,57 +622,126 @@ inline void render_combat_stats_summary(SimType& sim,
 {
   if (WowCollapsingHeader("Combat Stats Summary", ImGuiTreeNodeFlags_DefaultOpen))
   {
-    ImGui::Indent(8.0f);
+    ImGui::Indent(4.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 2.0f));
 
-  ImGui::Text("Shadow SP: %.0f", total_stats.effective_shadow_power());
-  if (player_class == sim::PlayerClass::PRIEST)
-  {
-    ImGui::Text("Holy SP: %.0f", total_stats.effective_holy_power());
-  }
-  else
-  {
-    ImGui::Text("Fire SP: %.0f", total_stats.effective_fire_power());
-  }
-  ImGui::Text("Spell Hit: %.1f%% (Cap: 16%%)", total_stats.spell_hit_percent);
-  ImGui::Text("Spell Crit: %.2f%%", total_stats.total_spell_crit(base_attrs.base_spell_crit));
-  if (total_stats.spell_haste_percent > 0.0)
-  {
-    ImGui::Text("Spell Haste: %.1f%%", total_stats.spell_haste_percent);
-  }
-  ImGui::Text("Max Mana: %.0f", total_stats.max_mana);
-  ImGui::Text("Max Health: %.0f", total_stats.max_health);
-  ImGui::Text("MP5: %.0f", total_stats.mp5);
-  ImGui::Text("Int: %.0f", total_stats.intellect);
-  ImGui::Text("Stamina: %.0f", total_stats.stamina);
-  ImGui::Text("Spirit: %.0f", total_stats.spirit);
-  ImGui::Text("Shadow Mult: %.3fx", total_stats.shadow_multiplier * total_stats.all_damage_multiplier);
-  if (player_class == sim::PlayerClass::PRIEST)
-  {
-    ImGui::Text("Holy Mult: %.3fx", total_stats.holy_multiplier * total_stats.all_damage_multiplier);
+    if (ImGui::BeginTable("##CombatStatsGrid", 2, ImGuiTableFlags_None))
+    {
+      ImGui::TableSetupColumn("Col1", ImGuiTableColumnFlags_WidthStretch);
+      ImGui::TableSetupColumn("Col2", ImGuiTableColumnFlags_WidthStretch);
 
-    // 5SR Mana Regen breakdown for Priest
-    double spirit_tick = sim::ManaRegenCalculator::calculate_spirit_regen_per_tick(
-        total_stats.intellect, total_stats.spirit, sim::PlayerClass::PRIEST);
-    double outside_5sr = spirit_tick / 2.0;
-    double med_ratio = 0.15;
-    if constexpr (requires { sim.mechanics.meditation_casting_regen_ratio; }) {
-      med_ratio = sim.mechanics.meditation_casting_regen_ratio;
+      // Row 1: Shadow SP & Max Mana
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::Text("Shadow SP: %.0f", total_stats.effective_shadow_power());
+      ImGui::TableNextColumn();
+      ImGui::Text("Max Mana: %.0f", total_stats.max_mana);
+
+      // Row 2: Fire/Holy SP & Max Health
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      if (player_class == sim::PlayerClass::PRIEST)
+      {
+        ImGui::Text("Holy SP: %.0f", total_stats.effective_holy_power());
+      }
+      else
+      {
+        ImGui::Text("Fire SP: %.0f", total_stats.effective_fire_power());
+      }
+      ImGui::TableNextColumn();
+      ImGui::Text("Max Health: %.0f", total_stats.max_health);
+
+      // Row 3: Spell Hit & MP5
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::Text("Spell Hit: %.1f%%", total_stats.spell_hit_percent);
+      ImGui::TableNextColumn();
+      ImGui::Text("MP5: %.0f", total_stats.mp5);
+
+      // Row 4: Spell Crit & Intellect
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::Text("Spell Crit: %.2f%%", total_stats.total_spell_crit(base_attrs.base_spell_crit));
+      ImGui::TableNextColumn();
+      ImGui::Text("Int: %.0f", total_stats.intellect);
+
+      // Row 5: Spell Pen & Stamina
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::Text("Spell Pen: %.0f", total_stats.spell_penetration);
+      ImGui::TableNextColumn();
+      ImGui::Text("Stamina: %.0f", total_stats.stamina);
+
+      // Row 6: Spell Haste (or Shadow Mult) & Spirit
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      if (total_stats.spell_haste_percent > 0.0)
+      {
+        ImGui::Text("Spell Haste: %.1f%%", total_stats.spell_haste_percent);
+      }
+      else
+      {
+        ImGui::Text("Shadow Mult: %.3fx", total_stats.shadow_multiplier * total_stats.all_damage_multiplier);
+      }
+      ImGui::TableNextColumn();
+      ImGui::Text("Spirit: %.0f", total_stats.spirit);
+
+      // Row 7: Multipliers
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      if (total_stats.spell_haste_percent > 0.0)
+      {
+        ImGui::Text("Shadow Mult: %.3fx", total_stats.shadow_multiplier * total_stats.all_damage_multiplier);
+      }
+      else
+      {
+        if (player_class == sim::PlayerClass::PRIEST)
+        {
+          ImGui::Text("Holy Mult: %.3fx", total_stats.holy_multiplier * total_stats.all_damage_multiplier);
+        }
+        else
+        {
+          ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
+        }
+      }
+      ImGui::TableNextColumn();
+      if (total_stats.spell_haste_percent > 0.0)
+      {
+        if (player_class == sim::PlayerClass::PRIEST)
+        {
+          ImGui::Text("Holy Mult: %.3fx", total_stats.holy_multiplier * total_stats.all_damage_multiplier);
+        }
+        else
+        {
+          ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
+        }
+      }
+
+      ImGui::EndTable();
     }
-    double inside_5sr = (spirit_tick * med_ratio) / 2.0;
-    double mp5_mps = total_stats.mp5 / 5.0;
 
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "5-Second Rule Mana Regeneration:");
-    ImGui::Text("Outside 5SR: %.1f mps (%.0f / 5s)", outside_5sr + mp5_mps, (outside_5sr + mp5_mps) * 5.0);
-    ImGui::Text("Inside 5SR (Meditation): %.1f mps (%.0f / 5s)", inside_5sr + mp5_mps, (inside_5sr + mp5_mps) * 5.0);
-    ImGui::Text("MP5 Contribution: %.1f mps", mp5_mps);
-  }
-  else
-  {
-    ImGui::Text("Fire Mult: %.3fx", total_stats.fire_multiplier * total_stats.all_damage_multiplier);
-  }
+    if (player_class == sim::PlayerClass::PRIEST)
+    {
+      // 5SR Mana Regen breakdown for Priest
+      double spirit_tick = sim::ManaRegenCalculator::calculate_spirit_regen_per_tick(
+          total_stats.intellect, total_stats.spirit, sim::PlayerClass::PRIEST);
+      double outside_5sr = spirit_tick / 2.0;
+      double med_ratio = 0.15;
+      if constexpr (requires { sim.mechanics.meditation_casting_regen_ratio; }) {
+        med_ratio = sim.mechanics.meditation_casting_regen_ratio;
+      }
+      double inside_5sr = (spirit_tick * med_ratio) / 2.0;
+      double mp5_mps = total_stats.mp5 / 5.0;
 
-    ImGui::Unindent(8.0f);
+      ImGui::Spacing();
+      ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "5-Second Rule Mana Regeneration:");
+      ImGui::Text("Outside 5SR: %.1f mps (%.0f / 5s)", outside_5sr + mp5_mps, (outside_5sr + mp5_mps) * 5.0);
+      ImGui::Text("Inside 5SR (Meditation): %.1f mps (%.0f / 5s)", inside_5sr + mp5_mps, (inside_5sr + mp5_mps) * 5.0);
+      ImGui::Text("MP5 Contribution: %.1f mps", mp5_mps);
+    }
+
+    ImGui::PopStyleVar();
+    ImGui::Unindent(4.0f);
   }
 }
 

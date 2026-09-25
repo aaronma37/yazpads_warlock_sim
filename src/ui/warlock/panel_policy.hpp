@@ -240,7 +240,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("⚙️ Edit Conditions..."))
+        if (ImGui::MenuItem("Edit Conditions..."))
         {
           open_edit_conditions_modal = true;
           editing_rule_index = static_cast<int>(i);
@@ -313,7 +313,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
         ImGui::Separator();
 
-        if (ImGui::BeginMenu("➕ Add Rule Above"))
+        if (ImGui::BeginMenu("Add Rule Above"))
         {
           for (const auto& avail : available_rules)
           {
@@ -325,7 +325,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
           ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("➕ Add Rule Below"))
+        if (ImGui::BeginMenu("Add Rule Below"))
         {
           for (const auto& avail : available_rules)
           {
@@ -339,7 +339,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
 
         ImGui::Separator();
 
-        if (ImGui::MenuItem("❌ Remove Rule"))
+        if (ImGui::MenuItem("Remove Rule"))
         {
           policy.remove_rule(i, talents, race);
         }
@@ -534,14 +534,14 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
     ImGui::Spacing();
     ImGui::Separator();
 
-    if (WowBiggerButton(" Save & Apply ", ImVec2(120, 26)))
+    if (WowButton("Apply", ImVec2(90, 26)))
     {
       editing_rule.condition_summary = editing_rule.format_condition_summary();
       policy.set_rule(editing_rule_index, editing_rule, talents, race);
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();
-    if (ImGui::Button("Clear All Conditions", ImVec2(145, 26)))
+    if (WowButton("Clear All Conditions", ImVec2(150, 26)))
     {
       editing_rule.check_shadow_trance = false;
       editing_rule.check_decimation = false;
@@ -566,7 +566,7 @@ inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& ta
       editing_rule.require_isb_active = false;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Cancel", ImVec2(80, 26)))
+    if (WowButton("Cancel", ImVec2(80, 26)))
     {
       ImGui::CloseCurrentPopup();
     }

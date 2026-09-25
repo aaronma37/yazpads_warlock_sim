@@ -181,7 +181,7 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
 
                 ImGui::Separator();
 
-                if (ImGui::BeginMenu("➕ Add Rule Above")) {
+                if (ImGui::BeginMenu("Add Rule Above")) {
                     for (const auto& avail : available_rules) {
                         if (ImGui::MenuItem(avail.name.c_str())) {
                             policy.insert_rule(i, avail, talents, race);
@@ -190,7 +190,7 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
                     ImGui::EndMenu();
                 }
 
-                if (ImGui::BeginMenu("➕ Add Rule Below")) {
+                if (ImGui::BeginMenu("Add Rule Below")) {
                     for (const auto& avail : available_rules) {
                         if (ImGui::MenuItem(avail.name.c_str())) {
                             policy.insert_rule(i + 1, avail, talents, race);
@@ -201,7 +201,7 @@ inline void render_priest_policy_panel(PolicyConfig& policy, const Talents& tale
 
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("❌ Remove Rule")) {
+                if (ImGui::MenuItem("Remove Rule")) {
                     policy.remove_rule(i, talents, race);
                 }
 

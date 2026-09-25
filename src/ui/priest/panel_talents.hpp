@@ -433,8 +433,7 @@ inline void render_priest_talents_panel(PriestSimulator& sim)
   ImGui::SameLine();
   ImGui::Text("  Points: ");
   ImGui::SameLine();
-  ImVec4 pt_color = (total_pts == 51) ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
-  ImGui::TextColored(pt_color, "%d / 51", total_pts);
+  warlock::DrawWowPointsBadge(total_pts, 51);
 
   ImGui::Separator();
   ImGui::Spacing();

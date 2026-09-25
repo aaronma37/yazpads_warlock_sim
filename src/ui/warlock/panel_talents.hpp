@@ -468,7 +468,7 @@ inline void render_panel_talents(WarlockSimulator& sim)
   ImGui::SameLine();
   ImGui::Text("  Points: ");
   ImGui::SameLine();
-  ImGui::TextColored(pt_color, "%d / 51", total_pts);
+  DrawWowPointsBadge(total_pts, 51);
 
   ImGui::Spacing();
 
