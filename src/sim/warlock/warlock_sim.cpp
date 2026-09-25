@@ -1451,26 +1451,38 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        // Emergency Resource Fallback: Life Tap when out of mana for filler
-        double health_cost = 430.0;
-        double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
-        player_mana = std::min(stats.max_mana, player_mana + mana_gained);
-        player_health -= health_cost;
-        result.life_taps++;
-        result.mana_gained += mana_gained;
+        // Out of mana for filler: emergency Life Tap for legacy preset rotations
+        if (!policy.use_custom_apl) {
+            double health_cost = 430.0;
+            double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
+            player_mana = std::min(stats.max_mana, player_mana + mana_gained);
+            player_health -= health_cost;
+            result.life_taps++;
+            result.mana_gained += mana_gained;
 
-        // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
-        if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
-            double pet_gain = mana_gained * (0.50 * talents.demo.demonic_energies);
-            pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
+            // Demonic Energies: Pet gains 50%/100% of Mana gained from Life Tap
+            if (talents.demo.demonic_energies > 0 && active_pet != PetChoice::NONE) {
+                double pet_gain = mana_gained * (0.50 * talents.demo.demonic_energies);
+                pet_mana = std::min(pet_max_mana, pet_mana + pet_gain);
+            }
+
+            gcd_ready_time = now + mechanics.base_gcd;
+            queue.push(gcd_ready_time, EventType::GCD_READY);
+
+            if (record_timeline) {
+                result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
+                result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
+            }
+            return;
         }
 
+        // For Custom / Synthesized APL: Stall for 1 GCD without casting or gaining mana from Life Tap
         gcd_ready_time = now + mechanics.base_gcd;
         queue.push(gcd_ready_time, EventType::GCD_READY);
 
         if (record_timeline) {
-            result.timeline.push_back({now, 0.0, SpellID::LIFE_TAP, false, false, player_mana, target.isb_charges});
-            result.cast_sequence.push_back({now, SpellID::LIFE_TAP, 0.0, false, false, 0.0, "Mana Tap"});
+            result.timeline.push_back({now, 0.0, SpellID::NONE, false, false, player_mana, target.isb_charges});
+            result.cast_sequence.push_back({now, SpellID::NONE, 0.0, false, false, mechanics.base_gcd, "OOM Stall (No Life Tap Rule)"});
         }
     };
 

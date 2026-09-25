@@ -82,30 +82,30 @@ public:
 
     static const char* get_action_name(PriorityAction action) {
         switch (action) {
-            case PriorityAction::LIFE_TAP: return "Life Tap (Mana Management)";
-            case PriorityAction::RACIAL_EUREKA: return "Racial: Eureka (Gnome)";
-            case PriorityAction::RACIAL_BLOOD_FURY: return "Racial: Blood Fury (Orc)";
-            case PriorityAction::RACIAL_BERSERKING: return "Racial: Berserking (Troll)";
+            case PriorityAction::LIFE_TAP: return "Life Tap";
+            case PriorityAction::RACIAL_EUREKA: return "Eureka";
+            case PriorityAction::RACIAL_BLOOD_FURY: return "Blood Fury";
+            case PriorityAction::RACIAL_BERSERKING: return "Berserking";
             case PriorityAction::AMPLIFY_CURSE: return "Amplify Curse";
-            case PriorityAction::BANE_OF_HAVOC: return "Bane of Havoc (Secondary)";
-            case PriorityAction::NIGHTFALL_SHADOW_BOLT: return "Shadow Trance / Nightfall Instant SB";
-            case PriorityAction::DECIMATION_SOUL_FIRE: return "Decimation Soul Fire (Execute)";
-            case PriorityAction::DECIMATION_SEARING_PAIN: return "Decimation Searing Pain (Proc Trigger)";
-            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand Searing Pain";
-            case PriorityAction::CORRUPTION: return "Corruption DoT Upkeep";
-            case PriorityAction::SIPHON_LIFE: return "Siphon Life DoT Upkeep";
-            case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony Upkeep";
-            case PriorityAction::CURSE_OF_DOOM: return "Bane of Doom (>=60s remaining)";
-            case PriorityAction::IMMOLATE: return "Immolate DoT Upkeep";
-            case PriorityAction::CONFLAGRATE: return "Conflagrate (Consume Immolate)";
-            case PriorityAction::SHADOWBURN: return "Shadowburn (On Cooldown)";
-            case PriorityAction::SHADOWBURN_ISB: return "Shadowburn (ISB Active)";
-            case PriorityAction::DRAIN_HOPE: return "Wrack Channel";
-            case PriorityAction::INCINERATE_FILLER: return "Incinerate Filler";
-            case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain Filler";
-            case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life Filler";
-            case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul Filler";
-            case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt Filler";
+            case PriorityAction::BANE_OF_HAVOC: return "Bane of Havoc";
+            case PriorityAction::NIGHTFALL_SHADOW_BOLT: return "Shadow Bolt";
+            case PriorityAction::DECIMATION_SOUL_FIRE: return "Soul Fire";
+            case PriorityAction::DECIMATION_SEARING_PAIN: return "Searing Pain";
+            case PriorityAction::DEMONIC_BRAND_SEARING_PAIN: return "Demonic Brand";
+            case PriorityAction::CORRUPTION: return "Corruption";
+            case PriorityAction::SIPHON_LIFE: return "Siphon Life";
+            case PriorityAction::CURSE_OF_AGONY: return "Bane of Agony";
+            case PriorityAction::CURSE_OF_DOOM: return "Bane of Doom";
+            case PriorityAction::IMMOLATE: return "Immolate";
+            case PriorityAction::CONFLAGRATE: return "Conflagrate";
+            case PriorityAction::SHADOWBURN: return "Shadowburn";
+            case PriorityAction::SHADOWBURN_ISB: return "Shadowburn";
+            case PriorityAction::DRAIN_HOPE: return "Wrack";
+            case PriorityAction::INCINERATE_FILLER: return "Incinerate";
+            case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain";
+            case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life";
+            case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul";
+            case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt";
             default: return "Unknown Action";
         }
     }
@@ -237,24 +237,50 @@ public:
         r.spell_id = get_spell_id(action);
         r.name = get_action_name(action);
         r.enabled = true;
-        r.use_custom_thresholds = false;
-        r.trigger_condition = "(Always)";
-        r.condition_summary = "Default";
-        r.rule_explanation = "Candidate Action Injection";
+        r.use_custom_thresholds = true;
 
         if (action == PriorityAction::LIFE_TAP) {
-            r.use_custom_thresholds = true;
+            r.check_mana = true;
             r.max_mana_pct = 0.35f;
-            r.condition_summary = "Player Mana <= 35%";
+            r.min_hp_pct = 0.15f;
+            r.condition_summary = r.format_condition_summary();
         } else if (action == PriorityAction::CURSE_OF_DOOM) {
-            r.use_custom_thresholds = true;
+            r.check_fight_time = true;
             r.min_time_remaining = 65.0f;
-            r.condition_summary = "Time Remaining >= 65s";
+            r.check_doom_debuff = true;
+            r.require_doom_missing = true;
+            r.condition_summary = r.format_condition_summary();
+        } else if (action == PriorityAction::DECIMATION_SOUL_FIRE) {
+            r.check_target_hp = true;
+            r.max_target_hp_pct = 0.35f;
+            r.check_decimation = true;
+            r.require_decimation_active = true;
+            r.name = "Decimation Soul Fire";
+            r.condition_summary = r.format_condition_summary();
+        } else if (action == PriorityAction::DECIMATION_SEARING_PAIN) {
+            r.check_target_hp = true;
+            r.max_target_hp_pct = 0.35f;
+            r.check_decimation = true;
+            r.require_decimation_active = false;
+            r.name = "Decimation Trigger (Searing Pain)";
+            r.condition_summary = r.format_condition_summary();
+        } else if (action == PriorityAction::NIGHTFALL_SHADOW_BOLT) {
+            r.check_shadow_trance = true;
+            r.condition_summary = r.format_condition_summary();
         } else if (action == PriorityAction::SHADOWBURN_ISB) {
-            r.use_custom_thresholds = true;
+            r.check_isb_debuff = true;
             r.require_isb_active = true;
-            r.condition_summary = "ISB Active";
+            r.condition_summary = r.format_condition_summary();
+        } else if (action == PriorityAction::CORRUPTION || action == PriorityAction::IMMOLATE || action == PriorityAction::SIPHON_LIFE || action == PriorityAction::CURSE_OF_AGONY) {
+            r.check_dot_refresh = true;
+            r.max_dot_rem_sec = 0.0f;
+            r.condition_summary = r.format_condition_summary();
+        } else {
+            r.use_custom_thresholds = false;
+            r.trigger_condition = "(Always)";
+            r.condition_summary = "Always / Filler";
         }
+        r.rule_explanation = "Candidate Action Injection";
         return r;
     }
 
@@ -768,39 +794,109 @@ public:
             std::vector<PriorityRule> rules;
             double fitness_dps = 0.0;
 
-            // Continuous Genes (Domain-bounded)
-            float tap_mana_threshold = 0.35f;   // Sane range: [0.15 .. 0.50] (Never tap > 50% mana!)
-            float cod_time_cutoff = 65.0f;      // Sane range: [50.0 .. 75.0]
-            float dot_refresh_window = 1.0f;    // Sane range: [0.0 .. 2.5]
-            float exec_hp_threshold = 0.20f;    // Sane range: [0.20 .. 0.35]
+            // Continuous Genes (Domain-bounded multi-instance triggers)
+            float tap_low_mana_threshold = 0.15f;   // Sane range: [0.10 .. 0.25] (High priority Life Tap)
+            float tap_high_mana_threshold = 0.38f;  // Sane range: [0.28 .. 0.50] (Maintenance Life Tap)
+            float cod_time_cutoff = 65.0f;          // Sane range: [50.0 .. 75.0]
+            float dot_refresh_window = 1.0f;        // Sane range: [0.0 .. 2.5]
+            float exec_hp_threshold = 0.35f;        // Sane range: [0.20 .. 0.35]
         };
 
         auto apply_genes_to_individual = [&](APLIndividual& ind) {
-            ind.tap_mana_threshold = std::clamp(ind.tap_mana_threshold, 0.15f, 0.50f);
+            ind.tap_low_mana_threshold = std::clamp(ind.tap_low_mana_threshold, 0.10f, 0.25f);
+            ind.tap_high_mana_threshold = std::clamp(ind.tap_high_mana_threshold, 0.28f, 0.50f);
             ind.cod_time_cutoff = std::clamp(ind.cod_time_cutoff, 50.0f, 75.0f);
             ind.dot_refresh_window = std::clamp(ind.dot_refresh_window, 0.0f, 2.5f);
             ind.exec_hp_threshold = std::clamp(ind.exec_hp_threshold, 0.20f, 0.35f);
 
+            size_t tap_instance_count = 0;
+            for (auto& rule : ind.rules) {
+                if (rule.action == PriorityAction::LIFE_TAP) {
+                    tap_instance_count++;
+                }
+            }
+
+            size_t cur_tap_idx = 0;
             for (auto& rule : ind.rules) {
                 if (rule.action == PriorityAction::LIFE_TAP) {
                     rule.use_custom_thresholds = true;
-                    rule.max_mana_pct = ind.tap_mana_threshold;
+                    rule.check_mana = true;
                     rule.min_hp_pct = 0.15f;
-                    rule.condition_summary = "Player Mana <= " + std::to_string(static_cast<int>(ind.tap_mana_threshold * 100.0f)) + "%";
+                    rule.name = "Life Tap";
+                    if (tap_instance_count >= 2 && cur_tap_idx == 0) {
+                        rule.max_mana_pct = ind.tap_low_mana_threshold;
+                    } else {
+                        rule.max_mana_pct = ind.tap_high_mana_threshold;
+                    }
+                    rule.condition_summary = rule.format_condition_summary();
+                    cur_tap_idx++;
                 } else if (rule.action == PriorityAction::CURSE_OF_DOOM) {
                     rule.use_custom_thresholds = true;
+                    rule.check_fight_time = true;
                     rule.min_time_remaining = ind.cod_time_cutoff;
-                    rule.condition_summary = "Time Remaining >= " + std::to_string(static_cast<int>(ind.cod_time_cutoff)) + "s";
-                } else if (rule.action == PriorityAction::CORRUPTION || rule.action == PriorityAction::IMMOLATE || rule.action == PriorityAction::SIPHON_LIFE) {
+                    rule.check_doom_debuff = true;
+                    rule.require_doom_missing = true;
+                    rule.name = "Bane of Doom";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::CORRUPTION || rule.action == PriorityAction::IMMOLATE || rule.action == PriorityAction::SIPHON_LIFE || rule.action == PriorityAction::CURSE_OF_AGONY) {
                     rule.use_custom_thresholds = true;
+                    rule.check_dot_refresh = true;
                     rule.max_dot_rem_sec = ind.dot_refresh_window;
-                    rule.condition_summary = "Duration Left <= " + std::to_string(ind.dot_refresh_window).substr(0, 3) + "s";
-                } else if (rule.action == PriorityAction::DECIMATION_SOUL_FIRE || rule.action == PriorityAction::DECIMATION_SEARING_PAIN || rule.action == PriorityAction::SHADOWBURN) {
+                    rule.name = get_action_name(rule.action);
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::DECIMATION_SOUL_FIRE) {
                     rule.use_custom_thresholds = true;
+                    rule.check_target_hp = true;
                     rule.max_target_hp_pct = ind.exec_hp_threshold;
-                    rule.condition_summary = "Target HP <= " + std::to_string(static_cast<int>(ind.exec_hp_threshold * 100.0f)) + "%";
+                    rule.check_decimation = true;
+                    rule.require_decimation_active = true;
+                    rule.name = "Soul Fire";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::DECIMATION_SEARING_PAIN) {
+                    rule.use_custom_thresholds = true;
+                    rule.check_target_hp = true;
+                    rule.max_target_hp_pct = ind.exec_hp_threshold;
+                    rule.check_decimation = true;
+                    rule.require_decimation_active = false;
+                    rule.name = "Searing Pain";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::SHADOWBURN) {
+                    rule.use_custom_thresholds = true;
+                    rule.check_target_hp = true;
+                    rule.max_target_hp_pct = ind.exec_hp_threshold;
+                    rule.name = "Shadowburn";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::SHADOWBURN_ISB) {
+                    rule.use_custom_thresholds = true;
+                    rule.check_isb_debuff = true;
+                    rule.require_isb_active = true;
+                    rule.name = "Shadowburn";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else if (rule.action == PriorityAction::NIGHTFALL_SHADOW_BOLT) {
+                    rule.use_custom_thresholds = true;
+                    rule.check_shadow_trance = true;
+                    rule.name = "Shadow Bolt";
+                    rule.condition_summary = rule.format_condition_summary();
+                } else {
+                    rule.name = get_action_name(rule.action);
                 }
             }
+
+            if (tap_instance_count == 0) {
+                PriorityRule tap_rule = create_default_rule_for_action(PriorityAction::LIFE_TAP, sim.talents);
+                tap_rule.use_custom_thresholds = true;
+                tap_rule.check_mana = true;
+                tap_rule.max_mana_pct = ind.tap_high_mana_threshold;
+                tap_rule.min_hp_pct = 0.15f;
+                tap_rule.name = "Life Tap";
+                tap_rule.condition_summary = tap_rule.format_condition_summary();
+                if (ind.rules.size() >= 1) {
+                    ind.rules.insert(ind.rules.end() - 1, tap_rule);
+                } else {
+                    ind.rules.push_back(tap_rule);
+                }
+            }
+
             ind.rules = condense_and_deduplicate_rules(ind.rules);
         };
 
@@ -821,64 +917,76 @@ public:
         std::vector<APLIndividual> population;
         FastRNG ga_rng(seed + 8888);
 
-        // Seed 1: Baseline Policy Preset
-        APLIndividual ind_base;
-        ind_base.rules = res.baseline_rules;
-        ind_base.tap_mana_threshold = 0.35f;
-        apply_genes_to_individual(ind_base);
-        population.push_back(ind_base);
-
-        // Seed 2: Spliced Talent Universe Rules (All legal talent abilities in natural tier order)
-        APLIndividual ind_universe;
+        // Build the complete universe of all feasible actions for the current talents (including multi-instance rules)
         std::vector<PriorityAction> natural_order = {
+            PriorityAction::LIFE_TAP, // High Priority Instance (Mana <= tap_low)
             PriorityAction::NIGHTFALL_SHADOW_BOLT,
             PriorityAction::DECIMATION_SOUL_FIRE,
             PriorityAction::DECIMATION_SEARING_PAIN,
             PriorityAction::CONFLAGRATE,
+            PriorityAction::SHADOWBURN_ISB,
             PriorityAction::CURSE_OF_DOOM,
             PriorityAction::CURSE_OF_AGONY,
             PriorityAction::CORRUPTION,
             PriorityAction::IMMOLATE,
             PriorityAction::SIPHON_LIFE,
+            PriorityAction::DRAIN_HOPE,
             PriorityAction::SHADOWBURN,
-            PriorityAction::LIFE_TAP,
+            PriorityAction::LIFE_TAP, // Maintenance Instance (Mana <= tap_high)
             (sim.talents.destro.incinerate > 0 ? PriorityAction::INCINERATE_FILLER : PriorityAction::SHADOW_BOLT_FILLER)
         };
+
+        std::vector<PriorityRule> universe_rules;
         for (auto act : natural_order) {
             if (is_action_available_for_talents(act, sim.talents)) {
-                ind_universe.rules.push_back(create_default_rule_for_action(act, sim.talents));
+                universe_rules.push_back(create_default_rule_for_action(act, sim.talents));
             }
         }
+
+        // Seed 1: Full Feasible Talent Universe (Natural Tier Order)
+        APLIndividual ind_universe;
+        ind_universe.rules = universe_rules;
+        ind_universe.tap_low_mana_threshold = 0.15f;
+        ind_universe.tap_high_mana_threshold = 0.38f;
+        ind_universe.cod_time_cutoff = 65.0f;
+        ind_universe.dot_refresh_window = 1.0f;
+        ind_universe.exec_hp_threshold = 0.35f;
         apply_genes_to_individual(ind_universe);
         population.push_back(ind_universe);
 
-        // Seed 3: Aggressive Life Tap & Execute
-        APLIndividual ind_aggro = ind_universe;
-        ind_aggro.tap_mana_threshold = 0.20f;
-        ind_aggro.exec_hp_threshold = 0.35f;
-        apply_genes_to_individual(ind_aggro);
-        population.push_back(ind_aggro);
+        // Seed 2: Aggressive Execute & Burst Priority (Decimation / Conflag / Shadowburn top)
+        APLIndividual ind_burst = ind_universe;
+        ind_burst.tap_low_mana_threshold = 0.12f;
+        ind_burst.tap_high_mana_threshold = 0.30f;
+        ind_burst.exec_hp_threshold = 0.35f;
+        ind_burst.dot_refresh_window = 0.5f;
+        apply_genes_to_individual(ind_burst);
+        population.push_back(ind_burst);
 
-        // Seed 4: Conservative Life Tap
-        APLIndividual ind_cons = ind_universe;
-        ind_cons.tap_mana_threshold = 0.45f;
-        ind_cons.exec_hp_threshold = 0.25f;
-        apply_genes_to_individual(ind_cons);
-        population.push_back(ind_cons);
+        // Seed 3: DoT-Upkeep Priority (Corruption / Agony / Immolate top)
+        APLIndividual ind_dot = ind_universe;
+        std::reverse(ind_dot.rules.begin(), ind_dot.rules.end() - 1);
+        ind_dot.tap_low_mana_threshold = 0.18f;
+        ind_dot.tap_high_mana_threshold = 0.42f;
+        ind_dot.dot_refresh_window = 1.5f;
+        apply_genes_to_individual(ind_dot);
+        population.push_back(ind_dot);
 
-        // Fill remaining population with random mutations and diverse continuous genes
+        // Fill remaining population with diverse randomized shuffles of all feasible actions
         while (population.size() < POP_SIZE) {
-            APLIndividual ind = (ga_rng.next_double() < 0.5) ? ind_base : ind_universe;
-            ind.tap_mana_threshold = 0.15f + static_cast<float>(ga_rng.next_double()) * 0.35f; // [0.15 .. 0.50]
-            ind.cod_time_cutoff = 50.0f + static_cast<float>(ga_rng.next_double()) * 25.0f;    // [50.0 .. 75.0]
-            ind.dot_refresh_window = static_cast<float>(ga_rng.next_double()) * 2.5f;          // [0.0 .. 2.5]
-            ind.exec_hp_threshold = 0.20f + static_cast<float>(ga_rng.next_double()) * 0.15f;  // [0.20 .. 0.35]
+            APLIndividual ind = ind_universe;
+            ind.tap_low_mana_threshold = 0.10f + static_cast<float>(ga_rng.next_double()) * 0.15f;  // [0.10 .. 0.25]
+            ind.tap_high_mana_threshold = 0.28f + static_cast<float>(ga_rng.next_double()) * 0.22f; // [0.28 .. 0.50]
+            ind.cod_time_cutoff = 50.0f + static_cast<float>(ga_rng.next_double()) * 25.0f;         // [50.0 .. 75.0]
+            ind.dot_refresh_window = static_cast<float>(ga_rng.next_double()) * 2.5f;               // [0.0 .. 2.5]
+            ind.exec_hp_threshold = 0.20f + static_cast<float>(ga_rng.next_double()) * 0.15f;       // [0.20 .. 0.35]
 
-            // Randomly swap a pair of rules
+            // Full Fisher-Yates shuffle across all actions (except keeping filler at the end)
             if (ind.rules.size() > 2) {
-                size_t i = ga_rng.next_u64() % (ind.rules.size() - 1);
-                size_t j = ga_rng.next_u64() % (ind.rules.size() - 1);
-                std::swap(ind.rules[i], ind.rules[j]);
+                for (size_t i = ind.rules.size() - 2; i > 0; --i) {
+                    size_t j = ga_rng.next_u64() % (i + 1);
+                    std::swap(ind.rules[i], ind.rules[j]);
+                }
             }
             apply_genes_to_individual(ind);
             population.push_back(ind);
@@ -939,7 +1047,8 @@ public:
                 APLIndividual child;
                 // Gene Crossover: Blend continuous parameters with BLX-alpha
                 float alpha = static_cast<float>(ga_rng.next_double());
-                child.tap_mana_threshold = alpha * parent1.tap_mana_threshold + (1.0f - alpha) * parent2.tap_mana_threshold;
+                child.tap_low_mana_threshold = alpha * parent1.tap_low_mana_threshold + (1.0f - alpha) * parent2.tap_low_mana_threshold;
+                child.tap_high_mana_threshold = alpha * parent1.tap_high_mana_threshold + (1.0f - alpha) * parent2.tap_high_mana_threshold;
                 child.cod_time_cutoff = alpha * parent1.cod_time_cutoff + (1.0f - alpha) * parent2.cod_time_cutoff;
                 child.dot_refresh_window = alpha * parent1.dot_refresh_window + (1.0f - alpha) * parent2.dot_refresh_window;
                 child.exec_hp_threshold = alpha * parent1.exec_hp_threshold + (1.0f - alpha) * parent2.exec_hp_threshold;
@@ -972,15 +1081,21 @@ public:
                     }
                 }
 
-                // Mutation 3: Rule Pruning
+                // Mutation 3: Rule Pruning (preserve fallback filler and at least one tap)
                 if (ga_rng.next_double() < 0.20 && child.rules.size() > 3) {
                     size_t prune_idx = ga_rng.next_u64() % (child.rules.size() - 1);
-                    child.rules.erase(child.rules.begin() + prune_idx);
+                    if (child.rules[prune_idx].action != PriorityAction::SHADOW_BOLT_FILLER &&
+                        child.rules[prune_idx].action != PriorityAction::INCINERATE_FILLER) {
+                        child.rules.erase(child.rules.begin() + prune_idx);
+                    }
                 }
 
                 // Mutation 4: Continuous Gene Jitter
                 if (ga_rng.next_double() < 0.40) {
-                    child.tap_mana_threshold += static_cast<float>((ga_rng.next_double() - 0.5) * 0.08);
+                    child.tap_low_mana_threshold += static_cast<float>((ga_rng.next_double() - 0.5) * 0.05);
+                }
+                if (ga_rng.next_double() < 0.40) {
+                    child.tap_high_mana_threshold += static_cast<float>((ga_rng.next_double() - 0.5) * 0.08);
                 }
                 if (ga_rng.next_double() < 0.40) {
                     child.cod_time_cutoff += static_cast<float>((ga_rng.next_double() - 0.5) * 8.0);
@@ -1083,7 +1198,7 @@ public:
         // 4. Final Benchmark Extracted APL Expected Value
         report_progress(0.88f, "Phase 4/4: Benchmarking Extracted VIPER APL with High Confidence...");
         WarlockSimulator eval_sim = sim;
-        eval_sim.policy.custom_rules = current_best_rules;
+        eval_sim.policy.custom_rules = res.extracted_rules;
         eval_sim.policy.use_custom_apl = true;
         eval_sim.record_viper_samples = false;
 

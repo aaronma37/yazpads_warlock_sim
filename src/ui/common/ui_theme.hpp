@@ -15,9 +15,10 @@ enum class AppTab {
     COMPARE_STANDARD_SPECS = 1,
     CONSTRAINED_SPEC_SEARCH = 2,
     ANALYZE_APL = 3,
-    ABILITIES = 4,
-    THEORYCRAFTING = 5,
-    CHANGELOG = 6
+    SYNTHESIZE_APL = 4,
+    ABILITIES = 5,
+    THEORYCRAFTING = 6,
+    CHANGELOG = 7
 };
 
 // ============================================================================

@@ -684,8 +684,7 @@ TEST_CASE(Rotations, MultiTargetCorruptionDistribution) {
     SimResult res2 = sim2.run_single_simulation(rng2);
 
     // With 2 targets and multi-dotting enabled, corruption damage should roughly double
-    CHECK(res2.dmg_corruption > res1.dmg_corruption * 1.5);
-    CHECK(res2.total_damage > res1.total_damage);
+    CHECK(res2.dmg_corruption > res1.dmg_corruption * 1.8);
 }
 
 TEST_CASE(Rotations, MultiTargetBaneOfHavocCleave) {

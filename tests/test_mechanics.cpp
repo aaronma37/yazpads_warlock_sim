@@ -358,13 +358,14 @@ TEST_CASE(Mechanics, CorruptionSpellPowerCoefficient) {
     sim_default.talents = Talents();
     sim_default.use_raw_stats = true;
     sim_default.raw_stats.spell_power = 600.0;
-    sim_default.raw_stats.spell_hit_percent = 100.0; // Avoid misses
-    sim_default.raw_stats.spell_crit_percent = 0.0;  // Avoid crits
-    sim_default.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim_default.raw_stats.spell_hit_percent = 100.0;
+    sim_default.raw_stats.spell_crit_percent = -100.0;
+    sim_default.policy.use_custom_apl = true;
+    sim_default.policy.custom_rules = { {PriorityAction::CORRUPTION} };
     sim_default.policy.use_trinkets_on_cooldown = false;
     sim_default.mechanics.corruption_sp_coefficient = 1.0;
     sim_default.mechanics.partial_resists_enabled = false;
-    sim_default.fight_duration = 23.0; // Cast from t=0..2s, 6 ticks at t=5, 8, 11, 14, 17, 20
+    sim_default.fight_duration = 20.5;
 
     SimResult res_default = sim_default.run_single_simulation(rng1);
 
@@ -374,12 +375,13 @@ TEST_CASE(Mechanics, CorruptionSpellPowerCoefficient) {
     sim_120.use_raw_stats = true;
     sim_120.raw_stats.spell_power = 600.0;
     sim_120.raw_stats.spell_hit_percent = 100.0;
-    sim_120.raw_stats.spell_crit_percent = 0.0;
-    sim_120.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim_120.raw_stats.spell_crit_percent = -100.0;
+    sim_120.policy.use_custom_apl = true;
+    sim_120.policy.custom_rules = { {PriorityAction::CORRUPTION} };
     sim_120.policy.use_trinkets_on_cooldown = false;
     sim_120.mechanics.corruption_sp_coefficient = 1.2;
     sim_120.mechanics.partial_resists_enabled = false;
-    sim_120.fight_duration = 23.0;
+    sim_120.fight_duration = 20.5;
 
     SimResult res_120 = sim_120.run_single_simulation(rng2);
 

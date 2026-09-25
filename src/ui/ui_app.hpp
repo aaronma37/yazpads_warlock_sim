@@ -9,6 +9,7 @@
 
 #include "asset_manager.hpp"
 #include "panel_analyze_apl.hpp"
+#include "panel_synthesize_apl.hpp"
 #include "panel_buffs.hpp"
 #include "panel_gear.hpp"
 #include "panel_imp_analysis.hpp"
@@ -131,6 +132,7 @@ class WarlockSimApp
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
+        {"Synthesize APL", AppTab::SYNTHESIZE_APL, 130.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
         {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
@@ -140,6 +142,7 @@ class WarlockSimApp
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
+        {"Synthesize APL", AppTab::SYNTHESIZE_APL, 130.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
         {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
@@ -491,6 +494,12 @@ class WarlockSimApp
         break;
       }
 
+      case AppTab::SYNTHESIZE_APL:
+      {
+        render_panel_synthesize_apl(sim, &active_tab);
+        break;
+      }
+
       case AppTab::ABILITIES:
       {
         render_panel_spellbook();
@@ -594,6 +603,19 @@ class WarlockSimApp
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Priest APL Trace Analysis");
         ImGui::Spacing();
         ImGui::TextWrapped("APL vs. MCTS Trace Analysis is currently optimized for Warlock rotations. Switch to Warlock via the top-left class switcher to run full MCTS trace diagnostics.");
+        ImGui::Unindent(20.0f);
+        EndWowChild();
+        break;
+      }
+
+      case AppTab::SYNTHESIZE_APL:
+      {
+        BeginWowChild("PriestAPLSynthesis", ImVec2(0, 0), true);
+        ImGui::Spacing();
+        ImGui::Indent(20.0f);
+        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Priest APL Policy Synthesis");
+        ImGui::Spacing();
+        ImGui::TextWrapped("MCTS-guided DAgger APL synthesis is currently optimized for Warlock rotations. Switch to Warlock via the top-left class switcher to run autonomous APL synthesis.");
         ImGui::Unindent(20.0f);
         EndWowChild();
         break;

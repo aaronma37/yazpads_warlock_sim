@@ -132,7 +132,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
 
   static int mcts_num_runs = 3;
   static bool mcts_adaptive_rollouts = true;
-  static int mcts_rollouts_per_step = 256;
+  static int mcts_rollouts_per_step = 512;
   static int selected_mcts_run_idx = 0;
   static float timeline_zoom_px_per_sec = 16.0f;
 
