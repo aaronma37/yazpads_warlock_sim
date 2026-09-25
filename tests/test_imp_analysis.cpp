@@ -88,11 +88,11 @@ TEST_CASE(ImpAnalysis, SuccubusMeleeSwings) {
     CHECK_EQ(succubus_expected_melee_swings(120.0), 60);
     CHECK_EQ(succubus_expected_melee_swings(1.0), 0);
     CHECK_EQ(succubus_expected_melee_swings(0.0), 0);
-    // 170 avg * 0.86 armor * 0.95 hit * 1.05 crit.
-    CHECK_NEAR(succubus_expected_melee_per_swing(0.0, 0), 170.0 * 0.86 * 0.95 * 1.05, 1e-9);
+    // 101 avg * 0.86 armor * 0.95 hit * 1.05 crit.
+    CHECK_NEAR(succubus_expected_melee_per_swing(0.0, 0), 101.0 * 0.86 * 0.95 * 1.05, 1e-9);
     // 6 SP to 1 AP: ((500.0 / 6.0) / 14.0) * 2.0 per swing before multipliers.
     CHECK_NEAR(succubus_expected_melee_per_swing(500.0, 0),
-               (170.0 + ((500.0 / 6.0) / 14.0) * 2.0) * 0.86 * 0.95 * 1.05, 1e-9);
+               (101.0 + ((500.0 / 6.0) / 14.0) * 2.0) * 0.86 * 0.95 * 1.05, 1e-9);
 }
 
 TEST_CASE(ImpAnalysis, SuccubusLopCasts) {
@@ -126,7 +126,7 @@ TEST_CASE(ImpAnalysis, SuccubusDpsOrderingAndSlope) {
           succubus_expected_dps(400.0, 0, 3, true, 300.0));
     // Spot value: (60 melee swings + 10 lashes) over 120s.
     CHECK_NEAR(succubus_expected_dps(0.0, 0, 0, false, T),
-               (60.0 * 170.0 * 0.86 * 0.95 * 1.05 + 10.0 * 50.0 * 0.83 * 1.025) / 120.0,
+               (60.0 * 101.0 * 0.86 * 0.95 * 1.05 + 10.0 * 50.0 * 0.83 * 1.025) / 120.0,
                1e-9);
     // Slope is linear in SP for both components.
     auto slope = [](double sp, int up, int sayaad, bool ml, double T) {

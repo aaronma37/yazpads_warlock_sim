@@ -2343,7 +2343,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (rng.chance(0.95)) {
                         double master_sp = get_current_sp(School::SHADOW, current_time);
                         double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_ap_ratio * master_sp) : 0.0;
-                        double base_swing = rng.range(145.0, 195.0) + (bonus_ap / 14.0) * 2.0;
+                        double base_swing = 101.0 + (bonus_ap / 14.0) * 2.0;
 
                         // Unholy Power in Forever: +2% per point (+10% at 5/5)
                         base_swing *= (1.0 + talents.demo.unholy_power * 0.02);

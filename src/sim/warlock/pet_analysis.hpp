@@ -105,8 +105,8 @@ inline double expected_dps(double master_sp, int unholy_power, int improved_imp,
 // Talent axes: Unholy Power (+2% pet damage per point) and Improved Sayaad
 // (+10% Lash damage per point, -1s Lash cooldown per point). Fel Vitality 0/3.
 
-constexpr double kSuccubusMeleeMinDamage = 145.0;
-constexpr double kSuccubusMeleeMaxDamage = 195.0;
+constexpr double kSuccubusMeleeMinDamage = 101.0;
+constexpr double kSuccubusMeleeMaxDamage = 101.0;
 constexpr double kPetApRatio = 1.0 / 6.0;    // 6 SP = 1 Pet AP (~16.67% SP to pet Attack Power)
 constexpr double kMeleeArmorMultiplier = 0.86;
 constexpr double kMeleeHitChance = 0.95;

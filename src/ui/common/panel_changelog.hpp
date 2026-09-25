@@ -30,6 +30,7 @@ inline void render_panel_changelog() {
         ImGui::BulletText("Wrack (Base & Coefficient): Updated base damage to 216 (36.0 per tick) and spell power coefficient to 85.8%% total (14.3%% per tick across 6 ticks).");
         ImGui::BulletText("Drain Life (Base Damage): Adjusted Rank 6 base damage to 255 (51.0 per tick across 5 ticks).");
         ImGui::BulletText("Shadowburn (Base Damage): Updated Rank 6 base damage range to 259–289 (avg 274).");
+        ImGui::BulletText("Succubus Melee (Base Damage): Switched level 60 base swing damage to 101 (from 145–195) to match Zephan's Vanilla WoW spreadsheet.");
         ImGui::Spacing();
     }
 
