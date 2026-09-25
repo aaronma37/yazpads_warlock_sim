@@ -440,6 +440,15 @@ inline void render_priest_panel_optimizer(
 #endif
             }
         }
+
+        if (is_busy) {
+            ImGui::SameLine(0.0f, 12.0f);
+            warlock::WowProgressBar(opt_progress, ImVec2(240, 28));
+            if (!current_opt_target.empty()) {
+                ImGui::SameLine(0.0f, 8.0f);
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", current_opt_target.c_str());
+            }
+        }
     } else {
         static float priest_specs_export_timer = 0.0f;
         static std::string priest_specs_export_msg = "";
@@ -547,16 +556,19 @@ inline void render_priest_panel_optimizer(
             ImGui::SetTooltip("Save ZIP archive containing individual JSON configs and results for all specs shown, manifest.json, and leaderboard.csv");
         }
 
+        if (is_busy) {
+            ImGui::SameLine(0.0f, 12.0f);
+            warlock::WowProgressBar(opt_progress, ImVec2(240, 28));
+            if (!current_opt_target.empty()) {
+                ImGui::SameLine(0.0f, 8.0f);
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", current_opt_target.c_str());
+            }
+        }
+
         if (priest_specs_export_timer > 0.0f && !priest_specs_export_msg.empty()) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "%s", priest_specs_export_msg.c_str());
         }
-    }
-
-    if (is_optimizing) {
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Optimizing: %s", current_opt_target.c_str());
-        ImGui::ProgressBar(opt_progress, ImVec2(-1, 8));
     }
 
     ImGui::Separator();

@@ -227,28 +227,30 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
     ImGui::SameLine(0, 10.0f);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 10.0f);
 
+    if (is_any_busy && !is_blunder_busy) ImGui::BeginDisabled();
+    bool blunder_clicked = WowButton(is_blunder_busy ? "Analyzing..." : "Run Blunder Analysis", ImVec2(180.0f, 26.0f), !is_blunder_busy);
+    if (is_any_busy && !is_blunder_busy) ImGui::EndDisabled();
+
     if (is_blunder_busy)
     {
-      std::string b_status = blunder_worker.get_status();
-      ImGui::ProgressBar(blunder_worker.progress.load(), ImVec2(180.0f, 26.0f), b_status.c_str());
+      ImGui::SameLine(0, 10.0f);
+      WowProgressBar(blunder_worker.progress.load(), ImVec2(180.0f, 24.0f));
     }
-    else
-    {
-      if (is_any_busy) ImGui::BeginDisabled();
-      if (WowButton("Run Blunder Analysis", ImVec2(180.0f, 26.0f)))
-      {
-        active_view = ActiveAnalysisView::BLUNDER;
-        blunder_diff_cache.clear();
-        selected_diff_step = size_t(-1);
-        open_diff_modal = false;
-        blunder_worker.has_result = false;
-        blunder_worker.is_running = true;
-        blunder_worker.set_status(0.05f, "Initializing simulation episode...");
 
-        if (blunder_worker.worker.joinable())
-        {
-          blunder_worker.worker.join();
-        }
+    if (blunder_clicked)
+    {
+      active_view = ActiveAnalysisView::BLUNDER;
+      blunder_diff_cache.clear();
+      selected_diff_step = size_t(-1);
+      open_diff_modal = false;
+      blunder_worker.has_result = false;
+      blunder_worker.is_running = true;
+      blunder_worker.set_status(0.05f, "Initializing simulation episode...");
+
+      if (blunder_worker.worker.joinable())
+      {
+        blunder_worker.worker.join();
+      }
 
         WarlockSimulator sim_copy = sim;
         int rollouts_cnt = blunder_rollouts_per_action;
@@ -338,9 +340,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
           fflush(stdout);
         });
       }
-      if (is_any_busy) ImGui::EndDisabled();
     }
-  }
   EndWowChild();
 
   ImGui::SameLine(0, 12.0f);
@@ -417,8 +417,7 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
       ImGui::PopStyleColor(3);
 
       ImGui::SameLine(0, 8.0f);
-      std::string m_status = mcts_worker.get_status();
-      ImGui::ProgressBar(mcts_worker.progress.load(), ImVec2(180.0f, 26.0f), m_status.c_str());
+      WowProgressBar(mcts_worker.progress.load(), ImVec2(180.0f, 24.0f));
     }
     else
     {
@@ -1197,7 +1196,6 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
         ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "MCTS Autonomous Simulation Initializing...");
         ImGui::Spacing();
         ImGui::TextDisabled("Simulating initial episodes and evaluating forward rollouts in background...");
-        ImGui::ProgressBar(mcts_worker.progress.load(), ImVec2(-1, 24.0f), mcts_worker.get_status().c_str());
       }
       else
       {

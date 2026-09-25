@@ -619,7 +619,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         status_msg = a_worker.current_status;
       }
 
-      ImGui::ProgressBar(prog, ImVec2(360, 26), "");
+      WowProgressBar(prog, ImVec2(360, 24), "");
       ImGui::SameLine();
       ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", status_msg.c_str());
     }
@@ -1199,6 +1199,17 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
 #endif
       }
     }
+
+    if (is_busy)
+    {
+      ImGui::SameLine(0.0f, 12.0f);
+      WowProgressBar(opt_progress, ImVec2(240, 28));
+      if (!current_opt_target.empty())
+      {
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", current_opt_target.c_str());
+      }
+    }
   }
   else if (opt_mode == 1)
   {
@@ -1332,6 +1343,17 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::SetTooltip("Save ZIP archive containing individual JSON configs and results for all specs shown, manifest.json, and leaderboard.csv");
     }
 
+    if (is_busy)
+    {
+      ImGui::SameLine(0.0f, 12.0f);
+      WowProgressBar(opt_progress, ImVec2(240, 28));
+      if (!current_opt_target.empty())
+      {
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", current_opt_target.c_str());
+      }
+    }
+
     if (specs_export_timer > 0.0f && !specs_export_msg.empty())
     {
       ImGui::Spacing();
@@ -1344,13 +1366,6 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::BeginDisabled();
     if (is_optimizing)
       ImGui::EndDisabled();
-  }
-
-  if (is_optimizing)
-  {
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Optimizing: %s", current_opt_target.c_str());
-    ImGui::ProgressBar(opt_progress, ImVec2(-1, 8));
   }
 
   ImGui::Separator();

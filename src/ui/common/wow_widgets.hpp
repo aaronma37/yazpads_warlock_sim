@@ -789,6 +789,200 @@ inline bool WowInputText(const char* label, char* buf, size_t buf_size, ImGuiInp
     return changed;
 }
 
+// ============================================================================
+// Classic WoW Authentic Casting Bar / Loading Bar / Progress Bar
+//
+// Uses authentic Blizzard textures:
+//   - UI-CastingBar-Border-Small / UI-CastingBar-Border (3-slice brass frame)
+//   - UI-StatusBar (horizontal gradient fill texture)
+//   - UI-CastingBar-Spark (additive leading edge glow)
+//   - UI-CastingBar-Flash-Small / UI-CastingBar-Flash (additive completion flash)
+// ============================================================================
+inline void WowProgressBar(
+    float fraction,
+    const ImVec2& size_arg = ImVec2(-1, 0),
+    const char* overlay = nullptr,
+    ImU32 bar_color = IM_COL32(255, 178, 0, 255),
+    bool show_spark = true
+) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (window->SkipItems) return;
+
+    ImGuiContext& g = *GImGui;
+    const ImGuiStyle& style = g.Style;
+
+    ImVec2 pos = window->DC.CursorPos;
+    ImVec2 size = ImGui::CalcItemSize(size_arg, ImGui::CalcItemWidth(), g.FontSize + style.FramePadding.y * 2.0f);
+    if (size_arg.y > 0.0f) {
+        size.y = size_arg.y;
+    } else if (size.y < 16.0f) {
+        size.y = 16.0f;
+    }
+    if (size.y < 6.0f) size.y = 6.0f;
+    if (size.x < 20.0f) size.x = 20.0f;
+
+    const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+
+    ImGui::ItemSize(size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bb, 0)) return;
+
+    float f = std::clamp(fraction, 0.0f, 1.0f);
+    ImDrawList* drawList = window->DrawList;
+
+    AssetManager& assets = AssetManager::get();
+    const Texture2D& fallback = assets.get_fallback();
+
+    bool is_small = (size.y <= 28.0f);
+
+    const Texture2D& borderSmallTex = assets.get_texture("UI-CastingBar-Border-Small");
+    const Texture2D& borderLargeTex = assets.get_texture("UI-CastingBar-Border");
+    const Texture2D& flashSmallTex  = assets.get_texture("UI-CastingBar-Flash-Small");
+    const Texture2D& flashLargeTex  = assets.get_texture("UI-CastingBar-Flash");
+    const Texture2D& sparkTex       = assets.get_texture("UI-CastingBar-Spark");
+    const Texture2D& statusTex      = assets.get_texture("UI-StatusBar");
+
+    const Texture2D& borderTex = is_small ? borderSmallTex : borderLargeTex;
+    const Texture2D& flashTex  = is_small ? flashSmallTex : flashLargeTex;
+
+    // Inner trough bounds (natural full height and width with balanced margins)
+    float pad_top    = is_small ? std::max(2.5f, size.y * 0.16f) : std::max(5.0f, size.y * 0.22f);
+    float pad_bottom = is_small ? std::max(2.5f, size.y * 0.18f) : std::max(5.0f, size.y * 0.22f);
+    float pad_left   = is_small ? 5.0f : 10.0f;
+    float pad_right  = is_small ? 5.0f : 10.0f;
+
+    ImVec2 inner_min(bb.Min.x + pad_left, bb.Min.y + pad_top);
+    ImVec2 inner_max(bb.Max.x - pad_right, bb.Max.y - pad_bottom);
+    float inner_w = std::max(0.0f, inner_max.x - inner_min.x);
+    float inner_h = std::max(0.0f, inner_max.y - inner_min.y);
+
+    // 1. Dark recessed trough background with rounding
+    if (inner_w > 0.0f && inner_h > 0.0f) {
+        drawList->AddRectFilled(inner_min, inner_max, IM_COL32(14, 11, 8, 255), 2.0f);
+        // Subtle top/left inner shadow
+        drawList->AddLine(ImVec2(inner_min.x + 1.0f, inner_min.y + 1.0f), ImVec2(inner_max.x - 1.0f, inner_min.y + 1.0f), IM_COL32(5, 4, 3, 200), 1.0f);
+        drawList->AddLine(ImVec2(inner_min.x + 1.0f, inner_min.y + 1.0f), ImVec2(inner_min.x + 1.0f, inner_max.y - 1.0f), IM_COL32(5, 4, 3, 200), 1.0f);
+    }
+
+    // 2. Bar Fill (UI-StatusBar texture smoothly stretched with NO tiling or solid fill)
+    float fill_w = inner_w * f;
+    if (fill_w > 0.5f && inner_h > 0.0f) {
+        ImVec2 fill_max(inner_min.x + fill_w, inner_max.y);
+        if (statusTex.id > 0 && statusTex.id != fallback.id) {
+            drawList->AddImage(
+                (ImTextureID)(uintptr_t)statusTex.id,
+                inner_min,
+                fill_max,
+                ImVec2(0.0f, 0.0f),
+                ImVec2(1.0f, 1.0f),
+                bar_color
+            );
+        } else {
+            drawList->AddRectFilled(inner_min, fill_max, bar_color, 2.0f);
+        }
+    }
+
+    // 3. Spark (authentic leading-edge glow with transparent falloff)
+    if (show_spark && f > 0.01f && f < 0.995f && sparkTex.id > 0 && sparkTex.id != fallback.id && inner_h >= 4.0f) {
+        float spark_cx = inner_min.x + fill_w;
+        float spark_cy = (inner_min.y + inner_max.y) * 0.5f;
+        float spark_h  = inner_h * 2.2f;
+        float spark_w  = spark_h * 0.75f;
+        drawList->AddImage(
+            (ImTextureID)(uintptr_t)sparkTex.id,
+            ImVec2(spark_cx - spark_w * 0.5f, spark_cy - spark_h * 0.5f),
+            ImVec2(spark_cx + spark_w * 0.5f, spark_cy + spark_h * 0.5f),
+            ImVec2(0.0f, 0.0f),
+            ImVec2(1.0f, 1.0f),
+            IM_COL32(255, 255, 255, 240)
+        );
+    }
+
+    // 4. WoW Casting Bar 3-Slice Border Overlay
+    if (borderTex.id > 0 && borderTex.id != fallback.id) {
+        if (is_small) {
+            // UI-CastingBar-Border-Small: [28..227] x [22..43] inside 256x64
+            const ImVec2 uv0(28.0f / 256.0f, 22.0f / 64.0f);
+            const ImVec2 uv1(227.0f / 256.0f, 43.0f / 64.0f);
+            DrawThreeSliceHorizontal(
+                drawList,
+                (ImTextureID)(uintptr_t)borderTex.id,
+                bb.Min,
+                bb.Max,
+                10.0f,
+                200.0f,
+                uv0,
+                uv1
+            );
+        } else {
+            // UI-CastingBar-Border: [22..233] x [16..47] inside 256x64
+            const ImVec2 uv0(22.0f / 256.0f, 16.0f / 64.0f);
+            const ImVec2 uv1(233.0f / 256.0f, 47.0f / 64.0f);
+            DrawThreeSliceHorizontal(
+                drawList,
+                (ImTextureID)(uintptr_t)borderTex.id,
+                bb.Min,
+                bb.Max,
+                18.0f,
+                212.0f,
+                uv0,
+                uv1
+            );
+        }
+    } else {
+        // Fallback procedural frame bevel
+        drawList->AddRect(bb.Min, bb.Max, IM_COL32(140, 110, 60, 255), 2.0f, 0, 1.5f);
+    }
+
+    // 5. Completion Flash Glow Overlay (at 100%)
+    if (f >= 0.999f && flashTex.id > 0 && flashTex.id != fallback.id) {
+        if (is_small) {
+            const ImVec2 uv0(21.0f / 256.0f, 14.0f / 64.0f);
+            const ImVec2 uv1(234.0f / 256.0f, 50.0f / 64.0f);
+            DrawThreeSliceHorizontal(
+                drawList,
+                (ImTextureID)(uintptr_t)flashTex.id,
+                bb.Min,
+                bb.Max,
+                14.0f,
+                214.0f,
+                uv0,
+                uv1,
+                IM_COL32(255, 255, 255, 160)
+            );
+        } else {
+            const ImVec2 uv0(19.0f / 256.0f, 13.0f / 64.0f);
+            const ImVec2 uv1(236.0f / 256.0f, 50.0f / 64.0f);
+            DrawThreeSliceHorizontal(
+                drawList,
+                (ImTextureID)(uintptr_t)flashTex.id,
+                bb.Min,
+                bb.Max,
+                18.0f,
+                218.0f,
+                uv0,
+                uv1,
+                IM_COL32(255, 255, 255, 160)
+            );
+        }
+    }
+
+    // 6. Centered Overlay Text with 4-way Drop Shadow (Only if explicitly provided)
+    if (overlay && overlay[0] != '\0' && size.y >= 12.0f) {
+        ImVec2 text_sz = ImGui::CalcTextSize(overlay);
+        ImVec2 text_pos(
+            bb.Min.x + (size.x - text_sz.x) * 0.5f,
+            bb.Min.y + (size.y - text_sz.y) * 0.5f
+        );
+
+        // 4-way dark drop shadow for high contrast readability
+        drawList->AddText(ImVec2(text_pos.x + 1.0f, text_pos.y), IM_COL32(0, 0, 0, 255), overlay);
+        drawList->AddText(ImVec2(text_pos.x - 1.0f, text_pos.y), IM_COL32(0, 0, 0, 255), overlay);
+        drawList->AddText(ImVec2(text_pos.x, text_pos.y + 1.0f), IM_COL32(0, 0, 0, 255), overlay);
+        drawList->AddText(ImVec2(text_pos.x, text_pos.y - 1.0f), IM_COL32(0, 0, 0, 255), overlay);
+        // Primary text
+        drawList->AddText(text_pos, IM_COL32(255, 240, 150, 255), overlay);
+    }
+}
 
 // ============================================================================
 inline bool WowCollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0) {

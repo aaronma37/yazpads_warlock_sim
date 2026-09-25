@@ -184,8 +184,9 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
 
     if (is_busy)
     {
-      std::string s_status = worker.get_status();
-      ImGui::ProgressBar(worker.progress.load(), ImVec2(220.0f, 26.0f), s_status.c_str());
+      WowButton("Synthesizing...", ImVec2(210.0f, 26.0f), false);
+      ImGui::SameLine(0, 10.0f);
+      WowProgressBar(worker.progress.load(), ImVec2(220.0f, 24.0f));
     }
     else
     {

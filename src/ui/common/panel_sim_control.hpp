@@ -29,7 +29,7 @@ inline void render_common_sim_control(SimType& sim,
 
   if (is_running)
   {
-    ImGui::ProgressBar(progress, ImVec2(-1, 6));
+    WowProgressBar(progress, ImVec2(-1, 16));
   }
 
   if (last_result.total_iterations > 0)

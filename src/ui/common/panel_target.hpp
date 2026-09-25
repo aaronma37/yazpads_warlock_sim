@@ -96,7 +96,7 @@ inline void render_panel_sim_config(SimType& sim,
   if (is_running)
   {
     ImGui::Spacing();
-    ImGui::ProgressBar(progress, ImVec2(left_w, 6));
+    WowProgressBar(progress, ImVec2(left_w, 16));
   }
 
   ImGui::Spacing();
