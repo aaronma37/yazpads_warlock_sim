@@ -132,7 +132,7 @@ class WarlockSimApp
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
-        {"Synthesize APL", AppTab::SYNTHESIZE_APL, 130.0f},
+        {"Synthesize APL/Policy", AppTab::SYNTHESIZE_APL, 165.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
         {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
@@ -142,7 +142,7 @@ class WarlockSimApp
         {"Compare Standard Specs", AppTab::COMPARE_STANDARD_SPECS, 190.0f},
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
-        {"Synthesize APL", AppTab::SYNTHESIZE_APL, 130.0f},
+        {"Synthesize APL/Policy", AppTab::SYNTHESIZE_APL, 165.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
         {"Changelog", AppTab::CHANGELOG, 95.0f}
       };

@@ -707,6 +707,41 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
+        bool is_gbdt = (use_gbdt_policy || policy.use_gbdt_policy) && (gbdt_q_policy != nullptr || policy.gbdt_q_policy != nullptr);
+        std::vector<PriorityRule> dynamic_gbdt_rules;
+        if (is_gbdt && !is_forced && !is_oracle) {
+            const auto* active_policy = gbdt_q_policy ? gbdt_q_policy.get() : policy.gbdt_q_policy.get();
+            sim::SimObservation cur_obs = get_current_observation();
+            auto candidates = VIPEROracle::get_candidate_actions();
+            std::vector<std::pair<float, PriorityAction>> scored;
+            scored.reserve(candidates.size());
+            for (const auto& [act, _] : candidates) {
+                if (act == PriorityAction::RACIAL_EUREKA ||
+                    act == PriorityAction::RACIAL_BLOOD_FURY ||
+                    act == PriorityAction::RACIAL_BERSERKING ||
+                    act == PriorityAction::AMPLIFY_CURSE ||
+                    act == PriorityAction::BANE_OF_HAVOC) {
+                    continue; // Handled off-GCD
+                }
+                if (VIPEROracle::is_action_legal(act, cur_obs, talents)) {
+                    float q = active_policy->predict_q(static_cast<uint8_t>(act), cur_obs);
+                    scored.push_back({q, act});
+                }
+            }
+            std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
+                return a.first > b.first;
+            });
+            for (const auto& [q_val, act] : scored) {
+                PriorityRule r;
+                r.action = act;
+                r.spell_id = VIPEROracle::get_spell_id(act);
+                r.name = VIPEROracle::get_action_name(act);
+                r.enabled = true;
+                r.use_custom_thresholds = false;
+                dynamic_gbdt_rules.push_back(r);
+            }
+        }
+
         if (is_forced) {
             PriorityAction forced_act = forced_action_prefix[decision_step_count];
             PriorityRule r;
@@ -718,11 +753,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             rules_to_evaluate.push_back(r);
 
             // Append fallback priority rules in case forced action cannot be cast (e.g. cooldown / resource constraint)
-            for (const auto& fallback_rule : (is_oracle ? dynamic_oracle_rules : priority_rules)) {
+            const auto& fallback_source = is_oracle ? dynamic_oracle_rules : (is_gbdt && !dynamic_gbdt_rules.empty() ? dynamic_gbdt_rules : priority_rules);
+            for (const auto& fallback_rule : fallback_source) {
                 rules_to_evaluate.push_back(fallback_rule);
             }
+        } else if (is_oracle) {
+            rules_to_evaluate = dynamic_oracle_rules;
+        } else if (is_gbdt && !dynamic_gbdt_rules.empty()) {
+            rules_to_evaluate = dynamic_gbdt_rules;
         } else {
-            rules_to_evaluate = is_oracle ? dynamic_oracle_rules : priority_rules;
+            rules_to_evaluate = priority_rules;
         }
 
         for (const auto& rule : rules_to_evaluate) {

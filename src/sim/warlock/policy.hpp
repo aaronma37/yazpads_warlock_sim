@@ -2,8 +2,10 @@
 #include "spells.hpp"
 #include "stats.hpp"
 #include "talents.hpp"
+#include "src/sim/common/gbdt.hpp"
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -558,6 +560,8 @@ struct PolicyConfig
   // Dynamic & Custom APL properties
   bool use_custom_apl = false;
   bool use_oracle_execution_policy = false; // Live online greedy MCTS / Oracle controller
+  bool use_gbdt_policy = false;             // Trained GBDT Q-Ensemble Policy (LightGBM/Tree Model)
+  std::shared_ptr<sim::GBDTMultiActionQPolicy> gbdt_q_policy = nullptr;
   std::vector<PriorityRule> custom_rules;
 
   // Constructs the ordered priority rule list for display and execution

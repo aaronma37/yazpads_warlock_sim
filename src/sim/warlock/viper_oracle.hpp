@@ -1,6 +1,7 @@
 #pragma once
 #include "src/sim/common/sim_state_vector.hpp"
 #include "src/sim/common/decision_tree.hpp"
+#include "src/sim/common/gbdt.hpp"
 #include "src/sim/warlock/warlock_sim.hpp"
 #include "src/sim/warlock/policy.hpp"
 #include <algorithm>
@@ -423,6 +424,14 @@ public:
         std::string generated_cpp_code;
         std::string tree_ascii_visualization;
         std::vector<sim::ExtractedDecisionRule> decision_rules;
+
+        // 5. GBDT Q-Policy (LightGBM/Tree Ensemble Policy)
+        sim::GBDTMultiActionQPolicy gbdt_q_policy;
+        double gbdt_policy_expected_dps = 0.0;
+        double gbdt_policy_dps_stddev = 0.0;
+        double gbdt_policy_gain_pct = 0.0;
+        double gbdt_potential_captured_pct = 0.0;
+        std::vector<std::pair<std::string, double>> gbdt_feature_importances;
     };
 
     // Checks if two PriorityRules have identical action and identical triggering conditions
@@ -1219,6 +1228,78 @@ public:
 
         // Oracle Fidelity / Action Agreement %
         res.oracle_agreement_fidelity_pct = std::max(res.tree_weighted_fidelity_pct, std::min(98.5, 88.0 + (res.oracle_potential_captured_pct * 0.10)));
+
+        // 5. Fit & Benchmark High-Performance GBDT Q-Policy Ensemble
+        report_progress(0.94f, "Phase 4/4: Fitting & Benchmarking GBDT Multi-Action Q-Policy Ensemble...");
+        std::vector<sim::GBDTMultiActionQPolicy::QSample> q_samples;
+        q_samples.reserve(aggregated_dataset.samples.size() * 4);
+        for (const auto& sample : aggregated_dataset.samples) {
+            for (const auto& [act, _] : candidate_actions) {
+                if (is_action_legal(act, sample.state, sim.talents)) {
+                    double local_q = estimate_local_q_value(sample.state, act, sim.talents);
+                    if (local_q > -900.0) {
+                        float target_q = static_cast<float>(local_q);
+                        if (static_cast<uint8_t>(act) == sample.oracle_action) {
+                            target_q += static_cast<float>(sample.sample_weight * 5.0f);
+                        }
+                        q_samples.push_back({sample.state, static_cast<uint8_t>(act), target_q, 1.0f});
+                    }
+                }
+            }
+        }
+        if (q_samples.empty()) {
+            for (const auto& sample : rollout_dataset.samples) {
+                for (const auto& [act, _] : candidate_actions) {
+                    if (is_action_legal(act, sample.state, sim.talents)) {
+                        double local_q = estimate_local_q_value(sample.state, act, sim.talents);
+                        if (local_q > -900.0) {
+                            q_samples.push_back({sample.state, static_cast<uint8_t>(act), static_cast<float>(local_q), 1.0f});
+                        }
+                    }
+                }
+            }
+        }
+
+        sim::GBDTConfig gbdt_cfg;
+        gbdt_cfg.num_trees = 35;
+        gbdt_cfg.max_depth = 4;
+        gbdt_cfg.learning_rate = 0.12f;
+        res.gbdt_q_policy = sim::GBDTMultiActionQPolicy(gbdt_cfg);
+        res.gbdt_q_policy.fit(q_samples);
+
+        // Benchmark GBDT Q-Policy against baseline and oracle
+        WarlockSimulator gbdt_sim = sim;
+        gbdt_sim.use_gbdt_policy = true;
+        gbdt_sim.gbdt_q_policy = std::make_shared<sim::GBDTMultiActionQPolicy>(res.gbdt_q_policy);
+        gbdt_sim.record_viper_samples = false;
+        StatSummary gbdt_stats = compute_expected_dps(gbdt_sim, benchmark_iterations, seed + 101);
+        res.gbdt_policy_expected_dps = gbdt_stats.mean_dps;
+        res.gbdt_policy_dps_stddev = gbdt_stats.stddev_dps;
+        res.gbdt_policy_gain_pct = ((res.gbdt_policy_expected_dps - res.baseline_expected_dps) / std::max(1.0, res.baseline_expected_dps)) * 100.0;
+        if (res.oracle_expected_gain > 0.0) {
+            res.gbdt_potential_captured_pct = ((res.gbdt_policy_expected_dps - res.baseline_expected_dps) / res.oracle_expected_gain) * 100.0;
+        } else {
+            res.gbdt_potential_captured_pct = 0.0;
+        }
+
+        // Feature Importance Aggregation across action models
+        std::vector<double> agg_feat_importances(sim::SimObservation::FEATURE_COUNT, 0.0);
+        for (const auto& [act_id, model] : res.gbdt_q_policy.models()) {
+            const auto& fi = model.get_feature_importances();
+            for (size_t f = 0; f < fi.size() && f < agg_feat_importances.size(); ++f) {
+                agg_feat_importances[f] += fi[f];
+            }
+        }
+        auto feat_names = sim::SimObservation::feature_names();
+        res.gbdt_feature_importances.clear();
+        for (size_t f = 0; f < agg_feat_importances.size() && f < feat_names.size(); ++f) {
+            if (agg_feat_importances[f] > 0.0) {
+                res.gbdt_feature_importances.push_back({feat_names[f], agg_feat_importances[f]});
+            }
+        }
+        std::sort(res.gbdt_feature_importances.begin(), res.gbdt_feature_importances.end(), [](const auto& a, const auto& b) {
+            return a.second > b.second;
+        });
 
         // Compute Rule Shifts (Diff between baseline and extracted rules)
         for (size_t i = 0; i < res.extracted_rules.size(); ++i) {

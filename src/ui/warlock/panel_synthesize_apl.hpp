@@ -258,9 +258,9 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
     {
       const auto& res = worker.live_result;
 
-      // Top KPI Cards (3 Expected Value Cards)
+      // Top KPI Cards (4 Expected Value Cards)
       float avail_w = ImGui::GetContentRegionAvail().x;
-      float card_w = (avail_w - 2.0f * 10.0f) / 3.0f;
+      float card_w = (avail_w - 3.0f * 10.0f) / 4.0f;
       float card_h = 72.0f;
 
       // Card 1: Baseline Expected DPS
@@ -274,34 +274,57 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
 
       ImGui::SameLine(0, 10.0f);
 
-      // Card 2: MCTS Oracle Ceiling
+      // Card 2: Synthesized APL (Interpretable)
       BeginWowChild("SynthKPI2", ImVec2(card_w, card_h), true);
       {
-        ImGui::TextDisabled("2. MCTS ORACLE CEILING");
-        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS (+%.1f%%)", res.oracle_expected_dps, res.oracle_gain_pct);
-        ImGui::TextDisabled("Potential Gain: +%.1f DPS (Upper Bound)", res.oracle_expected_gain);
+        ImGui::TextDisabled("2. SYNTHESIZED APL (RULES)");
+        ImVec4 gain_col = (res.viper_gain_over_baseline > 0.5) ? ImVec4(0.2f, 0.95f, 0.35f, 1.0f) : ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+        ImGui::TextColored(gain_col, "%.1f ± %.1f DPS (+%.1f%%)", res.viper_expected_dps, res.viper_dps_stddev, res.viper_gain_pct);
+        ImGui::TextDisabled("Captured %.1f%% Ceiling | %.1f%% Fid", res.oracle_potential_captured_pct, res.oracle_agreement_fidelity_pct);
       }
       EndWowChild();
 
       ImGui::SameLine(0, 10.0f);
 
-      // Card 3: Synthesized APL
+      // Card 3: GBDT Q-Policy (LightGBM/Trees)
       BeginWowChild("SynthKPI3", ImVec2(card_w, card_h), true);
       {
-        ImGui::TextDisabled("3. SYNTHESIZED OPTIMAL APL");
-        ImVec4 gain_col = (res.viper_gain_over_baseline > 0.5) ? ImVec4(0.2f, 0.95f, 0.35f, 1.0f) : ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
-        ImGui::TextColored(gain_col, "%.1f ± %.1f DPS (+%.1f%%)", res.viper_expected_dps, res.viper_dps_stddev, res.viper_gain_pct);
-        ImGui::TextDisabled("Captured %.1f%% of MCTS Ceiling | %.1f%% Fidelity", res.oracle_potential_captured_pct, res.oracle_agreement_fidelity_pct);
+        ImGui::TextDisabled("3. GBDT Q-POLICY (LIGHTGBM)");
+        ImVec4 gbdt_col = (res.gbdt_policy_gain_pct > 0.5) ? ImVec4(0.3f, 0.9f, 1.0f, 1.0f) : ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
+        ImGui::TextColored(gbdt_col, "%.1f ± %.1f DPS (+%.1f%%)", res.gbdt_policy_expected_dps, res.gbdt_policy_dps_stddev, res.gbdt_policy_gain_pct);
+        ImGui::TextDisabled("Captured %.1f%% of MCTS Ceiling", res.gbdt_potential_captured_pct);
+      }
+      EndWowChild();
+
+      ImGui::SameLine(0, 10.0f);
+
+      // Card 4: MCTS Oracle Ceiling
+      BeginWowChild("SynthKPI4", ImVec2(card_w, card_h), true);
+      {
+        ImGui::TextDisabled("4. MCTS ORACLE CEILING");
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS (+%.1f%%)", res.oracle_expected_dps, res.oracle_gain_pct);
+        ImGui::TextDisabled("Theoretical Upper Bound: +%.1f DPS", res.oracle_expected_gain);
       }
       EndWowChild();
 
       ImGui::Spacing();
 
-      // Action Bar: Apply Synthesized APL button
-      if (WowButton("Apply Synthesized APL to Sim Policy", ImVec2(280.0f, 26.0f)))
+      // Action Bar: Apply Synthesized APL vs Apply GBDT Q-Policy
+      if (WowButton("Apply Synthesized APL to Sim", ImVec2(240.0f, 26.0f)))
       {
         sim.policy.custom_rules = res.extracted_rules;
         sim.policy.use_custom_apl = true;
+        sim.policy.use_gbdt_policy = false;
+        worker.apl_applied_timer = 4.0f;
+      }
+
+      ImGui::SameLine(0, 10.0f);
+
+      if (WowButton("Apply GBDT Q-Policy to Sim", ImVec2(240.0f, 26.0f)))
+      {
+        sim.policy.gbdt_q_policy = std::make_shared<sim::GBDTMultiActionQPolicy>(res.gbdt_q_policy);
+        sim.policy.use_gbdt_policy = true;
+        sim.policy.use_custom_apl = false;
         worker.apl_applied_timer = 4.0f;
       }
 
@@ -309,7 +332,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       {
         ImGui::SameLine(0, 12.0f);
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.35f, 1.0f), "Synthesized APL successfully applied to active sim!");
+        ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.35f, 1.0f), "Policy successfully applied to active sim!");
       }
 
       ImGui::Spacing();
@@ -608,6 +631,68 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
               // Col 3: Count
               ImGui::TableNextColumn();
               ImGui::Text("%zu times", st.selection_count);
+            }
+            ImGui::EndTable();
+          }
+
+          ImGui::EndTabItem();
+        }
+
+        // -------------------------------------------------------------------
+        // TAB 6: GBDT Q-Policy (LightGBM/Tree Ensemble)
+        // -------------------------------------------------------------------
+        if (ImGui::BeginTabItem("GBDT Q-Policy (LightGBM/Ensemble)"))
+        {
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f),
+                             "Pure C++ Multi-Action GBDT Q-Policy Engine (LightGBM 2nd-Order Boosting)");
+          ImGui::Spacing();
+          ImGui::Text("Models Trained: %zu Action Estimators | Trees / Model: %zu | Max Depth: %zu | Expected DPS: %.1f DPS",
+                      res.gbdt_q_policy.models().size(),
+                      res.gbdt_q_policy.models().empty() ? 0 : res.gbdt_q_policy.models().begin()->second.num_trees(),
+                      res.gbdt_q_policy.models().empty() ? 0 : res.gbdt_q_policy.models().begin()->second.config().max_depth,
+                      res.gbdt_policy_expected_dps);
+          ImGui::Spacing();
+
+          if (WowButton("Export GBDT Model JSON to Clipboard", ImVec2(260.0f, 24.0f)))
+          {
+            std::ostringstream jss;
+            jss << "{\n  \"model_type\": \"GBDTMultiActionQPolicy\",\n  \"models\": {\n";
+            size_t m_idx = 0;
+            for (const auto& [act_id, model] : res.gbdt_q_policy.models()) {
+              jss << "    \"" << VIPEROracle::get_action_name(static_cast<PriorityAction>(act_id)) << "\": "
+                  << model.to_json() << (m_idx + 1 < res.gbdt_q_policy.models().size() ? ",\n" : "\n");
+              m_idx++;
+            }
+            jss << "  }\n}\n";
+            ImGui::SetClipboardText(jss.str().c_str());
+          }
+
+          ImGui::Spacing();
+          ImGui::TextDisabled("Global GBDT Feature Importance (Total Split Gain across all Action Models):");
+          ImGui::Spacing();
+
+          static ImGuiTableFlags feat_tbl_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
+          if (ImGui::BeginTable("GBDTFeatureImportanceTable", 3, feat_tbl_flags, ImVec2(0, 0)))
+          {
+            ImGui::TableSetupColumn("Rank", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+            ImGui::TableSetupColumn("Feature Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Total Split Gain", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableHeadersRow();
+
+            for (size_t f = 0; f < res.gbdt_feature_importances.size(); ++f)
+            {
+              const auto& [fname, gain] = res.gbdt_feature_importances[f];
+              ImGui::TableNextRow();
+
+              ImGui::TableNextColumn();
+              ImGui::TextColored(ImVec4(1.0f, 0.82f, 0.0f, 1.0f), "#%zu", f + 1);
+
+              ImGui::TableNextColumn();
+              ImGui::Text("%s", fname.c_str());
+
+              ImGui::TableNextColumn();
+              ImGui::TextColored(ImVec4(0.3f, 0.9f, 1.0f, 1.0f), "%.2f", gain);
             }
             ImGui::EndTable();
           }

@@ -177,6 +177,8 @@ public:
     bool record_timeline = false;
     bool record_viper_samples = false;
     bool use_oracle_execution_policy = false; // Live online greedy MCTS / Oracle controller
+    bool use_gbdt_policy = false;             // Trained GBDT Q-Ensemble Policy (LightGBM/Tree Model)
+    std::shared_ptr<sim::GBDTMultiActionQPolicy> gbdt_q_policy = nullptr;
     std::vector<PriorityAction> forced_action_prefix; // Prefix of actions to force during rollouts
     sim::VIPERDataset viper_dataset;
 
