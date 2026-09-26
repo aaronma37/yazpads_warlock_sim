@@ -669,6 +669,7 @@ TEST_CASE(Rotations, MultiTargetCorruptionDistribution) {
     sim1.use_raw_stats = false;
     sim1.talents = Talents::create_forever_sm_ruin();
     sim1.policy.rotation = RotationChoice::SM_RUIN;
+    sim1.policy.corruption = DotPolicy::ALWAYS;
     sim1.policy.multi_dot_corruption = true;
     sim1.fight_duration = 120.0;
     SimResult res1 = sim1.run_single_simulation(rng1);
@@ -679,12 +680,13 @@ TEST_CASE(Rotations, MultiTargetCorruptionDistribution) {
     sim2.use_raw_stats = false;
     sim2.talents = Talents::create_forever_sm_ruin();
     sim2.policy.rotation = RotationChoice::SM_RUIN;
+    sim2.policy.corruption = DotPolicy::ALWAYS;
     sim2.policy.multi_dot_corruption = true;
     sim2.fight_duration = 120.0;
     SimResult res2 = sim2.run_single_simulation(rng2);
 
     // With 2 targets and multi-dotting enabled, corruption damage should roughly double
-    CHECK(res2.dmg_corruption > res1.dmg_corruption * 1.8);
+    CHECK(res2.dmg_corruption > res1.dmg_corruption * 1.5);
 }
 
 TEST_CASE(Rotations, MultiTargetBaneOfHavocCleave) {

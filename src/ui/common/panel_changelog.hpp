@@ -18,8 +18,17 @@ inline void render_panel_changelog() {
     ImGui::Separator();
     ImGui::Spacing();
 
+    // Changelog Entry: 9/25/26 Updates
+    if (WowCollapsingHeader("Changelog - 9/25/26: Engine Alignment & Mechanics Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+        ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/25/26):");
+        ImGui::BulletText("Shadowburn (Cooldown): Restored cooldown to 15s (from 8s) across the engine, Abilities tab (Spellbook), and APL policy to align with class mechanics.");
+        ImGui::BulletText("Demonic Brand (Spell Power & Charges): Added 7.8%% (+0.078) Master Spell Power scaling to proc damage (Shadow SP for Succubus, Fire SP for Imp) and aligned charge count to 1/2/3 charges based on talent rank.");
+        ImGui::Spacing();
+    }
+
     // Changelog Entry: 9/24/26 Updates
-    if (WowCollapsingHeader("Changelog - 9/24/26: Engine Alignment & Mechanics Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (WowCollapsingHeader("Changelog - 9/24/26: Engine Alignment & Mechanics Updates", false)) {
         ImGui::Spacing();
         ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/24/26):");
         ImGui::BulletText("Eureka! (Gnome Racial): Mana discount reduced from 50%% to 10%% per charge, matching the Forever Beta patch. Damage bonus (+10%% per charge) unchanged.");

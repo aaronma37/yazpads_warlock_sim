@@ -102,7 +102,7 @@ inline const std::vector<SpellBookEntry>& get_all_spellbook_entries()
        "Rank 6",
        "Shadow",
        "Instant",
-       "8s",
+       "15s",
        "365 Mana",
        "259 - 289",
        "42.86%",

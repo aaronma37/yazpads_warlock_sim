@@ -95,8 +95,11 @@ TEST_CASE(Mechanics, TargetISBApplicationAndCharges) {
 TEST_CASE(Mechanics, NightfallProcSimulation) {
     FastRNG rng(12345);
     WarlockSimulator sim;
+    sim.gear = GearLoadout::create_phase3_bis();
+    sim.use_raw_stats = false;
     sim.talents = Talents::create_forever_nf_ds_ruin();
-    sim.policy.rotation = RotationChoice::SHADOW_DESTRO;
+    sim.policy.rotation = RotationChoice::SM_RUIN;
+    sim.policy.corruption = DotPolicy::ALWAYS;
     sim.fight_duration = 180.0; // 3 minute fight with continuous Corruption ticks
     sim.record_timeline = true;
 

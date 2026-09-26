@@ -199,7 +199,7 @@ public:
         s.school = School::SHADOW;
         s.base_cast_time = 0.0;
         s.mana_cost = 365.0;
-        s.cooldown = 8.0;
+        s.cooldown = 15.0;
         s.min_dmg = 259.0;
         s.max_dmg = 289.0;
         s.direct_coefficient = 1.5 / 3.5; // 0.4286

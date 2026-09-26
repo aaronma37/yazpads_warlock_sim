@@ -1302,7 +1302,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             result.direct_spell_casts++;
                             result.record_spell_cast(SpellID::SHADOWBURN);
                             apply_touch_of_the_grave(now);
-                            shadowburn_cd_ready = now + 8.0;
+                            shadowburn_cd_ready = now + 15.0;
 
                             bool eureka_active = (race == Race::GNOME && eureka_charges > 0);
                             if (eureka_active) eureka_charges--;
@@ -1928,9 +1928,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    // Demonic Brand: Brands the target for 10s (pet's next 2/4/6 attacks deal bonus damage)
+                    // Demonic Brand: Brands the target for 10s (pet's next 1/2/3 attacks deal bonus damage)
                     if (talents.demo.demonic_brand > 0) {
-                        demonic_brand_charges = talents.demo.demonic_brand * 2;
+                        demonic_brand_charges = talents.demo.demonic_brand;
                         demonic_brand_expire = current_time + 10.0;
                     }
 
@@ -2460,7 +2460,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double brand_dmg = 0.0;
                         if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                             demonic_brand_charges--;
-                            brand_dmg = rng.range(65.0, 68.0);
+                            double brand_sp = get_current_sp(School::SHADOW, current_time);
+                            brand_dmg = rng.range(65.0, 68.0) + 0.078 * brand_sp;
                             brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                             if (buffs.curse_of_shadows) brand_dmg *= 1.10;
@@ -2525,7 +2526,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                brand_dmg = rng.range(65.0, 68.0);
+                                brand_dmg = rng.range(65.0, 68.0) + 0.078 * master_sp;
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                                 if (buffs.curse_of_shadows) brand_dmg *= 1.10;
@@ -2597,7 +2598,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double brand_dmg = 0.0;
                             if (talents.demo.demonic_brand > 0 && demonic_brand_charges > 0 && current_time < demonic_brand_expire) {
                                 demonic_brand_charges--;
-                                brand_dmg = rng.range(65.0, 68.0);
+                                brand_dmg = rng.range(65.0, 68.0) + 0.078 * master_sp;
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
                                 if (buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
