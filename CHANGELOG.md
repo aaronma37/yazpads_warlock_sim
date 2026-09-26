@@ -3,6 +3,20 @@
 Tracks game-mechanic changes from WoW Forever patch notes that affect simulation accuracy.
 Full raw patch notes are archived in [`docs/archive/`](docs/archive/).
 
+## 2026-09-25
+
+### ✅ Implemented
+
+#### Demonic Brand — Scaling & Charges
+- [x] Added `+0.078` Master Spell Power coefficient (Shadow SP for Succubus, Fire SP for Imp).
+- [x] Set charge count to 2 / 4 / 6 attacks per brand based on talent rank (1 / 2 / 3).
+
+#### Pet Hit — Suppression Inheritance
+- [x] Enabled pets (Imp Firebolt, Succubus Melee & Lash of Pain) to inherit `+1%` hit per point in Suppression (`+5%` at 5/5).
+
+#### Shadowburn — Cooldown Alignment
+- [x] Restored cooldown to 15s (from 8s) across engine and UI.
+
 ---
 
 ## 2026-09-24

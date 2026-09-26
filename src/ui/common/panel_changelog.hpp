@@ -23,7 +23,8 @@ inline void render_panel_changelog() {
         ImGui::Spacing();
         ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/25/26):");
         ImGui::BulletText("Shadowburn (Cooldown): Restored cooldown to 15s (from 8s) across the engine, Abilities tab (Spellbook), and APL policy to align with class mechanics.");
-        ImGui::BulletText("Demonic Brand (Spell Power & Charges): Added 7.8%% (+0.078) Master Spell Power scaling to proc damage (Shadow SP for Succubus, Fire SP for Imp) and aligned charge count to 1/2/3 charges based on talent rank.");
+        ImGui::BulletText("Demonic Brand (Spell Power & Charges): Added 7.8%% (+0.078) Master Spell Power scaling to proc damage (Shadow SP for Succubus, Fire SP for Imp) and aligned charge count to 2/4/6 charges based on talent rank.");
+        ImGui::BulletText("Pet Hit (Suppression Inheritance): Enabled pets (Imp Firebolt, Succubus Melee & Lash of Pain) to inherit +1%% hit chance per point from the Suppression talent (+5%% at 5/5).");
         ImGui::Spacing();
     }
 

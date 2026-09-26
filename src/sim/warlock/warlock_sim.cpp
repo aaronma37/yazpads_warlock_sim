@@ -1928,9 +1928,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
 
-                    // Demonic Brand: Brands the target for 10s (pet's next 1/2/3 attacks deal bonus damage)
+                    // Demonic Brand: Brands the target for 10s (pet's next 2/4/6 attacks deal bonus damage)
                     if (talents.demo.demonic_brand > 0) {
-                        demonic_brand_charges = talents.demo.demonic_brand;
+                        demonic_brand_charges = talents.demo.demonic_brand * 2;
                         demonic_brand_expire = current_time + 10.0;
                     }
 
@@ -2435,7 +2435,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             case EventType::PET_MELEE_SWING: {
                 if (active_pet == PetChoice::SUCCUBUS) {
                     result.record_spell_cast(SpellID::PET_MELEE);
-                    if (rng.chance(0.95)) {
+                    double pet_melee_hit = std::min(1.0, 0.95 + talents.aff.suppression * 0.01);
+                    if (rng.chance(pet_melee_hit)) {
                         double master_sp = get_current_sp(School::SHADOW, current_time);
                         double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_ap_ratio * master_sp) : 0.0;
                         double base_swing = 101.0 + (bonus_ap / 14.0) * 2.0;
@@ -2498,7 +2499,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.record_spell_cast(SpellID::PET_LASH_OF_PAIN);
 
                         // Lash of Pain: 50 shadow damage + pet SP scaling
-                        if (rng.chance(0.83)) {
+                        double pet_spell_hit = std::min(1.0, mechanics.base_hit_vs_boss + talents.aff.suppression * 0.01);
+                        if (rng.chance(pet_spell_hit)) {
                             double master_sp = get_current_sp(School::SHADOW, current_time);
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
                             double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // Pet SP inheritance
@@ -2565,7 +2567,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.record_spell_cast(SpellID::PET_FIREBOLT);
 
                         // Imp Firebolt: Modern (44 base + pet SP, 2.0s cast) vs Classic (85-98 + pet SP, 1.5s cast)
-                        if (rng.chance(0.83)) {
+                        double pet_spell_hit = std::min(1.0, mechanics.base_hit_vs_boss + talents.aff.suppression * 0.01);
+                        if (rng.chance(pet_spell_hit)) {
                             double master_sp = get_current_sp(School::FIRE, current_time);
                             double base_fb = 0.0;
                             double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
