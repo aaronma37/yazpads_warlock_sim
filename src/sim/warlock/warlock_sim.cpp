@@ -2444,6 +2444,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // Unholy Power in Forever: +2% per point (+10% at 5/5)
                         base_swing *= (1.0 + talents.demo.unholy_power * 0.02);
 
+                        // Soul Link: +3% all damage dealt by master and demon
+                        if (talents.demo.soul_link > 0) {
+                            base_swing *= 1.03;
+                        }
+
                         double armor_mult = 0.86;
                         double swing_dmg = base_swing * armor_mult;
 
@@ -2464,6 +2469,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double brand_sp = get_current_sp(School::SHADOW, current_time);
                             brand_dmg = rng.range(65.0, 68.0) + 0.078 * brand_sp;
                             brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                            brand_dmg *= (1.0 + talents.demo.master_demonologist * 0.02);
+                            if (talents.demo.soul_link > 0) brand_dmg *= 1.03;
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                             if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                             brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
@@ -2499,15 +2506,19 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.record_spell_cast(SpellID::PET_LASH_OF_PAIN);
 
                         // Lash of Pain: 50 shadow damage + pet SP scaling
-                        double pet_spell_hit = std::min(1.0, mechanics.base_hit_vs_boss + talents.aff.suppression * 0.01);
+                        double pet_spell_hit = calculate_hit_chance(School::SHADOW);
                         if (rng.chance(pet_spell_hit)) {
                             double master_sp = get_current_sp(School::SHADOW, current_time);
-                            double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                            double pet_sp = (mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0) + (20.0 * talents.demo.demonic_knowledge);
                             double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // Pet SP inheritance
 
-                            // Unholy Power (+2%/pt) and Improved Sayaad (+10%/pt)
+                            // Unholy Power (+2%/pt), Improved Sayaad (+10%/pt), Master Demonologist (+2%/pt), Soul Link (+3%)
                             base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_lop *= (1.0 + talents.demo.improved_sayaad * 0.10);
+                            base_lop *= (1.0 + talents.demo.master_demonologist * 0.02);
+                            if (talents.demo.soul_link > 0) {
+                                base_lop *= 1.03;
+                            }
 
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
                             if (buffs.curse_of_shadows) base_lop *= 1.10;
@@ -2530,6 +2541,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 demonic_brand_charges--;
                                 brand_dmg = rng.range(65.0, 68.0) + 0.078 * master_sp;
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                                brand_dmg *= (1.0 + talents.demo.master_demonologist * 0.02);
+                                if (talents.demo.soul_link > 0) brand_dmg *= 1.03;
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
                                 if (buffs.curse_of_shadows) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
@@ -2567,11 +2580,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.record_spell_cast(SpellID::PET_FIREBOLT);
 
                         // Imp Firebolt: Modern (44 base + pet SP, 2.0s cast) vs Classic (85-98 + pet SP, 1.5s cast)
-                        double pet_spell_hit = std::min(1.0, mechanics.base_hit_vs_boss + talents.aff.suppression * 0.01);
+                        double pet_spell_hit = calculate_hit_chance(School::FIRE);
                         if (rng.chance(pet_spell_hit)) {
                             double master_sp = get_current_sp(School::FIRE, current_time);
                             double base_fb = 0.0;
-                            double pet_sp = mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0;
+                            double pet_sp = (mechanics.pet_scaling ? (mechanics.pet_sp_ratio * master_sp) : 0.0) + (20.0 * talents.demo.demonic_knowledge);
                             if (mechanics.imp_firebolt_modern_scaling) {
                                 // Modern Firebolt (Rank 7): 44 base fire damage + pet SP scaling (10 SP = 1 Pet SP at 2.0/3.5 coeff)
                                 base_fb = 44.0 + (2.0 / 3.5) * pet_sp;
@@ -2580,8 +2593,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 base_fb = rng.range(85.0, 98.0) + (1.5 / 3.5) * pet_sp;
                             }
 
+                            // Unholy Power (+2%/pt), Improved Imp (+10%/pt), Master Demonologist (+2%/pt), Soul Link (+3%)
                             base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
                             base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
+                            base_fb *= (1.0 + talents.demo.master_demonologist * 0.02);
+                            if (talents.demo.soul_link > 0) {
+                                base_fb *= 1.03;
+                            }
 
                             if (buffs.curse_of_elements) base_fb *= 1.10;
 
@@ -2603,6 +2621,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 demonic_brand_charges--;
                                 brand_dmg = rng.range(65.0, 68.0) + 0.078 * master_sp;
                                 brand_dmg *= (1.0 + talents.demo.unholy_power * 0.02);
+                                brand_dmg *= (1.0 + talents.demo.master_demonologist * 0.02);
+                                if (talents.demo.soul_link > 0) brand_dmg *= 1.03;
                                 if (buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::FIRE, target.current_fire_resistance, rng);
                                 result.dmg_demonic_brand += brand_dmg;

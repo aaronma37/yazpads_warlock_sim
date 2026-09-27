@@ -41,9 +41,10 @@ constexpr double kRegenPeriod = 5.0;
 
 // Expected damage of one Firebolt cast that spends mana (hit chance and
 // crits folded in; resists assumed 0, no CoE).
-inline double expected_damage_per_cast(double master_sp, int unholy_power, int improved_imp, bool modern_scaling = true) {
+inline double expected_damage_per_cast(double master_sp, int unholy_power, int improved_imp, bool modern_scaling = true,
+                                       int demonic_knowledge = 0, int master_demonologist = 0, int soul_link = 0, double spell_hit_percent = 0.0) {
     double dmg = 0.0;
-    const double pet_sp = kPetSpRatio * master_sp;
+    const double pet_sp = kPetSpRatio * master_sp + 20.0 * demonic_knowledge;
     if (modern_scaling) {
         dmg = kModernFireboltBaseDamage + (2.0 / 3.5) * pet_sp;
     } else {
@@ -52,7 +53,9 @@ inline double expected_damage_per_cast(double master_sp, int unholy_power, int i
     }
     dmg *= (1.0 + unholy_power * 0.02);
     dmg *= (1.0 + improved_imp * 0.10);
-    dmg *= kHitChance;
+    dmg *= (1.0 + master_demonologist * 0.02);
+    if (soul_link > 0) dmg *= 1.03;
+    dmg *= std::min(1.0, kHitChance + spell_hit_percent * 0.01);
     dmg *= (1.0 + kCritChance * (kCritMultiplier - 1.0));
     return dmg;
 }
@@ -128,11 +131,12 @@ inline double succubus_lop_cooldown(int improved_sayaad) {
     return std::max(kLopMinCooldown, kLopBaseCooldown - kLopCooldownPerSayaad * improved_sayaad);
 }
 
-inline double succubus_expected_melee_per_swing(double master_sp, int unholy_power) {
+inline double succubus_expected_melee_per_swing(double master_sp, int unholy_power, int soul_link = 0) {
     const double avg_base = 0.5 * (kSuccubusMeleeMinDamage + kSuccubusMeleeMaxDamage);
     const double bonus_ap = kPetApRatio * master_sp;
     double dmg = avg_base + (bonus_ap / 14.0) * 2.0;
     dmg *= (1.0 + unholy_power * 0.02);
+    if (soul_link > 0) dmg *= 1.03;
     dmg *= kMeleeArmorMultiplier;
     dmg *= kMeleeHitChance;
     dmg *= (1.0 + kMeleeCritChance * (kMeleeCritMultiplier - 1.0));
@@ -144,13 +148,16 @@ inline int succubus_expected_melee_swings(double fight_duration) {
     return static_cast<int>(std::floor((fight_duration - kFirstSwingTime) / kSwingInterval)) + 1;
 }
 
-inline double succubus_expected_lop_per_cast(double master_sp, int unholy_power, int improved_sayaad) {
+inline double succubus_expected_lop_per_cast(double master_sp, int unholy_power, int improved_sayaad,
+                                            int demonic_knowledge = 0, int master_demonologist = 0, int soul_link = 0, double spell_hit_percent = 0.0) {
     const double avg_base = 0.5 * (kLopMinDamage + kLopMaxDamage);
-    const double pet_sp = kPetSpRatio * master_sp;
+    const double pet_sp = kPetSpRatio * master_sp + 20.0 * demonic_knowledge;
     double dmg = avg_base + kCastTimeCoefficient * pet_sp;
     dmg *= (1.0 + unholy_power * 0.02);
     dmg *= (1.0 + improved_sayaad * 0.10);
-    dmg *= kHitChance;
+    dmg *= (1.0 + master_demonologist * 0.02);
+    if (soul_link > 0) dmg *= 1.03;
+    dmg *= std::min(1.0, kHitChance + spell_hit_percent * 0.01);
     dmg *= (1.0 + kCritChance * (kCritMultiplier - 1.0));
     return dmg;
 }

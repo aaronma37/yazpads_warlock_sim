@@ -313,6 +313,90 @@ TEST_CASE(Talents, ImprovedImpIsDamageOnly) {
     CHECK_NEAR(res3.dmg_pet_firebolt, res0.dmg_pet_firebolt * 1.3, 0.5);
 }
 
+TEST_CASE(Talents, PetScalingDemonicKnowledgeMasterDemoSoulLinkHit) {
+    auto make_base_sim = [](PetChoice pet) {
+        WarlockSimulator sim;
+        sim.race = Race::UNDEAD;
+        sim.talents = Talents();
+        sim.policy.pet = pet;
+        sim.policy.rotation = RotationChoice::PURE_SHADOW_BOLT;
+        sim.buffs.sacrifice_imp = false;
+        sim.buffs.sacrifice_succubus = false;
+        sim.mechanics.pet_mana_management = false;
+        sim.use_raw_stats = true;
+        sim.raw_stats.spell_power = 0.0;
+        sim.fight_duration = 30.0;
+        return sim;
+    };
+
+    // 1. Demonic Knowledge adds +60 SP directly to pet spell damage at 3/3
+    {
+        WarlockSimulator sim0 = make_base_sim(PetChoice::IMP);
+        sim0.talents.demo.demonic_knowledge = 0;
+        FastRNG rng0(42);
+        SimResult res0 = sim0.run_single_simulation(rng0);
+
+        WarlockSimulator sim3 = make_base_sim(PetChoice::IMP);
+        sim3.talents.demo.demonic_knowledge = 3;
+        FastRNG rng3(42);
+        SimResult res3 = sim3.run_single_simulation(rng3);
+
+        CHECK(res3.dmg_pet_firebolt > res0.dmg_pet_firebolt);
+    }
+
+    // 2. Master Demonologist (+10% Fire with Imp, +10% Shadow with Succubus at 5/5)
+    {
+        WarlockSimulator sim0 = make_base_sim(PetChoice::IMP);
+        sim0.talents.demo.master_demonologist = 0;
+        FastRNG rng0(42);
+        SimResult res0 = sim0.run_single_simulation(rng0);
+
+        WarlockSimulator sim5 = make_base_sim(PetChoice::IMP);
+        sim5.talents.demo.master_demonologist = 5;
+        FastRNG rng5(42);
+        SimResult res5 = sim5.run_single_simulation(rng5);
+
+        CHECK_NEAR(res5.dmg_pet_firebolt, res0.dmg_pet_firebolt * 1.10, 0.5);
+    }
+
+    // 3. Soul Link (+3% all pet damage)
+    {
+        WarlockSimulator sim0 = make_base_sim(PetChoice::IMP);
+        sim0.talents.demo.soul_link = 0;
+        FastRNG rng0(42);
+        SimResult res0 = sim0.run_single_simulation(rng0);
+
+        WarlockSimulator sim1 = make_base_sim(PetChoice::IMP);
+        sim1.talents.demo.soul_link = 1;
+        FastRNG rng1(42);
+        SimResult res1 = sim1.run_single_simulation(rng1);
+
+        CHECK_NEAR(res1.dmg_pet_firebolt, res0.dmg_pet_firebolt * 1.03, 0.5);
+    }
+
+    // 4. Player spell hit increases pet spell hit chance
+    {
+        WarlockSimulator sim_nohit = make_base_sim(PetChoice::IMP);
+        sim_nohit.raw_stats.spell_hit_percent = 0.0;
+        sim_nohit.fight_duration = 1000.0;
+
+        WarlockSimulator sim_hit = make_base_sim(PetChoice::IMP);
+        sim_hit.raw_stats.spell_hit_percent = 16.0;
+        sim_hit.fight_duration = 1000.0;
+
+        FastRNG rng_a(100);
+        SimResult res_nohit = sim_nohit.run_single_simulation(rng_a);
+
+        FastRNG rng_b(100);
+        SimResult res_hit = sim_hit.run_single_simulation(rng_b);
+
+        const SpellCombatStats& st_nohit = res_nohit.spell_stats[static_cast<size_t>(SpellID::PET_FIREBOLT)];
+        const SpellCombatStats& st_hit = res_hit.spell_stats[static_cast<size_t>(SpellID::PET_FIREBOLT)];
+        CHECK(st_hit.hits > st_nohit.hits);
+        CHECK(st_hit.misses < st_nohit.misses);
+    }
+}
+
 TEST_CASE(Sim, RandomizedFightDuration) {
     WarlockSimulator sim;
     sim.fight_duration = 100.0;
