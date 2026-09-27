@@ -125,9 +125,6 @@ struct BuffConfig {
         // Damage multipliers
         if (sayges_fortune) stats.all_damage_multiplier *= 1.10;
         if (curse_of_shadows) stats.shadow_multiplier *= 1.10;
-        // WoW Forever CoE applies to all magical schools represented by the
-        // warlock simulator, not Fire alone. Keep this aligned with the Xn
-        // engine's +10% magic-damage debuff.
         if (curse_of_elements) {
             stats.shadow_multiplier *= 1.10;
             stats.fire_multiplier *= 1.10;

@@ -210,6 +210,71 @@ inline PetChoice parse_pet(const std::string& value) {
     if (value == "none") return PetChoice::NONE; if (value == "imp") return PetChoice::IMP; if (value == "succubus") return PetChoice::SUCCUBUS; throw std::runtime_error("unknown pet: " + value);
 }
 
+inline PriorityRule custom_rule(PriorityAction action, SpellID spell_id, const char* name) {
+    PriorityRule rule;
+    rule.action = action;
+    rule.spell_id = spell_id;
+    rule.name = name;
+    rule.condition_summary = "APL action";
+    rule.trigger_condition = "Trigger according to the canonical comparison APL.";
+    rule.rule_explanation = "Loaded from the canonical comparison rotation action list.";
+    rule.use_custom_thresholds = true;
+    return rule;
+}
+
+inline void apply_rotation_array(const JsonValue& rotation, PolicyConfig& policy) {
+    if (rotation.type != JsonValue::Type::Array) throw std::runtime_error("build.rotation must be a string or action array");
+    policy.custom_rules.clear();
+    policy.use_custom_apl = true;
+
+    for (const auto& value : rotation.array) {
+        const std::string action = string(value, "build.rotation[]");
+        if (action == "curse_of_elements") {
+            // CoE is an encounter debuff in the C++ model, configured through
+            // buffs/target. The comparison config marks it external, so it is
+            // intentionally not a player GCD action here.
+            continue;
+        }
+        if (action == "bane") {
+            auto doom = custom_rule(PriorityAction::CURSE_OF_DOOM, SpellID::CURSE_OF_DOOM, "Bane of Doom");
+            doom.check_doom_debuff = true;
+            doom.require_doom_missing = true;
+            doom.check_fight_time = true;
+            doom.min_time_remaining = 60.0f;
+            policy.custom_rules.push_back(doom);
+
+            auto agony = custom_rule(PriorityAction::CURSE_OF_AGONY, SpellID::CURSE_OF_AGONY, "Bane of Agony");
+            agony.check_doom_debuff = true;
+            agony.require_doom_missing = true;
+            agony.check_dot_refresh = true;
+            agony.check_fight_time = true;
+            agony.min_time_remaining = 12.0f;
+            agony.max_dot_rem_sec = 0.0f;
+            policy.custom_rules.push_back(agony);
+        } else if (action == "searingPainBrand" || action == "searing_pain_brand") {
+            auto rule = custom_rule(PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::DEMONIC_BRAND, "Demonic Brand (Searing Pain)");
+            rule.check_demonic_brand = true;
+            rule.require_demonic_brand_missing = true;
+            policy.custom_rules.push_back(rule);
+        } else if (action == "immolate") {
+            auto rule = custom_rule(PriorityAction::IMMOLATE, SpellID::IMMOLATE, "Immolate");
+            rule.check_dot_refresh = true;
+            rule.max_dot_rem_sec = 0.0f;
+            policy.custom_rules.push_back(rule);
+        } else if (action == "corruption") {
+            auto rule = custom_rule(PriorityAction::CORRUPTION, SpellID::CORRUPTION, "Corruption");
+            rule.check_dot_refresh = true;
+            rule.max_dot_rem_sec = 0.0f;
+            policy.custom_rules.push_back(rule);
+        } else if (action == "shadowBolt" || action == "shadow_bolt") {
+            policy.custom_rules.push_back(custom_rule(PriorityAction::SHADOW_BOLT_FILLER, SpellID::SHADOW_BOLT, "Shadow Bolt"));
+        } else {
+            throw std::runtime_error("unknown build.rotation action: " + action);
+        }
+    }
+    if (policy.custom_rules.empty()) throw std::runtime_error("build.rotation action array produced no C++ APL actions");
+}
+
 inline Race parse_race(const std::string& value) {
     if (value == "human") return Race::HUMAN; if (value == "gnome") return Race::GNOME;
     if (value == "orc") return Race::ORC; if (value == "troll") return Race::TROLL;
@@ -298,7 +363,7 @@ inline void apply_config(const JsonValue& root, WarlockSimulator& sim, int& iter
     if (build) {
         if (const auto* v = field(*build, "rotation")) {
             if (v->type == JsonValue::Type::String) sim.policy.rotation = parse_rotation(string(*v, "build.rotation"));
-            else if (v->type == JsonValue::Type::Array) sim.policy.rotation = RotationChoice::DP_AF_SHADOW_BRAND;
+            else if (v->type == JsonValue::Type::Array) apply_rotation_array(*v, sim.policy);
             else throw std::runtime_error("build.rotation must be a string or action array");
         }
         if (const auto* v = field(*build, "pet")) sim.policy.pet = parse_pet(string(*v, "build.pet"));
@@ -314,11 +379,11 @@ inline void apply_config(const JsonValue& root, WarlockSimulator& sim, int& iter
     if (mechanics) {
         set_bool(mechanics, "snapshot_dots", sim.mechanics.snapshot_dots); set_bool(mechanics, "spell_batching", sim.mechanics.spell_batching); set_number(mechanics, "batch_window_ms", sim.mechanics.batch_window_ms);
         set_int(mechanics, "debuff_limit", sim.mechanics.debuff_limit); set_bool(mechanics, "enforce_debuff_slots", sim.mechanics.enforce_debuff_slots); set_bool(mechanics, "personal_shadow_weaving", sim.mechanics.personal_shadow_weaving);
-        set_bool(mechanics, "partial_resists_enabled", sim.mechanics.partial_resists_enabled); set_number(mechanics, "base_hit_vs_boss", sim.mechanics.base_hit_vs_boss); set_number(mechanics, "max_spell_hit", sim.mechanics.max_spell_hit); set_number(mechanics, "base_spell_crit_multiplier", sim.mechanics.base_spell_crit_multiplier);
+        set_bool(mechanics, "partial_resists_enabled", sim.mechanics.partial_resists_enabled); set_number(mechanics, "base_hit_vs_boss", sim.mechanics.base_hit_vs_boss); set_number(mechanics, "max_spell_hit", sim.mechanics.max_spell_hit); set_number(mechanics, "base_spell_crit_multiplier", sim.mechanics.base_spell_crit_multiplier); set_number(mechanics, "corruption_sp_coefficient", sim.mechanics.corruption_sp_coefficient);
         set_bool(mechanics, "projectile_travel_time", sim.mechanics.projectile_travel_time); set_number(mechanics, "default_boss_distance_yards", sim.mechanics.default_boss_distance_yards); set_number(mechanics, "projectile_speed_yards_per_sec", sim.mechanics.projectile_speed_yards_per_sec); set_bool(mechanics, "imp_firebolt_modern_scaling", sim.mechanics.imp_firebolt_modern_scaling);
     }
     const JsonValue* target = field(root, "target");
-    if (target) { set_int(target, "target_count", sim.target_config.target_count); set_int(target, "level", sim.target_config.level); set_number(target, "base_shadow_resistance", sim.target_config.base_shadow_resistance); set_number(target, "base_fire_resistance", sim.target_config.base_fire_resistance); set_bool(target, "is_beast", sim.target_config.is_beast); set_bool(target, "curse_of_shadows", sim.target_config.curse_of_shadows); set_bool(target, "curse_of_elements", sim.target_config.curse_of_elements); set_bool(target, "shadow_weaving", sim.target_config.shadow_weaving); set_bool(target, "stormstrike", sim.target_config.stormstrike); set_bool(target, "nightfall_axe_proc", sim.target_config.nightfall_axe_proc); }
+    if (target) { set_int(target, "target_count", sim.target_config.target_count); set_int(target, "level", sim.target_config.level); set_number(target, "boss_armor", sim.target_config.boss_armor); set_bool(target, "sunder_armor", sim.target_config.sunder_armor); set_bool(target, "faerie_fire", sim.target_config.faerie_fire); set_number(target, "base_shadow_resistance", sim.target_config.base_shadow_resistance); set_number(target, "base_fire_resistance", sim.target_config.base_fire_resistance); set_bool(target, "is_beast", sim.target_config.is_beast); set_bool(target, "curse_of_shadows", sim.target_config.curse_of_shadows); set_bool(target, "curse_of_elements", sim.target_config.curse_of_elements); set_bool(target, "shadow_weaving", sim.target_config.shadow_weaving); set_bool(target, "stormstrike", sim.target_config.stormstrike); set_bool(target, "nightfall_axe_proc", sim.target_config.nightfall_axe_proc); }
 }
 
 inline void load_file(const std::string& path, WarlockSimulator& sim, int& iterations, int& threads, uint64_t& seed) {

@@ -300,6 +300,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     // Target state
     TargetConfig target = target_config;
     target.is_beast = (target.creature_type == CreatureType::BEAST) || target.is_beast;
+    double effective_boss_armor = std::max(0.0, target.boss_armor
+        - (target.sunder_armor ? 2250.0 : 0.0)
+        - (target.faerie_fire ? 505.0 : 0.0));
+    double pet_armor_reduction = effective_boss_armor / (effective_boss_armor + 400.0 + 85.0 * 60.0);
+    double pet_armor_multiplier = 1.0 - pet_armor_reduction;
     if (buffs.curse_of_shadows) {
         target.current_shadow_resistance = std::max(0.0, target.base_shadow_resistance - 75.0);
         target.curse_of_shadows = true;
@@ -633,7 +638,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 target_states[t].dot_corruption.ticks_remaining = 6;
                                 target_states[t].dot_corruption.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                                target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                 target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
                             } else {
@@ -1391,7 +1396,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                     dot_corruption.ticks_remaining = 6;
                                     dot_corruption.tick_interval = 3.0;
                                     double sp = get_current_sp(School::SHADOW, now);
-                                    dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                                    dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                     dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                     queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
                                 } else {
@@ -1544,8 +1549,11 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        // Out of mana for filler: emergency Life Tap for legacy preset rotations
-        if (!policy.use_custom_apl) {
+        // Match the browser engine: if the next selected APL action cannot be
+        // afforded, Life Tap rather than stalling. The action list itself
+        // remains authoritative for spell priority; Life Tap is a resource
+        // fallback, not an injected rotation action.
+        {
             double health_cost = 430.0;
             double mana_gained = (health_cost + 1.0 * stats.spirit) * (1.0 + 0.10 * talents.aff.improved_life_tap);
             player_mana = std::min(stats.max_mana, player_mana + mana_gained);
@@ -1743,7 +1751,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         cur_corr.ticks_remaining = 6;
                         cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
-                        cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                        cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                         cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
                     } else {
@@ -2189,7 +2197,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // Dynamic DoT scaling (No snapshotting in Forever)
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
-                            dmg = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
+                            dmg = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                         }
 
                         // Wrack amplification (+10% to other Shadow DoTs)
@@ -2442,8 +2450,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             case EventType::PET_MELEE_SWING: {
                 if (active_pet == PetChoice::SUCCUBUS) {
                     result.record_spell_cast(SpellID::PET_MELEE);
-                    double pet_melee_hit = std::min(1.0, 0.95 + talents.aff.suppression * 0.01);
-                    if (rng.chance(pet_melee_hit)) {
+                    constexpr double pet_miss_pct = 8.0;
+                    constexpr double pet_dodge_pct = 6.5;
+                    constexpr double pet_hit_suppression_pct = 1.0;
+                    constexpr double pet_glance_pct = 40.0;
+                    constexpr double pet_glance_damage_pct = 65.0;
+                    constexpr double pet_crit_suppression_pct = 4.8;
+                    double hit_bonus = std::max(0.0, stats.spell_hit_percent - 83.0 - pet_hit_suppression_pct);
+                    double miss_pct = std::max(0.0, pet_miss_pct - hit_bonus);
+                    double roll = rng.next_double() * 100.0;
+                    if (roll >= miss_pct + pet_dodge_pct) {
                         double master_sp = get_current_sp(School::SHADOW, current_time);
                         double bonus_ap = mechanics.pet_scaling ? (mechanics.pet_ap_ratio * master_sp) : 0.0;
                         double base_swing = 101.0 + (bonus_ap / 14.0) * 2.0;
@@ -2456,10 +2472,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             base_swing *= 1.03;
                         }
 
-                        double armor_mult = 0.86;
-                        double swing_dmg = base_swing * armor_mult;
+                        double swing_dmg = base_swing * pet_armor_multiplier;
 
-                        bool melee_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
+                        double pet_crit_pct = 7.52 + stats.total_spell_crit(base_attrs.base_spell_crit) - pet_crit_suppression_pct;
+                        bool glance = roll < miss_pct + pet_dodge_pct + pet_glance_pct;
+                        bool melee_crit = !glance && roll < miss_pct + pet_dodge_pct + pet_glance_pct + std::max(0.0, pet_crit_pct);
+                        if (glance) {
+                            swing_dmg *= pet_glance_damage_pct / 100.0;
+                        }
                         if (melee_crit) {
                             swing_dmg *= 2.0;
                         }
@@ -2566,10 +2586,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                     }
 
-                    // Improved Sayaad reduces Lash of Pain cooldown by 1.0s per rank (12s -> 9s at 3/3)
-                    double lop_cd = std::max(3.0, 12.0 - 1.0 * talents.demo.improved_sayaad);
+                    double lop_cd = 12.0;
                     if (!can_cast) {
-                        // If OOM, retry sooner (every 1.5s)
                         lop_cd = 1.5;
                     }
                     if (current_time + lop_cd < fight_duration) {

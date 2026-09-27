@@ -25,8 +25,9 @@ struct MechanicsConfig : public sim::CombatMechanicsConfig {
     bool instant_drain_hope = false;
 
     // 12. Corruption Spell Power Coefficient
-    // Default 1.0 (100% total SP over 6 ticks / 18s). Custom toggle/setting allows 1.2 (120% total SP).
-    double corruption_sp_coefficient = 1.0;
+    // Default 1.2 (120% total SP over 6 ticks / 18s); each tick receives 1/6 of this coefficient.
+    // Set to 1.0 for legacy behavior.
+    double corruption_sp_coefficient = 1.2;
 
     // 13. Pet Stat Scaling & Mana Modeling
     // True: Pets inherit master's Spell Power (10 SP = 1 Pet SP -> 10.0%, 6 SP = 1 Pet AP -> ~16.67%).

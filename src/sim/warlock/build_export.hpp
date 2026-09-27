@@ -326,6 +326,9 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "    \"target_count\": " << t.target_count << ",\n";
         json << "    \"level\": " << t.level << ",\n";
         json << "    \"creature_type\": \"" << creature_type_to_string(t.creature_type) << "\",\n";
+        json << "    \"boss_armor\": " << json_double(t.boss_armor) << ",\n";
+        json << "    \"sunder_armor\": " << (t.sunder_armor ? "true" : "false") << ",\n";
+        json << "    \"faerie_fire\": " << (t.faerie_fire ? "true" : "false") << ",\n";
         json << "    \"base_shadow_resistance\": " << json_double(t.base_shadow_resistance) << ",\n";
         json << "    \"base_fire_resistance\": " << json_double(t.base_fire_resistance) << ",\n";
         json << "    \"is_beast\": " << (t.is_beast ? "true" : "false") << "\n";

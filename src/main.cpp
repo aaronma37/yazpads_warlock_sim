@@ -341,6 +341,7 @@ int run_headless(int argc, char* argv[]) {
                 << "  \"duration\": " << sim.fight_duration << ",\n"
                 << "  \"randomize_duration\": " << (sim.randomize_duration ? "true" : "false") << ",\n"
                 << "  \"duration_variance\": " << sim.duration_variance << ",\n"
+                << "  \"book_ranks\": true,\n"
                 << "  \"iterations\": " << batch.total_iterations << ",\n"
                 << "  \"sim_time_seconds\": " << batch.total_sim_time_seconds << ",\n"
                 << "  \"mean_dps\": " << batch.mean_dps << ",\n"
@@ -350,6 +351,19 @@ int run_headless(int argc, char* argv[]) {
                 << "  \"p95_dps\": " << batch.p95_dps << ",\n"
                 << "  \"isb_uptime\": " << batch.mean_isb_uptime << ",\n"
                 << "  \"crit_percent\": " << batch.crit_percent << ",\n"
+                << "  \"spell_stats\": {\n";
+            bool first_spell_stat = true;
+            for (size_t i = 0; i < static_cast<size_t>(SpellID::COUNT); ++i) {
+                const auto& s = batch.spell_stats[i];
+                if (s.mean_casts <= 0.0 && s.mean_damage <= 0.0) continue;
+                if (!first_spell_stat) ofs << ",\n";
+                first_spell_stat = false;
+                ofs << "    \"" << spell_id_to_name(static_cast<SpellID>(i)) << "\": {\"mean_casts\": "
+                    << s.mean_casts << ", \"mean_hits\": " << s.mean_hits
+                    << ", \"mean_crits\": " << s.mean_crits << ", \"mean_misses\": " << s.mean_misses
+                    << ", \"mean_damage\": " << s.mean_damage << "}";
+            }
+            ofs << "\n  },\n"
                 << "  \"damage_breakdown\": {\n"
                 << "    \"shadow_bolt\": {\"pct_total\": " << batch.pct_shadow_bolt << ", \"mean_dps\": " << batch.mean_dps * batch.pct_shadow_bolt / 100.0 << "},\n"
                 << "    \"corruption\": {\"pct_total\": " << batch.pct_corruption << ", \"mean_dps\": " << batch.mean_dps * batch.pct_corruption / 100.0 << "},\n"

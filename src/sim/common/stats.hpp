@@ -271,6 +271,9 @@ struct TargetConfig {
     int level = 63;                 // Standard raid boss level (60-63+)
     int target_count = 1;           // Number of simultaneous targets (1 to 5)
     CreatureType creature_type = CreatureType::HUMANOID;
+    double boss_armor = 3731.0;      // Typical level-63 raid boss armor
+    bool sunder_armor = false;       // -2250 armor, major armor-reduction group
+    bool faerie_fire = false;        // -505 armor, minor armor-reduction group
     double base_shadow_resistance = 24.0; // Boss base innate resistance (cannot be lowered below 0)
     double base_fire_resistance = 24.0;
     double current_shadow_resistance = 24.0;
