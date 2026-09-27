@@ -25,7 +25,7 @@ struct SpecPreset {
     bool maintain_immolate;
 };
 
-// Canonical registry of the 17 standard specs. Order here determines the
+// Canonical registry of the standard specs. Order here determines the
 // order of the talent panel buttons, the Build Presets menu, and (before
 // DPS sorting) the optimizer candidates.
 inline const std::vector<SpecPreset>& standard_spec_presets() {
@@ -50,6 +50,8 @@ inline const std::vector<SpecPreset>& standard_spec_presets() {
             &Talents::create_forever_aff_dp_brand, RotationChoice::DP_AF_SHADOW_BRAND, PetChoice::SUCCUBUS, false, true, false},
         {"dp_fire", "0/31/20 DP/AF Fire", "DP/AF Fire",
             &Talents::create_forever_dp_af_fire, RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false, true},
+        {"custom_dp_fire_searing", "2/31/18 DP Fire - Searing Pain", "DP Fire Searing",
+            &Talents::create_forever_custom_demonology_fire, RotationChoice::DP_RUIN_FIRE, PetChoice::IMP, true, false, true},
         {"deep_aff", "40/11/0 Deep Affliction DS-Imp", "Deep Affliction",
             &Talents::create_forever_deep_affliction, RotationChoice::DEEP_AFFLICTION_SB, PetChoice::NONE, false, true, true},
         {"deep_aff_imp", "35/6/10 Deep Affliction Imp", "Deep Affliction Imp",

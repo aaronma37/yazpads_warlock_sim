@@ -3,6 +3,21 @@
 Tracks game-mechanic changes from WoW Forever patch notes that affect simulation accuracy.
 Full raw patch notes are archived in [`docs/archive/`](docs/archive/).
 
+## 2026-09-26
+
+### ✅ Implemented
+
+#### Pet Scaling & Modifiers (Imp & Succubus)
+- [x] **Demonic Knowledge**: Added flat `+20 SP / rank` (+60 SP at 3/3) directly to both Imp (Firebolt) and Succubus (Lash of Pain) spell power.
+- [x] **Master Demonologist**: Added `+2% / rank` (+10% at 5/5) school damage bonus to Imp Firebolt & Imp Demonic Brand (Fire) and Succubus Lash of Pain & Succubus Demonic Brand (Shadow).
+- [x] **Soul Link**: Added `+3%` multiplier to Imp Firebolt, Succubus Melee & Lash of Pain, and Demonic Brand.
+- [x] **Player Spell Hit Inheritance**: Pets inherit player's gear and level-based spell hit chance.
+
+### 📋 TODO / Planned
+- [ ] **AQ20 Grimoire Book Ranks**: Add optional toggle for AQ20 book ranks (Shadow Bolt Rank 10, Immolate Rank 8, Corruption Rank 7). Off by default.
+
+---
+
 ## 2026-09-25
 
 ### ✅ Implemented

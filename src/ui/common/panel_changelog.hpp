@@ -18,8 +18,22 @@ inline void render_panel_changelog() {
     ImGui::Separator();
     ImGui::Spacing();
 
+    // Changelog Entry: 9/26/26 Updates
+    if (WowCollapsingHeader("Changelog - 9/26/26: Pet Scaling & Modifier Alignments", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+        ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/26/26):");
+        ImGui::BulletText("Demonic Knowledge (Pet SP Scaling): Pets now receive flat +20 SP per talent rank (+60 SP at 3/3) directly to their own spell power (Imp Firebolt & Succubus Lash of Pain).");
+        ImGui::BulletText("Master Demonologist (Pet School Bonus): Applied +2%% per rank (+10%% at 5/5) Fire damage to Imp Firebolt & Imp Demonic Brand, and +10%% Shadow damage to Succubus Lash of Pain & Demonic Brand.");
+        ImGui::BulletText("Soul Link (Pet Damage Multiplier): Applied +3%% damage bonus to all pet attacks (Imp Firebolt, Succubus Melee & Lash of Pain, Demonic Brand).");
+        ImGui::BulletText("Pet Hit (Full Spell Hit Inheritance): Pet spells now inherit player gear and level-based spell hit chance.");
+        ImGui::Spacing();
+        ImGui::TextColored(wow_colors::Gold, "Planned / Upcoming:");
+        ImGui::BulletText("AQ20 Grimoire Book Ranks: Add toggle option for AQ20 books (Shadow Bolt R10, Immolate R8, Corruption R7; off by default).");
+        ImGui::Spacing();
+    }
+
     // Changelog Entry: 9/25/26 Updates
-    if (WowCollapsingHeader("Changelog - 9/25/26: Engine Alignment & Mechanics Updates", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (WowCollapsingHeader("Changelog - 9/25/26: Engine Alignment & Mechanics Updates", false)) {
         ImGui::Spacing();
         ImGui::TextColored(wow_colors::YellowHighlight, "Fixes & Updates (9/25/26):");
         ImGui::BulletText("Shadowburn (Cooldown): Restored cooldown to 15s (from 8s) across the engine, Abilities tab (Spellbook), and APL policy to align with class mechanics.");

@@ -202,14 +202,15 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         stats.all_damage_multiplier *= 1.03;
     }
 
-    // Apply talent multipliers
+    // School multipliers contain external/buff multipliers. Aura 108 talent
+    // bonuses are accumulated per spell below and must not be multiplied
+    // independently of one another.
     double shadow_multiplier = stats.shadow_multiplier;
-    if (talents.aff.shadow_mastery > 0) {
-        shadow_multiplier *= (1.0 + talents.aff.shadow_mastery * 0.01); // 1% per pt in Forever
-    }
     double fire_multiplier = stats.fire_multiplier;
 
     // Master Demonologist (Forever: Succubus = +2%/pt Shadow, Imp = +2%/pt Fire)
+    // remains a separate multiplicative factor and is applied to the relevant
+    // pet/player damage below.
     if (active_pet == PetChoice::SUCCUBUS && talents.demo.master_demonologist > 0) {
         shadow_multiplier *= (1.0 + talents.demo.master_demonologist * 0.02);
     } else if (active_pet == PetChoice::IMP && talents.demo.master_demonologist > 0) {
@@ -220,7 +221,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     double agonizing_flames_bonus = (talents.destro.agonizing_flames == 1) ? 0.03 :
                                    ((talents.destro.agonizing_flames == 2) ? 0.07 :
                                    ((talents.destro.agonizing_flames == 3) ? 0.10 : 0.0));
-    double destro_spell_mult = 1.0 + agonizing_flames_bonus;
+    double shadow_mastery_bonus = talents.aff.shadow_mastery * 0.01;
+    double malediction_bonus = talents.aff.malediction * 0.01;
+
+    // Aura 108 bonuses are additive for each affected spell. The optional
+    // extra argument contains the spell-specific Aura 108 bonuses.
+    auto shadow_aura_multiplier = [&](double extra_bonus = 0.0) {
+        return 1.0 + shadow_mastery_bonus + extra_bonus;
+    };
+    auto fire_aura_multiplier = [&](double extra_bonus = 0.0) {
+        return 1.0 + agonizing_flames_bonus + extra_bonus;
+    };
 
     // Cataclysm (Destro Row 2 Col 2): -3% / -6% / -10% Mana cost to Destruction spells
     double cataclysm_mana_mult = (talents.destro.cataclysm == 1) ? (1.0 - 0.03) :
@@ -233,7 +244,6 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                            ((talents.destro.fire_and_brimstone == 3) ? 0.25 : 0.0));
 
     // Malediction (Afflic Row 2 Col 1): +1% periodic damage per point (+5% at 5/5)
-    double malediction_mult = 1.0 + talents.aff.malediction * 0.01;
 
     // Ruin (Destro Row 3 Col 2): +20% crit damage bonus per point (+100% bonus at 5/5 -> 2.0x total)
     double destro_crit_mult = 1.0 + 0.50 * (1.0 + talents.destro.ruin * 0.20);
@@ -623,7 +633,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 target_states[t].dot_corruption.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
                                 target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
-                                target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                                target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
                             } else {
                                 result.misses++;
@@ -933,7 +943,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 doom_tick_time = 0.0;
                                 double sp = get_current_sp(School::SHADOW, now);
                                 dot_agony.tick_damage = (552.0 / 12.0) + (sp * 1.596 / 12.0);
-                                dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                                dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_bane_of_agony * 0.05) * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
                             } else {
                                 result.misses++;
@@ -1118,7 +1128,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 dot_siphon_life.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
                                 dot_siphon_life.tick_damage = 41.0 + (0.05 * sp);
-                                dot_siphon_life.tick_multiplier = get_current_shadow_multiplier(now) * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                                dot_siphon_life.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus) * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::SIPHON_LIFE));
                             } else {
                                 result.misses++;
@@ -1229,7 +1239,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.total_damage_events++;
                                 double sp = get_current_sp(School::FIRE, now);
                                 dmg = rng.range(306.0, 374.0) + (1.5 / 3.5) * sp;
-                                dmg *= get_current_fire_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
+                                dmg *= get_current_fire_multiplier(now) * stats.all_damage_multiplier * fire_aura_multiplier();
 
                                 double crit_chance = calculate_crit_chance(School::FIRE, stats) + fnb_crit_bonus;
                                 is_crit = rng.chance(crit_chance);
@@ -1313,7 +1323,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 result.total_damage_events++;
                                 double sp = get_current_sp(School::SHADOW, now);
                                 dmg = rng.range(259.0, 289.0) + (1.5 / 3.5) * sp;
-                                dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * destro_spell_mult;
+                                dmg *= get_current_shadow_multiplier(now) * stats.all_damage_multiplier * shadow_aura_multiplier(agonizing_flames_bonus);
 
                                 if (target.consume_isb_charge(now)) {
                                     dmg *= (1.0 + target.isb_bonus);
@@ -1381,7 +1391,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                     dot_corruption.tick_interval = 3.0;
                                     double sp = get_current_sp(School::SHADOW, now);
                                     dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
-                                    dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                                    dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                     queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
                                 } else {
                                     result.misses++;
@@ -1672,9 +1682,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.total_damage_events++;
                         double sp = get_current_sp(School::FIRE, current_time);
                         // Aftermath (Destro Row 2 Col 3): +10% initial Immolate damage per point (+50% at 5/5)
-                        double aftermath_mult = 1.0 + talents.destro.aftermath * 0.10;
-                        double dmg = (158.0 * aftermath_mult) + 0.20 * sp;
-                        dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+                        double aftermath_bonus = talents.destro.aftermath * 0.10;
+                        double dmg = 158.0 + 0.20 * sp;
+                        dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * fire_aura_multiplier(aftermath_bonus);
                         bool crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                         if (crit) {
                             dmg *= destro_crit_mult;
@@ -1701,7 +1711,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dot_immolate.ticks_remaining = 5;
                         dot_immolate.tick_interval = 3.0;
                         dot_immolate.tick_damage = 55.0 + 0.13 * sp;
-                        dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                        dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * fire_aura_multiplier(malediction_bonus) * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE));
                     } else {
                         result.misses++;
@@ -1733,7 +1743,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
                         cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient * 0.20);
-                        cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * (eureka_active ? 1.10 : 1.0);
+                        cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
                     } else {
                         result.misses++;
@@ -1780,7 +1790,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         result.isb_consumed++;
                     }
 
-                    dmg *= get_current_shadow_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+                    dmg *= get_current_shadow_multiplier(current_time) * stats.all_damage_multiplier * shadow_aura_multiplier(agonizing_flames_bonus);
 
                     // Crit roll
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -1852,7 +1862,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dmg *= 1.25;
                     }
 
-                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * fire_aura_multiplier();
 
                     bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                     if (is_crit) {
@@ -1914,7 +1924,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dmg *= (1.0 + talents.demo.decimation * 0.03);
                     }
 
-                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * fire_aura_multiplier();
 
                     // Agonizing Flames: +3% / +7% / +10% crit chance on Searing Pain
                     double crit_chance = calculate_crit_chance(School::FIRE, stats) + agonizing_flames_bonus;
@@ -1977,7 +1987,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sp = get_current_sp(School::FIRE, current_time);
                     double base_dmg = rng.range(383.0, 479.0);
                     double dmg = base_dmg + 1.0 * sp;
-                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * destro_spell_mult;
+                    dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * fire_aura_multiplier();
 
                     bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                     if (is_crit) {
@@ -2024,19 +2034,17 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                        (dot_siphon_life.active ? 1 : 0);
                 // Soul Siphon: +4% / +8% / +12% per active Affliction effect, up to 3 effects (max +12% / +24% / +36%)
                 double soul_siphon_bonus_per_effect = talents.aff.soul_siphon * 0.04;
-                double soul_siphon_mult = 1.0 + std::min(3, aff_effects_count) * soul_siphon_bonus_per_effect;
 
                 // Improved Drains: +7% / +13% / +20% flat damage / healing
-                double imp_drains_mult = 1.0;
-                if (talents.aff.improved_drains == 1) imp_drains_mult = 1.07;
-                else if (talents.aff.improved_drains == 2) imp_drains_mult = 1.13;
-                else if (talents.aff.improved_drains >= 3) imp_drains_mult = 1.20;
+                double improved_drains_bonus = (talents.aff.improved_drains == 1) ? 0.07 :
+                                               (talents.aff.improved_drains == 2) ? 0.13 :
+                                               (talents.aff.improved_drains >= 3) ? 0.20 : 0.0;
 
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::DRAIN_HOPE)) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = (216.0 / 6.0) + ((0.858 / 6.0) * sp);
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * imp_drains_mult * soul_siphon_mult;
+                    dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + improved_drains_bonus + soul_siphon_bonus_per_effect * std::min(3, aff_effects_count)) * stats.all_damage_multiplier;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2076,11 +2084,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 51.0 + (0.10 * sp);
-                    dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Wrack amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                    dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + improved_drains_bonus + soul_siphon_bonus_per_effect * std::min(3, aff_effects_count)) * stats.all_damage_multiplier * drain_hope_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2124,11 +2131,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 84.0 + (0.10 * sp);
-                    dmg *= imp_drains_mult * soul_siphon_mult;
 
                     // Wrack amplification (+10% to other Shadow DoTs/drains)
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                    dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + improved_drains_bonus + soul_siphon_bonus_per_effect * std::min(3, aff_effects_count)) * stats.all_damage_multiplier * drain_hope_mult;
 
                     // Baseline DoT Crit + Pandemic bonus (Affliction)
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2187,7 +2193,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                         // Wrack amplification (+10% to other Shadow DoTs)
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                        dmg *= get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_corruption * 0.02) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                        dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2252,7 +2258,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double total_tick_before_ramp = base_tick_portion + sp_tick_portion;
 
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                        double dmg = total_tick_before_ramp * ramp * get_current_shadow_multiplier(current_time) * (1.0 + talents.aff.improved_bane_of_agony * 0.05) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                        double dmg = total_tick_before_ramp * ramp * get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_bane_of_agony * 0.05) * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2295,7 +2301,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             dmg = 41.0 + (0.05 * sp);
                         }
                         double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                        dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                        dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus) * stats.all_damage_multiplier * drain_hope_mult;
 
                         // Baseline DoT Crit + Pandemic bonus (Affliction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
@@ -2337,7 +2343,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double sp = get_current_sp(School::FIRE, current_time);
                             dmg = 55.0 + 0.13 * sp;
                         }
-                        dmg *= get_current_fire_multiplier(current_time) * destro_spell_mult * malediction_mult * stats.all_damage_multiplier;
+                        dmg *= get_current_fire_multiplier(current_time) * fire_aura_multiplier(malediction_bonus) * stats.all_damage_multiplier;
 
                         // Baseline DoT Crit + Ruin bonus (Destruction)
                         bool is_crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
@@ -2367,7 +2373,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double sp = get_current_sp(School::SHADOW, current_time);
                     double dmg = 1742.0 + 4.0 * sp;
                     double drain_hope_mult = (current_time < drain_hope_channel_end) ? 1.10 : 1.0;
-                    dmg *= get_current_shadow_multiplier(current_time) * malediction_mult * stats.all_damage_multiplier * drain_hope_mult;
+                    dmg *= get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus) * stats.all_damage_multiplier * drain_hope_mult;
                     bool is_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                     if (is_crit) {
                         result.total_damage_crits++;
@@ -2513,8 +2519,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             double base_lop = 50.0 + (1.5 / 3.5) * pet_sp; // Pet SP inheritance
 
                             // Unholy Power (+2%/pt), Improved Sayaad (+10%/pt), Master Demonologist (+2%/pt), Soul Link (+3%)
-                            base_lop *= (1.0 + talents.demo.unholy_power * 0.02);
-                            base_lop *= (1.0 + talents.demo.improved_sayaad * 0.10);
+                            base_lop *= (1.0 + talents.demo.unholy_power * 0.02 + talents.demo.improved_sayaad * 0.10);
                             base_lop *= (1.0 + talents.demo.master_demonologist * 0.02);
                             if (talents.demo.soul_link > 0) {
                                 base_lop *= 1.03;
@@ -2594,8 +2599,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             // Unholy Power (+2%/pt), Improved Imp (+10%/pt), Master Demonologist (+2%/pt), Soul Link (+3%)
-                            base_fb *= (1.0 + talents.demo.unholy_power * 0.02);
-                            base_fb *= (1.0 + talents.demo.improved_imp * 0.10);
+                            base_fb *= (1.0 + talents.demo.unholy_power * 0.02 + talents.demo.improved_imp * 0.10);
                             base_fb *= (1.0 + talents.demo.master_demonologist * 0.02);
                             if (talents.demo.soul_link > 0) {
                                 base_fb *= 1.03;

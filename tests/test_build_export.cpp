@@ -57,6 +57,23 @@ TEST_CASE(BuildExport, ReflectsModifiedState) {
     CHECK(json.find("\"drain_hope\"") == std::string::npos);
 }
 
+TEST_CASE(BuildExport, ExportsActiveAplRules) {
+    WarlockSimulator sim;
+    sim.policy.enable_custom_apl(sim.talents, sim.race);
+    sim.policy.custom_rules.front().name = "Modified first rule";
+    sim.policy.custom_rules.front().condition_summary = "Only after custom change";
+    sim.policy.custom_rules.front().enabled = false;
+
+    std::string json = build_export::export_build_json(sim);
+    CHECK(json.find("\"use_custom_apl\": true") != std::string::npos);
+    CHECK(json.find("\"apl\": [") != std::string::npos);
+    CHECK(json.find("Modified first rule") != std::string::npos);
+    CHECK(json.find("Only after custom change") != std::string::npos);
+    CHECK(json.find("\"enabled\": false") != std::string::npos);
+    CHECK_EQ(count_char(json, '{'), count_char(json, '}'));
+    CHECK_EQ(count_char(json, '['), count_char(json, ']'));
+}
+
 TEST_CASE(BuildExport, EscapesStrings) {
     WarlockSimulator sim;
     sim.use_raw_stats = false;

@@ -564,7 +564,8 @@ TEST_CASE(Rotations, DPRuinFireDeterministicRun) {
     CHECK(res.dmg_searing_pain > 0.0);
     CHECK_EQ(res.shadow_bolt_casts, 0);
     CHECK(res.dmg_immolate > 0.0);
-    CHECK(res.dmg_conflagrate > 0.0);
+    // The tuned DP Fire - Searing Pain APL intentionally omits Conflagrate.
+    CHECK_EQ(res.dmg_conflagrate, 0.0);
     CHECK_EQ(res.dmg_shadowburn, 0.0);
     CHECK_EQ(res.dmg_soul_fire, 0.0);
 }
@@ -907,5 +908,4 @@ TEST_CASE(Rotations, CustomAplExecutionOverride) {
     CHECK(res1.dmg_corruption > 0.0);
     CHECK_EQ(res2.dmg_corruption, 0.0);
 }
-
 

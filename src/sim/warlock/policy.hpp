@@ -564,6 +564,77 @@ struct PolicyConfig
   std::shared_ptr<sim::GBDTMultiActionQPolicy> gbdt_q_policy = nullptr;
   std::vector<PriorityRule> custom_rules;
 
+  // Tuned APL for the Demonology Fire - Searing Pain rotation preset.
+  std::vector<PriorityRule> build_dp_fire_searing_rules() const
+  {
+    std::vector<PriorityRule> rules;
+    auto add_rule = [&](PriorityAction action, SpellID spell_id,
+                        const char* name, const char* condition,
+                        bool custom_thresholds = true) -> PriorityRule& {
+      rules.push_back({});
+      PriorityRule& rule = rules.back();
+      rule.action = action;
+      rule.spell_id = spell_id;
+      rule.name = name;
+      rule.condition_summary = condition;
+      rule.use_custom_thresholds = custom_thresholds;
+      return rule;
+    };
+
+    auto& doom = add_rule(PriorityAction::CURSE_OF_DOOM, SpellID::CURSE_OF_DOOM,
+                          "Bane of Doom", "Bane of Doom Not Active & Fight Time >= 57s");
+    doom.check_doom_debuff = true;
+    doom.check_fight_time = true;
+    doom.min_time_remaining = 57.0f;
+
+    auto& agony = add_rule(PriorityAction::CURSE_OF_AGONY, SpellID::CURSE_OF_AGONY,
+                           "Bane of Agony", "DoT Rem <= 2.5s");
+    agony.check_doom_debuff = true;
+    agony.check_dot_refresh = true;
+    agony.max_dot_rem_sec = 2.5f;
+
+    auto& corruption = add_rule(PriorityAction::CORRUPTION, SpellID::CORRUPTION,
+                                "Corruption", "DoT Rem <= 2.5s");
+    corruption.check_dot_refresh = true;
+    corruption.max_dot_rem_sec = 2.5f;
+
+    auto& immolate = add_rule(PriorityAction::IMMOLATE, SpellID::IMMOLATE,
+                              "Immolate", "DoT Rem <= 2.5s");
+    immolate.check_dot_refresh = true;
+    immolate.max_dot_rem_sec = 2.5f;
+
+    add_rule(PriorityAction::DEMONIC_BRAND_SEARING_PAIN, SpellID::DEMONIC_BRAND,
+             "Demonic Brand", "Always / Filler", false).trigger_condition = "(Always)";
+
+    auto& searing_trigger = add_rule(PriorityAction::DECIMATION_SEARING_PAIN, SpellID::SEARING_PAIN,
+                                     "Searing Pain", "Decimation Inactive & Target HP <= 28%");
+    searing_trigger.check_decimation = true;
+    searing_trigger.require_decimation_active = false;
+    searing_trigger.check_target_hp = true;
+    searing_trigger.max_target_hp_pct = 0.28f;
+
+    auto& low_tap = add_rule(PriorityAction::LIFE_TAP, SpellID::LIFE_TAP,
+                             "Life Tap", "Mana <= 17%");
+    low_tap.check_mana = true;
+    low_tap.max_mana_pct = 0.17f;
+
+    auto& soul_fire = add_rule(PriorityAction::DECIMATION_SOUL_FIRE, SpellID::SOUL_FIRE,
+                               "Soul Fire", "Decimation Active & Target HP <= 28%");
+    soul_fire.check_decimation = true;
+    soul_fire.check_target_hp = true;
+    soul_fire.max_target_hp_pct = 0.28f;
+
+    auto& high_tap = add_rule(PriorityAction::LIFE_TAP, SpellID::LIFE_TAP,
+                              "Life Tap", "Mana <= 37%");
+    high_tap.check_mana = true;
+    high_tap.max_mana_pct = 0.37f;
+
+    add_rule(PriorityAction::SEARING_PAIN_FILLER, SpellID::SEARING_PAIN,
+             "Searing Pain", "Always / Filler", false).trigger_condition = "(Always)";
+
+    return rules;
+  }
+
   // Constructs the ordered priority rule list for display and execution
   std::vector<PriorityRule> get_priority_rules(const Talents& talents, Race race = Race::UNDEAD) const
   {
@@ -1070,16 +1141,7 @@ struct PolicyConfig
         break;
 
       case RotationChoice::DP_RUIN_FIRE:
-        add_racial();
-        add_immolate();
-        add_conflagrate();
-        rules.push_back({PriorityAction::SEARING_PAIN_FILLER,
-                         SpellID::SEARING_PAIN,
-                         "Searing Pain",
-                         "Primary Filler",
-                         "Trigger when: Primary rotational fallback for DP/AF Fire.",
-                         "Fast 1.5s Fire filler benefiting from Agonizing Flames and Ruin crit damage multipliers."});
-        break;
+        return build_dp_fire_searing_rules();
 
       case RotationChoice::SHADOW_DESTRO:
         add_racial();

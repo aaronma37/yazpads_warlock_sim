@@ -770,6 +770,39 @@ struct Talents {
         return t;
     }
 
+    // 2/31/18 Custom DP Fire - Searing Pain
+    // Exact talent allocation for the user-provided Demonology Fire APL.
+    static Talents create_forever_custom_demonology_fire() {
+        Talents t;
+
+        // Affliction: 2 points
+        t.aff.suppression = 1;
+        t.aff.improved_corruption = 1;
+
+        // Demonology: 31 points
+        t.demo.improved_imp = 3;
+        t.demo.demonic_embrace = 2;
+        t.demo.unholy_power = 5;
+        t.demo.fel_vitality = 3;
+        t.demo.demonic_energies = 2;
+        t.demo.demonic_sacrifice = 1;
+        t.demo.decimation = 2;
+        t.demo.demonic_brand = 3;
+        t.demo.soul_link = 1;
+        t.demo.demonic_knowledge = 3;
+        t.demo.master_demonologist = 5;
+        t.demo.demonic_pact = 1;
+
+        // Destruction: 18 points
+        t.destro.bane = 5;
+        t.destro.cataclysm = 3;
+        t.destro.aftermath = 2;
+        t.destro.ruin = 5;
+        t.destro.agonizing_flames = 3;
+
+        return t;
+    }
+
     // 4. 40/11/0 Deep Affliction DS-Imp
     static Talents create_forever_deep_affliction() {
         Talents t;

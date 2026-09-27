@@ -5,7 +5,7 @@ using namespace warlock;
 
 TEST_CASE(SpecPresets, CountAndUniqueNames) {
     const auto& presets = standard_spec_presets();
-    CHECK_EQ(presets.size(), (size_t)21);
+    CHECK_EQ(presets.size(), (size_t)22);
     for (size_t i = 0; i < presets.size(); ++i) {
         CHECK(presets[i].display_name != nullptr && std::string(presets[i].display_name).size() > 0);
         CHECK(presets[i].short_label != nullptr && std::string(presets[i].short_label).size() > 0);
@@ -68,6 +68,63 @@ TEST_CASE(SpecPresets, IncinSuppSuccubus) {
     apply_spec_preset(sim, *p);
     CHECK(sim.policy.pet == PetChoice::SUCCUBUS);
     CHECK(sim.policy.rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_BANE);
+}
+
+TEST_CASE(SpecPresets, CustomDemonologyFireSearingPain) {
+    const SpecPreset* p = find_spec_preset("custom_dp_fire_searing");
+    CHECK(p != nullptr);
+    CHECK(std::string(p->display_name) == "2/31/18 DP Fire - Searing Pain");
+    CHECK(p->rotation == RotationChoice::DP_RUIN_FIRE);
+    CHECK(p->pet == PetChoice::IMP);
+    CHECK(p->sac_succubus == true);
+    CHECK(p->sac_imp == false);
+    CHECK(p->maintain_immolate == true);
+
+    Talents t = p->make_talents();
+    CHECK_EQ(t.aff.total_points(), 2);
+    CHECK_EQ(t.demo.total_points(), 31);
+    CHECK_EQ(t.destro.total_points(), 18);
+    CHECK_EQ(t.total_points(), 51);
+    CHECK(t.is_valid());
+    CHECK_EQ(t.aff.suppression, 1);
+    CHECK_EQ(t.aff.improved_corruption, 1);
+    CHECK_EQ(t.demo.improved_imp, 3);
+    CHECK_EQ(t.demo.demonic_embrace, 2);
+    CHECK_EQ(t.demo.unholy_power, 5);
+    CHECK_EQ(t.demo.fel_vitality, 3);
+    CHECK_EQ(t.demo.demonic_energies, 2);
+    CHECK_EQ(t.demo.demonic_sacrifice, 1);
+    CHECK_EQ(t.demo.decimation, 2);
+    CHECK_EQ(t.demo.demonic_brand, 3);
+    CHECK_EQ(t.demo.soul_link, 1);
+    CHECK_EQ(t.demo.demonic_knowledge, 3);
+    CHECK_EQ(t.demo.master_demonologist, 5);
+    CHECK_EQ(t.demo.demonic_pact, 1);
+    CHECK_EQ(t.destro.bane, 5);
+    CHECK_EQ(t.destro.cataclysm, 3);
+    CHECK_EQ(t.destro.aftermath, 2);
+    CHECK_EQ(t.destro.ruin, 5);
+    CHECK_EQ(t.destro.agonizing_flames, 3);
+
+    WarlockSimulator sim;
+    apply_spec_preset(sim, *p);
+    CHECK(sim.policy.use_custom_apl == false);
+    auto rules = sim.policy.get_priority_rules(sim.talents, sim.race);
+    CHECK_EQ(rules.size(), (size_t)12);
+    CHECK(rules[0].action == PriorityAction::CURSE_OF_DOOM);
+    CHECK(rules[0].check_doom_debuff == true);
+    CHECK(rules[0].min_time_remaining == 57.0f);
+    CHECK(rules[4].action == PriorityAction::DEMONIC_BRAND_SEARING_PAIN);
+    CHECK(rules[5].action == PriorityAction::DECIMATION_SEARING_PAIN);
+    CHECK(rules[5].max_target_hp_pct == 0.28f);
+    CHECK(rules[6].action == PriorityAction::LIFE_TAP);
+    CHECK(rules[6].max_mana_pct == 0.17f);
+    CHECK(rules[7].action == PriorityAction::DECIMATION_SOUL_FIRE);
+    CHECK(rules[8].action == PriorityAction::LIFE_TAP);
+    CHECK(rules[8].max_mana_pct == 0.37f);
+    CHECK(rules[9].action == PriorityAction::SEARING_PAIN_FILLER);
+    CHECK(rules[10].action == PriorityAction::NIGHTFALL_SHADOW_BOLT);
+    CHECK(rules[11].action == PriorityAction::SHADOW_BOLT_FILLER);
 }
 
 TEST_CASE(SpecPresets, IncinSuppDsNoCorruption) {
@@ -370,4 +427,3 @@ TEST_CASE(SpecPresets, AffDpBrand) {
     CHECK(sim.buffs.sacrifice_succubus == false);
     CHECK(sim.policy.maintain_immolate == false);
 }
-

@@ -110,6 +110,26 @@ inline void append_bool(std::ostringstream& json, const char* key, bool value, b
     json << "\"" << key << "\": " << (value ? "true" : "false");
 }
 
+inline void append_apl(std::ostringstream& json, const PolicyConfig& policy,
+                       const Talents& talents, Race race) {
+    const auto rules = policy.get_priority_rules(talents, race);
+    json << "    \"use_custom_apl\": " << (policy.use_custom_apl ? "true" : "false") << ",\n";
+    json << "    \"apl\": [\n";
+    for (size_t i = 0; i < rules.size(); ++i) {
+        const auto& rule = rules[i];
+        json << "      {\n";
+        json << "        \"action\": " << static_cast<unsigned int>(rule.action) << ",\n";
+        json << "        \"spell_id\": " << static_cast<unsigned int>(rule.spell_id) << ",\n";
+        json << "        \"name\": \"" << json_escape(rule.name) << "\",\n";
+        json << "        \"condition\": \"" << json_escape(rule.condition_summary) << "\",\n";
+        json << "        \"trigger\": \"" << json_escape(rule.trigger_condition) << "\",\n";
+        json << "        \"enabled\": " << (rule.enabled ? "true" : "false") << ",\n";
+        json << "        \"custom_thresholds\": " << (rule.use_custom_thresholds ? "true" : "false") << "\n";
+        json << "      }" << (i + 1 < rules.size() ? "," : "") << "\n";
+    }
+    json << "    ]";
+}
+
 inline bool save_export_to_file(const std::string& filepath, const std::string& content) {
 #if defined(__EMSCRIPTEN__)
     EM_ASM({
@@ -256,7 +276,8 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "    \"channel_drain_hope\": " << (p.channel_drain_hope ? "true" : "false") << ",\n";
         json << "    \"multi_dot_corruption\": " << (p.multi_dot_corruption ? "true" : "false") << ",\n";
         json << "    \"auto_bane_of_havoc\": " << (p.auto_bane_of_havoc ? "true" : "false") << ",\n";
-        json << "    \"racial_policy\": \"" << racial_policy_to_string(p.racial_policy) << "\"\n";
+        json << "    \"racial_policy\": \"" << racial_policy_to_string(p.racial_policy) << "\",\n";
+        append_apl(json, p, sim.talents, sim.race);
         json << "  },\n";
     }
 
