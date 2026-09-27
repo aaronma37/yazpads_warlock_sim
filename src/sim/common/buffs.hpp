@@ -36,7 +36,7 @@ struct BuffConfig {
 
     // Target Debuffs
     bool curse_of_shadows = true;       // +10% Shadow/Arcane damage, -75 Shadow Resistance
-    bool curse_of_elements = true;      // +10% Fire/Frost damage, -75 Fire Resistance
+    bool curse_of_elements = true;      // +10% magical damage, -75 Shadow/Fire resistance
     bool shadow_weaving = false;        // Priest: 5 stacks = +15% Shadow damage (Default: OFF - Personal only in Forever)
     bool nightfall_axe = false;         // Spell vulnerability: +15% spell damage
 
@@ -125,7 +125,13 @@ struct BuffConfig {
         // Damage multipliers
         if (sayges_fortune) stats.all_damage_multiplier *= 1.10;
         if (curse_of_shadows) stats.shadow_multiplier *= 1.10;
-        if (curse_of_elements) stats.fire_multiplier *= 1.10;
+        // WoW Forever CoE applies to all magical schools represented by the
+        // warlock simulator, not Fire alone. Keep this aligned with the Xn
+        // engine's +10% magic-damage debuff.
+        if (curse_of_elements) {
+            stats.shadow_multiplier *= 1.10;
+            stats.fire_multiplier *= 1.10;
+        }
         if (shadow_weaving && !personal_shadow_weaving) stats.shadow_multiplier *= 1.15;
         if (nightfall_axe) stats.all_damage_multiplier *= 1.15;
 
@@ -144,4 +150,3 @@ struct BuffConfig {
 namespace warlock {
     using sim::BuffConfig;
 }
-

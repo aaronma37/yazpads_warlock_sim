@@ -305,6 +305,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         target.curse_of_shadows = true;
     }
     if (buffs.curse_of_elements) {
+        target.current_shadow_resistance = std::max(0.0, target.base_shadow_resistance - 75.0);
         target.current_fire_resistance = std::max(0.0, target.base_fire_resistance - 75.0);
         target.curse_of_elements = true;
     }
@@ -2478,7 +2479,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             brand_dmg *= (1.0 + talents.demo.master_demonologist * 0.02);
                             if (talents.demo.soul_link > 0) brand_dmg *= 1.03;
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
-                            if (buffs.curse_of_shadows) brand_dmg *= 1.10;
+                            if (buffs.curse_of_shadows || buffs.curse_of_elements) brand_dmg *= 1.10;
                             brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                             result.dmg_demonic_brand += brand_dmg;
                         }
@@ -2526,7 +2527,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             }
 
                             if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) base_lop *= 1.15;
-                            if (buffs.curse_of_shadows) base_lop *= 1.10;
+                            if (buffs.curse_of_shadows || buffs.curse_of_elements) base_lop *= 1.10;
 
                             bool lop_crit = rng.chance(calculate_crit_chance(School::SHADOW, stats));
                             if (lop_crit) {
@@ -2549,7 +2550,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 brand_dmg *= (1.0 + talents.demo.master_demonologist * 0.02);
                                 if (talents.demo.soul_link > 0) brand_dmg *= 1.03;
                                 if (buffs.shadow_weaving && !mechanics.personal_shadow_weaving) brand_dmg *= 1.15;
-                                if (buffs.curse_of_shadows) brand_dmg *= 1.10;
+                                if (buffs.curse_of_shadows || buffs.curse_of_elements) brand_dmg *= 1.10;
                                 brand_dmg *= calculate_partial_resist_multiplier(School::SHADOW, target.current_shadow_resistance, rng);
                                 result.dmg_demonic_brand += brand_dmg;
                             }

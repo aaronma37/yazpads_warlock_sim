@@ -3,11 +3,13 @@
 #include <fstream>
 #include <string>
 #include <cstring>
+#include <cstdint>
 #include <vector>
 
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/optimizer.hpp"
+#include "src/cli_config.hpp"
 #include "src/sim/warlock/surrogate_dataset_generator.hpp"
 #include "src/ui/ui_app.hpp"
 
@@ -28,7 +30,11 @@ void print_help() {
               << "  --headless                     Run in headless CLI mode (no window)\n"
               << "  --iterations <N>               Number of fight simulations (default: 10000)\n"
               << "  --duration <seconds>           Duration of each fight in seconds (default: 120)\n"
+              << "  --randomize-duration <0|1>     Randomize fight duration (default: 0)\n"
+              << "  --duration-variance <seconds>  Uniform +/- duration spread (default: 30)\n"
               << "  --threads <N>                  Worker threads (default: hardware concurrency)\n"
+              << "  --seed <N>                     Base RNG seed for reproducible batches (default: 1337)\n"
+              << "  --config <file>                Load JSON configuration before CLI overrides\n"
               << "  --spec <name>                  Talent spec: shadow_destro, fire_destro, demonic_pact, deep_affliction, sm_ruin, nf_af\n"
               << "  --gear <name>                  Gear preset: preraid, p3, p5, p6\n"
               << "  --race <name>                  Playable race: undead, orc, troll, human, gnome\n"
@@ -56,13 +62,43 @@ int run_headless(int argc, char* argv[]) {
     bool opt_policy = false;
     bool opt_snapshot = false;
     std::string json_output = "";
+    uint64_t base_seed = 1337;
+
+    // Load the JSON first so explicit CLI flags later in argv override it.
+    for (int i = 1; i + 1 < argc; ++i) {
+        if (std::string(argv[i]) == "--config") {
+            try {
+                cli_config::load_file(argv[i + 1], sim, iterations, threads, base_seed);
+            } catch (const std::exception& e) {
+                std::cerr << "Configuration error: " << e.what() << "\n";
+                return 2;
+            }
+            break;
+        }
+    }
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
-        if (arg == "--iterations" && i + 1 < argc) {
+        if (arg == "--config" && i + 1 < argc) {
+            ++i;
+        } else if (arg == "--iterations" && i + 1 < argc) {
             iterations = std::stoi(argv[++i]);
         } else if (arg == "--duration" && i + 1 < argc) {
             sim.fight_duration = std::stod(argv[++i]);
+        } else if (arg == "--randomize-duration" && i + 1 < argc) {
+            sim.randomize_duration = (std::stoi(argv[++i]) != 0);
+        } else if (arg == "--duration-variance" && i + 1 < argc) {
+            sim.duration_variance = std::stod(argv[++i]);
+            if (sim.duration_variance < 0.0) {
+                std::cerr << "--duration-variance must be non-negative\n";
+                return 2;
+            }
+        } else if (arg == "--seed" && i + 1 < argc) {
+            base_seed = static_cast<uint64_t>(std::stoull(argv[++i]));
+            if (base_seed == 0) {
+                std::cerr << "--seed must be non-zero\n";
+                return 2;
+            }
         } else if (arg == "--threads" && i + 1 < argc) {
             threads = std::stoi(argv[++i]);
         } else if (arg == "--spec" && i + 1 < argc) {
@@ -204,6 +240,8 @@ int run_headless(int argc, char* argv[]) {
               << "     WOW FOREVER WARLOCK DES SIMULATOR (HEADLESS MULTI-THREADED)        \n"
               << "========================================================================\n"
               << "Settings: Duration=" << sim.fight_duration << "s | Workers=" << threads
+              << " | Duration variance=" << (sim.randomize_duration ? "+/- " + std::to_string(sim.duration_variance) + "s" : "OFF")
+              << " | Seed=" << base_seed
               << " | Snapshotting=" << (sim.mechanics.snapshot_dots ? "ON (Classic)" : "OFF (Forever)") << "\n\n";
 
     if (opt_talents) {
@@ -260,7 +298,7 @@ int run_headless(int argc, char* argv[]) {
 
     // Default single batch run
     std::cout << "Executing " << iterations << " Discrete Event Simulations across " << threads << " threads..." << std::endl;
-    BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations, threads);
+    BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations, threads, nullptr, base_seed);
 
     std::cout << "\n>>> SIMULATION RESULTS <<<\n"
               << "Throughput:     " << batch.total_iterations << " iterations in " 
@@ -299,6 +337,10 @@ int run_headless(int argc, char* argv[]) {
         std::ofstream ofs(json_output);
         if (ofs.is_open()) {
             ofs << "{\n"
+                << "  \"seed\": " << base_seed << ",\n"
+                << "  \"duration\": " << sim.fight_duration << ",\n"
+                << "  \"randomize_duration\": " << (sim.randomize_duration ? "true" : "false") << ",\n"
+                << "  \"duration_variance\": " << sim.duration_variance << ",\n"
                 << "  \"iterations\": " << batch.total_iterations << ",\n"
                 << "  \"sim_time_seconds\": " << batch.total_sim_time_seconds << ",\n"
                 << "  \"mean_dps\": " << batch.mean_dps << ",\n"
@@ -307,7 +349,33 @@ int run_headless(int argc, char* argv[]) {
                 << "  \"p50_dps\": " << batch.p50_dps << ",\n"
                 << "  \"p95_dps\": " << batch.p95_dps << ",\n"
                 << "  \"isb_uptime\": " << batch.mean_isb_uptime << ",\n"
-                << "  \"crit_percent\": " << batch.crit_percent << "\n"
+                << "  \"crit_percent\": " << batch.crit_percent << ",\n"
+                << "  \"damage_breakdown\": {\n"
+                << "    \"shadow_bolt\": {\"pct_total\": " << batch.pct_shadow_bolt << ", \"mean_dps\": " << batch.mean_dps * batch.pct_shadow_bolt / 100.0 << "},\n"
+                << "    \"corruption\": {\"pct_total\": " << batch.pct_corruption << ", \"mean_dps\": " << batch.mean_dps * batch.pct_corruption / 100.0 << "},\n"
+                << "    \"curse\": {\"pct_total\": " << batch.pct_curse << ", \"mean_dps\": " << batch.mean_dps * batch.pct_curse / 100.0 << "},\n"
+                << "    \"agony\": {\"pct_total\": " << batch.pct_agony << ", \"mean_dps\": " << batch.mean_dps * batch.pct_agony / 100.0 << "},\n"
+                << "    \"doom\": {\"pct_total\": " << batch.pct_doom << ", \"mean_dps\": " << batch.mean_dps * batch.pct_doom / 100.0 << "},\n"
+                << "    \"bane_of_havoc\": {\"pct_total\": " << batch.pct_bane_of_havoc << ", \"mean_dps\": " << batch.mean_dps * batch.pct_bane_of_havoc / 100.0 << "},\n"
+                << "    \"siphon_life\": {\"pct_total\": " << batch.pct_siphon_life << ", \"mean_dps\": " << batch.mean_dps * batch.pct_siphon_life / 100.0 << "},\n"
+                << "    \"immolate\": {\"pct_total\": " << batch.pct_immolate << ", \"mean_dps\": " << batch.mean_dps * batch.pct_immolate / 100.0 << "},\n"
+                << "    \"shadowburn\": {\"pct_total\": " << batch.pct_shadowburn << ", \"mean_dps\": " << batch.mean_dps * batch.pct_shadowburn / 100.0 << "},\n"
+                << "    \"conflagrate\": {\"pct_total\": " << batch.pct_conflagrate << ", \"mean_dps\": " << batch.mean_dps * batch.pct_conflagrate / 100.0 << "},\n"
+                << "    \"incinerate\": {\"pct_total\": " << batch.pct_incinerate << ", \"mean_dps\": " << batch.mean_dps * batch.pct_incinerate / 100.0 << "},\n"
+                << "    \"searing_pain\": {\"pct_total\": " << batch.pct_searing_pain << ", \"mean_dps\": " << batch.mean_dps * batch.pct_searing_pain / 100.0 << "},\n"
+                << "    \"soul_fire\": {\"pct_total\": " << batch.pct_soul_fire << ", \"mean_dps\": " << batch.mean_dps * batch.pct_soul_fire / 100.0 << "},\n"
+                << "    \"drain_hope\": {\"pct_total\": " << batch.pct_drain_hope << ", \"mean_dps\": " << batch.mean_dps * batch.pct_drain_hope / 100.0 << "},\n"
+                << "    \"drain_life\": {\"pct_total\": " << batch.pct_drain_life << ", \"mean_dps\": " << batch.mean_dps * batch.pct_drain_life / 100.0 << "},\n"
+                << "    \"drain_soul\": {\"pct_total\": " << batch.pct_drain_soul << ", \"mean_dps\": " << batch.mean_dps * batch.pct_drain_soul / 100.0 << "},\n"
+                << "    \"pet\": {\"pct_total\": " << batch.pct_pet << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet / 100.0 << "},\n"
+                << "    \"pet_imp\": {\"pct_total\": " << batch.pct_pet_imp << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet_imp / 100.0 << "},\n"
+                << "    \"pet_succubus\": {\"pct_total\": " << batch.pct_pet_succubus << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet_succubus / 100.0 << "},\n"
+                << "    \"pet_melee\": {\"pct_total\": " << batch.pct_pet_melee << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet_melee / 100.0 << "},\n"
+                << "    \"pet_lash_of_pain\": {\"pct_total\": " << batch.pct_pet_lash_of_pain << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet_lash_of_pain / 100.0 << "},\n"
+                << "    \"pet_firebolt\": {\"pct_total\": " << batch.pct_pet_firebolt << ", \"mean_dps\": " << batch.mean_dps * batch.pct_pet_firebolt / 100.0 << "},\n"
+                << "    \"demonic_brand\": {\"pct_total\": " << batch.pct_demonic_brand << ", \"mean_dps\": " << batch.mean_dps * batch.pct_demonic_brand / 100.0 << "},\n"
+                << "    \"touch_of_the_grave\": {\"pct_total\": " << batch.pct_touch_of_the_grave << ", \"mean_dps\": " << batch.mean_dps * batch.pct_touch_of_the_grave / 100.0 << "}\n"
+                << "  }\n"
                 << "}\n";
             std::cout << "\nResults exported to " << json_output << std::endl;
         }
