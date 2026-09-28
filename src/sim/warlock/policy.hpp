@@ -11,6 +11,7 @@
 
 namespace warlock
 {
+class SearchImitationPolicy;
 
 enum class CurseChoice : uint8_t
 {
@@ -562,6 +563,9 @@ struct PolicyConfig
   bool use_oracle_execution_policy = false; // Live online greedy MCTS / Oracle controller
   bool use_gbdt_policy = false;             // Trained GBDT Q-Ensemble Policy (LightGBM/Tree Model)
   std::shared_ptr<sim::GBDTMultiActionQPolicy> gbdt_q_policy = nullptr;
+  bool use_imitation_policy = false;
+  std::shared_ptr<const SearchImitationPolicy> imitation_policy;
+  std::string imitation_policy_name;
   std::vector<PriorityRule> custom_rules;
 
   // Tuned APL for the Demonology Fire - Searing Pain rotation preset.

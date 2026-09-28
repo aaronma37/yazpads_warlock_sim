@@ -1,0 +1,4 @@
+round,labels,search_replays,policy_dps,apl_dps,teacher_dps,policy_minus_teacher,gap_ci95,agreement_pct,regret_dps,validation_accuracy_pct
+1,183,85699,417.052,499.12,501.451,-84.3984,25.0998,58.4881,2.00627,35.4167
+2,366,171280,468.74,499.12,510.476,-41.7364,25.045,55.409,1.60251,47.191
+3,557,254434,509.204,499.12,531.481,-22.2776,35.2127,57.4468,1.47649,43.1034

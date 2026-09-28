@@ -5,6 +5,7 @@
 #include "damage_breakdown_view.hpp"
 #include "wow_widgets.hpp"
 #include "src/sim/parallel_runner.hpp"
+#include "src/sim/warlock/viper_oracle.hpp"
 #include <vector>
 #include <algorithm>
 #include <sstream>
@@ -57,6 +58,31 @@ inline void render_panel_results(const BatchSimResult& batch) {
     ImGui::Separator();
 
     if (WowBeginTabBar("ResultsTabBar")) {
+        if (!batch.sample_timeline.policy_decisions.empty() && WowBeginTabItem("GBDT Decision Trace")) {
+            const auto& sample = batch.sample_timeline;
+            if (sample.policy_decisions.empty()) {
+                ImGui::TextWrapped("Run a simulation with a trained GBDT active to record its decision trace.");
+            } else {
+                ImGui::TextWrapped("Recorded model: %s", sample.decision_policy_name.c_str());
+                ImGui::TextWrapped("Scores estimate each action's DPS difference from the best search action; higher is better. Resource, talent and cooldown checks may execute a lower-ranked action. Expand a decision to inspect all model scores.");
+                for (size_t index = 0; index < sample.policy_decisions.size(); ++index) {
+                    const auto& decision = sample.policy_decisions[index];
+                    ImGui::PushID(static_cast<int>(index));
+                    if (ImGui::TreeNode("Decision", "%.2fs: %s | model first choice: %s", decision.time,
+                        VIPEROracle::get_action_name(decision.executed_action),
+                        VIPEROracle::get_action_name(decision.ranked_values.front().first))) {
+                        ImGui::Text("Mana %.1f%% | fight remaining %.1fs", decision.state.player_mana_pct * 100,
+                            decision.state.time_remaining_sec);
+                        for (const auto& [action, value] : decision.ranked_values)
+                            ImGui::Text("%s %s: %+.2f DPS", action == decision.executed_action ? ">" : " ",
+                                VIPEROracle::get_action_name(action), value);
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+                }
+            }
+            WowEndTabItem();
+        }
         // Tab 1: DPS Distribution Histogram
         if (WowBeginTabItem("DPS Histogram")) {
             if (!batch.histogram.empty()) {

@@ -48,6 +48,7 @@ set(SIM_SOURCES
     src/sim/warlock/genetic_optimizer.cpp
     src/sim/warlock/surrogate_dataset_generator.cpp
     src/sim/warlock/ppo_training.cpp
+    src/sim/warlock/imitation_training.cpp
     src/sim/priest/priest_sim.cpp
     src/sim/priest/parallel_runner.cpp
     src/sim/priest/optimizer.cpp
@@ -128,6 +129,7 @@ else()
         tests/test_apl_analyzer.cpp
         tests/test_gbdt_policy.cpp
         tests/test_ppo_training.cpp
+        tests/test_imitation_training.cpp
     )
 
     add_executable(sim_tests

@@ -1,5 +1,6 @@
 #pragma once
 #include "sim_state_vector.hpp"
+#include "parallel_executor.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -71,7 +72,8 @@ public:
     // Trains the GBDT regressor on tabular feature matrix X and target y
     void fit(const std::vector<std::vector<float>>& X,
              const std::vector<float>& y,
-             const std::vector<float>& weights = {})
+             const std::vector<float>& weights = {},
+             const std::atomic<bool>* cancel = nullptr)
     {
         if (X.empty() || y.empty() || X.size() != y.size()) {
             trees_.clear();
@@ -112,6 +114,7 @@ public:
         std::mt19937 rng(1337);
 
         for (size_t iter = 0; iter < config_.num_trees; ++iter) {
+            if (cancel && cancel->load()) throw ParallelCancelled{};
             for (size_t i = 0; i < n; ++i) {
                 g[i] = w[i] * (y[i] - preds[i]);
                 h[i] = w[i];
@@ -174,6 +177,7 @@ public:
     size_t num_trees() const { return trees_.size(); }
     float base_score() const { return base_score_; }
     const GBDTConfig& config() const { return config_; }
+    const std::vector<GBDTTree>& trees() const { return trees_; }
 
     // Serialization to compact JSON/text representation
     std::string to_json() const {
@@ -362,7 +366,8 @@ public:
         float weight = 1.0f;
     };
 
-    void fit(const std::vector<QSample>& samples) {
+    void fit(const std::vector<QSample>& samples, ParallelExecutor* executor = nullptr,
+             const std::atomic<bool>* cancel = nullptr) {
         action_models_.clear();
         if (samples.empty()) return;
 
@@ -379,11 +384,23 @@ public:
             w_per_act[s.action].push_back(s.weight);
         }
 
-        for (auto& [act, X] : X_per_act) {
+        std::vector<uint8_t> actions;
+        for (const auto& [action, matrix] : X_per_act) actions.push_back(action);
+        std::sort(actions.begin(), actions.end());
+        std::vector<GBDTRegressor> fitted(actions.size(), GBDTRegressor(config_));
+        const auto& matrices = X_per_act;
+        const auto& targets = y_per_act;
+        const auto& weights = w_per_act;
+        auto fit_action = [&](size_t index) {
+            if (cancel && cancel->load()) throw ParallelCancelled{};
+            auto act = actions[index];
             GBDTRegressor reg(config_);
-            reg.fit(X, y_per_act[act], w_per_act[act]);
-            action_models_[act] = std::move(reg);
-        }
+            reg.fit(matrices.at(act), targets.at(act), weights.at(act), cancel);
+            fitted[index] = std::move(reg);
+        };
+        if (executor) executor->parallel_for(actions.size(), fit_action);
+        else for (size_t i = 0; i < actions.size(); ++i) fit_action(i);
+        for (size_t i = 0; i < actions.size(); ++i) action_models_.emplace(actions[i], std::move(fitted[i]));
     }
 
     // Predict Q-value for specific action

@@ -1,5 +1,6 @@
 #include "warlock_sim.hpp"
 #include "viper_oracle.hpp"
+#include "imitation_training.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -339,6 +340,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         double tick_damage = 0.0;
         double tick_multiplier = 1.0;
         bool amplified = false;
+        uint16_t tick_generation = 0;
     };
 
     struct TargetCombatState {
@@ -634,13 +636,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 target_states[t].dot_corruption.active = true;
+                                ++target_states[t].dot_corruption.tick_generation;
                                 target_states[t].dot_corruption.expire_time = now + 18.0;
                                 target_states[t].dot_corruption.ticks_remaining = 6;
                                 target_states[t].dot_corruption.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
                                 target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                 target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
-                                queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, static_cast<uint32_t>(t));
+                                queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), target_states[t].dot_corruption.tick_generation, static_cast<uint32_t>(t));
                             } else {
                                 result.misses++;
                                 result.record_spell_miss(SpellID::CORRUPTION);
@@ -713,7 +716,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             return obs;
         };
 
+        const auto decision_observation = get_current_observation();
+        std::vector<std::pair<PriorityAction, double>> decision_scores;
         auto log_viper_sample = [&](PriorityAction act, const std::string& name) {
+            if (!decision_scores.empty()) {
+                result.decision_policy_name = policy.imitation_policy_name.empty() ? "Trained GBDT" : policy.imitation_policy_name;
+                result.policy_decisions.push_back({now, decision_observation, decision_scores, act});
+            }
             result.action_history.push_back(act);
             decision_step_count++;
             if (record_viper_samples) {
@@ -800,7 +809,16 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        if (neural_decision) {
+        DecisionSelection controlled;
+        if (decision_controller) controlled = decision_controller(decision_observation, decision_step_count, rng);
+        else if (policy.use_imitation_policy && !neural_decision && !is_forced) {
+            if (!policy.imitation_policy) throw std::runtime_error("Trained GBDT selected without a loaded model");
+            controlled = policy.imitation_policy->select(decision_observation);
+            if (record_timeline) decision_scores = policy.imitation_policy->ranked_values(decision_observation);
+        }
+        if (!controlled.rules.empty()) {
+            rules_to_evaluate = controlled.rules;
+        } else if (neural_decision) {
             rules_to_evaluate = neural_priority_rules(neural_decision(
                 normalize_neural_observation(get_current_observation().to_array()), result.total_damage, now));
         } else if (is_forced) {
@@ -828,7 +846,8 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
         for (const auto& rule : rules_to_evaluate) {
             if (!rule.enabled) continue;
-            bool is_rule_forced = neural_decision || (is_forced && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
+            bool is_rule_forced = neural_decision || controlled.force_all ||
+                ((controlled.force_first || is_forced) && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
 
             // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS / Custom APL)
             if (rule.use_custom_thresholds && !is_rule_forced) {
@@ -1395,13 +1414,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                                 if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                     dot_corruption.active = true;
+                                    ++dot_corruption.tick_generation;
                                     dot_corruption.expire_time = now + 18.0;
                                     dot_corruption.ticks_remaining = 6;
                                     dot_corruption.tick_interval = 3.0;
                                     double sp = get_current_sp(School::SHADOW, now);
                                     dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                     dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
-                                    queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION));
+                                    queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), dot_corruption.tick_generation);
                                 } else {
                                     result.misses++;
                                     result.record_spell_miss(SpellID::CORRUPTION);
@@ -1750,13 +1770,14 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                     if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                         cur_corr.active = true;
+                        ++cur_corr.tick_generation;
                         cur_corr.expire_time = current_time + 18.0;
                         cur_corr.ticks_remaining = 6;
                         cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
                         cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
                         cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
-                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
+                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), cur_corr.tick_generation, t_idx);
                     } else {
                         result.misses++;
                         result.record_spell_miss(SpellID::CORRUPTION);
@@ -2192,7 +2213,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
                     ActiveDot& cur_corr = target_states[t_idx].dot_corruption;
-                    if (cur_corr.active && cur_corr.ticks_remaining > 0) {
+                    if (ev.sub_id == cur_corr.tick_generation && cur_corr.active && cur_corr.ticks_remaining > 0) {
                         cur_corr.ticks_remaining--;
                         result.total_damage_events++;
                         double dmg = cur_corr.tick_damage;
@@ -2242,7 +2263,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
 
                         if (cur_corr.ticks_remaining > 0 && current_time + cur_corr.tick_interval <= cur_corr.expire_time) {
-                            queue.push(current_time + cur_corr.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), 0, t_idx);
+                            queue.push(current_time + cur_corr.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), cur_corr.tick_generation, t_idx);
                         } else {
                             cur_corr.active = false;
                         }

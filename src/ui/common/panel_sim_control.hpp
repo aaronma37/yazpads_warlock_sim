@@ -109,6 +109,8 @@ inline void render_panel_sim_control(WarlockSimulator& sim,
                                      bool& is_running,
                                      float& progress)
 {
+  if (sim.policy.use_imitation_policy)
+    ImGui::TextWrapped("Decision policy: Trained GBDT (%s)", sim.policy.imitation_policy_name.c_str());
   render_common_sim_control<WarlockSimulator, BatchSimResult, ParallelSimRunner>(
       sim, iterations, thread_count, last_result, is_running, progress, "RUN SIMULATIONS");
 }

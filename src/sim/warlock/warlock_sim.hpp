@@ -48,6 +48,14 @@ struct SpellCombatStats {
 };
 
 struct SimResult {
+    struct PolicyDecisionLog {
+        double time;
+        sim::SimObservation state;
+        std::vector<std::pair<PriorityAction, double>> ranked_values;
+        PriorityAction executed_action;
+    };
+    std::string decision_policy_name;
+    std::vector<PolicyDecisionLog> policy_decisions;
     double duration = 0.0;
     double total_damage = 0.0;
     double dps = 0.0;
@@ -202,6 +210,14 @@ public:
     // Per-run controller, with recurrent state owned by its caller. Called at
     // each player decision with observations, cumulative damage and combat time.
     NeuralDecision neural_decision;
+    // Raw pre-action state for search/distillation. Empty rules retain the APL.
+    struct DecisionSelection {
+        std::vector<PriorityRule> rules;
+        bool force_all = false;
+        bool force_first = false;
+    };
+    using DecisionController = std::function<DecisionSelection(const sim::SimObservation&, size_t, FastRNG&)>;
+    DecisionController decision_controller;
 
     WarlockSimulator();
 

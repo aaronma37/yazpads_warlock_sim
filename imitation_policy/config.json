@@ -1,0 +1,1 @@
+{"backend":"native_cpp_gbdt","trees":100,"max_depth":6,"min_child_weight":5,"l2_reg":1,"learning_rate":0.05,"seed":1337,"rounds":3,"episodes":8,"sample_stride":4,"samples_per_episode":32,"rollouts":16,"evaluation_episodes":8,"search_depth":1,"exploration":0.25,"reference_rollouts":32,"teacher_mix":0.5}

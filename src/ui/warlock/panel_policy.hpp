@@ -6,6 +6,7 @@
 #include "src/sim/talents.hpp"
 #include "src/sim/warlock_sim.hpp"
 #include "src/ui/common/panel_policy.hpp"
+#include "src/sim/warlock/imitation_training.hpp"
 #include <algorithm>
 #include <vector>
 
@@ -109,7 +110,42 @@ inline std::vector<PriorityRule> get_available_warlock_actions(const Talents& ta
 
 inline void render_panel_policy_controls(PolicyConfig& policy, const Talents& talents, Race race = Race::UNDEAD)
 {
-  ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Action Priority List");
+  ImGui::TextColored(ImVec4(0.85f, 0.75f, 1.0f, 1.0f), "Decision Policy");
+  ImGui::Separator();
+  const char* controller_names[] = {"APL preset / custom rules", "Trained GBDT (LGBM-style)", "Extracted GBDT Q-policy", "Greedy oracle"};
+  int controller = policy.use_imitation_policy ? 1 : policy.use_gbdt_policy ? 2 : policy.use_oracle_execution_policy ? 3 : 0;
+  if (ImGui::BeginCombo("Active controller", controller_names[controller])) {
+    for (int i = 0; i < 4; ++i) {
+      ImGui::BeginDisabled((i == 1 && !policy.imitation_policy) || (i == 2 && !policy.gbdt_q_policy));
+      if (ImGui::Selectable(controller_names[i], controller == i)) {
+        policy.use_imitation_policy = i == 1;
+        policy.use_gbdt_policy = i == 2;
+        policy.use_oracle_execution_policy = i == 3;
+      }
+      ImGui::EndDisabled();
+    }
+    ImGui::EndCombo();
+  }
+  static char model_path[512] = "imitation_policy";
+  static std::string model_status;
+  ImGui::SetNextItemWidth(-1);
+  ImGui::InputText("Bundle / policy.gbdt path", model_path, sizeof(model_path));
+  if (ImGui::Button("Load and activate trained GBDT")) {
+    try {
+      std::filesystem::path file(model_path);
+      if (std::filesystem::is_directory(file)) file /= "policy.gbdt";
+      auto loaded = std::make_shared<SearchImitationPolicy>();
+      loaded->load(file.string());
+      activate_imitation_policy(policy, std::move(loaded), file.string());
+      model_status = "Loaded and activated trained GBDT.";
+    } catch (const std::exception& error) { model_status = error.what(); }
+  }
+  if (!model_status.empty()) ImGui::TextWrapped("%s", model_status.c_str());
+  if (policy.imitation_policy)
+    ImGui::TextWrapped("Loaded model: %s (%zu actions, %zu trees)", policy.imitation_policy_name.c_str(),
+      policy.imitation_policy->classes.size(), policy.imitation_policy->trees.size());
+  if (policy.use_imitation_policy)
+    ImGui::TextWrapped("The GBDT ranks spells at each combat decision. Run simulations and open Observed Spell Cast Sequence or GBDT Decision Trace to inspect execution. The APL controls below retain your baseline and automation settings.");
   ImGui::Separator();
 
   // 0. Rotation Choice / Strategy

@@ -35,6 +35,7 @@ void print_help() {
               << "  --threads <N>                  Worker threads (default: hardware concurrency)\n"
               << "  --seed <N>                     Base RNG seed for reproducible batches (default: 1337)\n"
               << "  --config <file>                Load JSON configuration before CLI overrides\n"
+              << "  --gbdt-policy <file|bundle>    Activate a trained C++ GBDT policy\n"
               << "  --spec <name>                  Talent spec: shadow_destro, fire_destro, demonic_pact, deep_affliction, sm_ruin, nf_af\n"
               << "  --gear <name>                  Gear preset: preraid, p3, p5, p6\n"
               << "  --race <name>                  Playable race: undead, orc, troll, human, gnome\n"
@@ -81,6 +82,9 @@ int run_headless(int argc, char* argv[]) {
         std::string arg = argv[i];
         if (arg == "--config" && i + 1 < argc) {
             ++i;
+        } else if (arg == "--gbdt-policy" && i + 1 < argc) {
+            try { load_imitation_policy(sim, argv[++i]); }
+            catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 2; }
         } else if (arg == "--iterations" && i + 1 < argc) {
             iterations = std::stoi(argv[++i]);
         } else if (arg == "--duration" && i + 1 < argc) {
@@ -297,6 +301,8 @@ int run_headless(int argc, char* argv[]) {
     }
 
     // Default single batch run
+    if (sim.policy.use_imitation_policy)
+        std::cout << "Decision policy: Trained GBDT (" << sim.policy.imitation_policy_name << ")\n";
     std::cout << "Executing " << iterations << " Discrete Event Simulations across " << threads << " threads..." << std::endl;
     BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations, threads, nullptr, base_seed);
 

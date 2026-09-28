@@ -312,6 +312,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
         sim.policy.custom_rules = res.extracted_rules;
         sim.policy.use_custom_apl = true;
         sim.policy.use_gbdt_policy = false;
+        sim.policy.use_imitation_policy = false;
         worker.apl_applied_timer = 4.0f;
       }
 
@@ -321,6 +322,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       {
         sim.policy.gbdt_q_policy = std::make_shared<sim::GBDTMultiActionQPolicy>(res.gbdt_q_policy);
         sim.policy.use_gbdt_policy = true;
+        sim.policy.use_imitation_policy = false;
         sim.policy.use_custom_apl = false;
         worker.apl_applied_timer = 4.0f;
       }

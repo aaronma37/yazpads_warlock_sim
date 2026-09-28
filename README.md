@@ -2,7 +2,7 @@
 
 ## Training recurrent policies on CPU
 
-The Warlock **Train Policies** tab uses the vendored [rl-tools](https://github.com/rl-tools/rl-tools)
+The **PPO + GRU** approach in the Warlock **Train Policies** tab uses the vendored [rl-tools](https://github.com/rl-tools/rl-tools)
 CPU implementation of clipped PPO with separate 32-unit GRU actor and critic networks.
 It trains directly on damage from the combat simulator; it does not use VIPER,
 oracle labels, decision-tree distillation, or an imitation-learning dataset.
@@ -43,6 +43,76 @@ Run `ctest --test-dir build --output-on-failure` after building to verify the
 training update, GRU parameter changes, deterministic evaluation, checkpoint
 round-trip, cancellation and independence from the oracle controller.
 
+## Training a C++ GBDT policy from search
+
+Select **C++ GBDT + search imitation** in **Train Policies**. This uses the existing
+native C++ LightGBM-style trainer; no Python or external ML library is required.
+The teacher replays the exact fight history and RNG up to each decision, then
+resamples only future outcomes. Candidate labels are accepted only when the
+simulator actually executes the requested root action. Training distills relative
+action values (candidate DPS minus best candidate DPS), with weights reflecting
+the action gap and sampling uncertainty. Whole episodes are held out for label
+validation. Later DAgger rounds aggregate labels from learner-visited states.
+
+The controls let you trade compute against search quality and model capacity:
+
+- **Future rollouts / action** controls the training teacher's budget.
+- **Search depth** 1 compares actions with APL/learner continuation. Depth 2+
+  uses open-loop UCT MCTS over future action preferences, adding one node per
+  trial before continuing with the APL/learner. Stochastic outcomes share tree
+  nodes, while actual execution checks resources and cooldowns.
+- **UCT exploration** balances exploration and estimated return; returns are
+  scaled as DPS / 1,000. Deeper trees require larger rollout budgets.
+- **Reference rollouts / action** independently controls the evaluation teacher.
+- **DAgger rounds**, training fights, label stride/cap and teacher mix control
+  data coverage. Raise the cap to include late-fight decisions. Mix 0 collects
+  learner trajectories after the initial teacher-assisted round.
+- Boosting iterations, maximum depth, minimum leaf weight, learning rate and
+  L2 regularization tune the native per-action GBDT models.
+- **Training threads** sets one shared worker budget; `0` uses hardware threads.
+  Collection fights, root-action searches, held-out evaluation and per-action
+  GBDT fitting share this pool. Each MCTS tree keeps its sequential rollout order,
+  and episode results are merged deterministically. The panel reports actual
+  thread count, fights/search replays per second and collection/fit/evaluation
+  timings. Small datasets may not keep every thread busy during fitting.
+
+Each round evaluates complete fights on a separate seed list and plots policy,
+APL and online search DPS. Results include policy/search ratio, an approximate
+paired confidence interval for their DPS difference, teacher-state agreement,
+action regret and episode-held-out label accuracy. The teacher uses the current
+learner beyond the tree horizon, so its reference can change across rounds.
+Search is a finite-budget empirical reference, not a proven upper bound or a
+guarantee of global optimality. Increase reference budget/depth and repeat with
+fresh seeds to assess whether the reference and learned policy stabilize.
+
+**Save GBDT bundle** writes a new directory containing `policy.gbdt` (portable
+C++ inference with feature/action schema), `build.json`, `config.json`,
+`samples.csv`, completed-round `metrics.csv`, and `deployment.json` with the
+captured build and embedded trained model. Cancellation preserves the last
+fitted model. Workers check cancellation between decisions, search rollouts and
+boosting iterations, then join before training stops.
+After training, click **Use trained policy in current configuration** to activate
+an immutable model snapshot for normal simulations. **Load bundle / policy and
+activate** loads a saved bundle directory or `policy.gbdt`. The **Policy** tab
+also provides loading and an **Active controller** selector to switch between
+the existing APL and the loaded trained GBDT without discarding either.
+
+Run a normal simulation, then open **Observed Spell Cast Sequence** to see the
+casts, or **GBDT Decision Trace** to inspect each decision's combat state,
+ranked model scores and actual executed action. The trace belongs to the sample
+fight recorded with those results, even if you subsequently switch controllers.
+
+Configuration exports embed the model, its name and enabled state under
+`policy.trained_gbdt`, so the configuration does not depend on an external model
+file. The CLI also accepts `--gbdt-policy <bundle-or-file>`, and JSON configuration
+can reference a bundle/file with `policy.trained_gbdt.path` (relative paths resolve
+from the configuration file's directory). For example:
+
+```bash
+bin/warlock_sim --headless --config imitation_policy/deployment.json --iterations 1000
+bin/warlock_sim --headless --config character.json --gbdt-policy imitation_policy
+```
+
 ## Prerequisites
 
 ### Linux
@@ -72,16 +142,23 @@ sudo pacman -S --needed base-devel cmake libgl xorg-server-devel
 
 ## Clone Repository
 
-Clone the repository with submodules initialized:
+Clone the repository with submodules initialized. This includes the required
+`rl-tools` dependency used by the recurrent PPO training code:
 
 ```bash
 git clone --recurse-submodules https://github.com/aaronma37/yazpads_warlock_sim.git
 cd yazpads_warlock_sim
 ```
 
-If already cloned without `--recurse-submodules`, initialize them:
+If already cloned without `--recurse-submodules`, initialize the submodules
+(including `rl-tools`):
 ```bash
 git submodule update --init --recursive
+```
+
+To install only the PPO dependency in an existing checkout:
+```bash
+git submodule update --init --recursive third_party/rl-tools
 ```
 
 ---

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdio>
+#include <charconv>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -9,6 +10,7 @@
 #include <emscripten.h>
 #endif
 #include "warlock_sim.hpp"
+#include "imitation_training.hpp"
 #include "parallel_runner.hpp"
 #include "optimizer.hpp"
 #include "src/sim/common/zip_writer.hpp"
@@ -44,8 +46,9 @@ inline std::string json_escape(const std::string& s) {
 
 inline std::string json_double(double v) {
     char buf[32];
-    std::snprintf(buf, sizeof(buf), "%.6g", v);
-    return buf;
+    // Shortest readable representation that round-trips to the same double.
+    const auto result = std::to_chars(buf, buf + sizeof(buf), v);
+    return std::string(buf, result.ptr);
 }
 
 inline const char* dot_policy_to_string_local(DotPolicy d) {
@@ -191,11 +194,17 @@ inline std::string export_build_json(const WarlockSimulator& sim,
         json << "    \"spell_hit_percent\": " << json_double(s.spell_hit_percent) << ", ";
         json << "\"spell_crit_percent\": " << json_double(s.spell_crit_percent) << ", ";
         json << "\"spell_haste_percent\": " << json_double(s.spell_haste_percent) << ", ";
-        json << "\"mp5\": " << json_double(s.mp5) << "\n";
+        json << "\"mp5\": " << json_double(s.mp5) << ", ";
+        json << "\"spell_penetration\": " << json_double(s.spell_penetration) << "\n";
         json << "  },\n";
     } else {
         json << "  \"gear\": {\n";
         json << "    \"loadout_name\": \"" << json_escape(sim.gear.name) << "\",\n";
+        json << "    \"extra_spell_power\": " << json_double(sim.gear.extra_spell_power) << ",\n";
+        json << "    \"extra_shadow_power\": " << json_double(sim.gear.extra_shadow_power) << ",\n";
+        json << "    \"extra_spell_hit\": " << json_double(sim.gear.extra_spell_hit) << ",\n";
+        json << "    \"extra_spell_crit\": " << json_double(sim.gear.extra_spell_crit) << ",\n";
+        json << "    \"extra_spell_penetration\": " << json_double(sim.gear.extra_spell_penetration) << ",\n";
         json << "    \"slots\": {\n";
         for (size_t i = 0; i < static_cast<size_t>(Slot::COUNT); ++i) {
             Slot slot = static_cast<Slot>(i);
@@ -261,6 +270,13 @@ inline std::string export_build_json(const WarlockSimulator& sim,
     {
         const PolicyConfig& p = sim.policy;
         json << "  \"policy\": {\n";
+        json << "    \"trained_gbdt\": {\n";
+        json << "      \"enabled\": " << (p.use_imitation_policy ? "true" : "false") << ",\n";
+        json << "      \"name\": \"" << json_escape(p.imitation_policy_name) << "\",\n";
+        json << "      \"model\": ";
+        if (p.imitation_policy) json << "\"" << json_escape(p.imitation_policy->serialize()) << "\"\n";
+        else json << "null\n";
+        json << "    },\n";
         json << "    \"rotation\": \"" << rotation_choice_to_string(p.rotation) << "\",\n";
         json << "    \"curse\": \"" << curse_choice_to_string(p.curse) << "\",\n";
         json << "    \"corruption\": \"" << dot_policy_to_string_local(p.corruption) << "\",\n";
