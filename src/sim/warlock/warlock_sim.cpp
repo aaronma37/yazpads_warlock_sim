@@ -730,7 +730,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         bool is_forced = (decision_step_count < forced_action_prefix.size());
         std::vector<PriorityRule> rules_to_evaluate;
         
-        bool is_oracle = (use_oracle_execution_policy || policy.use_oracle_execution_policy);
+        bool is_oracle = !neural_decision && (use_oracle_execution_policy || policy.use_oracle_execution_policy);
         std::vector<PriorityRule> dynamic_oracle_rules;
         if (is_oracle && !is_forced) {
             sim::SimObservation cur_obs = get_current_observation();
@@ -765,7 +765,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        bool is_gbdt = (use_gbdt_policy || policy.use_gbdt_policy) && (gbdt_q_policy != nullptr || policy.gbdt_q_policy != nullptr);
+        bool is_gbdt = !neural_decision && (use_gbdt_policy || policy.use_gbdt_policy) && (gbdt_q_policy != nullptr || policy.gbdt_q_policy != nullptr);
         std::vector<PriorityRule> dynamic_gbdt_rules;
         if (is_gbdt && !is_forced && !is_oracle) {
             const auto* active_policy = gbdt_q_policy ? gbdt_q_policy.get() : policy.gbdt_q_policy.get();
@@ -800,7 +800,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             }
         }
 
-        if (is_forced) {
+        if (neural_decision) {
+            rules_to_evaluate = neural_priority_rules(neural_decision(
+                normalize_neural_observation(get_current_observation().to_array()), result.total_damage, now));
+        } else if (is_forced) {
             PriorityAction forced_act = forced_action_prefix[decision_step_count];
             PriorityRule r;
             r.action = forced_act;
@@ -825,7 +828,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
         for (const auto& rule : rules_to_evaluate) {
             if (!rule.enabled) continue;
-            bool is_rule_forced = (is_forced && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
+            bool is_rule_forced = neural_decision || (is_forced && !rules_to_evaluate.empty() && &rule == &rules_to_evaluate[0]);
 
             // Parameterized Continuous Predicates (Learned from VIPER CART Decision Tree & MCTS / Custom APL)
             if (rule.use_custom_thresholds && !is_rule_forced) {

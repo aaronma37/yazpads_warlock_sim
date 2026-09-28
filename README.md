@@ -1,5 +1,48 @@
 # Installation
 
+## Training recurrent policies on CPU
+
+The Warlock **Train Policies** tab uses the vendored [rl-tools](https://github.com/rl-tools/rl-tools)
+CPU implementation of clipped PPO with separate 32-unit GRU actor and critic networks.
+It trains directly on damage from the combat simulator; it does not use VIPER,
+oracle labels, decision-tree distillation, or an imitation-learning dataset.
+
+Configure your character and encounter, then select **Train new policy**. Training
+runs in the background with progress and reward history. **Stop** finishes the
+current PPO update. **Evaluate policy vs captured APL** compares deterministic
+recurrent inference against the original configuration on a separate seed list.
+**Save policy** and **Load policy** persist actor weights in a versioned TAR file.
+Loading uses the current character configuration; the file does not contain the
+character build or a resumable optimizer state. Training a new policy starts from
+random weights. Policies are evaluated in this tab and do not replace the APL in
+the main simulator.
+
+Algorithm details:
+
+- Four environments collect 128 consecutive decisions each. Rewards are damage
+  increments divided by 1,000, including final damage at episode termination.
+- PPO uses GAE (gamma 0.99, lambda 0.95), a 0.2 probability-ratio clip, normalized
+  advantages, learned Gaussian standard deviations, entropy coefficient 0.001,
+  and Adam. Four full-sequence optimization passes reuse each rollout's original
+  actions, log probabilities, advantages and value targets. The upstream
+  recurrent trainer permits one epoch per call, so we invoke it four times.
+- Sequences are never shuffled. GRU memory resets at episode boundaries and the
+  start of each rollout; backpropagation runs through the sequence with reset
+  masks. Encounters exceeding 128 decisions are truncated and bootstrapped, then
+  restarted for the next rollout. This limits learning of late phases in longer
+  encounters. Prefer encounters that fit within this horizon.
+- This is continuous-action PPO: a 19-dimensional Gaussian preference vector
+  ranks combat rules, and the simulator executes the first admissible rule.
+  PPO likelihoods refer to the complete sampled vector, not to a categorical
+  distribution over spells. Existing spell eligibility, pets, multi-target
+  upkeep, consumables and cooldown automation remain part of the environment.
+- Observations contain 24 scaled combat features. A policy is trained for the
+  captured build, rather than conditioned on arbitrary gear and talents.
+
+Run `ctest --test-dir build --output-on-failure` after building to verify the
+training update, GRU parameter changes, deterministic evaluation, checkpoint
+round-trip, cancellation and independence from the oracle controller.
+
 ## Prerequisites
 
 ### Linux

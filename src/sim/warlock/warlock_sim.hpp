@@ -10,6 +10,7 @@
 #include "policy.hpp"
 #include "mechanics.hpp"
 #include "spells.hpp"
+#include "neural_policy.hpp"
 #include "src/sim/common/sim_state_vector.hpp"
 
 namespace warlock {
@@ -198,6 +199,9 @@ public:
     std::shared_ptr<sim::GBDTMultiActionQPolicy> gbdt_q_policy = nullptr;
     std::vector<PriorityAction> forced_action_prefix; // Prefix of actions to force during rollouts
     sim::VIPERDataset viper_dataset;
+    // Per-run controller, with recurrent state owned by its caller. Called at
+    // each player decision with observations, cumulative damage and combat time.
+    NeuralDecision neural_decision;
 
     WarlockSimulator();
 

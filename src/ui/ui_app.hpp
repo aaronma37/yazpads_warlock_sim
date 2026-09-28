@@ -10,6 +10,7 @@
 #include "asset_manager.hpp"
 #include "panel_analyze_apl.hpp"
 #include "panel_synthesize_apl.hpp"
+#include "warlock/panel_train_policies.hpp"
 #include "panel_buffs.hpp"
 #include "panel_gear.hpp"
 #include "panel_imp_analysis.hpp"
@@ -58,6 +59,7 @@ class WarlockSimApp
   sim::PlayerClass active_class = sim::PlayerClass::WARLOCK;
 
   WarlockSimulator sim;
+  PolicyTrainingPanel policy_training;
   BatchSimResult last_result;
   std::vector<CandidateResult> optimizer_results;
 
@@ -114,7 +116,7 @@ class WarlockSimApp
   AppTab active_tab = AppTab::PRESETS;
   AppTab priest_active_tab = AppTab::PRESETS;
 
-  void render_top_navigation_tabs(float target_bottom_y)
+  float render_top_navigation_tabs(float target_bottom_y)
   {
     const float tab_h = 32.0f;
     const float tab_spacing = 1.0f;
@@ -133,6 +135,7 @@ class WarlockSimApp
         {"Constrained Spec Search", AppTab::CONSTRAINED_SPEC_SEARCH, 195.0f},
         {"Analyze APL", AppTab::ANALYZE_APL, 115.0f},
         {"Synthesize APL/Policy", AppTab::SYNTHESIZE_APL, 165.0f},
+        {"Train Policies", AppTab::TRAIN_POLICIES, 120.0f},
         {"Abilities", AppTab::ABILITIES, 85.0f},
         {"Changelog", AppTab::CHANGELOG, 95.0f}
       };
@@ -159,10 +162,14 @@ class WarlockSimApp
     if (start_x < 120.0f) start_x = 120.0f;
 
     float current_x = start_x;
-    const float tab_y = target_bottom_y - tab_h;
+    float tab_y = target_bottom_y - tab_h;
     AppTab& cur_tab = (active_class == sim::PlayerClass::WARLOCK) ? active_tab : priest_active_tab;
 
     for (size_t i = 0; i < tabs.size(); ++i) {
+      if (i > 0 && current_x + tabs[i].width > win_w - 16.0f) {
+        current_x = 120.0f;
+        tab_y += tab_h + 2.0f;
+      }
       ImGui::SetCursorPos(ImVec2(current_x, tab_y));
       bool is_selected = (cur_tab == tabs[i].tab);
       if (WowTabButton(tabs[i].label, is_selected, tabs[i].width, tab_h)) {
@@ -170,6 +177,7 @@ class WarlockSimApp
       }
       current_x += tabs[i].width + tab_spacing;
     }
+    return tab_y + tab_h;
   }
 
   void render_frame()
@@ -201,7 +209,7 @@ class WarlockSimApp
       const Texture2D& warlock_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::WARLOCK));
       const Texture2D& priest_icon = AssetManager::get().get_icon(sim::player_class_to_icon(sim::PlayerClass::PRIEST));
       constexpr float kClassIconSize = 36.0f;
-      const float top_bar_bottom_y = ImGui::GetCursorPosY() + kClassIconSize + 4.0f;
+      float top_bar_bottom_y = ImGui::GetCursorPosY() + kClassIconSize + 4.0f;
 
       ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
       ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f, 2.0f));
@@ -242,7 +250,7 @@ class WarlockSimApp
       ImGui::PopStyleVar(2);  // FrameRounding + FramePadding
 
       // Render right-justified tabs on the same row, flush with the panel below
-      render_top_navigation_tabs(top_bar_bottom_y);
+      top_bar_bottom_y = render_top_navigation_tabs(top_bar_bottom_y);
 
       // Overlay a transparent dark rectangle under where the tabs are flush with, extending to the bottom of the window
       ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -501,6 +509,12 @@ class WarlockSimApp
       case AppTab::SYNTHESIZE_APL:
       {
         render_panel_synthesize_apl(sim, &active_tab);
+        break;
+      }
+
+      case AppTab::TRAIN_POLICIES:
+      {
+        policy_training.render(sim);
         break;
       }
 

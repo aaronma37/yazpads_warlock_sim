@@ -18,7 +18,8 @@ enum class AppTab {
     SYNTHESIZE_APL = 4,
     ABILITIES = 5,
     THEORYCRAFTING = 6,
-    CHANGELOG = 7
+    CHANGELOG = 7,
+    TRAIN_POLICIES = 8
 };
 
 // ============================================================================

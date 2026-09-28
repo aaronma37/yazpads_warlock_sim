@@ -10,3 +10,6 @@
 [submodule "third_party/rlImGui"]
 	path = third_party/rlImGui
 	url = https://github.com/raylib-extras/rlImGui.git
+[submodule "third_party/rl-tools"]
+	path = third_party/rl-tools
+	url = https://github.com/rl-tools/rl-tools.git
