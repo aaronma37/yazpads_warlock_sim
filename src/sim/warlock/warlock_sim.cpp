@@ -964,6 +964,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
 
                             if (rng.chance(calculate_hit_chance(School::SHADOW))) {
                                 dot_agony.active = true;
+                                ++dot_agony.tick_generation;
                                 dot_agony.expire_time = now + 24.0;
                                 dot_agony.ticks_remaining = 12;
                                 dot_agony.tick_interval = 2.0;
@@ -972,7 +973,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 double sp = get_current_sp(School::SHADOW, now);
                                 dot_agony.tick_damage = (552.0 / 12.0) + (sp * 1.596 / 12.0);
                                 dot_agony.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_bane_of_agony * 0.05) * (eureka_active ? 1.10 : 1.0);
-                                queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY));
+                                queue.push(now + 2.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY), dot_agony.tick_generation);
                             } else {
                                 result.misses++;
                                 result.record_spell_miss(SpellID::CURSE_OF_AGONY);
@@ -1739,12 +1740,13 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
 
                         dot_immolate.active = true;
+                        ++dot_immolate.tick_generation;
                         dot_immolate.expire_time = current_time + 15.0;
                         dot_immolate.ticks_remaining = 5;
                         dot_immolate.tick_interval = 3.0;
                         dot_immolate.tick_damage = 55.0 + 0.13 * sp;
                         dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * fire_aura_multiplier(malediction_bonus) * (eureka_active ? 1.10 : 1.0);
-                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE));
+                        queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE), dot_immolate.tick_generation);
                     } else {
                         result.misses++;
                         result.record_spell_miss(SpellID::IMMOLATE);
@@ -2270,7 +2272,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CURSE_OF_AGONY)) {
                     ActiveDot& cur_agony = target_states[t_idx].dot_agony;
-                    if (cur_agony.active && cur_agony.ticks_remaining > 0) {
+                    if (ev.sub_id == cur_agony.tick_generation && cur_agony.active && cur_agony.ticks_remaining > 0) {
                         cur_agony.ticks_remaining--;
                         result.total_damage_events++;
                         int tick_index = 12 - cur_agony.ticks_remaining;
@@ -2318,7 +2320,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         apply_havoc_cleave(dmg, t_idx);
 
                         if (cur_agony.ticks_remaining > 0) {
-                            queue.push(current_time + cur_agony.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY), 0, t_idx);
+                            queue.push(current_time + cur_agony.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CURSE_OF_AGONY), cur_agony.tick_generation, t_idx);
                         } else {
                             cur_agony.active = false;
                         }
@@ -2368,7 +2370,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
                     ActiveDot& cur_imm = target_states[t_idx].dot_immolate;
-                    if (cur_imm.active && cur_imm.ticks_remaining > 0) {
+                    if (ev.sub_id == cur_imm.tick_generation && cur_imm.active && cur_imm.ticks_remaining > 0) {
                         cur_imm.ticks_remaining--;
                         result.total_damage_events++;
                         double dmg = cur_imm.tick_damage;
@@ -2396,7 +2398,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         apply_havoc_cleave(dmg, t_idx);
 
                         if (cur_imm.ticks_remaining > 0) {
-                            queue.push(current_time + cur_imm.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE), 0, t_idx);
+                            queue.push(current_time + cur_imm.tick_interval, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE), cur_imm.tick_generation, t_idx);
                         } else {
                             cur_imm.active = false;
                         }
