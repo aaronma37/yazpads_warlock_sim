@@ -301,6 +301,8 @@ inline std::string export_build_json(const WarlockSimulator& sim,
     {
         const MechanicsConfig& m = sim.mechanics;
         json << "  \"mechanics\": {\n";
+        json << "    \"use_book_spell_ranks\": " << (m.use_book_spell_ranks ? "true" : "false") << ",\n";
+        json << "    \"allow_rank2_shadow_bolt\": " << (m.allow_rank2_shadow_bolt ? "true" : "false") << ",\n";
         json << "    \"snapshot_dots\": " << (m.snapshot_dots ? "true" : "false") << ", ";
         json << "\"spell_batching\": " << (m.spell_batching ? "true" : "false") << ", ";
         json << "\"batch_window_ms\": " << json_double(m.batch_window_ms) << ",\n";

@@ -123,6 +123,14 @@ double WarlockSimulator::calculate_partial_resist_multiplier(School school, doub
 
 SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
     SimResult result;
+    const double shadow_bolt_mana_cost = mechanics.use_book_spell_ranks ? 380.0 : 370.0;
+    const double shadow_bolt_min_damage = mechanics.use_book_spell_ranks ? 253.0 : 246.0;
+    const double shadow_bolt_max_damage = mechanics.use_book_spell_ranks ? 283.0 : 274.0;
+    const double immolate_mana_cost = mechanics.use_book_spell_ranks ? 380.0 : 370.0;
+    const double immolate_direct_damage = mechanics.use_book_spell_ranks ? 158.0 : 157.5;
+    const double immolate_dot_damage_per_tick = mechanics.use_book_spell_ranks ? 55.0 : 52.0;
+    const double corruption_mana_cost = mechanics.use_book_spell_ranks ? 340.0 : 290.0;
+    const double corruption_damage_per_tick = mechanics.use_book_spell_ranks ? 73.0 : 57.0;
 
     // Resolve fight duration for this iteration (fixed vs randomized)
     double effective_duration = fight_duration;
@@ -623,7 +631,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
             for (int t = 1; t < num_targets; ++t) {
                 if ((!target_states[t].dot_corruption.active || now >= target_states[t].dot_corruption.expire_time) &&
                     (fight_duration - now >= 8.0)) {
-                    double corr_mana = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                    double corr_mana = corruption_mana_cost * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                     if (player_mana >= corr_mana) {
                         double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
                         if (cast_time == 0.0) {
@@ -641,7 +649,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                 target_states[t].dot_corruption.ticks_remaining = 6;
                                 target_states[t].dot_corruption.tick_interval = 3.0;
                                 double sp = get_current_sp(School::SHADOW, now);
-                                target_states[t].dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
+                                target_states[t].dot_corruption.tick_damage = corruption_damage_per_tick + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                 target_states[t].dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                 queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), target_states[t].dot_corruption.tick_generation, static_cast<uint32_t>(t));
                             } else {
@@ -1036,7 +1044,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::NIGHTFALL_SHADOW_BOLT: {
                     if (shadow_trance_active && policy.cast_nightfall_procs) {
                         shadow_trance_active = false;
-                        double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                        double mana_cost = shadow_bolt_mana_cost * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                         if (player_mana >= mana_cost) {
                             log_viper_sample(rule.action, "Nightfall Shadow Bolt");
                             player_mana -= mana_cost;
@@ -1056,7 +1064,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                             queue.push(gcd_ready_time, EventType::GCD_READY);
                             if (record_timeline) {
                                 result.timeline.push_back({now, 0.0, SpellID::SHADOW_BOLT, false, false, player_mana, target.isb_charges});
-                                result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, 0.0, "Nightfall Instant"});
+                                result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, 0.0, mechanics.use_book_spell_ranks ? "Rank 10 (Nightfall Instant)" : "Rank 9 (Nightfall Instant)"});
                             }
                             return;
                         }
@@ -1227,7 +1235,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::IMMOLATE: {
                     bool should_cast_immo = !dot_immolate.active || (rule.use_custom_thresholds && (dot_immolate.expire_time - now) <= rule.max_dot_rem_sec);
                     if (should_cast_immo) {
-                        double mana_cost = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                        double mana_cost = immolate_mana_cost * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                         if (player_mana >= mana_cost) {
                             log_viper_sample(rule.action, "Immolate");
                             double cast_time = std::max(1.0, (2.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 1.5s with 5/5 Bane
@@ -1400,7 +1408,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::CORRUPTION: {
                     bool should_cast_corr = !dot_corruption.active || (rule.use_custom_thresholds && (dot_corruption.expire_time - now) <= rule.max_dot_rem_sec);
                     if (should_cast_corr) {
-                        double mana_cost = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                        double mana_cost = corruption_mana_cost * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                         if (player_mana >= mana_cost) {
                             log_viper_sample(rule.action, "Corruption");
                             double cast_time = std::max(0.0, (2.0 - 0.4 * talents.aff.improved_corruption) * get_haste_mult(now));
@@ -1420,7 +1428,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                                     dot_corruption.ticks_remaining = 6;
                                     dot_corruption.tick_interval = 3.0;
                                     double sp = get_current_sp(School::SHADOW, now);
-                                    dot_corruption.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
+                                    dot_corruption.tick_damage = corruption_damage_per_tick + (sp * mechanics.corruption_sp_coefficient / 6.0);
                                     dot_corruption.tick_multiplier = get_current_shadow_multiplier(now) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                                     queue.push(now + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), dot_corruption.tick_generation);
                                 } else {
@@ -1553,7 +1561,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 }
 
                 case PriorityAction::SHADOW_BOLT_FILLER: {
-                    double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                    double sb_mana = shadow_bolt_mana_cost * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                     if (player_mana >= sb_mana) {
                         log_viper_sample(rule.action, "Shadow Bolt");
                         double cast_time = std::max(1.0, (3.0 - 0.1 * talents.destro.bane) * get_haste_mult(now)); // 2.5s with 5/5 Bane
@@ -1564,8 +1572,25 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         gcd_ready_time = now + mechanics.base_gcd;
                         queue.push(gcd_ready_time, EventType::GCD_READY);
                         if (record_timeline) {
-                            result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, "Primary Filler"});
+                            result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, mechanics.use_book_spell_ranks ? "Rank 10" : "Rank 9"});
                         }
+                        return;
+                    }
+                    break;
+                }
+                case PriorityAction::SHADOW_BOLT_RANK2: {
+                    if (!mechanics.allow_rank2_shadow_bolt) break;
+                    constexpr double mana_cost = 40.0;
+                    if (player_mana >= mana_cost) {
+                        log_viper_sample(rule.action, "Shadow Bolt Rank 2");
+                        const double cast_time = std::max(1.0, (2.2 - 0.1 * talents.destro.bane) * get_haste_mult(now));
+                        is_casting = true;
+                        current_casting_spell = SpellID::SHADOW_BOLT;
+                        cast_finish_time = now + cast_time;
+                        queue.push(cast_finish_time, EventType::CAST_FINISH, static_cast<uint8_t>(SpellID::SHADOW_BOLT), 2);
+                        gcd_ready_time = now + mechanics.base_gcd;
+                        queue.push(gcd_ready_time, EventType::GCD_READY);
+                        if (record_timeline) result.cast_sequence.push_back({now, SpellID::SHADOW_BOLT, 0.0, false, false, cast_time, "Rank 2"});
                         return;
                     }
                     break;
@@ -1632,11 +1657,12 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 result.total_casts++;
 
                 if (ev.spell_id == static_cast<uint8_t>(SpellID::SHADOW_BOLT)) {
+                    const bool rank2 = (ev.sub_id & 2) != 0;
                     result.shadow_bolt_casts++;
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SHADOW_BOLT);
                     apply_touch_of_the_grave(current_time);
-                    double sb_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                    double sb_mana = (rank2 ? 40.0 : shadow_bolt_mana_cost) * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                     player_mana -= sb_mana;
                     result.mana_spent += sb_mana;
                     if (record_timeline) {
@@ -1650,7 +1676,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     }
 
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
-                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT), eureka_flag);
+                    queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SHADOW_BOLT), (rank2 ? 2 : 0) | eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::SEARING_PAIN)) {
                     result.direct_spell_casts++;
                     result.record_spell_cast(SpellID::SEARING_PAIN);
@@ -1702,7 +1728,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     double travel = mechanics.projectile_travel_time ? (mechanics.default_boss_distance_yards / mechanics.projectile_speed_yards_per_sec) : 0.0;
                     queue.push(current_time + travel, EventType::SPELL_IMPACT, static_cast<uint8_t>(SpellID::SOUL_FIRE), eureka_flag);
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::IMMOLATE)) {
-                    double imm_mana = 380.0 * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                    double imm_mana = immolate_mana_cost * cataclysm_mana_mult * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                     player_mana -= imm_mana;
                     result.mana_spent += imm_mana;
                     result.direct_spell_casts++;
@@ -1716,7 +1742,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double sp = get_current_sp(School::FIRE, current_time);
                         // Aftermath (Destro Row 2 Col 3): +10% initial Immolate damage per point (+50% at 5/5)
                         double aftermath_bonus = talents.destro.aftermath * 0.10;
-                        double dmg = 158.0 + 0.20 * sp;
+                        double dmg = immolate_direct_damage + 0.20 * sp;
                         dmg *= get_current_fire_multiplier(current_time) * stats.all_damage_multiplier * fire_aura_multiplier(aftermath_bonus);
                         bool crit = rng.chance(calculate_crit_chance(School::FIRE, stats));
                         if (crit) {
@@ -1744,7 +1770,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         dot_immolate.expire_time = current_time + 15.0;
                         dot_immolate.ticks_remaining = 5;
                         dot_immolate.tick_interval = 3.0;
-                        dot_immolate.tick_damage = 55.0 + 0.13 * sp;
+                        dot_immolate.tick_damage = immolate_dot_damage_per_tick + 0.13 * sp;
                         dot_immolate.tick_multiplier = get_current_fire_multiplier(current_time) * fire_aura_multiplier(malediction_bonus) * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::IMMOLATE), dot_immolate.tick_generation);
                     } else {
@@ -1755,7 +1781,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         }
                     }
                 } else if (ev.spell_id == static_cast<uint8_t>(SpellID::CORRUPTION)) {
-                    double corr_mana = 340.0 * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
+                    double corr_mana = corruption_mana_cost * (race == Race::GNOME && eureka_charges > 0 ? 0.9 : 1.0);
                     player_mana -= corr_mana;
                     result.mana_spent += corr_mana;
                     result.record_spell_cast(SpellID::CORRUPTION);
@@ -1777,7 +1803,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         cur_corr.ticks_remaining = 6;
                         cur_corr.tick_interval = 3.0;
                         double sp = get_current_sp(School::SHADOW, current_time);
-                        cur_corr.tick_damage = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
+                        cur_corr.tick_damage = corruption_damage_per_tick + (sp * mechanics.corruption_sp_coefficient / 6.0);
                         cur_corr.tick_multiplier = get_current_shadow_multiplier(current_time) * shadow_aura_multiplier(malediction_bonus + talents.aff.improved_corruption * 0.02) * (eureka_active ? 1.10 : 1.0);
                         queue.push(current_time + 3.0, EventType::DOT_TICK, static_cast<uint8_t>(SpellID::CORRUPTION), cur_corr.tick_generation, t_idx);
                     } else {
@@ -1810,8 +1836,9 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     result.shadow_bolt_hits++;
                     result.total_damage_events++;
                     double sp = get_current_sp(School::SHADOW, current_time);
-                    double base_dmg = rng.range(253.0, 283.0);
-                    double dmg = base_dmg + (3.0 / 3.5) * sp;
+                    const bool rank2 = (ev.sub_id & 2) != 0;
+                    double base_dmg = rng.range(rank2 ? 25.0 : shadow_bolt_min_damage, rank2 ? 31.0 : shadow_bolt_max_damage);
+                    double dmg = base_dmg + (rank2 ? (2.2 / 3.5) : (3.0 / 3.5)) * sp;
 
                     // Decimation bonus: +3% per point on Shadow Bolt when boss <35% HP
                     bool execute_phase = (current_time / fight_duration) >= 0.65;
@@ -1847,7 +1874,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                     if (resist_mult < 1.0) result.partial_resists++;
                     dmg *= resist_mult;
 
-                    if (race == Race::GNOME && ev.sub_id == 1) { dmg *= 1.10; }
+                    if (race == Race::GNOME && (ev.sub_id & 1) != 0) { dmg *= 1.10; }
                     if (race == Race::TROLL && target.is_beast) { dmg *= 1.05; }
 
                     // Judgement of Wisdom
@@ -2223,7 +2250,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         // Dynamic DoT scaling (No snapshotting in Forever)
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::SHADOW, current_time);
-                            dmg = 73.0 + (sp * mechanics.corruption_sp_coefficient / 6.0);
+                            dmg = corruption_damage_per_tick + (sp * mechanics.corruption_sp_coefficient / 6.0);
                         }
 
                         // Wrack amplification (+10% to other Shadow DoTs)
@@ -2376,7 +2403,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                         double dmg = cur_imm.tick_damage;
                         if (!mechanics.snapshot_dots) {
                             double sp = get_current_sp(School::FIRE, current_time);
-                            dmg = 55.0 + 0.13 * sp;
+                            dmg = immolate_dot_damage_per_tick + 0.13 * sp;
                         }
                         dmg *= get_current_fire_multiplier(current_time) * fire_aura_multiplier(malediction_bonus) * stats.all_damage_multiplier;
 

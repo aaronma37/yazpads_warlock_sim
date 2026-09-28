@@ -460,6 +460,8 @@ inline void apply_config(const JsonValue& root, WarlockSimulator& sim, int& iter
 
     const JsonValue* mechanics = field(root, "mechanics");
     if (mechanics) {
+        set_bool(mechanics, "use_book_spell_ranks", sim.mechanics.use_book_spell_ranks);
+        set_bool(mechanics, "allow_rank2_shadow_bolt", sim.mechanics.allow_rank2_shadow_bolt);
         set_bool(mechanics, "snapshot_dots", sim.mechanics.snapshot_dots); set_bool(mechanics, "spell_batching", sim.mechanics.spell_batching); set_number(mechanics, "batch_window_ms", sim.mechanics.batch_window_ms);
         set_int(mechanics, "debuff_limit", sim.mechanics.debuff_limit); set_bool(mechanics, "enforce_debuff_slots", sim.mechanics.enforce_debuff_slots); set_bool(mechanics, "personal_shadow_weaving", sim.mechanics.personal_shadow_weaving);
         set_bool(mechanics, "partial_resists_enabled", sim.mechanics.partial_resists_enabled); set_number(mechanics, "base_hit_vs_boss", sim.mechanics.base_hit_vs_boss); set_number(mechanics, "max_spell_hit", sim.mechanics.max_spell_hit); set_number(mechanics, "base_spell_crit_multiplier", sim.mechanics.base_spell_crit_multiplier); set_number(mechanics, "corruption_sp_coefficient", sim.mechanics.corruption_sp_coefficient);

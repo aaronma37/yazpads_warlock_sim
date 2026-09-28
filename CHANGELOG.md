@@ -7,6 +7,8 @@ Full raw patch notes are archived in [`docs/archive/`](docs/archive/).
 
 ### ✅ Implemented
 
+- [x] **AQ20 Grimoire Book Ranks**: Added a default-off mechanics toggle for Shadow Bolt Rank 10, Immolate Rank 8, and Corruption Rank 7, with Rank 9 / 7 / 6 as the default.
+
 #### Pet Scaling & Modifiers (Imp & Succubus)
 - [x] **Demonic Knowledge**: Added flat `+20 SP / rank` (+60 SP at 3/3) directly to both Imp (Firebolt) and Succubus (Lash of Pain) spell power.
 - [x] **Master Demonologist**: Added `+2% / rank` (+10% at 5/5) school damage bonus to Imp Firebolt & Imp Demonic Brand (Fire) and Succubus Lash of Pain & Succubus Demonic Brand (Shadow).
@@ -14,7 +16,6 @@ Full raw patch notes are archived in [`docs/archive/`](docs/archive/).
 - [x] **Player Spell Hit Inheritance**: Pets inherit player's gear and level-based spell hit chance.
 
 ### 📋 TODO / Planned
-- [ ] **AQ20 Grimoire Book Ranks**: Add optional toggle for AQ20 book ranks (Shadow Bolt Rank 10, Immolate Rank 8, Corruption Rank 7). Off by default.
 
 ---
 

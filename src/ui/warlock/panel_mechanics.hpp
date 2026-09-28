@@ -9,6 +9,17 @@ inline void render_panel_mechanics(MechanicsConfig& mechanics) {
     if (WowCollapsingHeader("Game Mechanics", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent(8.0f);
 
+        ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Spell Ranks:");
+        WowCheckbox("Use Book Spell Ranks (Shadow Bolt 10, Immolate 8, Corruption 7) [Default: OFF]", &mechanics.use_book_spell_ranks);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("ON: Shadow Bolt 10, Immolate 8, Corruption 7. OFF: Shadow Bolt 9, Immolate 7, Corruption 6.");
+        }
+        WowCheckbox("Allow Rank 2 Shadow Bolt for Optimizers", &mechanics.allow_rank2_shadow_bolt);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Adds Rank 2 Shadow Bolt (40 mana, 25–31 damage, 2.2s cast) to MCTS and rollout choices. It receives normal Shadow Bolt talents and effects.");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
         // 1. Raid Debuff Slots
         ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.95f, 1.0f), "Raid Debuff Slot Limit:");
         bool infinite_debuffs = (mechanics.debuff_limit == 0);

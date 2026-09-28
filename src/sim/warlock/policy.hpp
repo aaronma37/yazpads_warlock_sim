@@ -337,6 +337,7 @@ enum class PriorityAction : uint8_t
   DRAIN_LIFE_FILLER,
   DRAIN_SOUL_FILLER,
   SHADOW_BOLT_FILLER,
+  SHADOW_BOLT_RANK2,
 
   // Aliases
   BANE_OF_AGONY = CURSE_OF_AGONY,

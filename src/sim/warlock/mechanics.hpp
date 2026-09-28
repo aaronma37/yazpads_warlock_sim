@@ -8,6 +8,11 @@ namespace warlock {
 // Warlock toggleable mechanics configuration
 // Extends common combat mechanics with warlock-specific mechanics (ISB, Nightfall, Pets, etc.)
 struct MechanicsConfig : public sim::CombatMechanicsConfig {
+    // Use AQ20 book spell ranks for the core warlock spells.
+    bool use_book_spell_ranks = false;
+    // Expose Rank 2 Shadow Bolt as an additional optimizer action.
+    bool allow_rank2_shadow_bolt = false;
+
     // 6. Improved Shadow Bolt (ISB)
     // In WoW Forever: ISB is a pure 12-second debuff window (chargeless).
     // In Classic 1.12: 4 charges consumed by damaging shadow attacks.

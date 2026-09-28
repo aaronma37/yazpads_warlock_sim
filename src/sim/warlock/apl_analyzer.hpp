@@ -398,8 +398,8 @@ struct APLAnalysisReport {
 
 class APLAnalyzer {
 public:
-    static std::vector<std::pair<PriorityAction, SpellID>> get_candidate_actions() {
-        return {
+    static std::vector<std::pair<PriorityAction, SpellID>> get_candidate_actions(bool allow_rank2 = false) {
+        std::vector<std::pair<PriorityAction, SpellID>> actions = {
             {PriorityAction::LIFE_TAP, SpellID::LIFE_TAP},
             {PriorityAction::RACIAL_EUREKA, SpellID::SHADOW_BOLT},
             {PriorityAction::RACIAL_BLOOD_FURY, SpellID::SHADOW_BOLT},
@@ -424,6 +424,8 @@ public:
             {PriorityAction::DRAIN_LIFE_FILLER, SpellID::DRAIN_LIFE},
             {PriorityAction::SHADOW_BOLT_FILLER, SpellID::SHADOW_BOLT}
         };
+        if (allow_rank2) actions.emplace_back(PriorityAction::SHADOW_BOLT_RANK2, SpellID::SHADOW_BOLT);
+        return actions;
     }
 
     static const char* get_action_clean_name(PriorityAction action) {
@@ -452,6 +454,7 @@ public:
             case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life";
             case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul";
             case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt";
+            case PriorityAction::SHADOW_BOLT_RANK2: return "Shadow Bolt Rank 2";
             default: return "Unknown";
         }
     }
@@ -467,12 +470,12 @@ public:
         return SpellID::SHADOW_BOLT;
     }
 
-    static bool is_action_legal(PriorityAction action, const sim::SimObservation& obs, const Talents& talents) {
+    static bool is_action_legal(PriorityAction action, const sim::SimObservation& obs, const Talents& talents, const MechanicsConfig& mechanics) {
         std::string reason;
-        return check_action_legality(action, obs, talents, reason);
+        return check_action_legality(action, obs, talents, mechanics, reason);
     }
 
-    static bool check_action_legality(PriorityAction action, const sim::SimObservation& obs, const Talents& talents, std::string& out_reason) {
+    static bool check_action_legality(PriorityAction action, const sim::SimObservation& obs, const Talents& talents, const MechanicsConfig& mechanics, std::string& out_reason) {
         switch (action) {
             case PriorityAction::LIFE_TAP:
                 return true; // No HP constraints; healers cover Life Tap costs in raid simulation
@@ -552,6 +555,9 @@ public:
             case PriorityAction::DRAIN_LIFE_FILLER:
                 return true;
             case PriorityAction::SHADOW_BOLT_FILLER:
+                return true;
+            case PriorityAction::SHADOW_BOLT_RANK2:
+                if (!mechanics.allow_rank2_shadow_bolt) { out_reason = "Rank 2 disabled in Game Mechanics"; return false; }
                 return true;
             default:
                 return true;
@@ -825,7 +831,8 @@ public:
             b.duration = (cast.cast_time > 0.0) ? cast.cast_time : 1.5;
             b.end_time = b.start_time + b.duration;
             b.spell_id = cast.spell_id;
-            b.spell_name = spell_id_to_name(cast.spell_id);
+            b.spell_name = cast.spell_id == SpellID::SHADOW_BOLT && !cast.tag.empty()
+                ? "Shadow Bolt (" + cast.tag + ")" : spell_id_to_name(cast.spell_id);
             b.damage = cast.damage;
             b.is_crit = cast.is_crit;
             b.is_miss = cast.is_miss;
@@ -841,7 +848,8 @@ public:
             b.duration = (cast.cast_time > 0.0) ? cast.cast_time : 1.5;
             b.end_time = b.start_time + b.duration;
             b.spell_id = cast.spell_id;
-            b.spell_name = spell_id_to_name(cast.spell_id);
+            b.spell_name = cast.spell_id == SpellID::SHADOW_BOLT && !cast.tag.empty()
+                ? "Shadow Bolt (" + cast.tag + ")" : spell_id_to_name(cast.spell_id);
             b.damage = cast.damage;
             b.is_crit = cast.is_crit;
             b.is_miss = cast.is_miss;
@@ -1262,7 +1270,7 @@ public:
             const sim::SimObservation& apl_state = apl_sample.state;
             PriorityAction chosen_apl_act = apl_res.action_history[d];
 
-            auto candidate_actions = APLAnalyzer::get_candidate_actions();
+            auto candidate_actions = APLAnalyzer::get_candidate_actions(apl_sim.mechanics.allow_rank2_shadow_bolt);
             std::vector<PriorityAction> legal_candidates;
             for (const auto& [act, _] : candidate_actions) {
                 if (act == PriorityAction::RACIAL_EUREKA ||
@@ -1272,7 +1280,7 @@ public:
                     act == PriorityAction::BANE_OF_HAVOC) {
                     continue;
                 }
-                if (APLAnalyzer::is_action_legal(act, apl_state, base_sim.talents)) {
+                if (APLAnalyzer::is_action_legal(act, apl_state, base_sim.talents, base_sim.mechanics)) {
                     legal_candidates.push_back(act);
                 }
             }
@@ -1345,7 +1353,7 @@ public:
                     }
                     if (std::find(legal_candidates.begin(), legal_candidates.end(), act) == legal_candidates.end()) {
                         std::string reason;
-                        APLAnalyzer::check_action_legality(act, apl_state, base_sim.talents, reason);
+                        APLAnalyzer::check_action_legality(act, apl_state, base_sim.talents, base_sim.mechanics, reason);
                         ActionMCTSEval skipped_eval;
                         skipped_eval.action = act;
                         skipped_eval.name = APLAnalyzer::get_action_name(act);
@@ -1439,7 +1447,7 @@ public:
         run.seed = seed;
         run.fight_duration = base_sim.fight_duration;
 
-        auto candidate_actions = get_candidate_actions();
+        auto candidate_actions = get_candidate_actions(base_sim.mechanics.allow_rank2_shadow_bolt);
 
         // ---------------------------------------------------------------------
         // STEP 1: Run Full APL Baseline Episode
@@ -1501,7 +1509,7 @@ public:
                         act == PriorityAction::BANE_OF_HAVOC) {
                         continue;
                     }
-                    if (is_action_legal(act, live_obs, base_sim.talents)) {
+                    if (is_action_legal(act, live_obs, base_sim.talents, base_sim.mechanics)) {
                         legal_candidates.push_back(act);
                     }
                 }
@@ -1563,7 +1571,7 @@ public:
                         act == PriorityAction::BANE_OF_HAVOC) {
                         continue;
                     }
-                    if (is_action_legal(act, apl_state, base_sim.talents)) {
+                    if (is_action_legal(act, apl_state, base_sim.talents, base_sim.mechanics)) {
                         legal_candidates.push_back(act);
                     }
                 }
@@ -1639,7 +1647,7 @@ public:
                         }
                         if (std::find(legal_candidates.begin(), legal_candidates.end(), act) == legal_candidates.end()) {
                             std::string reason;
-                            check_action_legality(act, apl_state, base_sim.talents, reason);
+                            check_action_legality(act, apl_state, base_sim.talents, base_sim.mechanics, reason);
                             ActionMCTSEval skipped_eval;
                             skipped_eval.action = act;
                             skipped_eval.name = get_action_name(act);

@@ -1499,8 +1499,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(sp.spell_id));
             dl->AddImage((ImTextureID)(uintptr_t)icon.id, ImVec2(ix0, iy0), ImVec2(ix1, iy1));
 
-            ImU32 col_border = sp.is_crit ? IM_COL32(255, 215, 0, 255) : IM_COL32(60, 60, 75, 220);
-            dl->AddRect(ImVec2(ix0, iy0), ImVec2(ix1, iy1), col_border, 2.0f, 0, sp.is_crit ? 2.0f : 1.0f);
+            const bool is_rank2_sb = sp.spell_id == SpellID::SHADOW_BOLT && sp.tag == "Rank 2";
+            ImU32 col_border = sp.is_crit ? IM_COL32(255, 215, 0, 255) : (is_rank2_sb ? IM_COL32(210, 90, 255, 255) : IM_COL32(60, 60, 75, 220));
+            dl->AddRect(ImVec2(ix0, iy0), ImVec2(ix1, iy1), col_border, 2.0f, 0, (sp.is_crit || is_rank2_sb) ? 2.0f : 1.0f);
 
             if (is_canvas_hovered && mouse_pos.x >= ix0 && mouse_pos.x <= ix1 && mouse_pos.y >= iy0 && mouse_pos.y <= iy1)
             {
@@ -1520,8 +1521,9 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
             Texture2D icon = AssetManager::get().get_icon(spell_id_to_icon(sp.spell_id));
             dl->AddImage((ImTextureID)(uintptr_t)icon.id, ImVec2(ix0, iy0), ImVec2(ix1, iy1));
 
-            ImU32 col_border = sp.is_crit ? IM_COL32(255, 215, 0, 255) : IM_COL32(210, 180, 70, 220);
-            dl->AddRect(ImVec2(ix0, iy0), ImVec2(ix1, iy1), col_border, 2.0f, 0, sp.is_crit ? 2.0f : 1.0f);
+            const bool is_rank2_sb = sp.spell_id == SpellID::SHADOW_BOLT && sp.tag == "Rank 2";
+            ImU32 col_border = sp.is_crit ? IM_COL32(255, 215, 0, 255) : (is_rank2_sb ? IM_COL32(210, 90, 255, 255) : IM_COL32(210, 180, 70, 220));
+            dl->AddRect(ImVec2(ix0, iy0), ImVec2(ix1, iy1), col_border, 2.0f, 0, (sp.is_crit || is_rank2_sb) ? 2.0f : 1.0f);
 
             if (is_canvas_hovered && mouse_pos.x >= ix0 && mouse_pos.x <= ix1 && mouse_pos.y >= iy0 && mouse_pos.y <= iy1)
             {
