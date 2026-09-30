@@ -53,8 +53,8 @@ struct RuleShift {
 class VIPEROracle {
 public:
     // List of candidate rotational actions to evaluate for Warlock
-    static std::vector<std::pair<PriorityAction, SpellID>> get_candidate_actions() {
-        return {
+    static std::vector<std::pair<PriorityAction, SpellID>> get_candidate_actions(bool allow_rank2 = false) {
+        std::vector<std::pair<PriorityAction, SpellID>> actions = {
             {PriorityAction::LIFE_TAP, SpellID::LIFE_TAP},
             {PriorityAction::RACIAL_EUREKA, SpellID::SHADOW_BOLT},
             {PriorityAction::RACIAL_BLOOD_FURY, SpellID::SHADOW_BOLT},
@@ -79,6 +79,8 @@ public:
             {PriorityAction::DRAIN_LIFE_FILLER, SpellID::DRAIN_LIFE},
             {PriorityAction::SHADOW_BOLT_FILLER, SpellID::SHADOW_BOLT}
         };
+        if (allow_rank2) actions.emplace_back(PriorityAction::SHADOW_BOLT_RANK2, SpellID::SHADOW_BOLT);
+        return actions;
     }
 
     static const char* get_action_name(PriorityAction action) {
@@ -106,6 +108,7 @@ public:
             case PriorityAction::SEARING_PAIN_FILLER: return "Searing Pain";
             case PriorityAction::DRAIN_LIFE_FILLER: return "Drain Life";
             case PriorityAction::DRAIN_SOUL_FILLER: return "Drain Soul";
+            case PriorityAction::SHADOW_BOLT_RANK2: return "Shadow Bolt Rank 2";
             case PriorityAction::SHADOW_BOLT_FILLER: return "Shadow Bolt";
             default: return "Unknown Action";
         }
@@ -136,6 +139,7 @@ public:
             case PriorityAction::SEARING_PAIN_FILLER: return SpellID::SEARING_PAIN;
             case PriorityAction::DRAIN_LIFE_FILLER: return SpellID::DRAIN_LIFE;
             case PriorityAction::DRAIN_SOUL_FILLER: return SpellID::DRAIN_SOUL;
+            case PriorityAction::SHADOW_BOLT_RANK2:
             case PriorityAction::SHADOW_BOLT_FILLER: return SpellID::SHADOW_BOLT;
             default: return SpellID::SHADOW_BOLT;
         }
@@ -283,6 +287,101 @@ public:
         }
         r.rule_explanation = "Candidate Action Injection";
         return r;
+    }
+
+    // Three slots per available action, including the fixed final filler slot.
+    // Start unused slots disabled (Never), without losing their mutable predicates.
+    static std::vector<PriorityRule> make_search_slots(const std::vector<PriorityRule>& seed_rules,
+                                                     const WarlockSimulator& sim) {
+        const auto candidates = get_candidate_actions(sim.mechanics.allow_rank2_shadow_bolt);
+        auto available = [&](PriorityAction action) {
+            return is_action_available_for_talents(action, sim.talents) &&
+                std::any_of(candidates.begin(), candidates.end(), [&](const auto& c) { return c.first == action; });
+        };
+        const auto filler = sim.talents.destro.incinerate > 0
+            ? PriorityAction::INCINERATE_FILLER : PriorityAction::SHADOW_BOLT_FILLER;
+        std::vector<PriorityRule> rules;
+        std::unordered_map<int, size_t> counts;
+        // Reserve one filler slot for an unconditional final fallback.
+        for (const auto& r : seed_rules) {
+            const size_t limit = r.action == filler ? 2 : 3;
+            if (r.action == filler && !r.use_custom_thresholds) continue;
+            if (available(r.action) && counts[int(r.action)] < limit) {
+                rules.push_back(r);
+                ++counts[int(r.action)];
+            }
+        }
+        for (const auto& [action, spell] : candidates) {
+            if (!available(action)) continue;
+            const size_t limit = action == filler ? 2 : 3;
+            while (counts[int(action)] < limit) {
+                auto r = create_default_rule_for_action(action, sim.talents);
+                r.enabled = false;
+                r.condition_summary = "Never (disabled)";
+                rules.push_back(r);
+                ++counts[int(action)];
+            }
+        }
+        rules.push_back(create_default_rule_for_action(filler, sim.talents));
+        return rules;
+    }
+
+    static void mutate_search_rule(PriorityRule& r, FastRNG& rng) {
+        auto unit = [&]() { return static_cast<float>(rng.next_double()); };
+        auto toggle = [&]() { return rng.next_double() < 0.5; };
+        r.use_custom_thresholds = true;
+        switch (rng.next_u64() % 11) {
+            case 0: r.enabled = !r.enabled; break;
+            case 1:
+                r.check_mana = toggle();
+                r.min_mana_pct = r.check_mana ? unit() : 0.0f;
+                r.max_mana_pct = r.check_mana ? unit() : 1.0f;
+                if (r.min_mana_pct > r.max_mana_pct) std::swap(r.min_mana_pct, r.max_mana_pct);
+                break;
+            case 2:
+                r.check_target_hp = toggle();
+                r.min_target_hp_pct = r.check_target_hp ? unit() : 0.0f;
+                r.max_target_hp_pct = r.check_target_hp ? unit() : 1.0f;
+                if (r.min_target_hp_pct > r.max_target_hp_pct) std::swap(r.min_target_hp_pct, r.max_target_hp_pct);
+                break;
+            case 3:
+                r.check_fight_time = toggle();
+                r.min_time_remaining = r.check_fight_time && toggle() ? unit() * 90.0f : 0.0f;
+                r.max_time_remaining = r.check_fight_time && toggle() ? r.min_time_remaining + unit() * 90.0f : 9999.0f;
+                break;
+            case 4:
+                r.check_dot_refresh = true;
+                r.max_dot_rem_sec = unit() * 5.0f;
+                break;
+            case 5:
+                r.check_isb_debuff = toggle();
+                r.require_isb_active = r.check_isb_debuff;
+                r.min_isb_rem_sec = 0.0f;
+                break;
+            case 6: r.check_shadow_trance = toggle(); break;
+            case 7:
+                r.check_decimation = toggle();
+                r.require_decimation_active = toggle();
+                break;
+            case 8:
+                r.check_demonic_brand = toggle();
+                r.require_demonic_brand_missing = toggle();
+                break;
+            case 9:
+                r.check_doom_debuff = toggle();
+                r.require_doom_missing = toggle();
+                break;
+            case 10:
+                r.max_mana_pct = std::clamp(r.max_mana_pct + (unit() - 0.5f) * 0.2f, r.min_mana_pct, 1.0f);
+                r.max_target_hp_pct = std::clamp(r.max_target_hp_pct + (unit() - 0.5f) * 0.1f, r.min_target_hp_pct, 1.0f);
+                if (r.check_fight_time) r.min_time_remaining = std::clamp(r.min_time_remaining + (unit() - 0.5f) * 10.0f, 0.0f, r.max_time_remaining);
+                if (r.check_dot_refresh) r.max_dot_rem_sec = std::clamp(r.max_dot_rem_sec + unit() - 0.5f, 0.0f, 5.0f);
+                break;
+        }
+        r.condition_summary.clear();
+        r.condition_summary = r.enabled ? r.format_condition_summary() : "Never (disabled)";
+        r.trigger_condition = r.condition_summary;
+        r.rule_explanation = "Independently optimized action slot";
     }
 
     // Evaluates state-dependent local Q-value of taking action 'act' in observation state 'obs'
@@ -448,7 +547,14 @@ public:
                 std::abs(a.max_time_remaining - b.max_time_remaining) < 1e-4f &&
                 std::abs(a.max_dot_rem_sec - b.max_dot_rem_sec) < 1e-4f &&
                 std::abs(a.min_hp_pct - b.min_hp_pct) < 1e-4f &&
-                a.trigger_condition == b.trigger_condition);
+                a.min_isb_rem_sec == b.min_isb_rem_sec &&
+                a.require_isb_active == b.require_isb_active &&
+                a.check_mana == b.check_mana && a.check_target_hp == b.check_target_hp &&
+                a.check_fight_time == b.check_fight_time && a.check_dot_refresh == b.check_dot_refresh &&
+                a.check_isb_debuff == b.check_isb_debuff && a.check_shadow_trance == b.check_shadow_trance &&
+                a.check_decimation == b.check_decimation && a.require_decimation_active == b.require_decimation_active &&
+                a.check_demonic_brand == b.check_demonic_brand && a.require_demonic_brand_missing == b.require_demonic_brand_missing &&
+                a.check_doom_debuff == b.check_doom_debuff && a.require_doom_missing == b.require_doom_missing);
     }
 
     // Checks if a PriorityRule is unconstrained / unconditional (Always triggers)
@@ -476,11 +582,11 @@ public:
                 continue;
             }
 
-            // Check if identical to any earlier rule or shadowed by an earlier unconditional rule for this action
+            // Remove only exact duplicates: default action behavior can itself be conditional.
             bool redundant = false;
             for (const auto& earlier : result) {
                 if (earlier.action == r.action) {
-                    if (are_rules_identical_condition(earlier, r) || is_rule_unconditional(earlier)) {
+                    if (are_rules_identical_condition(earlier, r)) {
                         redundant = true;
                         break;
                     }
@@ -572,7 +678,7 @@ public:
         return synthesized_rules;
     }
 
-    // Runs a VIPER rollout data collection session with true State-Dependent Q-Values
+    // Collect visited states and label them using heuristic local action scores.
     static sim::VIPERDataset collect_viper_dataset(
         WarlockSimulator& sim,
         size_t num_episodes,
@@ -588,7 +694,7 @@ public:
         unsigned int hw_threads = std::max(1u, std::thread::hardware_concurrency());
         size_t num_threads = std::min(static_cast<size_t>(hw_threads), num_episodes);
 
-        auto candidate_actions = get_candidate_actions();
+        auto candidate_actions = get_candidate_actions(sim.mechanics.allow_rank2_shadow_bolt);
 
         struct ThreadOutput {
             sim::VIPERDataset local_dataset;
@@ -741,7 +847,7 @@ public:
         return summary;
     }
 
-    // Standalone / Live MCTS Oracle Controller Benchmark (Unconstrained Empirical Upper Bound)
+    // Legacy API name: benchmarks the greedy local-Q heuristic, not MCTS.
     static StatSummary benchmark_live_mcts_oracle(WarlockSimulator sim_copy, size_t iterations = 500, uint64_t seed = 42) {
         WarlockSimulator oracle_sim = sim_copy;
         oracle_sim.use_oracle_execution_policy = true;
@@ -750,15 +856,24 @@ public:
         return compute_expected_dps(oracle_sim, iterations, seed);
     }
 
-    // End-to-end in-app VIPER policy extraction with Live MCTS Benchmark & Multi-Iteration DAgger
+    // Direct APL search with a separate heuristic-labeled diagnostic tree.
     static VIPERExtractionResult extract_viper_apl(
-        WarlockSimulator& sim,
+        WarlockSimulator& input_sim,
         size_t num_episodes,
         size_t benchmark_iterations,
         size_t dagger_iterations,
         std::function<void(float progress, const std::string& status)> progress_cb = nullptr,
         uint64_t seed = 42)
     {
+        WarlockSimulator sim = input_sim;
+        sim.use_oracle_execution_policy = false;
+        sim.policy.use_oracle_execution_policy = false;
+        sim.use_gbdt_policy = false;
+        sim.policy.use_gbdt_policy = false;
+        sim.policy.use_imitation_policy = false;
+        sim.neural_decision = {};
+        sim.decision_controller = {};
+        sim.forced_action_prefix.clear();
         VIPERExtractionResult res;
         res.episodes_run = num_episodes;
         res.benchmark_iterations = benchmark_iterations;
@@ -775,367 +890,136 @@ public:
         res.baseline_dps_stddev = base_stats.stddev_dps;
         res.baseline_min_dps = base_stats.min_dps;
         res.baseline_max_dps = base_stats.max_dps;
-        res.baseline_rules = sim.policy.build_preset_rules(sim.talents, sim.race);
+        res.baseline_rules = sim.policy.use_custom_apl ? sim.policy.custom_rules : sim.policy.build_preset_rules(sim.talents, sim.race);
 
-        // 2. Live Online MCTS Controller Benchmark (Theoretical Upper Bound Ceiling)
-        report_progress(0.18f, "Phase 2/4: Live Online MCTS Controller Benchmark...");
-        StatSummary oracle_stats = benchmark_live_mcts_oracle(sim, benchmark_iterations, seed + 77);
-        res.oracle_expected_dps = std::max(oracle_stats.mean_dps, res.baseline_expected_dps);
+        // 2. Greedy heuristic reference (not an upper bound).
+        report_progress(0.18f, "Phase 2/4: Greedy Heuristic Reference Benchmark...");
+        StatSummary oracle_stats = benchmark_live_mcts_oracle(sim, benchmark_iterations, seed);
+        res.oracle_expected_dps = oracle_stats.mean_dps;
         res.oracle_dps_stddev = oracle_stats.stddev_dps;
         res.oracle_min_dps = oracle_stats.min_dps;
         res.oracle_max_dps = oracle_stats.max_dps;
         res.oracle_expected_gain = res.oracle_expected_dps - res.baseline_expected_dps;
         res.oracle_gain_pct = (res.oracle_expected_gain / std::max(1.0, res.baseline_expected_dps)) * 100.0;
 
-        // 3. Multi-Iteration DAgger Rollout Aggregation & CART Tree Retraining (D <- D U D_k)
-        sim::VIPERDataset aggregated_dataset;
-        auto candidate_actions = get_candidate_actions();
-        size_t K = res.dagger_iterations_run;
-        size_t eps_per_iter = std::max(size_t(8), num_episodes / K);
-
-        std::vector<PriorityRule> current_best_rules = res.baseline_rules;
-        double current_best_dps = res.baseline_expected_dps;
-
-        // -------------------------------------------------------------------------
-        // 3. MCTS-Guided Genetic APL Policy Optimizer (Direct Policy Search)
-        // -------------------------------------------------------------------------
+        // Direct APL search: each action owns at most three independently conditioned
+        // slots. Disabled slots remain in the chromosome and can be reactivated.
+        auto candidate_actions = get_candidate_actions(sim.mechanics.allow_rank2_shadow_bolt);
         struct APLIndividual {
             std::vector<PriorityRule> rules;
             double fitness_dps = 0.0;
-
-            // Continuous Genes (Domain-bounded multi-instance triggers)
-            float tap_low_mana_threshold = 0.15f;   // Sane range: [0.10 .. 0.25] (High priority Life Tap)
-            float tap_high_mana_threshold = 0.38f;  // Sane range: [0.28 .. 0.50] (Maintenance Life Tap)
-            float cod_time_cutoff = 65.0f;          // Sane range: [50.0 .. 75.0]
-            float dot_refresh_window = 1.0f;        // Sane range: [0.0 .. 2.5]
-            float exec_hp_threshold = 0.35f;        // Sane range: [0.20 .. 0.35]
         };
-
-        auto apply_genes_to_individual = [&](APLIndividual& ind) {
-            ind.tap_low_mana_threshold = std::clamp(ind.tap_low_mana_threshold, 0.10f, 0.25f);
-            ind.tap_high_mana_threshold = std::clamp(ind.tap_high_mana_threshold, 0.28f, 0.50f);
-            ind.cod_time_cutoff = std::clamp(ind.cod_time_cutoff, 50.0f, 75.0f);
-            ind.dot_refresh_window = std::clamp(ind.dot_refresh_window, 0.0f, 2.5f);
-            ind.exec_hp_threshold = std::clamp(ind.exec_hp_threshold, 0.20f, 0.35f);
-
-            size_t tap_instance_count = 0;
-            for (auto& rule : ind.rules) {
-                if (rule.action == PriorityAction::LIFE_TAP) {
-                    tap_instance_count++;
-                }
-            }
-
-            size_t cur_tap_idx = 0;
-            for (auto& rule : ind.rules) {
-                if (rule.action == PriorityAction::LIFE_TAP) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_mana = true;
-                    rule.min_hp_pct = 0.15f;
-                    rule.name = "Life Tap";
-                    if (tap_instance_count >= 2 && cur_tap_idx == 0) {
-                        rule.max_mana_pct = ind.tap_low_mana_threshold;
-                    } else {
-                        rule.max_mana_pct = ind.tap_high_mana_threshold;
-                    }
-                    rule.condition_summary = rule.format_condition_summary();
-                    cur_tap_idx++;
-                } else if (rule.action == PriorityAction::CURSE_OF_DOOM) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_fight_time = true;
-                    rule.min_time_remaining = ind.cod_time_cutoff;
-                    rule.check_doom_debuff = true;
-                    rule.require_doom_missing = true;
-                    rule.name = "Bane of Doom";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::CORRUPTION || rule.action == PriorityAction::IMMOLATE || rule.action == PriorityAction::SIPHON_LIFE || rule.action == PriorityAction::CURSE_OF_AGONY) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_dot_refresh = true;
-                    rule.max_dot_rem_sec = ind.dot_refresh_window;
-                    rule.name = get_action_name(rule.action);
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::DECIMATION_SOUL_FIRE) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_target_hp = true;
-                    rule.max_target_hp_pct = ind.exec_hp_threshold;
-                    rule.check_decimation = true;
-                    rule.require_decimation_active = true;
-                    rule.name = "Soul Fire";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::DECIMATION_SEARING_PAIN) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_target_hp = true;
-                    rule.max_target_hp_pct = ind.exec_hp_threshold;
-                    rule.check_decimation = true;
-                    rule.require_decimation_active = false;
-                    rule.name = "Searing Pain";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::SHADOWBURN) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_target_hp = true;
-                    rule.max_target_hp_pct = ind.exec_hp_threshold;
-                    rule.name = "Shadowburn";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::SHADOWBURN_ISB) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_isb_debuff = true;
-                    rule.require_isb_active = true;
-                    rule.name = "Shadowburn";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else if (rule.action == PriorityAction::NIGHTFALL_SHADOW_BOLT) {
-                    rule.use_custom_thresholds = true;
-                    rule.check_shadow_trance = true;
-                    rule.name = "Shadow Bolt";
-                    rule.condition_summary = rule.format_condition_summary();
-                } else {
-                    rule.name = get_action_name(rule.action);
-                }
-            }
-
-            if (tap_instance_count == 0) {
-                PriorityRule tap_rule = create_default_rule_for_action(PriorityAction::LIFE_TAP, sim.talents);
-                tap_rule.use_custom_thresholds = true;
-                tap_rule.check_mana = true;
-                tap_rule.max_mana_pct = ind.tap_high_mana_threshold;
-                tap_rule.min_hp_pct = 0.15f;
-                tap_rule.name = "Life Tap";
-                tap_rule.condition_summary = tap_rule.format_condition_summary();
-                if (ind.rules.size() >= 1) {
-                    ind.rules.insert(ind.rules.end() - 1, tap_rule);
-                } else {
-                    ind.rules.push_back(tap_rule);
-                }
-            }
-
-            ind.rules = condense_and_deduplicate_rules(ind.rules);
-        };
-
-        auto quick_eval = [&](const std::vector<PriorityRule>& candidate_rules, size_t eval_iters = 100) -> double {
-            WarlockSimulator test_sim = sim;
-            test_sim.policy.custom_rules = candidate_rules;
-            test_sim.policy.use_custom_apl = true;
-            test_sim.record_viper_samples = false;
-            StatSummary s = compute_expected_dps(test_sim, eval_iters, seed + 101);
-            return s.mean_dps;
-        };
-
-        // Genetic Algorithm Parameters
         const size_t POP_SIZE = 28;
         const size_t NUM_GENERATIONS = std::max(size_t(12), dagger_iterations * 6);
         const size_t EVAL_ITERS = std::max(size_t(50), benchmark_iterations / 4);
-
-        std::vector<APLIndividual> population;
         FastRNG ga_rng(seed + 8888);
-
-        // Build the complete universe of all feasible actions for the current talents (including multi-instance rules)
-        std::vector<PriorityAction> natural_order = {
-            PriorityAction::LIFE_TAP, // High Priority Instance (Mana <= tap_low)
-            PriorityAction::NIGHTFALL_SHADOW_BOLT,
-            PriorityAction::DECIMATION_SOUL_FIRE,
-            PriorityAction::DECIMATION_SEARING_PAIN,
-            PriorityAction::CONFLAGRATE,
-            PriorityAction::SHADOWBURN_ISB,
-            PriorityAction::CURSE_OF_DOOM,
-            PriorityAction::CURSE_OF_AGONY,
-            PriorityAction::CORRUPTION,
-            PriorityAction::IMMOLATE,
-            PriorityAction::SIPHON_LIFE,
-            PriorityAction::DRAIN_HOPE,
-            PriorityAction::SHADOWBURN,
-            PriorityAction::LIFE_TAP, // Maintenance Instance (Mana <= tap_high)
-            (sim.talents.destro.incinerate > 0 ? PriorityAction::INCINERATE_FILLER : PriorityAction::SHADOW_BOLT_FILLER)
+        auto quick_eval = [&](const std::vector<PriorityRule>& rules) {
+            WarlockSimulator test_sim = sim;
+            test_sim.policy.custom_rules = rules;
+            test_sim.policy.use_custom_apl = true;
+            test_sim.record_viper_samples = false;
+            return compute_expected_dps(test_sim, EVAL_ITERS, seed + 101).mean_dps;
         };
 
-        std::vector<PriorityRule> universe_rules;
-        for (auto act : natural_order) {
-            if (is_action_available_for_talents(act, sim.talents)) {
-                universe_rules.push_back(create_default_rule_for_action(act, sim.talents));
+        std::vector<APLIndividual> population;
+        APLIndividual baseline;
+        baseline.rules = make_search_slots(res.baseline_rules, sim);
+        population.push_back(baseline);
+        // Also seed the former search's broad action ordering: actions absent
+        // from the user's baseline should not require several lucky mutations.
+        std::vector<PriorityRule> natural_rules;
+        for (auto action : {PriorityAction::LIFE_TAP, PriorityAction::NIGHTFALL_SHADOW_BOLT,
+             PriorityAction::DECIMATION_SOUL_FIRE, PriorityAction::DECIMATION_SEARING_PAIN,
+             PriorityAction::CONFLAGRATE, PriorityAction::SHADOWBURN_ISB,
+             PriorityAction::CURSE_OF_DOOM, PriorityAction::CURSE_OF_AGONY,
+             PriorityAction::CORRUPTION, PriorityAction::IMMOLATE, PriorityAction::SIPHON_LIFE,
+             PriorityAction::DRAIN_HOPE, PriorityAction::SHADOWBURN, PriorityAction::LIFE_TAP}) {
+            auto rule = create_default_rule_for_action(action, sim.talents);
+            if (action == PriorityAction::LIFE_TAP)
+                rule.max_mana_pct = natural_rules.empty() ? 0.15f : 0.38f;
+            if (action == PriorityAction::SHADOWBURN) {
+                rule.use_custom_thresholds = true;
+                rule.check_target_hp = true;
+                rule.max_target_hp_pct = 0.35f;
             }
+            natural_rules.push_back(rule);
         }
-
-        // Seed 1: Full Feasible Talent Universe (Natural Tier Order)
-        APLIndividual ind_universe;
-        ind_universe.rules = universe_rules;
-        ind_universe.tap_low_mana_threshold = 0.15f;
-        ind_universe.tap_high_mana_threshold = 0.38f;
-        ind_universe.cod_time_cutoff = 65.0f;
-        ind_universe.dot_refresh_window = 1.0f;
-        ind_universe.exec_hp_threshold = 0.35f;
-        apply_genes_to_individual(ind_universe);
-        population.push_back(ind_universe);
-
-        // Seed 2: Aggressive Execute & Burst Priority (Decimation / Conflag / Shadowburn top)
-        APLIndividual ind_burst = ind_universe;
-        ind_burst.tap_low_mana_threshold = 0.12f;
-        ind_burst.tap_high_mana_threshold = 0.30f;
-        ind_burst.exec_hp_threshold = 0.35f;
-        ind_burst.dot_refresh_window = 0.5f;
-        apply_genes_to_individual(ind_burst);
-        population.push_back(ind_burst);
-
-        // Seed 3: DoT-Upkeep Priority (Corruption / Agony / Immolate top)
-        APLIndividual ind_dot = ind_universe;
-        std::reverse(ind_dot.rules.begin(), ind_dot.rules.end() - 1);
-        ind_dot.tap_low_mana_threshold = 0.18f;
-        ind_dot.tap_high_mana_threshold = 0.42f;
-        ind_dot.dot_refresh_window = 1.5f;
-        apply_genes_to_individual(ind_dot);
-        population.push_back(ind_dot);
-
-        // Fill remaining population with diverse randomized shuffles of all feasible actions
+        APLIndividual natural;
+        natural.rules = make_search_slots(natural_rules, sim);
+        population.push_back(natural);
         while (population.size() < POP_SIZE) {
-            APLIndividual ind = ind_universe;
-            ind.tap_low_mana_threshold = 0.10f + static_cast<float>(ga_rng.next_double()) * 0.15f;  // [0.10 .. 0.25]
-            ind.tap_high_mana_threshold = 0.28f + static_cast<float>(ga_rng.next_double()) * 0.22f; // [0.28 .. 0.50]
-            ind.cod_time_cutoff = 50.0f + static_cast<float>(ga_rng.next_double()) * 25.0f;         // [50.0 .. 75.0]
-            ind.dot_refresh_window = static_cast<float>(ga_rng.next_double()) * 2.5f;               // [0.0 .. 2.5]
-            ind.exec_hp_threshold = 0.20f + static_cast<float>(ga_rng.next_double()) * 0.15f;       // [0.20 .. 0.35]
-
-            // Full Fisher-Yates shuffle across all actions (except keeping filler at the end)
-            if (ind.rules.size() > 2) {
-                for (size_t i = ind.rules.size() - 2; i > 0; --i) {
-                    size_t j = ga_rng.next_u64() % (i + 1);
-                    std::swap(ind.rules[i], ind.rules[j]);
-                }
+            APLIndividual ind = population.size() % 2 ? baseline : natural;
+            // Keep some local variants and some globally shuffled priorities.
+            if (population.size() % 3 != 0) {
+                for (size_t i = ind.rules.size() - 2; i > 0; --i)
+                    std::swap(ind.rules[i], ind.rules[ga_rng.next_u64() % (i + 1)]);
             }
-            apply_genes_to_individual(ind);
-            population.push_back(ind);
-        }
-
-        // Evaluate Initial Population
-        for (auto& ind : population) {
-            ind.fitness_dps = quick_eval(ind.rules, EVAL_ITERS);
-        }
-
-        APLIndividual best_overall = population[0];
-        for (const auto& ind : population) {
-            if (ind.fitness_dps > best_overall.fitness_dps) {
-                best_overall = ind;
+            for (size_t i = 0; i + 1 < ind.rules.size(); ++i) {
+                if (ga_rng.next_double() < 0.5) mutate_search_rule(ind.rules[i], ga_rng);
             }
+            population.push_back(std::move(ind));
         }
-
-        // Evolution Generations Loop
+        for (auto& ind : population) ind.fitness_dps = quick_eval(ind.rules);
+        auto fitter = [](const APLIndividual& a, const APLIndividual& b) {
+            return a.fitness_dps > b.fitness_dps;
+        };
+        std::sort(population.begin(), population.end(), fitter);
+        APLIndividual best_overall = population.front();
+        size_t evaluations = POP_SIZE;
+        size_t previous_evaluations = 0;
         for (size_t gen = 0; gen < NUM_GENERATIONS; ++gen) {
-            float gen_prog = 0.25f + 0.55f * (static_cast<float>(gen) / static_cast<float>(NUM_GENERATIONS));
-            std::string status_msg = "Phase 3/4: Genetic APL Optimizer (Gen " + std::to_string(gen + 1) + "/" + 
-                                     std::to_string(NUM_GENERATIONS) + " | Best: " + 
-                                     std::to_string(static_cast<int>(best_overall.fitness_dps)) + " DPS)...";
-            report_progress(gen_prog, status_msg);
-
-            // Sort population descending by fitness
-            std::sort(population.begin(), population.end(), [](const APLIndividual& a, const APLIndividual& b) {
-                return a.fitness_dps > b.fitness_dps;
-            });
-
-            if (population[0].fitness_dps > best_overall.fitness_dps) {
-                best_overall = population[0];
-            }
-
-            // Tournament Selection Helper (k = 3)
-            auto tournament_select = [&]() -> const APLIndividual& {
-                size_t best_idx = ga_rng.next_u64() % population.size();
+            report_progress(0.25f + 0.55f * float(gen) / float(NUM_GENERATIONS),
+                "Phase 3/4: Independent-rule APL search (Gen " + std::to_string(gen + 1) +
+                "/" + std::to_string(NUM_GENERATIONS) + " | Best: " +
+                std::to_string(int(best_overall.fitness_dps)) + " DPS)...");
+            auto select = [&]() -> const APLIndividual& {
+                size_t best = ga_rng.next_u64() % population.size();
                 for (int k = 0; k < 2; ++k) {
-                    size_t idx = ga_rng.next_u64() % population.size();
-                    if (population[idx].fitness_dps > population[best_idx].fitness_dps) {
-                        best_idx = idx;
-                    }
+                    size_t other = ga_rng.next_u64() % population.size();
+                    if (population[other].fitness_dps > population[best].fitness_dps) best = other;
                 }
-                return population[best_idx];
+                return population[best];
             };
-
-            std::vector<APLIndividual> next_pop;
-            // Elitism: Top 4 survive unchanged
-            for (size_t e = 0; e < 4 && e < population.size(); ++e) {
-                next_pop.push_back(population[e]);
+            std::vector<APLIndividual> next(population.begin(), population.begin() + 4);
+            while (next.size() < POP_SIZE) {
+                APLIndividual child = select();
+                const auto& donor = select();
+                const size_t n = child.rules.size() - 1;
+                // Transfer a whole condition set for the same action, never shared genes.
+                if (ga_rng.next_double() < 0.5) {
+                    size_t i = ga_rng.next_u64() % n;
+                    std::vector<size_t> matches;
+                    for (size_t j = 0; j + 1 < donor.rules.size(); ++j)
+                        if (donor.rules[j].action == child.rules[i].action) matches.push_back(j);
+                    if (!matches.empty()) child.rules[i] = donor.rules[matches[ga_rng.next_u64() % matches.size()]];
+                }
+                if (ga_rng.next_double() < 0.7)
+                    std::swap(child.rules[ga_rng.next_u64() % n], child.rules[ga_rng.next_u64() % n]);
+                const size_t mutations = 1 + ga_rng.next_u64() % 3;
+                for (size_t m = 0; m < mutations; ++m)
+                    mutate_search_rule(child.rules[ga_rng.next_u64() % n], ga_rng);
+                child.fitness_dps = quick_eval(child.rules);
+                ++evaluations;
+                next.push_back(std::move(child));
             }
-
-            // Breed new offspring
-            while (next_pop.size() < POP_SIZE) {
-                const auto& parent1 = tournament_select();
-                const auto& parent2 = tournament_select();
-
-                APLIndividual child;
-                // Gene Crossover: Blend continuous parameters with BLX-alpha
-                float alpha = static_cast<float>(ga_rng.next_double());
-                child.tap_low_mana_threshold = alpha * parent1.tap_low_mana_threshold + (1.0f - alpha) * parent2.tap_low_mana_threshold;
-                child.tap_high_mana_threshold = alpha * parent1.tap_high_mana_threshold + (1.0f - alpha) * parent2.tap_high_mana_threshold;
-                child.cod_time_cutoff = alpha * parent1.cod_time_cutoff + (1.0f - alpha) * parent2.cod_time_cutoff;
-                child.dot_refresh_window = alpha * parent1.dot_refresh_window + (1.0f - alpha) * parent2.dot_refresh_window;
-                child.exec_hp_threshold = alpha * parent1.exec_hp_threshold + (1.0f - alpha) * parent2.exec_hp_threshold;
-
-                // Rule Sequence Crossover
-                child.rules = (ga_rng.next_double() < 0.5) ? parent1.rules : parent2.rules;
-
-                // Mutation 1: Rule Swap
-                if (ga_rng.next_double() < 0.40 && child.rules.size() > 2) {
-                    size_t i = ga_rng.next_u64() % (child.rules.size() - 1);
-                    size_t j = ga_rng.next_u64() % (child.rules.size() - 1);
-                    std::swap(child.rules[i], child.rules[j]);
-                }
-
-                // Mutation 2: Rule Insertion of missing talent ability
-                if (ga_rng.next_double() < 0.25) {
-                    auto c_actions = get_candidate_actions();
-                    for (const auto& [act, _] : c_actions) {
-                        if (!is_action_available_for_talents(act, sim.talents)) continue;
-                        bool has_act = false;
-                        for (const auto& r : child.rules) {
-                            if (r.action == act) { has_act = true; break; }
-                        }
-                        if (!has_act) {
-                            PriorityRule nr = create_default_rule_for_action(act, sim.talents);
-                            size_t ins_pos = ga_rng.next_u64() % std::max(size_t(1), child.rules.size());
-                            child.rules.insert(child.rules.begin() + ins_pos, nr);
-                            break;
-                        }
-                    }
-                }
-
-                // Mutation 3: Rule Pruning (preserve fallback filler and at least one tap)
-                if (ga_rng.next_double() < 0.20 && child.rules.size() > 3) {
-                    size_t prune_idx = ga_rng.next_u64() % (child.rules.size() - 1);
-                    if (child.rules[prune_idx].action != PriorityAction::SHADOW_BOLT_FILLER &&
-                        child.rules[prune_idx].action != PriorityAction::INCINERATE_FILLER) {
-                        child.rules.erase(child.rules.begin() + prune_idx);
-                    }
-                }
-
-                // Mutation 4: Continuous Gene Jitter
-                if (ga_rng.next_double() < 0.40) {
-                    child.tap_low_mana_threshold += static_cast<float>((ga_rng.next_double() - 0.5) * 0.05);
-                }
-                if (ga_rng.next_double() < 0.40) {
-                    child.tap_high_mana_threshold += static_cast<float>((ga_rng.next_double() - 0.5) * 0.08);
-                }
-                if (ga_rng.next_double() < 0.40) {
-                    child.cod_time_cutoff += static_cast<float>((ga_rng.next_double() - 0.5) * 8.0);
-                }
-                if (ga_rng.next_double() < 0.40) {
-                    child.dot_refresh_window += static_cast<float>((ga_rng.next_double() - 0.5) * 0.6);
-                }
-
-                apply_genes_to_individual(child);
-                child.fitness_dps = quick_eval(child.rules, EVAL_ITERS);
-                next_pop.push_back(child);
-            }
-
-            population = std::move(next_pop);
-
-            // Record telemetry in history
-            if ((gen + 1) % std::max(size_t(1), NUM_GENERATIONS / std::max(size_t(1), res.dagger_iterations_run)) == 0 || gen == NUM_GENERATIONS - 1) {
-                DAggerIterationLog log_entry;
-                log_entry.iteration = res.dagger_history.size() + 1;
-                log_entry.samples_added = EVAL_ITERS;
-                log_entry.total_samples = (gen + 1) * POP_SIZE * EVAL_ITERS;
-                log_entry.candidate_dps = best_overall.fitness_dps;
-                log_entry.tree_depth = 4;
-                log_entry.tree_leaf_count = best_overall.rules.size();
-                log_entry.tree_weighted_fidelity_pct = 95.0 + std::min(4.5, static_cast<double>(gen) * 0.15);
-                log_entry.tree_unweighted_accuracy_pct = log_entry.tree_weighted_fidelity_pct;
-                res.dagger_history.push_back(log_entry);
+            population = std::move(next);
+            std::sort(population.begin(), population.end(), fitter);
+            if (population.front().fitness_dps > best_overall.fitness_dps) best_overall = population.front();
+            if ((gen + 1) % std::max(size_t(1), NUM_GENERATIONS / res.dagger_iterations_run) == 0 || gen + 1 == NUM_GENERATIONS) {
+                DAggerIterationLog log;
+                log.iteration = res.dagger_history.size() + 1;
+                // These fields count fitness simulations, not oracle training samples.
+                log.samples_added = (evaluations - previous_evaluations) * EVAL_ITERS;
+                log.total_samples = evaluations * EVAL_ITERS;
+                log.candidate_dps = best_overall.fitness_dps;
+                log.tree_leaf_count = std::count_if(best_overall.rules.begin(), best_overall.rules.end(),
+                    [](const PriorityRule& r) { return r.enabled; });
+                res.dagger_history.push_back(log);
+                previous_evaluations = evaluations;
             }
         }
-
-        res.extracted_rules = best_overall.rules;
+        // Only clean up after search; disabled slots must survive mutation/crossover.
+        res.extracted_rules = condense_and_deduplicate_rules(best_overall.rules);
 
         // Collect rollout samples from champion policy for Decision Tree & telemetry
         WarlockSimulator final_rollout_sim = sim;
@@ -1143,7 +1027,7 @@ public:
         final_rollout_sim.policy.use_custom_apl = true;
         double dummy_d = 0.0;
         sim::VIPERDataset rollout_dataset = collect_viper_dataset(final_rollout_sim, std::max(size_t(8), num_episodes), dummy_d, seed + 999);
-        res.total_samples_collected = res.dagger_history.empty() ? rollout_dataset.size() : res.dagger_history.back().total_samples;
+        res.total_samples_collected = rollout_dataset.size();
 
         // Fit in-memory CART Decision Tree for AST export, ASCII view, and transpiled C++
         sim::DecisionTreeConfig dt_cfg;
@@ -1157,7 +1041,7 @@ public:
         for (const auto& [act, _] : candidate_actions) {
             final_tree.set_class_name(static_cast<uint8_t>(act), get_action_name(act));
         }
-        final_tree.fit(rollout_dataset, 24);
+        final_tree.fit(rollout_dataset, static_cast<size_t>(PriorityAction::SHADOW_BOLT_RANK2) + 1);
 
         // Tree metrics from final fitted tree
         res.tree_depth = final_tree.get_depth();
@@ -1168,7 +1052,7 @@ public:
         res.tree_ascii_visualization = final_tree.to_text_tree(5);
         res.decision_rules = final_tree.extract_rules();
 
-        // Compute Action Statistics from Aggregated Rollout Dataset
+        // Compute heuristic label statistics from the collected rollout dataset.
         std::vector<ActionStat> action_stats_map;
         for (const auto& [act, _] : candidate_actions) {
             ActionStat st;
@@ -1177,7 +1061,7 @@ public:
             action_stats_map.push_back(st);
         }
 
-        for (const auto& sample : aggregated_dataset.samples) {
+        for (const auto& sample : rollout_dataset.samples) {
             PriorityAction act = static_cast<PriorityAction>(sample.oracle_action);
             for (auto& st : action_stats_map) {
                 if (st.action == act) {
@@ -1188,7 +1072,7 @@ public:
             }
         }
 
-        size_t total_valid_samples = aggregated_dataset.size();
+        size_t total_valid_samples = rollout_dataset.size();
         for (auto& st : action_stats_map) {
             if (total_valid_samples > 0) {
                 st.selection_pct = (static_cast<float>(st.selection_count) / static_cast<float>(total_valid_samples)) * 100.0f;
@@ -1196,7 +1080,7 @@ public:
             if (st.selection_count > 0) {
                 st.avg_regret /= static_cast<double>(st.selection_count);
             }
-            st.avg_q_value = res.baseline_expected_dps + (st.selection_pct * 0.85);
+            st.avg_q_value = 0.0; // No measured return estimate is available.
         }
 
         std::sort(action_stats_map.begin(), action_stats_map.end(), [](const ActionStat& a, const ActionStat& b) {
@@ -1212,7 +1096,7 @@ public:
         eval_sim.record_viper_samples = false;
 
         StatSummary viper_stats = compute_expected_dps(eval_sim, benchmark_iterations, seed);
-        res.viper_expected_dps = std::max(res.baseline_expected_dps, viper_stats.mean_dps);
+        res.viper_expected_dps = viper_stats.mean_dps;
         res.viper_dps_stddev = viper_stats.stddev_dps;
         res.viper_min_dps = viper_stats.min_dps;
         res.viper_max_dps = viper_stats.max_dps;
@@ -1221,19 +1105,19 @@ public:
         res.viper_gain_pct = (res.viper_gain_over_baseline / std::max(1.0, res.baseline_expected_dps)) * 100.0;
 
         if (res.oracle_expected_gain > 0.0) {
-            res.oracle_potential_captured_pct = std::clamp((res.viper_gain_over_baseline / res.oracle_expected_gain) * 100.0, 0.0, 100.0);
+            res.oracle_potential_captured_pct = (res.viper_gain_over_baseline / res.oracle_expected_gain) * 100.0;
         } else {
-            res.oracle_potential_captured_pct = 100.0;
+            res.oracle_potential_captured_pct = 0.0;
         }
 
         // Oracle Fidelity / Action Agreement %
-        res.oracle_agreement_fidelity_pct = std::max(res.tree_weighted_fidelity_pct, std::min(98.5, 88.0 + (res.oracle_potential_captured_pct * 0.10)));
+        res.oracle_agreement_fidelity_pct = 0.0; // Not measured for the selected APL.
 
         // 5. Fit & Benchmark High-Performance GBDT Q-Policy Ensemble
         report_progress(0.94f, "Phase 4/4: Fitting & Benchmarking GBDT Multi-Action Q-Policy Ensemble...");
         std::vector<sim::GBDTMultiActionQPolicy::QSample> q_samples;
-        q_samples.reserve(aggregated_dataset.samples.size() * 4);
-        for (const auto& sample : aggregated_dataset.samples) {
+        q_samples.reserve(rollout_dataset.samples.size() * 4);
+        for (const auto& sample : rollout_dataset.samples) {
             for (const auto& [act, _] : candidate_actions) {
                 if (is_action_legal(act, sample.state, sim.talents)) {
                     double local_q = estimate_local_q_value(sample.state, act, sim.talents);
@@ -1247,19 +1131,6 @@ public:
                 }
             }
         }
-        if (q_samples.empty()) {
-            for (const auto& sample : rollout_dataset.samples) {
-                for (const auto& [act, _] : candidate_actions) {
-                    if (is_action_legal(act, sample.state, sim.talents)) {
-                        double local_q = estimate_local_q_value(sample.state, act, sim.talents);
-                        if (local_q > -900.0) {
-                            q_samples.push_back({sample.state, static_cast<uint8_t>(act), static_cast<float>(local_q), 1.0f});
-                        }
-                    }
-                }
-            }
-        }
-
         sim::GBDTConfig gbdt_cfg;
         gbdt_cfg.num_trees = 35;
         gbdt_cfg.max_depth = 4;
@@ -1272,7 +1143,7 @@ public:
         gbdt_sim.use_gbdt_policy = true;
         gbdt_sim.gbdt_q_policy = std::make_shared<sim::GBDTMultiActionQPolicy>(res.gbdt_q_policy);
         gbdt_sim.record_viper_samples = false;
-        StatSummary gbdt_stats = compute_expected_dps(gbdt_sim, benchmark_iterations, seed + 101);
+        StatSummary gbdt_stats = compute_expected_dps(gbdt_sim, benchmark_iterations, seed);
         res.gbdt_policy_expected_dps = gbdt_stats.mean_dps;
         res.gbdt_policy_dps_stddev = gbdt_stats.stddev_dps;
         res.gbdt_policy_gain_pct = ((res.gbdt_policy_expected_dps - res.baseline_expected_dps) / std::max(1.0, res.baseline_expected_dps)) * 100.0;
@@ -1331,7 +1202,7 @@ public:
             res.rule_shifts.push_back(shift);
         }
 
-        report_progress(1.0f, "VIPER Policy Extraction & Multi-Iteration DAgger Complete!");
+        report_progress(1.0f, "Independent-rule APL Search Complete!");
         return res;
     }
 

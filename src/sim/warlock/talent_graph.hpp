@@ -198,8 +198,12 @@ public:
             // Check row requirement
             int tree = nodes_[i].tree_idx;
             int required_points = 5 * (nodes_[i].row - 1);
-            int current_tree_points = count_tree_points(v, tree);
-            if (current_tree_points < required_points) continue;
+            int points_below = 0;
+            for (size_t k = 0; k < TOTAL_TALENT_NODES; ++k) {
+                if (nodes_[k].tree_idx == tree && nodes_[k].row < nodes_[i].row)
+                    points_below += v[k];
+            }
+            if (points_below < required_points) continue;
 
             receivers.push_back(i);
         }

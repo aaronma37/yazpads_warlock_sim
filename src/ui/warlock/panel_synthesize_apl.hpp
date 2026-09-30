@@ -113,7 +113,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
     // Group 1: DAgger Passes
     ImGui::BeginGroup();
     WowResetTextBaseline();
-    ImGui::Text("DAgger Passes:");
+    ImGui::Text("Search Passes:");
     ImGui::SetNextItemWidth(65.0f);
     if (is_busy) ImGui::BeginDisabled();
     WowInputInt("##SynthDAggerItersInput", &synth_dagger_iterations, 1, 3);
@@ -246,9 +246,9 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       ImGui::Indent(20.0f);
       ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "APL Policy Synthesis Ready");
       ImGui::Spacing();
-      ImGui::TextWrapped("Click 'Synthesize Optimal APL' above to launch the autonomous MCTS-guided DAgger optimization process.");
+      ImGui::TextWrapped("Click 'Synthesize Optimal APL' above to search action priorities and independent conditions.");
       ImGui::Spacing();
-      ImGui::TextWrapped("The engine will evaluate optimal forward returns, discover continuous predicate thresholds (Life Tap mana boundaries, Bane of Doom cutoffs, Pandemic DoT windows), and iteratively aggregate recovery states over %d DAgger passes.", synth_dagger_iterations);
+      ImGui::TextWrapped("The engine searches up to three rules per action, with independent conditions and disabled slots, over %d search passes. Final DPS uses separate benchmark seeds.", synth_dagger_iterations);
       ImGui::Unindent(20.0f);
     }
     else
@@ -276,8 +276,8 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       {
         ImGui::TextDisabled("2. SYNTHESIZED APL (RULES)");
         ImVec4 gain_col = (res.viper_gain_over_baseline > 0.5) ? ImVec4(0.2f, 0.95f, 0.35f, 1.0f) : ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
-        ImGui::TextColored(gain_col, "%.1f ± %.1f DPS (+%.1f%%)", res.viper_expected_dps, res.viper_dps_stddev, res.viper_gain_pct);
-        ImGui::TextDisabled("Captured %.1f%% Ceiling | %.1f%% Fid", res.oracle_potential_captured_pct, res.oracle_agreement_fidelity_pct);
+        ImGui::TextColored(gain_col, "%.1f ± %.1f DPS (%+.1f%%)", res.viper_expected_dps, res.viper_dps_stddev, res.viper_gain_pct);
+        ImGui::TextDisabled("Held-out gain: %+.1f DPS", res.viper_gain_over_baseline);
       }
       EndWowChild();
 
@@ -288,8 +288,8 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       {
         ImGui::TextDisabled("3. GBDT Q-POLICY (LIGHTGBM)");
         ImVec4 gbdt_col = (res.gbdt_policy_gain_pct > 0.5) ? ImVec4(0.3f, 0.9f, 1.0f, 1.0f) : ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
-        ImGui::TextColored(gbdt_col, "%.1f ± %.1f DPS (+%.1f%%)", res.gbdt_policy_expected_dps, res.gbdt_policy_dps_stddev, res.gbdt_policy_gain_pct);
-        ImGui::TextDisabled("Captured %.1f%% of MCTS Ceiling", res.gbdt_potential_captured_pct);
+        ImGui::TextColored(gbdt_col, "%.1f ± %.1f DPS (%+.1f%%)", res.gbdt_policy_expected_dps, res.gbdt_policy_dps_stddev, res.gbdt_policy_gain_pct);
+        ImGui::TextDisabled("Trained on heuristic action scores");
       }
       EndWowChild();
 
@@ -298,9 +298,9 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
       // Card 4: MCTS Oracle Ceiling
       BeginWowChild("SynthKPI4", ImVec2(card_w, card_h), true);
       {
-        ImGui::TextDisabled("4. MCTS ORACLE CEILING");
-        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS (+%.1f%%)", res.oracle_expected_dps, res.oracle_gain_pct);
-        ImGui::TextDisabled("Theoretical Upper Bound: +%.1f DPS", res.oracle_expected_gain);
+        ImGui::TextDisabled("4. GREEDY HEURISTIC REFERENCE");
+        ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.0f, 1.0f), "%.1f DPS (%+.1f%%)", res.oracle_expected_dps, res.oracle_gain_pct);
+        ImGui::TextDisabled("Measured baseline gain: %+.1f DPS", res.oracle_expected_gain);
       }
       EndWowChild();
 
@@ -495,23 +495,23 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
         }
 
         // -------------------------------------------------------------------
-        // TAB 3: DAgger Convergence History
+        // TAB 3: Search Convergence History
         // -------------------------------------------------------------------
-        if (ImGui::BeginTabItem("DAgger Convergence History"))
+        if (ImGui::BeginTabItem("Search Convergence History"))
         {
           ImGui::Spacing();
-          ImGui::TextDisabled("Progression of candidate policy throughput and tree fidelity over %zu DAgger aggregation passes:", res.dagger_history.size());
+          ImGui::TextDisabled("Training DPS over %zu search checkpoints (tree metrics are measured after search):", res.dagger_history.size());
           ImGui::Spacing();
 
           static ImGuiTableFlags dag_tbl_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp;
           if (ImGui::BeginTable("DAggerHistoryTable", 6, dag_tbl_flags))
           {
             ImGui::TableSetupColumn("Iteration", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-            ImGui::TableSetupColumn("Samples Added", ImGuiTableColumnFlags_WidthFixed, 110.0f);
-            ImGui::TableSetupColumn("Dataset Size |D|", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Fitness Sims Added", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+            ImGui::TableSetupColumn("Total Fitness Sims", ImGuiTableColumnFlags_WidthFixed, 120.0f);
             ImGui::TableSetupColumn("Candidate DPS", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-            ImGui::TableSetupColumn("Tree Fidelity %", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-            ImGui::TableSetupColumn("Tree Leaves", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Tree Fidelity", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            ImGui::TableSetupColumn("Enabled Rules", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
 
             for (const auto& log : res.dagger_history)
@@ -536,7 +536,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
 
               // Col 4: Tree Fidelity
               ImGui::TableNextColumn();
-              ImGui::Text("%.1f%%", log.tree_weighted_fidelity_pct);
+              ImGui::TextDisabled("N/A");
 
               // Col 5: Tree Leaves
               ImGui::TableNextColumn();
@@ -554,10 +554,11 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
         if (ImGui::BeginTabItem("Decision Tree & C++ Export"))
         {
           ImGui::Spacing();
-          ImGui::Text("Fitted CART Decision Tree (Depth: %zu, Leaves: %zu, Fidelity: %.1f%%)",
+          ImGui::Text("Diagnostic Tree (Depth: %zu, Leaves: %zu, Training Fidelity: %.1f%%)",
                       res.tree_depth, res.tree_leaf_count, res.tree_weighted_fidelity_pct);
           ImGui::Spacing();
 
+          ImGui::TextWrapped("This tree fits heuristic labels on visited states; the synthesized APL is optimized separately.");
           if (WowButton("Copy Generated C++ Policy Code", ImVec2(240.0f, 24.0f)))
           {
             ImGui::SetClipboardText(res.generated_cpp_code.c_str());
@@ -593,10 +594,10 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
         // -------------------------------------------------------------------
         // TAB 5: MCTS Action Regret & Frequency
         // -------------------------------------------------------------------
-        if (ImGui::BeginTabItem("MCTS Action Values & Regret"))
+        if (ImGui::BeginTabItem("Heuristic Action Labels"))
         {
           ImGui::Spacing();
-          ImGui::TextDisabled("Empirical Oracle action distribution and regret weights across all visited states:");
+          ImGui::TextDisabled("Heuristic action labels and score-gap weights on visited states:");
           ImGui::Spacing();
 
           static ImGuiTableFlags act_tbl_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY;
@@ -625,7 +626,7 @@ inline void render_panel_synthesize_apl(WarlockSimulator& sim, AppTab* switch_ta
 
               // Col 2: Avg Regret
               ImGui::TableNextColumn();
-              ImGui::Text("%.2f DPS", st.avg_regret);
+              ImGui::Text("%.2f", st.avg_regret);
 
               // Col 3: Count
               ImGui::TableNextColumn();

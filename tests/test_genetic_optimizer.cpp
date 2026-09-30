@@ -225,3 +225,117 @@ TEST_CASE(GeneticOptimizer, ForcedPetConstraintCombinations) {
         CHECK_EQ(static_cast<int>(cand.policy.pet), static_cast<int>(PetChoice::IMP));
     }
 }
+
+TEST_CASE(GeneticOptimizer, PolicyMutationExploresEveryRotationAndLegalPetMode) {
+    FastRNG rng(7123);
+    Talents talents;
+    talents.demo.demonic_pact = 1;
+    talents.demo.demonic_brand = 3;
+    genetic_detail::SearchPolicy policy;
+    bool seen[genetic_detail::rotation_count][9]{};
+    for (int i = 0; i < 15000; ++i) {
+        genetic_detail::mutate_policy(policy, talents, rng, 1.0);
+        const size_t mode = static_cast<size_t>(policy.pet) * 3 + (policy.sac_imp ? 1 : policy.sac_succubus ? 2 : 0);
+        seen[static_cast<size_t>(policy.rotation)][mode] = true;
+    }
+    for (size_t r = 0; r < genetic_detail::rotation_count; ++r) {
+        // None, two sacrifices, two active pets, and both Pact pairings.
+        for (size_t p : {0u, 1u, 2u, 3u, 4u, 6u, 8u}) CHECK(seen[r][p]);
+    }
+    talents = Talents{};
+    for (int i = 0; i < 200; ++i) {
+        genetic_detail::mutate_policy(policy, talents, rng, 1.0);
+        CHECK(!policy.sac_imp && !policy.sac_succubus);
+    }
+    talents.demo.demonic_sacrifice = 1;
+    for (int i = 0; i < 200; ++i) {
+        genetic_detail::mutate_policy(policy, talents, rng, 1.0);
+        CHECK(!(policy.sac_imp || policy.sac_succubus) || policy.pet == PetChoice::NONE);
+    }
+}
+
+TEST_CASE(GeneticOptimizer, PolicyCrossoverCanCombineBrandWithEitherPetPairing) {
+    FastRNG rng(331);
+    genetic_detail::SearchPolicy a, b;
+    a.rotation = RotationChoice::DP_AF_SHADOW_BRAND;
+    a.pet = PetChoice::SUCCUBUS;
+    a.sac_imp = true;
+    b.rotation = RotationChoice::DP_RUIN_FIRE;
+    b.pet = PetChoice::IMP;
+    b.sac_succubus = true;
+    bool found = false;
+    for (int i = 0; i < 100; ++i) {
+        auto child = genetic_detail::crossover_policy(a, b, rng);
+        CHECK(child.pet == PetChoice::IMP ? child.sac_succubus && !child.sac_imp : child.sac_imp && !child.sac_succubus);
+        if (child.rotation == a.rotation && child.pet == b.pet) found = true;
+    }
+    CHECK(found);
+}
+
+TEST_CASE(GeneticOptimizer, SurrogateDistinguishesRotationAndSacrificedPetCombinations) {
+    const auto talents = TalentGraph::get().to_vector(Talents::create_forever_aff_dp_brand());
+    SurrogateModel model;
+    for (int i = 0; i < 8; ++i) {
+        model.add_sample({talents, PetChoice::IMP, false, true, RotationChoice::DP_AF_SHADOW, false, CurseChoice::BANE_OF_AGONY, Race::UNDEAD, 500.0});
+        model.add_sample({talents, PetChoice::IMP, false, true, RotationChoice::DP_AF_SHADOW_BRAND, false, CurseChoice::BANE_OF_AGONY, Race::UNDEAD, 800.0});
+        model.add_sample({talents, PetChoice::NONE, false, true, RotationChoice::DP_AF_SHADOW_BRAND, false, CurseChoice::BANE_OF_AGONY, Race::UNDEAD, 600.0});
+    }
+    CHECK(model.train());
+    const double brand = model.predict(talents, PetChoice::IMP, false, true, RotationChoice::DP_AF_SHADOW_BRAND, false, CurseChoice::BANE_OF_AGONY);
+    CHECK(brand > model.predict(talents, PetChoice::IMP, false, true, RotationChoice::DP_AF_SHADOW, false, CurseChoice::BANE_OF_AGONY) + 250.0);
+    CHECK(brand > model.predict(talents, PetChoice::NONE, false, true, RotationChoice::DP_AF_SHADOW_BRAND, false, CurseChoice::BANE_OF_AGONY) + 150.0);
+}
+
+TEST_CASE(GeneticOptimizer, PactOnlySearchExploresUnseededBrandImpBuilds) {
+    WarlockSimulator sim;
+    sim.fight_duration = 10.0;
+    // An active custom/learned controller must not replace the candidates' rotations.
+    sim.policy.use_custom_apl = true;
+    sim.policy.custom_rules = sim.policy.get_priority_rules(sim.talents, sim.race);
+    sim.policy.use_imitation_policy = true;
+    sim.policy.use_oracle_execution_policy = true;
+    sim.policy.use_gbdt_policy = true;
+    sim.use_oracle_execution_policy = true;
+    sim.use_gbdt_policy = true;
+    GeneticOptimizerConfig cfg;
+    cfg.population_size = 600;
+    cfg.generations = 1;
+    cfg.screening_sims = 1;
+    cfg.final_sims = 1;
+    cfg.num_threads = 1;
+    cfg.seed_with_presets = false;
+    cfg.required_talent_indices = {static_cast<int>(AFFLICTION_NODE_COUNT + 18)};
+    cfg.offspring_pool_size = 30;
+    cfg.simulated_offspring_per_gen = 10;
+    GeneticOptimizerSession session;
+    session.start(sim, cfg);
+    bool rotations[genetic_detail::rotation_count]{};
+    bool found_brand_imp = false;
+    for (const auto& cand : session.get_elites()) {
+        CHECK(cand.talents.demo.demonic_pact > 0);
+        CHECK(TalentGraph::get().is_valid(TalentGraph::get().to_vector(cand.talents), 51));
+        CHECK(!cand.policy.use_custom_apl && !cand.policy.use_imitation_policy);
+        CHECK(!cand.policy.use_oracle_execution_policy && !cand.policy.use_gbdt_policy);
+        rotations[static_cast<size_t>(cand.policy.rotation)] = true;
+        if (cand.talents.demo.demonic_brand > 0 && cand.policy.rotation == RotationChoice::DP_AF_SHADOW_BRAND &&
+            cand.policy.pet == PetChoice::IMP && cand.buffs.sacrifice_succubus) {
+            found_brand_imp = true;
+            bool uses_brand = false;
+            for (const auto& rule : cand.policy.get_priority_rules(cand.talents, cand.race))
+                if (rule.action == PriorityAction::DEMONIC_BRAND_SEARING_PAIN) uses_brand = true;
+            CHECK(uses_brand);
+        }
+    }
+    for (bool seen : rotations) CHECK(seen);
+    CHECK(found_brand_imp);
+    // Verify user locks survive reproduction as well as initialization.
+    cfg.population_size = 12;
+    cfg.forced_rotation = static_cast<int>(RotationChoice::DP_AF_SHADOW_BRAND);
+    cfg.forced_pet_mode = static_cast<int>(PetConstraint::DEMONIC_PACT_SUCC_IMP);
+    auto summary = GeneticOptimizer::run(sim, cfg);
+    for (const auto& cand : summary.top_candidates) {
+        CHECK(cand.policy.rotation == RotationChoice::DP_AF_SHADOW_BRAND);
+        CHECK(cand.policy.pet == PetChoice::IMP);
+        CHECK(cand.buffs.sacrifice_succubus && !cand.buffs.sacrifice_imp);
+    }
+}

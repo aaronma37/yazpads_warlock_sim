@@ -194,6 +194,8 @@ struct APLAnalysisRun {
 
     std::vector<SpellCastLog> apl_cast_sequence;
     std::vector<SpellCastLog> mcts_cast_sequence;
+    std::vector<SpellCastLog> apl_combat_events;
+    std::vector<SpellCastLog> mcts_combat_events;
 };
 
 // Top mismatched rule diagnostic
@@ -822,6 +824,8 @@ public:
     {
         run.apl_cast_sequence = apl_res.cast_sequence;
         run.mcts_cast_sequence = mcts_res.cast_sequence;
+        run.apl_combat_events = apl_res.get_combat_events();
+        run.mcts_combat_events = mcts_res.get_combat_events();
 
         // 1. Build APL Spell Blocks
         run.apl_spells.clear();

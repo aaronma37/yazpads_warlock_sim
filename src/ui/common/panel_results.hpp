@@ -3,6 +3,7 @@
 #include "implot.h"
 #include "asset_manager.hpp"
 #include "damage_breakdown_view.hpp"
+#include "sequence_png.hpp"
 #include "wow_widgets.hpp"
 #include "src/sim/parallel_runner.hpp"
 #include "src/sim/warlock/viper_oracle.hpp"
@@ -165,7 +166,7 @@ inline void render_panel_results(const BatchSimResult& batch) {
 
         // Tab 4: Observed Spell Cast Sequence
         if (WowBeginTabItem("Observed Spell Cast Sequence")) {
-            static bool show_all_damage_instances = false;
+            static bool show_all_damage_instances = true;
 
             std::vector<SpellCastLog> seq;
             if (show_all_damage_instances) {
@@ -314,6 +315,14 @@ inline void render_panel_results(const BatchSimResult& batch) {
                     } else {
                         export_feedback_msg = "Failed to open " + fname + " for writing.";
                     }
+                    export_feedback_timer = 3.0f;
+                }
+                ImGui::SameLine();
+                if (WowButton(show_all_damage_instances ? "🖼 Save Damage Sequence PNG" : "🖼 Save Cast Sequence PNG")) {
+                    const std::string fname = show_all_damage_instances ? "damage_sequence.png" : "cast_sequence.png";
+                    const bool saved = export_spell_sequence_png(seq,
+                        show_all_damage_instances ? "Observed Damage Event History" : "Observed Spell Cast Sequence", fname);
+                    export_feedback_msg = saved ? "Saved to " + fname + "!" : "Failed to save " + fname + ".";
                     export_feedback_timer = 3.0f;
                 }
 

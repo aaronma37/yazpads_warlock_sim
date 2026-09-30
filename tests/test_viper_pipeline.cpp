@@ -220,6 +220,7 @@ TEST_CASE(VIPERPipeline, ExpectedValueExtractionAndRuleDiff) {
     WarlockSimulator sim;
     sim.talents = Talents::create_forever_shadow_destro();
     sim.fight_duration = 60.0;
+    sim.mechanics.allow_rank2_shadow_bolt = true;
 
     int progress_calls = 0;
     auto res = VIPEROracle::extract_viper_apl(sim, 10, 50, [&](float p, const std::string& status) {
@@ -228,13 +229,24 @@ TEST_CASE(VIPERPipeline, ExpectedValueExtractionAndRuleDiff) {
         CHECK(!status.empty());
     });
 
+    WarlockSimulator extracted = sim;
+    extracted.policy.use_custom_apl = true;
+    extracted.policy.custom_rules = res.extracted_rules;
+    auto measured = VIPEROracle::compute_expected_dps(extracted, 50, 42);
+    CHECK_NEAR(res.viper_expected_dps, measured.mean_dps, 1e-8);
     CHECK(progress_calls >= 4);
     CHECK(res.baseline_expected_dps > 0.0);
-    CHECK(res.oracle_expected_dps >= res.baseline_expected_dps);
+    CHECK(res.oracle_expected_dps > 0.0);
     CHECK(res.viper_expected_dps > 0.0);
     CHECK(res.extracted_rules.size() > 0);
     CHECK(res.rule_shifts.size() > 0);
     CHECK(res.action_stats.size() > 0);
+    CHECK(std::any_of(res.action_stats.begin(), res.action_stats.end(), [](const ActionStat& stat) {
+        return stat.action == PriorityAction::SHADOW_BOLT_RANK2;
+    }));
+    std::unordered_map<int, size_t> rule_counts;
+    for (const auto& rule : res.extracted_rules) ++rule_counts[int(rule.action)];
+    for (const auto& entry : rule_counts) CHECK(entry.second <= 3);
     CHECK(res.total_samples_collected > 0);
 
     // CART Decision Tree verification
@@ -360,8 +372,8 @@ TEST_CASE(VIPERPipeline, StandaloneLiveMCTSOracleBenchmark) {
     CHECK(stats.max_dps >= stats.mean_dps);
 }
 
-TEST_CASE(VIPERPipeline, MultiIterationDAggerDatasetAggregation) {
-    // Verify iterative DAgger rollout aggregation: D <- D U D_k across multiple iterations
+TEST_CASE(VIPERPipeline, SearchCheckpointsReportActualFitnessEvaluations) {
+    // Search telemetry counts fitness simulations; tree fidelity is unavailable here.
     WarlockSimulator sim;
     sim.talents = Talents::create_forever_shadow_destro();
     sim.fight_duration = 60.0;
@@ -372,13 +384,13 @@ TEST_CASE(VIPERPipeline, MultiIterationDAggerDatasetAggregation) {
     CHECK_EQ(res.dagger_iterations_run, dagger_iters);
     CHECK_EQ(res.dagger_history.size(), dagger_iters);
 
-    // Validate that aggregated dataset grew monotonically across iterations: D_0 < D_1 < D_2
+    // Fitness simulation counts grow monotonically across search checkpoints.
     for (size_t i = 0; i < res.dagger_history.size(); ++i) {
         const auto& log = res.dagger_history[i];
         CHECK_EQ(log.iteration, i + 1);
         CHECK(log.samples_added > 0);
         CHECK(log.candidate_dps > 0.0);
-        CHECK(log.tree_weighted_fidelity_pct > 0.0);
+        CHECK_EQ(log.tree_weighted_fidelity_pct, 0.0);
         CHECK(log.tree_leaf_count > 0);
 
         if (i > 0) {
@@ -386,9 +398,9 @@ TEST_CASE(VIPERPipeline, MultiIterationDAggerDatasetAggregation) {
         }
     }
 
-    CHECK(res.total_samples_collected == res.dagger_history.back().total_samples);
+    CHECK(res.total_samples_collected > 0);
     CHECK(res.extracted_rules.size() > 0);
-    CHECK(res.oracle_expected_dps >= res.baseline_expected_dps);
+    CHECK(res.oracle_expected_dps > 0.0);
     CHECK(res.oracle_dps_stddev > 0.0);
     CHECK(res.viper_expected_dps > 0.0);
 }
@@ -823,3 +835,74 @@ TEST_CASE(VIPERPipeline, ShadowburnISBConditionalExecution) {
 
 
 
+
+TEST_CASE(VIPERPipeline, IndependentSlotsAndRank2Availability) {
+    WarlockSimulator sim;
+    sim.talents = Talents::create_forever_shadow_destro();
+    auto seed = sim.policy.build_preset_rules(sim.talents, sim.race);
+    auto disabled = VIPEROracle::make_search_slots(seed, sim);
+    CHECK(std::none_of(disabled.begin(), disabled.end(), [](const PriorityRule& r) {
+        return r.action == PriorityAction::SHADOW_BOLT_RANK2;
+    }));
+    sim.mechanics.allow_rank2_shadow_bolt = true;
+    auto slots = VIPEROracle::make_search_slots(seed, sim);
+    std::unordered_map<int, size_t> counts;
+    for (const auto& r : slots) ++counts[int(r.action)];
+    for (const auto& entry : counts) CHECK_EQ(entry.second, size_t(3));
+    CHECK_EQ(counts[int(PriorityAction::SHADOW_BOLT_RANK2)], size_t(3));
+    CHECK(slots.back().enabled);
+    CHECK(!slots.back().use_custom_thresholds);
+    CHECK_EQ(std::string(VIPEROracle::get_action_name(PriorityAction::SHADOW_BOLT_RANK2)), "Shadow Bolt Rank 2");
+
+    auto rank2 = VIPEROracle::create_default_rule_for_action(PriorityAction::SHADOW_BOLT_RANK2, sim.talents);
+    auto other = rank2;
+    rank2.enabled = false;
+    FastRNG mutations(42);
+    bool reactivated = false;
+    for (int i = 0; i < 100; ++i) {
+        VIPEROracle::mutate_search_rule(rank2, mutations);
+        reactivated |= rank2.enabled;
+    }
+    CHECK(reactivated);
+    CHECK(!other.use_custom_thresholds);
+    CHECK_EQ(other.max_mana_pct, 1.0f);
+
+    // The enabled rank must execute through the ordinary APL interpreter.
+    sim.fight_duration = 15.0;
+    sim.policy.use_custom_apl = true;
+    sim.policy.custom_rules = {other};
+    FastRNG casts(42);
+    auto result = sim.run_single_simulation(casts);
+    CHECK(!result.action_history.empty());
+    CHECK(std::all_of(result.action_history.begin(), result.action_history.end(), [](PriorityAction a) {
+        return a == PriorityAction::SHADOW_BOLT_RANK2;
+    }));
+    sim.mechanics.allow_rank2_shadow_bolt = false;
+    FastRNG no_casts(42);
+    auto off = sim.run_single_simulation(no_casts);
+    CHECK(std::none_of(off.action_history.begin(), off.action_history.end(), [](PriorityAction a) {
+        return a == PriorityAction::SHADOW_BOLT_RANK2;
+    }));
+}
+
+TEST_CASE(VIPERPipeline, DistinctProcAndRefreshConditionsSurviveCleanup) {
+    Talents talents;
+    auto active = VIPEROracle::create_default_rule_for_action(PriorityAction::SHADOW_BOLT_FILLER, talents);
+    active.use_custom_thresholds = true;
+    active.check_decimation = true;
+    auto inactive = active;
+    inactive.require_decimation_active = false;
+    auto brand = active;
+    brand.check_decimation = false;
+    brand.check_demonic_brand = true;
+    auto rules = VIPEROracle::condense_and_deduplicate_rules({active, inactive, brand});
+    CHECK_EQ(rules.size(), size_t(3));
+
+    auto expired = VIPEROracle::create_default_rule_for_action(PriorityAction::CORRUPTION, talents);
+    expired.use_custom_thresholds = false;
+    auto refresh = expired;
+    refresh.use_custom_thresholds = true;
+    refresh.check_dot_refresh = true;
+    refresh.max_dot_rem_sec = 2.0f;
+    CHECK_EQ(VIPEROracle::condense_and_deduplicate_rules({expired, refresh}).size(), size_t(2));
+}

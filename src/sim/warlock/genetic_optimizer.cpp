@@ -1,4 +1,6 @@
 #include "genetic_optimizer.hpp"
+#include "genetic_search_policy.hpp"
+#include <map>
 #include "spec_presets.hpp"
 #include "parallel_runner.hpp"
 #include <random>
@@ -11,17 +13,8 @@ namespace warlock {
 
 namespace {
 
-struct Individual {
+struct Individual : genetic_detail::SearchPolicy {
     std::array<int, TOTAL_TALENT_NODES> talents;
-    PetChoice pet = PetChoice::NONE;
-    bool sac_imp = false;
-    bool sac_succubus = false;
-    RotationChoice rotation = RotationChoice::SHADOW_DESTRO;
-    bool maintain_immolate = true;
-    CurseChoice curse = CurseChoice::BANE_OF_AGONY;
-    ShadowburnPolicy shadowburn = ShadowburnPolicy::ON_COOLDOWN;
-    bool use_decimation_soul_fire = false;
-    bool channel_drain_hope = false;
     Race race = Race::UNDEAD;
 
     double fitness = 0.0;
@@ -32,7 +25,7 @@ struct Individual {
 // MAP-Elites Quality-Diversity Grid Parameters (Zero Human Bias)
 constexpr size_t MAP_U_BINS = 8;    // Affliction vs Destruction point bias [-51, +51]
 constexpr size_t MAP_V_BINS = 8;    // Demonology depth [0, 51]
-constexpr size_t MAP_PET_BINS = 4;  // 0: Sac-Imp, 1: Sac-Succ, 2: Active Pet, 3: None/Other
+constexpr size_t MAP_PET_BINS = 9;  // Exact active-pet / sacrifice combination
 
 struct MapElitesCell {
     Individual elite;
@@ -41,10 +34,7 @@ struct MapElitesCell {
 };
 
 inline size_t get_pet_bin(const Individual& ind) {
-    if (ind.sac_imp) return 0;
-    if (ind.sac_succubus) return 1;
-    if (ind.pet != PetChoice::NONE) return 2;
-    return 3;
+    return static_cast<size_t>(ind.pet) * 3 + (ind.sac_imp ? 1 : ind.sac_succubus ? 2 : 0);
 }
 
 inline void get_map_elites_coord(const Individual& ind, size_t& u_bin, size_t& v_bin, size_t& pet_bin) {
@@ -65,80 +55,6 @@ inline void get_map_elites_coord(const Individual& ind, size_t& u_bin, size_t& v
 
     // Coordinate 3: Pet / Sacrifice mode
     pet_bin = get_pet_bin(ind);
-}
-
-// Auto-align pet and rotation policies to match the talent profile
-void adapt_policies_to_talents(Individual& ind, FastRNG& rng) {
-    const auto& graph = TalentGraph::get();
-    int aff_pts = graph.count_tree_points(ind.talents, 0);
-    int demo_pts = graph.count_tree_points(ind.talents, 1);
-    int destro_pts = graph.count_tree_points(ind.talents, 2);
-
-    bool has_ds = (ind.talents[17 + 9] > 0);        // Demonic Sacrifice
-    bool has_dp = (ind.talents[17 + 18] > 0);       // Demonic Pact
-    bool has_decimate = (ind.talents[17 + 11] > 0); // Decimation
-    bool has_ruin = (ind.talents[36 + 6] > 0);      // Ruin
-    bool has_incin = (ind.talents[36 + 15] > 0);    // Incinerate
-    bool has_sm = (ind.talents[15] > 0);            // Shadow Mastery
-    bool has_wrack = (ind.talents[16] > 0);         // Wrack
-    bool has_siphon = (ind.talents[13] > 0);        // Siphon Life
-    bool has_conflag = (ind.talents[36 + 10] > 0);  // Conflagrate
-    bool has_sburn = (ind.talents[36 + 7] > 0);     // Shadowburn
-
-    ind.shadowburn = has_sburn ? ShadowburnPolicy::ON_COOLDOWN : ShadowburnPolicy::NEVER;
-    ind.use_decimation_soul_fire = has_decimate;
-    ind.channel_drain_hope = has_wrack;
-
-    // Pet & Sacrifice setup
-    if (has_dp) {
-        // Demonic Pact: Sac Imp + Active Succubus
-        ind.sac_imp = true;
-        ind.sac_succubus = false;
-        ind.pet = PetChoice::SUCCUBUS;
-    } else if (has_ds) {
-        if (destro_pts >= 30 && has_incin && (rng.next_u64() % 2 == 0)) {
-            // Fire Destro with Sac-Succubus (+15% Fire)
-            ind.sac_succubus = true;
-            ind.sac_imp = false;
-            ind.pet = PetChoice::NONE;
-        } else {
-            // Shadow with Sac-Imp (+15% Shadow)
-            ind.sac_imp = true;
-            ind.sac_succubus = false;
-            ind.pet = PetChoice::NONE;
-        }
-    } else {
-        ind.sac_imp = false;
-        ind.sac_succubus = false;
-        if (demo_pts >= 15 || ind.talents[17 + 17] > 0) {
-            ind.pet = (rng.next_u64() % 2 == 0) ? PetChoice::SUCCUBUS : PetChoice::IMP;
-        } else {
-            ind.pet = PetChoice::IMP;
-        }
-    }
-
-    // Rotation setup
-    if (has_incin || (destro_pts >= 30 && ind.sac_succubus)) {
-        ind.maintain_immolate = true;
-        if (has_conflag && ind.talents[36 + 14] > 0) {
-            ind.rotation = (rng.next_u64() % 2 == 0) ? RotationChoice::FIRE_DESTRO : RotationChoice::SHADOW_AND_FLAME_FIRE_2;
-        } else {
-            ind.rotation = RotationChoice::FIRE_DESTRO;
-        }
-    } else if (has_wrack || aff_pts >= 35) {
-        ind.maintain_immolate = false;
-        ind.rotation = has_siphon ? RotationChoice::DEEP_AFFLICTION_SB : RotationChoice::DEEP_AFFLICTION_SB_NO_SL;
-    } else if (has_dp || (demo_pts >= 25 && !has_ds)) {
-        ind.maintain_immolate = false;
-        ind.rotation = RotationChoice::DP_AF_SHADOW;
-    } else if (has_sm && has_ruin) {
-        ind.maintain_immolate = false;
-        ind.rotation = RotationChoice::SM_RUIN;
-    } else {
-        // Standard Destro / Hybrid
-        ind.maintain_immolate = has_conflag;
-        ind.rotation = RotationChoice::SHADOW_DESTRO;
-    }
 }
 
 // Convert Individual to WarlockSimulator
@@ -182,45 +98,29 @@ void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, 
     // 0. Enforce required talents (including implicit talent requirements from Pet / DS constraints)
     auto all_req_talents = get_effective_required_talents(config);
     if (!all_req_talents.empty()) {
-        for (int req_idx : all_req_talents) {
-            if (req_idx < 0 || req_idx >= static_cast<int>(TOTAL_TALENT_NODES)) continue;
-            const auto& target_node = graph.node(req_idx);
-
-            // If prerequisite exists, max it
-            if (target_node.req_global_idx >= 0) {
-                int p_idx = target_node.req_global_idx;
-                ind.talents[p_idx] = graph.node(p_idx).max_points;
-            }
-
-            // Ensure sufficient points in preceding rows of the tree
-            int tree = target_node.tree_idx;
-            int required_below = 5 * (target_node.row - 1);
-
-            int cur_below = 0;
-            for (size_t k = 0; k < TOTAL_TALENT_NODES; ++k) {
-                if (graph.node(k).tree_idx == tree && graph.node(k).row < target_node.row) {
-                    cur_below += ind.talents[k];
-                }
-            }
-
-            while (cur_below < required_below) {
-                std::vector<size_t> row_cands;
+        // Build prerequisites from legal receivers, rather than filling arbitrary deep rows.
+        std::function<void(int)> require_talent = [&](int req_idx) {
+            if (req_idx < 0 || req_idx >= static_cast<int>(TOTAL_TALENT_NODES)) return;
+            const auto& target = graph.node(req_idx);
+            if (target.req_global_idx >= 0) require_talent(target.req_global_idx);
+            const int required_below = 5 * (target.row - 1);
+            for (;;) {
+                int below = 0;
                 for (size_t k = 0; k < TOTAL_TALENT_NODES; ++k) {
-                    if (graph.node(k).tree_idx == tree && graph.node(k).row < target_node.row) {
-                        if (ind.talents[k] < graph.node(k).max_points) {
-                            row_cands.push_back(k);
-                        }
-                    }
+                    if (graph.node(k).tree_idx == target.tree_idx && graph.node(k).row < target.row)
+                        below += ind.talents[k];
                 }
-                if (row_cands.empty()) break;
-                size_t pick = row_cands[rng.next_u64() % row_cands.size()];
-                ind.talents[pick]++;
-                cur_below++;
+                if (below >= required_below) break;
+                auto receivers = graph.get_valid_receivers(ind.talents);
+                receivers.erase(std::remove_if(receivers.begin(), receivers.end(), [&](size_t k) {
+                    return graph.node(k).tree_idx != target.tree_idx || graph.node(k).row >= target.row;
+                }), receivers.end());
+                if (receivers.empty()) break;
+                ++ind.talents[receivers[rng.next_u64() % receivers.size()]];
             }
-
-            // Max out the target talent
-            ind.talents[req_idx] = target_node.max_points;
-        }
+            ind.talents[req_idx] = target.max_points;
+        };
+        for (int req_idx : all_req_talents) require_talent(req_idx);
 
         // Repair any other tree inconsistencies and balance to 51 points
         // While repairing, protect required talents from being cleared or donated
@@ -300,14 +200,6 @@ void enforce_constraints(Individual& ind, const GeneticOptimizerConfig& config, 
             if (ind.sac_imp || ind.sac_succubus) {
                 ind.sac_imp = false;
                 ind.sac_succubus = false;
-                if (ind.pet == PetChoice::NONE) {
-                    int demo_pts = graph.count_tree_points(ind.talents, 1);
-                    if (demo_pts >= 15 || ind.talents[AFFLICTION_NODE_COUNT + 17] > 0) {
-                        ind.pet = (rng.next_u64() % 2 == 0) ? PetChoice::SUCCUBUS : PetChoice::IMP;
-                    } else {
-                        ind.pet = PetChoice::IMP;
-                    }
-                }
             }
         } else if (!has_dp && (ind.sac_imp || ind.sac_succubus)) {
             ind.pet = PetChoice::NONE;
@@ -428,20 +320,8 @@ Individual crossover_individuals(const Individual& p1, const Individual& p2, Fas
 
     graph.repair(child.talents, rng);
 
-    // Inherit policy & race from the fitter parent
-    const Individual& dom = (p1.fitness >= p2.fitness) ? p1 : p2;
-    child.race = dom.race;
-    child.pet = dom.pet;
-    child.sac_imp = dom.sac_imp;
-    child.sac_succubus = dom.sac_succubus;
-    child.rotation = dom.rotation;
-    child.maintain_immolate = dom.maintain_immolate;
-    child.curse = dom.curse;
-    child.shadowburn = dom.shadowburn;
-    child.use_decimation_soul_fire = dom.use_decimation_soul_fire;
-    child.channel_drain_hope = dom.channel_drain_hope;
-
-    adapt_policies_to_talents(child, rng);
+    child.race = (rng.next_u64() % 2) ? p1.race : p2.race;
+    static_cast<genetic_detail::SearchPolicy&>(child) = genetic_detail::crossover_policy(p1, p2, rng);
     return child;
 }
 
@@ -523,7 +403,7 @@ struct GeneticOptimizerSession::Impl {
     GeneticOptimizationSummary summary;
     FastRNG rng{0xDEADBEEF4242ULL};
     std::vector<Individual> population;
-    using MapGridType = std::array<std::array<std::array<MapElitesCell, MAP_PET_BINS>, MAP_V_BINS>, MAP_U_BINS>;
+    using MapGridType = std::map<size_t, MapElitesCell>;
     std::unique_ptr<MapGridType> map_grid_ptr;
     int gen = 0;
     int total_steps = 0;
@@ -537,7 +417,8 @@ struct GeneticOptimizerSession::Impl {
     void add_to_map_elites(const Individual& ind) {
         size_t u, v, p;
         get_map_elites_coord(ind, u, v, p);
-        auto& cell = (*map_grid_ptr)[u][v][p];
+        const size_t key = ((u * MAP_V_BINS + v) * MAP_PET_BINS + p) * genetic_detail::rotation_count + static_cast<size_t>(ind.rotation);
+        auto& cell = (*map_grid_ptr)[key];
         if (!cell.occupied || ind.fitness > cell.max_fitness) {
             cell.occupied = true;
             cell.max_fitness = ind.fitness;
@@ -547,14 +428,8 @@ struct GeneticOptimizerSession::Impl {
 
     std::vector<Individual> get_occupied_elites() {
         std::vector<Individual> elites;
-        for (size_t u = 0; u < MAP_U_BINS; ++u) {
-            for (size_t v = 0; v < MAP_V_BINS; ++v) {
-                for (size_t p = 0; p < MAP_PET_BINS; ++p) {
-                    if ((*map_grid_ptr)[u][v][p].occupied) {
-                        elites.push_back((*map_grid_ptr)[u][v][p].elite);
-                    }
-                }
-            }
+        for (const auto& [key, cell] : *map_grid_ptr) {
+            elites.push_back(cell.elite);
         }
         return elites;
     }
@@ -609,6 +484,15 @@ struct GeneticOptimizerSession::Impl {
     void start(const WarlockSimulator& sim, const GeneticOptimizerConfig& cfg) {
         const auto& graph = TalentGraph::get();
         base_sim = sim;
+        // Every candidate must execute its own searched rotation.
+        base_sim.policy.use_custom_apl = false;
+        base_sim.policy.custom_rules.clear();
+        base_sim.policy.use_oracle_execution_policy = false;
+        base_sim.policy.use_gbdt_policy = false;
+        base_sim.policy.use_imitation_policy = false;
+        base_sim.use_oracle_execution_policy = false;
+        base_sim.use_gbdt_policy = false;
+        base_sim.neural_decision = {};
         config = cfg;
         summary = GeneticOptimizationSummary{};
         rng = FastRNG(0xDEADBEEF4242ULL);
@@ -641,7 +525,8 @@ struct GeneticOptimizerSession::Impl {
             Individual ind;
             ind.talents = graph.generate_random_valid(rng);
             ind.race = config.optimize_race ? static_cast<Race>(rng.next_u64() % 5) : base_sim.race;
-            adapt_policies_to_talents(ind, rng);
+            enforce_constraints(ind, config, rng);
+            genetic_detail::mutate_policy(ind, graph.to_talents(ind.talents), rng, 1.0);
             enforce_constraints(ind, config, rng);
             population.push_back(ind);
         }
@@ -664,7 +549,10 @@ struct GeneticOptimizerSession::Impl {
                     population[i].maintain_immolate,
                     population[i].curse,
                     population[i].race,
-                    population[i].fitness
+                    population[i].fitness,
+                    population[i].shadowburn,
+                    population[i].use_decimation_soul_fire,
+                    population[i].channel_drain_hope
                 });
 
                 add_to_map_elites(population[i]);
@@ -713,14 +601,16 @@ struct GeneticOptimizerSession::Impl {
             size_t p1_idx = rng.next_u64() % occupied_elites.size();
             size_t p2_idx = rng.next_u64() % occupied_elites.size();
 
+            // Reserve a third of proposals for policy refinement of unchanged talent builds.
+            const bool policy_only = i % 3 == 0;
             Individual offspring;
-            if (rng.next_double() < config.crossover_rate) {
+            if (!policy_only && rng.next_double() < config.crossover_rate) {
                 offspring = crossover_individuals(occupied_elites[p1_idx], occupied_elites[p2_idx], rng);
             } else {
                 offspring = occupied_elites[p1_idx];
             }
 
-            if (rng.next_double() < config.mutation_rate) {
+            if (!policy_only && rng.next_double() < config.mutation_rate) {
                 int swaps = 1 + (rng.next_u64() % 3);
                 auto effective_reqs = get_effective_required_talents(config);
                 for (int s = 0; s < swaps; ++s) {
@@ -732,9 +622,9 @@ struct GeneticOptimizerSession::Impl {
                 offspring.race = static_cast<Race>(rng.next_u64() % 5);
             }
 
-            if (rng.next_double() < 0.20) {
-                adapt_policies_to_talents(offspring, rng);
-            }
+            // Repair talents before proposing legal policies, including newly required talents.
+            enforce_constraints(offspring, config, rng);
+            genetic_detail::mutate_policy(offspring, graph.to_talents(offspring.talents), rng, config.mutation_rate);
 
             enforce_constraints(offspring, config, rng);
             candidate_pool.push_back(offspring);
@@ -744,7 +634,8 @@ struct GeneticOptimizerSession::Impl {
             Individual immigrant;
             immigrant.talents = graph.generate_random_valid(rng);
             immigrant.race = (config.forced_race >= 0) ? static_cast<Race>(config.forced_race) : (config.optimize_race ? static_cast<Race>(rng.next_u64() % 5) : base_sim.race);
-            adapt_policies_to_talents(immigrant, rng);
+            enforce_constraints(immigrant, config, rng);
+            genetic_detail::mutate_policy(immigrant, graph.to_talents(immigrant.talents), rng, 1.0);
             enforce_constraints(immigrant, config, rng);
             candidate_pool.push_back(immigrant);
         }
@@ -765,7 +656,10 @@ struct GeneticOptimizerSession::Impl {
                 candidate_pool[i].rotation,
                 candidate_pool[i].maintain_immolate,
                 candidate_pool[i].curse,
-                candidate_pool[i].race
+                candidate_pool[i].race,
+                candidate_pool[i].shadowburn,
+                candidate_pool[i].use_decimation_soul_fire,
+                candidate_pool[i].channel_drain_hope
             );
             scored.push_back({i, pred});
         }
@@ -783,8 +677,11 @@ struct GeneticOptimizerSession::Impl {
             chosen_indices.push_back(scored[i].idx);
         }
         for (int i = 0; i < num_explore; ++i) {
-            size_t r_idx = rng.next_u64() % candidate_pool.size();
-            chosen_indices.push_back(r_idx);
+            // Sample without replacement from the unscreened remainder.
+            size_t slot = num_top + i;
+            size_t pick = slot + rng.next_u64() % (scored.size() - slot);
+            std::swap(scored[slot], scored[pick]);
+            chosen_indices.push_back(scored[slot].idx);
         }
 
         std::vector<Individual> evaluated_offspring;
@@ -809,7 +706,10 @@ struct GeneticOptimizerSession::Impl {
                 ind.maintain_immolate,
                 ind.curse,
                 ind.race,
-                ind.fitness
+                ind.fitness,
+                ind.shadowburn,
+                ind.use_decimation_soul_fire,
+                ind.channel_drain_hope
             });
 
             add_to_map_elites(ind);
@@ -913,8 +813,8 @@ struct GeneticOptimizerSession::Impl {
         });
 
         auto is_same_build = [](const Individual& a, const Individual& b) {
-            return a.talents == b.talents && a.rotation == b.rotation && a.pet == b.pet &&
-                   a.sac_imp == b.sac_imp && a.sac_succubus == b.sac_succubus && a.race == b.race;
+            return a.talents == b.talents && a.race == b.race &&
+                   static_cast<const genetic_detail::SearchPolicy&>(a) == static_cast<const genetic_detail::SearchPolicy&>(b);
         };
 
         std::vector<TypedElite> diverse_pool;

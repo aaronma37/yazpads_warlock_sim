@@ -1,6 +1,7 @@
 #pragma once
 #include "asset_manager.hpp"
 #include "damage_breakdown_view.hpp"
+#include "src/ui/common/sequence_png.hpp"
 #include "wow_widgets.hpp"
 #include "imgui.h"
 #include "src/sim/warlock/apl_analyzer.hpp"
@@ -142,9 +143,10 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
   static int mcts_num_runs = 5;
   static bool mcts_continuous = false;
   static bool mcts_adaptive_rollouts = true;
-  static int mcts_rollouts_per_step = 256;
+  static int mcts_rollouts_per_step = 512;
   static int selected_mcts_run_idx = 0;
   static float timeline_zoom_px_per_sec = 16.0f;
+  static bool mcts_show_all_damage = true;
 
   // Handle blunder worker completions
   {
@@ -1430,6 +1432,23 @@ inline void render_panel_analyze_apl(const WarlockSimulator& sim, AppTab* switch
           ImGui::EndGroup();
         }
         EndWowChild();
+      }
+
+      ImGui::AlignTextToFramePadding();
+      WowCheckbox("Show All Damage Events", &mcts_show_all_damage);
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Include individual hits, DoT ticks, channel ticks, and other recorded combat events in the exported sequence.");
+      }
+      ImGui::SameLine();
+      if (WowButton("Save Selected Run Sequence PNG")) {
+        const auto& run = report.runs[static_cast<size_t>(selected_mcts_run_idx)];
+        const auto& events = mcts_show_all_damage ? run.mcts_combat_events : run.mcts_cast_sequence;
+        const std::string filename = "mcts_run_" + std::to_string(selected_mcts_run_idx + 1) + "_sequence.png";
+        const bool saved = export_spell_sequence_png(events,
+            mcts_show_all_damage ? "MCTS Optimal Policy Damage Events" : "MCTS Optimal Policy Cast Sequence", filename);
+        ImGui::SameLine();
+        ImGui::TextColored(saved ? ImVec4(0.3f, 1.0f, 0.4f, 1.0f) : ImVec4(1.0f, 0.35f, 0.35f, 1.0f),
+                           saved ? "Saved %s" : "Failed to save %s", filename.c_str());
       }
 
       ImGui::Spacing();

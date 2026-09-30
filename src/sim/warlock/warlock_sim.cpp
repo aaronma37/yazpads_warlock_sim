@@ -751,7 +751,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         std::vector<PriorityRule> dynamic_oracle_rules;
         if (is_oracle && !is_forced) {
             sim::SimObservation cur_obs = get_current_observation();
-            auto candidates = VIPEROracle::get_candidate_actions();
+            auto candidates = VIPEROracle::get_candidate_actions(mechanics.allow_rank2_shadow_bolt);
             std::vector<std::pair<double, PriorityAction>> scored;
             scored.reserve(candidates.size());
             for (const auto& [act, _] : candidates) {
@@ -787,7 +787,7 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
         if (is_gbdt && !is_forced && !is_oracle) {
             const auto* active_policy = gbdt_q_policy ? gbdt_q_policy.get() : policy.gbdt_q_policy.get();
             sim::SimObservation cur_obs = get_current_observation();
-            auto candidates = VIPEROracle::get_candidate_actions();
+            auto candidates = VIPEROracle::get_candidate_actions(mechanics.allow_rank2_shadow_bolt);
             std::vector<std::pair<float, PriorityAction>> scored;
             scored.reserve(candidates.size());
             for (const auto& [act, _] : candidates) {

@@ -324,14 +324,14 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     WowResetTextBaseline();
     ImGui::Text("Locked Rotation:");
     ImGui::SetNextItemWidth(210);
-    const char* rot_preview = "[Auto / Adaptive]";
+    const char* rot_preview = "[Search All]";
     if (ga_forced_rotation >= 0)
     {
       rot_preview = rotation_choice_to_string(static_cast<RotationChoice>(ga_forced_rotation));
     }
     if (ImGui::BeginCombo("##LockedRotation", rot_preview))
     {
-      if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_rotation == -1))
+      if (ImGui::Selectable("[Search All]", ga_forced_rotation == -1))
       {
         ga_forced_rotation = -1;
       }
@@ -357,14 +357,14 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     WowResetTextBaseline();
     ImGui::Text("Locked Pet / DS:");
     ImGui::SetNextItemWidth(210);
-    const char* pet_preview = "[Auto / Adaptive]";
+    const char* pet_preview = "[Search All]";
     if (ga_forced_pet_mode >= 0)
     {
       pet_preview = pet_constraint_to_string(static_cast<PetConstraint>(ga_forced_pet_mode));
     }
     if (ImGui::BeginCombo("##LockedPetDS", pet_preview))
     {
-      if (ImGui::Selectable("[Auto / Adaptive]", ga_forced_pet_mode == -1))
+      if (ImGui::Selectable("[Search All]", ga_forced_pet_mode == -1))
       {
         ga_forced_pet_mode = -1;
       }
@@ -414,7 +414,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
       ImGui::EndGroup();
 
       ImGui::TextDisabled(
-          "Controls simulated annealing schedule: high early exploration prevents getting stuck in local optima.");
+          "Controls random talent exploration versus surrogate-guided talent swaps. Pets and rotations evolve independently.");
       ImGui::EndChild();
       ImGui::PopStyleColor();
     }

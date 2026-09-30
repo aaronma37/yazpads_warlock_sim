@@ -5,13 +5,14 @@
 #include <algorithm>
 #include <string>
 #include "talent_graph.hpp"
+#include "genetic_search_policy.hpp"
 #include "policy.hpp"
 #include "buffs.hpp"
 #include "stats.hpp"
 
 namespace warlock {
 
-constexpr size_t SURROGATE_FEATURE_DIM = 93;
+constexpr size_t SURROGATE_FEATURE_DIM = 93 + genetic_detail::rotation_count + 9 + 5;
 
 struct SurrogateSample {
     std::array<int, TOTAL_TALENT_NODES> talents;
@@ -23,6 +24,9 @@ struct SurrogateSample {
     CurseChoice curse;
     Race race = Race::UNDEAD;
     double dps = 0.0;
+    ShadowburnPolicy shadowburn = ShadowburnPolicy::ON_COOLDOWN;
+    bool use_decimation_soul_fire = true;
+    bool channel_drain_hope = true;
 };
 
 class SurrogateModel {
@@ -40,7 +44,10 @@ public:
         RotationChoice rotation,
         bool maintain_immolate,
         CurseChoice curse,
-        Race race = Race::UNDEAD
+        Race race = Race::UNDEAD,
+        ShadowburnPolicy shadowburn = ShadowburnPolicy::ON_COOLDOWN,
+        bool use_decimation_soul_fire = true,
+        bool channel_drain_hope = true
     ) {
         std::array<double, SURROGATE_FEATURE_DIM> x{};
         size_t idx = 0;
@@ -149,6 +156,14 @@ public:
         x[idx++] = is_troll * (static_cast<double>(destro_pts) / 51.0); // Troll Berserking
         x[idx++] = is_gnome * (static_cast<double>(aff_pts) / 51.0); // Gnome Expansive Mind
 
+        // Preserve exact policies instead of collapsing Brand and ordinary DP (or pets with sacrifices).
+        for (size_t r = 0; r < genetic_detail::rotation_count; ++r)
+            x[idx++] = static_cast<size_t>(rotation) == r ? 1.0 : 0.0;
+        const size_t pet_mode = static_cast<size_t>(pet) * 3 + (sac_imp ? 1 : sac_succubus ? 2 : 0);
+        for (size_t p = 0; p < 9; ++p) x[idx++] = pet_mode == p ? 1.0 : 0.0;
+        for (size_t b = 0; b < 3; ++b) x[idx++] = static_cast<size_t>(shadowburn) == b ? 1.0 : 0.0;
+        x[idx++] = use_decimation_soul_fire ? 1.0 : 0.0;
+        x[idx++] = channel_drain_hope ? 1.0 : 0.0;
         return x;
     }
 
@@ -169,7 +184,7 @@ public:
         std::vector<double> b(D, 0.0);
 
         for (const auto& s : samples_) {
-            auto x = extract_features(s.talents, s.pet, s.sac_imp, s.sac_succubus, s.rotation, s.maintain_immolate, s.curse, s.race);
+            auto x = extract_features(s.talents, s.pet, s.sac_imp, s.sac_succubus, s.rotation, s.maintain_immolate, s.curse, s.race, s.shadowburn, s.use_decimation_soul_fire, s.channel_drain_hope);
             for (size_t i = 0; i < D; ++i) {
                 for (size_t j = 0; j < D; ++j) {
                     A[i][j] += x[i] * x[j];
@@ -236,10 +251,13 @@ public:
         RotationChoice rotation,
         bool maintain_immolate,
         CurseChoice curse,
-        Race race = Race::UNDEAD
+        Race race = Race::UNDEAD,
+        ShadowburnPolicy shadowburn = ShadowburnPolicy::ON_COOLDOWN,
+        bool use_decimation_soul_fire = true,
+        bool channel_drain_hope = true
     ) const {
         if (!is_trained_) return 0.0;
-        auto x = extract_features(talents, pet, sac_imp, sac_succubus, rotation, maintain_immolate, curse, race);
+        auto x = extract_features(talents, pet, sac_imp, sac_succubus, rotation, maintain_immolate, curse, race, shadowburn, use_decimation_soul_fire, channel_drain_hope);
         double pred = 0.0;
         for (size_t i = 0; i < SURROGATE_FEATURE_DIM; ++i) {
             pred += weights_[i] * x[i];
