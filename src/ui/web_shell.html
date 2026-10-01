@@ -292,6 +292,171 @@
       console.error('Initialization error:', msg, url, lineNo, error);
       return false;
     };
+
+    // =========================================================================
+    // In-Browser WebGPU Simulator Bridge
+    // =========================================================================
+    window.WarlockWebGPU = {
+      device: null,
+      module: null,
+      pipelines: new Map(),
+      isSupported: false,
+      isRunning: false,
+      hasFinished: false,
+      lastError: "",
+
+      init: async function() {
+        if (typeof navigator === 'undefined' || !navigator.gpu) {
+          console.log("[WarlockWebGPU] navigator.gpu is not available on this browser/platform.");
+          return false;
+        }
+        try {
+          const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+          if (!adapter) {
+            console.warn("[WarlockWebGPU] Browser returned no GPU adapter.");
+            return false;
+          }
+          this.device = await adapter.requestDevice();
+          let code = "";
+          try {
+            const r1 = await fetch('webgpu/combat.wgsl');
+            if (r1.ok) code = await r1.text();
+          } catch(e) {}
+          if (!code) {
+            try {
+              const r2 = await fetch('assets/combat.wgsl');
+              if (r2.ok) code = await r2.text();
+            } catch(e) {}
+          }
+          if (!code) {
+            console.warn("[WarlockWebGPU] Could not fetch combat.wgsl shader.");
+            return false;
+          }
+          this.module = this.device.createShaderModule({ code: code });
+          this.isSupported = true;
+          console.log("[WarlockWebGPU] Hardware accelerated WebGPU initialized successfully:", adapter.info?.device || adapter.info?.architecture || "GPU");
+          return true;
+        } catch (err) {
+          console.warn("[WarlockWebGPU] Init error:", err);
+          this.lastError = err.message || String(err);
+          return false;
+        }
+      },
+
+      getPipeline: async function(stepUs) {
+        const key = `${stepUs}`;
+        if (!this.pipelines.has(key)) {
+          const pipeline = await this.device.createComputePipelineAsync({
+            layout: 'auto',
+            compute: {
+              module: this.module,
+              entryPoint: 'simulate',
+              constants: {
+                FIXED: stepUs !== 0 ? 1.0 : 0.0,
+                STEP_US: stepUs,
+                CHUNK: stepUs !== 0 ? 4096.0 : 256.0,
+                GROUP_SIZE: 64.0
+              }
+            }
+          });
+          this.pipelines.set(key, pipeline);
+        }
+        return this.pipelines.get(key);
+      },
+
+      run: async function(configPtr, candidateCount, replicas, seed, stepUs, stateOutputPtr) {
+        this.isRunning = true;
+        this.hasFinished = false;
+        this.lastError = "";
+        this.elapsedSeconds = 0.0;
+        const buffers = [];
+        try {
+          if (!this.device) {
+            const ok = await this.init();
+            if (!ok) throw new Error("WebGPU device not available");
+          }
+          const pipeline = await this.getPipeline(stepUs);
+          const totalStates = candidateCount * replicas;
+          const configBytes = candidateCount * 576;
+          const stateBytes = totalStates * 448;
+
+          const heap = typeof HEAPU8 !== 'undefined' ? HEAPU8 : (Module && Module.HEAPU8);
+          if (!heap) throw new Error("WASM heap memory inaccessible");
+
+          const configData = new Uint8Array(heap.buffer, heap.byteOffset + configPtr, configBytes);
+
+          const makeBuf = (size, usage) => {
+            const b = this.device.createBuffer({ size, usage });
+            buffers.push(b);
+            return b;
+          };
+
+          const startTime = performance.now();
+
+          const configBuffer = makeBuf(configBytes, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+          const paramsBuffer = makeBuf(16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+          const stateBuffer = makeBuf(stateBytes, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+          const readBuffer = makeBuf(stateBytes, GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST);
+
+          this.device.queue.writeBuffer(configBuffer, 0, configData);
+          this.device.queue.writeBuffer(paramsBuffer, 0, new Uint32Array([totalStates, replicas, seed, 0]));
+
+          const bindGroup = this.device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [
+              { binding: 0, resource: { buffer: configBuffer } },
+              { binding: 1, resource: { buffer: paramsBuffer } },
+              { binding: 2, resource: { buffer: stateBuffer } }
+            ]
+          });
+
+          const floatView = new Float32Array(heap.buffer, heap.byteOffset + configPtr, candidateCount * 144);
+          let maxDuration = 0.0;
+          for (let i = 0; i < candidateCount; i++) {
+            maxDuration = Math.max(maxDuration, floatView[i * 144]);
+          }
+          if (maxDuration <= 0.0) maxDuration = 120.0;
+
+          const rounds = stepUs !== 0
+            ? Math.max(1, Math.ceil((Math.ceil(maxDuration * 1000000.0 / stepUs) + 1.0) / 4096.0))
+            : Math.max(1, Math.ceil((Math.ceil(maxDuration) * 4.0 + 8.0 + 255.0) / 256.0));
+
+          const workgroups = Math.ceil(totalStates / 64);
+          const encoder = this.device.createCommandEncoder();
+          for (let i = 0; i < rounds; i++) {
+            const pass = encoder.beginComputePass();
+            pass.setPipeline(pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(workgroups);
+            pass.end();
+          }
+          encoder.copyBufferToBuffer(stateBuffer, 0, readBuffer, 0, stateBytes);
+          this.device.queue.submit([encoder.finish()]);
+
+          await readBuffer.mapAsync(GPUMapMode.READ);
+          const mapped = new Uint8Array(readBuffer.getMappedRange());
+          const destHeap = typeof HEAPU8 !== 'undefined' ? HEAPU8 : (Module && Module.HEAPU8);
+          destHeap.set(mapped, stateOutputPtr);
+          readBuffer.unmap();
+
+          this.elapsedSeconds = (performance.now() - startTime) / 1000.0;
+          this.hasFinished = true;
+        } catch (err) {
+          console.error("[WarlockWebGPU] Execution failed:", err);
+          this.lastError = err.message || String(err);
+          this.hasFinished = false;
+        } finally {
+          for (const b of buffers) {
+            try { b.destroy(); } catch(e) {}
+          }
+          this.isRunning = false;
+        }
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.gpu) {
+      window.WarlockWebGPU.init().catch(e => console.warn(e));
+    }
   </script>
   {{{ SCRIPT }}}
 </body>

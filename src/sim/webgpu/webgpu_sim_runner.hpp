@@ -12,7 +12,12 @@
 #include <utility>
 
 #if defined(__EMSCRIPTEN__)
-#include <emscripten.h>
+extern "C" {
+int js_webgpu_is_available();
+void js_webgpu_start_batch(const float* configs, uint32_t candidate_count, uint32_t replicas, uint32_t seed, uint32_t step_us, void* states_out);
+int js_webgpu_check_status();
+double js_webgpu_get_elapsed_seconds();
+}
 #endif
 
 namespace warlock {

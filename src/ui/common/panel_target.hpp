@@ -19,6 +19,22 @@
 namespace warlock
 {
 
+#if defined(__EMSCRIPTEN__)
+struct AsyncGpuState {
+  bool active = false;
+  std::vector<Config> configs;
+  std::vector<State> states;
+  uint32_t iterations = 0;
+  uint32_t step_us = 0;
+  uint32_t seed = 0;
+  std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+};
+inline AsyncGpuState& get_async_gpu_state() {
+  static AsyncGpuState state;
+  return state;
+}
+#endif
+
 template <typename SimType, typename BatchResultType, typename RunnerType>
 inline void render_panel_sim_config(SimType& sim,
                                     int& iterations,
@@ -109,7 +125,11 @@ inline void render_panel_sim_config(SimType& sim,
         if (last_result.total_iterations > 0)
           ImGui::TextDisabled(last_result.gpu_used ? "Backend: WebGPU GPU" : "Backend: CPU fallback");
         else
+#if defined(__EMSCRIPTEN__)
+          ImGui::TextDisabled(js_webgpu_is_available() ? "Backend: Browser WebGPU Ready" : "Backend: CPU fallback");
+#else
           ImGui::TextDisabled("Kernel: Event WGSL");
+#endif
       }
     }
 
@@ -122,6 +142,48 @@ inline void render_panel_sim_config(SimType& sim,
     sim.randomize_duration = true;
   }
 
+#if defined(__EMSCRIPTEN__)
+  if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+  {
+    auto& async_gpu = get_async_gpu_state();
+    if (async_gpu.active)
+    {
+      int status = js_webgpu_check_status();
+      if (status == 2) // Completed
+      {
+        double elapsed = js_webgpu_get_elapsed_seconds();
+        if (elapsed <= 0.0) {
+          elapsed = std::chrono::duration<double>(
+              std::chrono::high_resolution_clock::now() - async_gpu.start_time).count();
+        }
+        last_result = WebGPUSimRunner::process_states_to_result(async_gpu.configs.front(), async_gpu.states, elapsed);
+        last_result.gpu_used = true;
+        async_gpu.active = false;
+        is_running = false;
+        progress = 1.0f;
+      }
+      else if (status == -1) // Errored
+      {
+        // Fallback to CPU reference
+        const auto cpu_start = std::chrono::high_resolution_clock::now();
+        simulate_batch(async_gpu.configs.data(), static_cast<uint32_t>(async_gpu.configs.size()),
+                       async_gpu.iterations, async_gpu.seed, async_gpu.step_us, async_gpu.states.data());
+        double elapsed = std::chrono::duration<double>(
+            std::chrono::high_resolution_clock::now() - cpu_start).count();
+        last_result = WebGPUSimRunner::process_states_to_result(async_gpu.configs.front(), async_gpu.states, elapsed);
+        last_result.gpu_used = false;
+        async_gpu.active = false;
+        is_running = false;
+        progress = 1.0f;
+      }
+      else
+      {
+        progress = 0.5f;
+      }
+    }
+  }
+#endif
+
   ImGui::Spacing();
   const char* active_button_text = (selected_engine == 1 && std::is_same_v<SimType, WarlockSimulator>)
       ? "RUN WEBGPU SIMULATION"
@@ -129,25 +191,77 @@ inline void render_panel_sim_config(SimType& sim,
 
   if (WowButton(active_button_text, ImVec2(left_w, 32.0f), !is_running))
   {
-    is_running = true;
-    progress = 0.0f;
-    if (selected_engine == 1)
+#if defined(__EMSCRIPTEN__)
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>)
     {
-      if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+      if (selected_engine == 1 && js_webgpu_is_available())
       {
+        auto& async_gpu = get_async_gpu_state();
         uint32_t step_us = 0;
         if (selected_gpu_scheduler == 1) step_us = 1000;
         else if (selected_gpu_scheduler == 2) step_us = 10000;
         else if (selected_gpu_scheduler == 3) step_us = 50000;
-        last_result = WebGPUSimRunner::run_batch(sim, iterations, step_us);
+
+        async_gpu.configs = {WebGPUSimRunner::build_webgpu_config(sim)};
+        async_gpu.iterations = static_cast<uint32_t>(iterations);
+        async_gpu.step_us = step_us;
+        async_gpu.seed = 1337;
+        async_gpu.states.resize(async_gpu.iterations);
+        async_gpu.start_time = std::chrono::high_resolution_clock::now();
+
+        js_webgpu_start_batch(reinterpret_cast<const float*>(async_gpu.configs.data()),
+                              static_cast<uint32_t>(async_gpu.configs.size()),
+                              async_gpu.iterations,
+                              async_gpu.seed,
+                              async_gpu.step_us,
+                              reinterpret_cast<void*>(async_gpu.states.data()));
+        async_gpu.active = true;
+        is_running = true;
+        progress = 0.2f;
+      }
+      else
+      {
+        is_running = true;
+        progress = 0.0f;
+        if (selected_engine == 1)
+        {
+          uint32_t step_us = 0;
+          if (selected_gpu_scheduler == 1) step_us = 1000;
+          else if (selected_gpu_scheduler == 2) step_us = 10000;
+          else if (selected_gpu_scheduler == 3) step_us = 50000;
+          last_result = WebGPUSimRunner::run_batch(sim, iterations, step_us);
+        }
+        else
+        {
+          last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+        }
+        is_running = false;
+        progress = 1.0f;
       }
     }
     else
+#endif
     {
-      last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+      is_running = true;
+      progress = 0.0f;
+      if (selected_engine == 1)
+      {
+        if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+        {
+          uint32_t step_us = 0;
+          if (selected_gpu_scheduler == 1) step_us = 1000;
+          else if (selected_gpu_scheduler == 2) step_us = 10000;
+          else if (selected_gpu_scheduler == 3) step_us = 50000;
+          last_result = WebGPUSimRunner::run_batch(sim, iterations, step_us);
+        }
+      }
+      else
+      {
+        last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+      }
+      is_running = false;
+      progress = 1.0f;
     }
-    is_running = false;
-    progress = 1.0f;
   }
 
   if (is_running)
