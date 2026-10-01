@@ -156,6 +156,12 @@ def build_web_assets():
         shutil.copytree(src_fonts, out_fonts, dirs_exist_ok=True)
         copied += sum(len(files) for _, _, files in os.walk(out_fonts))
 
+    # Copy WebGPU compute shader
+    src_wgsl = os.path.join(SRC_DIR, "sim", "webgpu", "combat.wgsl")
+    if os.path.exists(src_wgsl):
+        shutil.copy2(src_wgsl, os.path.join(OUT_DIR, "combat.wgsl"))
+        copied += 1
+
     # Calculate total size
     total_bytes = 0
     for root, _, files in os.walk(OUT_DIR):

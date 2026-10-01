@@ -1,0 +1,492 @@
+{
+  "date": "2026-09-30T17:03:52.782Z",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+  "scope": "Experimental single-target combat slice, not full simulator",
+  "passed": true,
+  "validation": [
+    {
+      "mode": "event",
+      "stepUs": 0,
+      "fights": 1032,
+      "status": "GPU matches WASM state and analytic fixture",
+      "compileMs": 5.700000001117587
+    },
+    {
+      "mode": "fixed",
+      "stepUs": 1000,
+      "fights": 1032,
+      "status": "GPU matches WASM state and analytic fixture",
+      "compileMs": 4.5
+    },
+    {
+      "mode": "fixed",
+      "stepUs": 10000,
+      "fights": 1032,
+      "status": "GPU matches WASM state and analytic fixture",
+      "compileMs": 4.199999999254942
+    },
+    {
+      "mode": "fixed",
+      "stepUs": 50000,
+      "fights": 1032,
+      "status": "GPU matches WASM state and analytic fixture",
+      "compileMs": 3.700000001117587
+    },
+    {
+      "status": "Candidate packing, tail workgroup and replica independence passed"
+    }
+  ],
+  "benchmarks": [
+    {
+      "duration": 180.123,
+      "castTime": 2.5,
+      "mode": "event",
+      "count": 10000,
+      "medianMs": 8.699999999254942,
+      "simsPerSecond": 1149425.2874547574,
+      "wasmEventMs": 45,
+      "speedupVsWasmEvent": 5.172413793546408,
+      "dpsDeltaPercent": 0,
+      "samplesMs": [
+        8.699999999254942,
+        10.5,
+        8,
+        11.300000000745058,
+        8.200000001117587
+      ],
+      "summary": {
+        "meanDps": 284.2446438276943,
+        "standardError": 0.13344639096073227,
+        "boltDamage": 40528.63871035156,
+        "dotDamage": 10670.35926982422,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 157.2452,
+        "events": 229.1383
+      }
+    },
+    {
+      "duration": 180.123,
+      "castTime": 2.5,
+      "mode": "fixed",
+      "stepUs": 1000,
+      "count": 10000,
+      "medianMs": 91.09999999962747,
+      "simsPerSecond": 109769.48408387369,
+      "wasmEventMs": 45,
+      "speedupVsWasmEvent": 0.4939626783774316,
+      "dpsDeltaPercent": 0,
+      "samplesMs": [
+        91.09999999962747,
+        90.09999999962747,
+        93.59999999962747,
+        89.20000000111759,
+        94.39999999850988
+      ],
+      "summary": {
+        "meanDps": 284.2446438276943,
+        "standardError": 0.13344639096073227,
+        "boltDamage": 40528.63871035156,
+        "dotDamage": 10670.35926982422,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 180124,
+        "events": 229.1383
+      }
+    },
+    {
+      "duration": 180.123,
+      "castTime": 2.5,
+      "mode": "fixed",
+      "stepUs": 10000,
+      "count": 10000,
+      "medianMs": 18.09999999962747,
+      "simsPerSecond": 552486.187856675,
+      "wasmEventMs": 45,
+      "speedupVsWasmEvent": 2.4861878453550372,
+      "dpsDeltaPercent": 0,
+      "samplesMs": [
+        18.09999999962747,
+        18.100000001490116,
+        17.40000000037253,
+        20,
+        16.59999999962747
+      ],
+      "summary": {
+        "meanDps": 284.2446438276943,
+        "standardError": 0.13344639096073227,
+        "boltDamage": 40528.63871035156,
+        "dotDamage": 10670.35926982422,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 18013,
+        "events": 229.1383
+      }
+    },
+    {
+      "duration": 180.123,
+      "castTime": 2.5,
+      "mode": "fixed",
+      "stepUs": 50000,
+      "count": 10000,
+      "medianMs": 11.899999998509884,
+      "simsPerSecond": 840336.1345590083,
+      "wasmEventMs": 45,
+      "speedupVsWasmEvent": 3.781512605515537,
+      "dpsDeltaPercent": 0,
+      "samplesMs": [
+        14.800000000745058,
+        9.399999998509884,
+        10.900000000372529,
+        11.899999998509884,
+        14.299999998882413
+      ],
+      "summary": {
+        "meanDps": 284.2446438276943,
+        "standardError": 0.13344639096073227,
+        "boltDamage": 40528.63871035156,
+        "dotDamage": 10670.35926982422,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 3603,
+        "events": 229.1383
+      }
+    },
+    {
+      "duration": 300.123,
+      "castTime": 2.173913,
+      "mode": "event",
+      "count": 10000,
+      "medianMs": 8.600000001490116,
+      "simsPerSecond": 1162790.6974729428,
+      "wasmEventMs": 64.40000000037253,
+      "speedupVsWasmEvent": 7.488372091769068,
+      "dpsDeltaPercent": 0,
+      "samplesMs": [
+        8.600000001490116,
+        10.200000001117587,
+        8.599999999627471,
+        12.600000001490116,
+        8.099999999627471
+      ],
+      "summary": {
+        "meanDps": 302.03543029389266,
+        "standardError": 0.10619583387636479,
+        "boltDamage": 73483.62223789062,
+        "dotDamage": 17164.157208203123,
+        "bolts": 93.6091,
+        "dots": 16.6337,
+        "ticks": 90.3438,
+        "taps": 49.2405,
+        "procs": 3.6193,
+        "consumed": 3.6032,
+        "misses": 5.5231,
+        "crits": 35.8803,
+        "loops": 303.7676,
+        "events": 400.4082
+      }
+    },
+    {
+      "duration": 300.123,
+      "castTime": 2.173913,
+      "mode": "fixed",
+      "stepUs": 1000,
+      "count": 10000,
+      "medianMs": 147.69999999925494,
+      "simsPerSecond": 67704.80704164146,
+      "wasmEventMs": 64.40000000037253,
+      "speedupVsWasmEvent": 0.43601895735069324,
+      "dpsDeltaPercent": -0.0004374890631098083,
+      "samplesMs": [
+        149.40000000037253,
+        145.09999999962747,
+        147,
+        147.69999999925494,
+        149.69999999925494
+      ],
+      "summary": {
+        "meanDps": 302.0341089219184,
+        "standardError": 0.10621182242380117,
+        "boltDamage": 73483.25156914063,
+        "dotDamage": 17164.131302832033,
+        "bolts": 93.6091,
+        "dots": 16.6336,
+        "ticks": 90.3438,
+        "taps": 49.2405,
+        "procs": 3.619,
+        "consumed": 3.6029,
+        "misses": 5.5233,
+        "crits": 35.8797,
+        "loops": 300123,
+        "events": 400.4084
+      }
+    },
+    {
+      "duration": 300.123,
+      "castTime": 2.173913,
+      "mode": "fixed",
+      "stepUs": 10000,
+      "count": 10000,
+      "medianMs": 22.59999999962747,
+      "simsPerSecond": 442477.87611348834,
+      "wasmEventMs": 64.40000000037253,
+      "speedupVsWasmEvent": 2.8495575221873484,
+      "dpsDeltaPercent": -0.19783527622946329,
+      "samplesMs": [
+        22.299999998882413,
+        24.5,
+        22.199999999254942,
+        24.300000000745058,
+        22.59999999962747
+      ],
+      "summary": {
+        "meanDps": 301.4378976660599,
+        "standardError": 0.10610454903811886,
+        "boltDamage": 73326.524025,
+        "dotDamage": 17141.922136230467,
+        "bolts": 93.4109,
+        "dots": 16.5599,
+        "ticks": 90.2281,
+        "taps": 49.1166,
+        "procs": 3.615,
+        "consumed": 3.5997,
+        "misses": 5.5107,
+        "crits": 35.8143,
+        "loops": 30013,
+        "events": 399.7323
+      }
+    },
+    {
+      "duration": 300.123,
+      "castTime": 2.173913,
+      "mode": "fixed",
+      "stepUs": 50000,
+      "count": 10000,
+      "medianMs": 14.900000000372529,
+      "simsPerSecond": 671140.9395805356,
+      "wasmEventMs": 64.40000000037253,
+      "speedupVsWasmEvent": 4.322147650923651,
+      "dpsDeltaPercent": -0.549661417175451,
+      "samplesMs": [
+        15.699999999254942,
+        13.900000000372529,
+        14.900000000372529,
+        12.099999999627471,
+        24
+      ],
+      "summary": {
+        "meanDps": 300.37525806736727,
+        "standardError": 0.10590736186776613,
+        "boltDamage": 73092.7855171875,
+        "dotDamage": 17056.738059765627,
+        "bolts": 93.1065,
+        "dots": 16.3128,
+        "ticks": 89.7811,
+        "taps": 48.9736,
+        "procs": 3.5972,
+        "consumed": 3.582,
+        "misses": 5.4817,
+        "crits": 35.6723,
+        "loops": 6003,
+        "events": 398.1799
+      }
+    }
+  ],
+  "adapter": {
+    "vendor": "amd",
+    "architecture": "rdna-2",
+    "device": "",
+    "description": "",
+    "isFallbackAdapter": false
+  },
+  "oracle": [
+    {
+      "name": "bolt_tap",
+      "cpu": {
+        "meanDps": 252.939391627,
+        "standardError": 0.13690804523,
+        "bolts": 58,
+        "dots": 0,
+        "ticks": 0,
+        "taps": 24,
+        "procs": 0
+      },
+      "gpu": {
+        "meanDps": 252.69718692660638,
+        "standardError": 0.13504773898096978,
+        "boltDamage": 45516.57540078125,
+        "dotDamage": 0,
+        "bolts": 58,
+        "dots": 0,
+        "ticks": 0,
+        "taps": 24,
+        "procs": 0,
+        "consumed": 0,
+        "misses": 2.8916,
+        "crits": 10.9935,
+        "loops": 105,
+        "events": 176
+      },
+      "dpsTolerance": 1.6597164527260047
+    },
+    {
+      "name": "corruption_nightfall",
+      "cpu": {
+        "meanDps": 283.873530626,
+        "standardError": 0.131992373387,
+        "bolts": 51.6057,
+        "dots": 10.506,
+        "ticks": 56.0868,
+        "taps": 24.9434,
+        "procs": 2.2394
+      },
+      "gpu": {
+        "meanDps": 284.12129380264156,
+        "standardError": 0.13350907339813364,
+        "boltDamage": 40508.31159355469,
+        "dotDamage": 10668.468210058594,
+        "bolts": 51.603,
+        "dots": 10.512,
+        "ticks": 56.1638,
+        "taps": 24.9452,
+        "procs": 2.2703,
+        "consumed": 2.2212,
+        "misses": 3.0793,
+        "crits": 21.0057,
+        "loops": 157.2509,
+        "events": 229.1476
+      },
+      "dpsTolerance": 1.6941926814355104
+    },
+    {
+      "name": "haste_nightfall",
+      "cpu": {
+        "meanDps": 302.075418549,
+        "standardError": 0.107022572553,
+        "bolts": 93.6176,
+        "dots": 16.6208,
+        "ticks": 90.3415,
+        "taps": 49.2395,
+        "procs": 3.6284
+      },
+      "gpu": {
+        "meanDps": 302.13060456833756,
+        "standardError": 0.10622506417025242,
+        "boltDamage": 73519.44826875,
+        "dotDamage": 17156.89516611328,
+        "bolts": 93.6098,
+        "dots": 16.6224,
+        "ticks": 90.3212,
+        "taps": 49.2275,
+        "procs": 3.6017,
+        "consumed": 3.5884,
+        "misses": 5.5158,
+        "crits": 35.8826,
+        "loops": 303.7388,
+        "events": 400.3895
+      },
+      "dpsTolerance": 1.5088902639928987
+    }
+  ],
+  "scaling": [
+    {
+      "count": 100000,
+      "workgroupSize": 32,
+      "elapsedMs": 34.19999999925494,
+      "compileMs": 4.200000001117587,
+      "simsPerSecond": 2923976.608250834
+    },
+    {
+      "count": 100000,
+      "workgroupSize": 64,
+      "elapsedMs": 43,
+      "compileMs": 0,
+      "simsPerSecond": 2325581.3953488376
+    },
+    {
+      "count": 100000,
+      "workgroupSize": 128,
+      "elapsedMs": 36.20000000111759,
+      "compileMs": 4.399999998509884,
+      "simsPerSecond": 2762430.939141236
+    }
+  ],
+  "candidateBatch": {
+    "count": 30000,
+    "elapsedMs": 22.09999999962747,
+    "summaries": [
+      {
+        "meanDps": 284.2446438276943,
+        "standardError": 0.13344639096073227,
+        "boltDamage": 40528.63871035156,
+        "dotDamage": 10670.35926982422,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 157.2452,
+        "events": 229.1383
+      },
+      {
+        "meanDps": 319.79976894044376,
+        "standardError": 0.15004207014285156,
+        "boltDamage": 45573.6531953125,
+        "dotDamage": 12029.640585546875,
+        "bolts": 51.578,
+        "dots": 10.5184,
+        "ticks": 56.1673,
+        "taps": 24.9392,
+        "procs": 2.2477,
+        "consumed": 2.2002,
+        "misses": 3.1179,
+        "crits": 21.1066,
+        "loops": 157.2452,
+        "events": 229.1383
+      },
+      {
+        "meanDps": 281.2128837400562,
+        "standardError": 0.13240709875882384,
+        "boltDamage": 40190.52309726563,
+        "dotDamage": 10462.385160644531,
+        "bolts": 51.1792,
+        "dots": 10.4272,
+        "ticks": 55.0816,
+        "taps": 25.4939,
+        "procs": 2.2368,
+        "consumed": 2.1979,
+        "misses": 3.0955,
+        "crits": 20.7567,
+        "loops": 155.4539,
+        "events": 227.8067
+      }
+    ]
+  }
+}

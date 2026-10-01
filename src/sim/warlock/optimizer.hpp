@@ -50,7 +50,8 @@ public:
     // Helper to calculate local stat sensitivities for a candidate simulator configuration
     static StatWeights calculate_candidate_stat_weights(
         const WarlockSimulator& candidate_sim,
-        int iterations_per_sample = 1500
+        int iterations_per_sample = 1500,
+        bool use_webgpu = false
     );
 
     // Compares standard talent specs
@@ -59,7 +60,8 @@ public:
         int iterations_per_candidate = 2000,
         std::function<void(float progress, const std::string& current_name)> callback = nullptr,
         bool compare_all_races = false,
-        bool calculate_stat_weights = false
+        bool calculate_stat_weights = false,
+        bool use_webgpu = false
     );
 
     // Dynamic combinatorial brute-force exploration across talent configurations

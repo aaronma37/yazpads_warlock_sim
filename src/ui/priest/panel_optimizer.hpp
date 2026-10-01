@@ -480,6 +480,7 @@ inline void render_priest_panel_optimizer(
         };
 
 #if defined(__EMSCRIPTEN__)
+        bool is_busy = is_optimizing;
         if (warlock::WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing)) {
             is_optimizing = true;
             opt_progress = 0.0f;

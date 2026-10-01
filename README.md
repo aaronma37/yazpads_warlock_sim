@@ -1,5 +1,13 @@
 # Installation
 
+## Experimental WebGPU simulator
+
+A browser experiment compares event-driven GPU simulation with 1/10/50 ms fixed
+steps in batches of 10,000 fights. It implements a restricted Warlock combat slice
+and retains the existing CPU simulator as an independent reference. See the
+[measured results, supported mechanics, and run instructions](docs/research/webgpu.md).
+Build the standalone demo with `./scripts/build_webgpu.sh`.
+
 ## Training recurrent policies on CPU
 
 The **PPO + GRU** approach in the Warlock **Train Policies** tab uses the vendored [rl-tools](https://github.com/rl-tools/rl-tools)

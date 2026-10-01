@@ -1,0 +1,24 @@
+{
+  "capabilities": {
+    "acceptInsecureCerts": false,
+    "browserName": "firefox",
+    "browserVersion": "136.0.1",
+    "platformName": "linux",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0",
+    "moz:buildID": "20250310180126",
+    "moz:headless": true,
+    "moz:platformVersion": "6.5.0-valve23-1-neptune-65-g385b5e207ae2",
+    "moz:processID": 2,
+    "moz:profile": "/tmp/warlock-webgpu-firefox",
+    "moz:shutdownTimeout": 60000,
+    "proxy": {}
+  },
+  "result": {
+    "realm": "5e8631e2-06f7-45c3-92b0-a022981f579f",
+    "type": "success",
+    "result": {
+      "type": "string",
+      "value": "{\"passed\":false,\"error\":\"WebGPU unavailable. Use a WebGPU browser on HTTPS or localhost with graphics acceleration enabled.\",\"status\":\"Benchmark failed\",\"output\":\"Browser: Mozilla/5.0 (X11; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0\\nURL: http://localhost:8087/docs/webgpu/index.html\\nSecure context: true\\nWebGPU API: false\\nStarting background worker\\nLoading benchmark modules\\nChecking WebGPU (secure context: true, API: false)\\n\\nWebGPU unavailable. Use a WebGPU browser on HTTPS or localhost with graphics acceleration enabled.\\n\",\"runEnabled\":true}"
+    }
+  }
+}

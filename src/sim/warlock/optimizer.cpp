@@ -2,13 +2,15 @@
 #include "spec_presets.hpp"
 #include "genetic_optimizer.hpp"
 #include "surrogate_evaluator.hpp"
+#include "src/sim/webgpu/webgpu_sim_runner.hpp"
 #include <algorithm>
 
 namespace warlock {
 
 StatWeights Optimizer::calculate_candidate_stat_weights(
     const WarlockSimulator& candidate_sim,
-    int iterations_per_sample
+    int iterations_per_sample,
+    bool use_webgpu
 ) {
     StatWeights weights;
     weights.valid = true;
@@ -20,18 +22,23 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     // This isolates pure deterministic gradient without stochastic variance / Monte-Carlo noise
     const uint64_t CRN_SEED = 0x9e3779b97f4a7c15ULL;
     int samples = std::max(1500, iterations_per_sample);
+    auto run_batch = [&](const WarlockSimulator& sim, int count, uint64_t seed) {
+        return use_webgpu
+            ? WebGPUSimRunner::run_batch(sim, count, 0, static_cast<uint32_t>(seed))
+            : ParallelSimRunner::run_batch(sim, count, 0, nullptr, seed);
+    };
 
     // 0. Base run
     WarlockSimulator sim_base = candidate_sim;
     sim_base.use_raw_stats = true;
     sim_base.raw_stats = base_stats;
-    double base_dps = ParallelSimRunner::run_batch(sim_base, samples, 0, nullptr, CRN_SEED).mean_dps;
+    double base_dps = run_batch(sim_base, samples, CRN_SEED).mean_dps;
 
     // 1. +40 Spell Power sample
     {
         WarlockSimulator sim_sp = sim_base;
         sim_sp.raw_stats.spell_power += 40.0;
-        double sp_dps = ParallelSimRunner::run_batch(sim_sp, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double sp_dps = run_batch(sim_sp, samples, CRN_SEED).mean_dps;
         weights.dps_per_sp = std::max(0.0, (sp_dps - base_dps) / 40.0);
     }
 
@@ -39,7 +46,7 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     {
         WarlockSimulator sim_hit = sim_base;
         sim_hit.raw_stats.spell_hit_percent += 3.0;
-        double hit_dps = ParallelSimRunner::run_batch(sim_hit, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double hit_dps = run_batch(sim_hit, samples, CRN_SEED).mean_dps;
         weights.dps_per_hit = std::max(0.0, (hit_dps - base_dps) / 3.0);
     }
 
@@ -47,7 +54,7 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     {
         WarlockSimulator sim_crit = sim_base;
         sim_crit.raw_stats.spell_crit_percent += 3.0;
-        double crit_dps = ParallelSimRunner::run_batch(sim_crit, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double crit_dps = run_batch(sim_crit, samples, CRN_SEED).mean_dps;
         weights.dps_per_crit = std::max(0.0, (crit_dps - base_dps) / 3.0);
     }
 
@@ -55,7 +62,7 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     {
         WarlockSimulator sim_haste = sim_base;
         sim_haste.raw_stats.spell_haste_percent += 3.0;
-        double haste_dps = ParallelSimRunner::run_batch(sim_haste, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double haste_dps = run_batch(sim_haste, samples, CRN_SEED).mean_dps;
         weights.dps_per_haste = std::max(0.0, (haste_dps - base_dps) / 3.0);
     }
 
@@ -63,7 +70,7 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     {
         WarlockSimulator sim_int = sim_base;
         sim_int.raw_stats.intellect += 30.0;
-        double int_dps = ParallelSimRunner::run_batch(sim_int, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double int_dps = run_batch(sim_int, samples, CRN_SEED).mean_dps;
         weights.dps_per_int = std::max(0.0, (int_dps - base_dps) / 30.0);
     }
 
@@ -71,7 +78,7 @@ StatWeights Optimizer::calculate_candidate_stat_weights(
     {
         WarlockSimulator sim_spr = sim_base;
         sim_spr.raw_stats.spirit += 30.0;
-        double spr_dps = ParallelSimRunner::run_batch(sim_spr, samples, 0, nullptr, CRN_SEED).mean_dps;
+        double spr_dps = run_batch(sim_spr, samples, CRN_SEED).mean_dps;
         weights.dps_per_spirit = std::max(0.0, (spr_dps - base_dps) / 30.0);
     }
 
@@ -83,7 +90,8 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
     int iterations_per_candidate,
     std::function<void(float progress, const std::string& current_name)> callback,
     bool compare_all_races,
-    bool calculate_stat_weights
+    bool calculate_stat_weights,
+    bool use_webgpu
 ) {
     struct Candidate {
         std::string name;
@@ -117,7 +125,84 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
     int total = static_cast<int>(candidates.size() * races_to_test.size());
     int current_idx = 0;
 
-    for (const auto& cand : candidates) {
+    if (use_webgpu) {
+        constexpr size_t GPU_CONFIGS_PER_BATCH = 50;
+        std::vector<WarlockSimulator> candidate_sims;
+        std::vector<std::string> candidate_names;
+        std::vector<int> candidate_spec_indices;
+        candidate_sims.reserve(total);
+        candidate_names.reserve(total);
+        candidate_spec_indices.reserve(total);
+        for (const auto& cand : candidates) {
+            for (Race r : races_to_test) {
+                WarlockSimulator sim = base_sim;
+                sim.race = r;
+                sim.base_attrs = get_base_attributes_for_race(r);
+                sim.talents = cand.talents;
+                sim.buffs.sacrifice_succubus = cand.sac_succubus;
+                sim.buffs.sacrifice_imp = cand.sac_imp;
+                sim.policy.pet = cand.pet;
+                sim.policy.rotation = cand.rotation;
+                sim.policy.maintain_immolate = cand.maintain_immolate;
+                sim.policy.use_custom_apl = false;
+                sim.policy.custom_rules.clear();
+
+                std::string name = cand.name;
+                if (compare_all_races) name += " (" + std::string(race_to_string(r)) + ")";
+                candidate_sims.push_back(std::move(sim));
+                candidate_names.push_back(std::move(name));
+                candidate_spec_indices.push_back(cand.spec_idx);
+            }
+        }
+
+        const size_t effective_iterations = iterations_per_candidate <= 0
+            ? 10000u : static_cast<size_t>(std::min(iterations_per_candidate, 1000000));
+        const size_t states_per_candidate = effective_iterations * sizeof(State);
+        const size_t buffer_candidate_limit = std::max<size_t>(1, (128ull * 1024ull * 1024ull) / states_per_candidate);
+        const size_t configs_per_batch = std::min(GPU_CONFIGS_PER_BATCH, buffer_candidate_limit);
+        for (size_t batch_start = 0; batch_start < candidate_sims.size(); batch_start += configs_per_batch) {
+            const size_t batch_end = std::min(candidate_sims.size(), batch_start + configs_per_batch);
+            if (callback) callback(static_cast<float>(batch_start) / total,
+                                   "WebGPU batch " + std::to_string(batch_start + 1) + "-" + std::to_string(batch_end) +
+                                   " of " + std::to_string(total));
+            std::vector<WarlockSimulator> batch_sims(candidate_sims.begin() + batch_start,
+                                                      candidate_sims.begin() + batch_end);
+            auto batches = WebGPUSimRunner::run_batch_candidates(batch_sims, iterations_per_candidate, 0);
+            for (size_t offset = 0; offset < batch_sims.size(); ++offset) {
+                const auto& sim = batch_sims[offset];
+                const size_t idx = batch_start + offset;
+                const auto& batch = batches[offset];
+                CandidateResult res;
+                res.name = candidate_names[idx];
+                res.race = sim.race;
+                res.category = "Talents";
+                res.mean_dps = batch.mean_dps;
+                res.inferred_dps = SurrogateEvaluator::get().predict_from_sim(sim, candidate_spec_indices[idx]);
+                res.std_dev_dps = batch.std_dev_dps;
+                res.min_dps = batch.min_dps;
+                res.max_dps = batch.max_dps;
+                res.isb_uptime = batch.mean_isb_uptime;
+                res.talents = sim.talents;
+                res.gear = sim.gear;
+                res.use_raw_stats = sim.use_raw_stats;
+                res.raw_stats = sim.raw_stats;
+                res.buffs = sim.buffs;
+                res.policy = sim.policy;
+                res.mechanics = sim.mechanics;
+                res.batch = batch;
+                if (calculate_stat_weights) {
+                    if (callback) callback(static_cast<float>(idx) / total, candidate_names[idx] + " (Stat Weights)");
+                    res.stat_weights = calculate_candidate_stat_weights(
+                        sim, std::max(1000, iterations_per_candidate / 2), true);
+                }
+                results.push_back(std::move(res));
+                ++current_idx;
+            }
+            if (callback) callback(static_cast<float>(current_idx) / total, "Completed " + std::to_string(current_idx) + " of " + std::to_string(total));
+        }
+    }
+
+    if (!use_webgpu) for (const auto& cand : candidates) {
         for (Race r : races_to_test) {
             std::string run_name = cand.name;
             if (compare_all_races) {
@@ -138,7 +223,9 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
             sim.policy.use_custom_apl = false;
             sim.policy.custom_rules.clear();
 
-            BatchSimResult batch = ParallelSimRunner::run_batch(sim, iterations_per_candidate);
+            BatchSimResult batch = use_webgpu
+                ? WebGPUSimRunner::run_batch(sim, iterations_per_candidate, 0)
+                : ParallelSimRunner::run_batch(sim, iterations_per_candidate);
 
             CandidateResult res;
             res.name = cand.name;
@@ -164,7 +251,7 @@ std::vector<CandidateResult> Optimizer::optimize_talents(
 
             if (calculate_stat_weights) {
                 if (callback) callback(static_cast<float>(current_idx - 1) / total, run_name + " (Stat Weights)");
-                res.stat_weights = calculate_candidate_stat_weights(sim, std::max(1000, iterations_per_candidate / 2));
+                res.stat_weights = calculate_candidate_stat_weights(sim, std::max(1000, iterations_per_candidate / 2), use_webgpu);
             }
 
             results.push_back(res);

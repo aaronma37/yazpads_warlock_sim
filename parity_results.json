@@ -1,0 +1,733 @@
+[
+{
+  "scenario": "pure_sb_baseline",
+  "description": "Pure Shadow Bolt filler with 500 SP, 12% Hit, 15% Crit (180s)",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 6.64961,
+  "summary": {
+    "cpu_mean_dps": 284.796,
+    "webgpu_mean_dps": 265.859,
+    "dps_delta": -18.9379,
+    "dps_pct_diff": -6.64961,
+    "cpu_median_dps": 284.839,
+    "webgpu_median_dps": 265.919,
+    "cpu_std_dev": 12.35,
+    "webgpu_std_dev": 11.4858,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 28,
+    "webgpu_life_taps": 28
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 100, "webgpu_pct": 100, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 284.796,
+      "webgpu_dps": 265.859,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 981.139,
+      "webgpu_avg_hit": 916.145,
+      "cpu_crit_pct": 22.1247,
+      "webgpu_crit_pct": 221962,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=981.1 vs WebGPU=916.1 (-6.6%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=22.1% vs WebGPU=221961.6%"
+  ]
+}
+,
+{
+  "scenario": "isb_classic_charges",
+  "description": "5/5 Improved Shadow Bolt with Classic 4-Charge consumption",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 4.82209,
+  "summary": {
+    "cpu_mean_dps": 372.869,
+    "webgpu_mean_dps": 354.889,
+    "dps_delta": -17.9801,
+    "dps_pct_diff": -4.82209,
+    "cpu_median_dps": 372.822,
+    "webgpu_median_dps": 355.062,
+    "cpu_std_dev": 22.0233,
+    "webgpu_std_dev": 20.8042,
+    "cpu_isb_uptime": 68.3412,
+    "webgpu_isb_uptime": 70.6848,
+    "cpu_life_taps": 28,
+    "webgpu_life_taps": 28
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 100, "webgpu_pct": 100, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 372.869,
+      "webgpu_dps": 354.889,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 1308.27,
+      "webgpu_avg_hit": 1222.94,
+      "cpu_crit_pct": 32.087,
+      "webgpu_crit_pct": 322267,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1308.3 vs WebGPU=1222.9 (-6.5%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=32.1% vs WebGPU=322266.6%"
+  ]
+}
+,
+{
+  "scenario": "isb_forever_window",
+  "description": "5/5 Improved Shadow Bolt with WoW Forever 12s chargeless debuff window",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 4.82209,
+  "summary": {
+    "cpu_mean_dps": 372.869,
+    "webgpu_mean_dps": 354.889,
+    "dps_delta": -17.9801,
+    "dps_pct_diff": -4.82209,
+    "cpu_median_dps": 372.822,
+    "webgpu_median_dps": 355.062,
+    "cpu_std_dev": 22.0233,
+    "webgpu_std_dev": 20.8042,
+    "cpu_isb_uptime": 68.583,
+    "webgpu_isb_uptime": 71.047,
+    "cpu_life_taps": 28,
+    "webgpu_life_taps": 28
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 100, "webgpu_pct": 100, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 372.869,
+      "webgpu_dps": 354.889,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 1308.27,
+      "webgpu_avg_hit": 1222.94,
+      "cpu_crit_pct": 32.087,
+      "webgpu_crit_pct": 322267,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1308.3 vs WebGPU=1222.9 (-6.5%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=32.1% vs WebGPU=322266.6%"
+  ]
+}
+,
+{
+  "scenario": "corruption_nightfall",
+  "description": "Maintained Corruption with 2/2 Nightfall Shadow Trance instant procs",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 100,
+  "summary": {
+    "cpu_mean_dps": 420.833,
+    "webgpu_mean_dps": 351.988,
+    "dps_delta": -68.8444,
+    "dps_pct_diff": -16.3591,
+    "cpu_median_dps": 420.959,
+    "webgpu_median_dps": 352.243,
+    "cpu_std_dev": 16.8861,
+    "webgpu_std_dev": 13.7987,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 29.7571,
+    "webgpu_life_taps": 31.3961
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 60.9642, "webgpu_pct": 62.9649, "passed": false},
+    {"spell": "Corruption", "cpu_pct": 18.9904, "webgpu_pct": 20.9546, "passed": false},
+    {"spell": "Curse of Agony", "cpu_pct": 5.36551, "webgpu_pct": 0, "passed": false},
+    {"spell": "Curse of Doom", "cpu_pct": 14.6798, "webgpu_pct": 0, "passed": false},
+    {"spell": "Immolate", "cpu_pct": 0, "webgpu_pct": 16.0806, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 256.557,
+      "webgpu_dps": 221.629,
+      "cpu_casts": 45.8754,
+      "webgpu_casts": 42.0232,
+      "cpu_avg_hit": 1088.7,
+      "webgpu_avg_hit": 1020.23,
+      "cpu_crit_pct": 22.0718,
+      "webgpu_crit_pct": 239292,
+      "passed": false
+    },
+    {
+      "name": "Corruption",
+      "cpu_dps": 79.918,
+      "webgpu_dps": 73.7577,
+      "cpu_casts": 10.2349,
+      "webgpu_casts": 9.719,
+      "cpu_avg_hit": 266.849,
+      "webgpu_avg_hit": 227.671,
+      "cpu_crit_pct": 22.1742,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Agony",
+      "cpu_dps": 22.5798,
+      "webgpu_dps": 0,
+      "cpu_casts": 2.8068,
+      "webgpu_casts": 0,
+      "cpu_avg_hit": 165.095,
+      "webgpu_avg_hit": 0,
+      "cpu_crit_pct": 22.1124,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Doom",
+      "cpu_dps": 61.7775,
+      "webgpu_dps": 0,
+      "cpu_casts": 2.147,
+      "webgpu_casts": 0,
+      "cpu_avg_hit": 5559.98,
+      "webgpu_avg_hit": 0,
+      "cpu_crit_pct": 22.03,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Immolate",
+      "cpu_dps": 0,
+      "webgpu_dps": 56.6017,
+      "cpu_casts": 0,
+      "webgpu_casts": 9.6917,
+      "cpu_avg_hit": 0,
+      "webgpu_avg_hit": 175.207,
+      "cpu_crit_pct": 0,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Cast count mismatch: CPU=45.88 vs WebGPU=42.02 (Check GCD/cast time/haste/clipping logic)",
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1088.7 vs WebGPU=1020.2 (-6.3%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=22.1% vs WebGPU=239291.6%",
+    "[Corruption] Cast count mismatch: CPU=10.23 vs WebGPU=9.72 (Check GCD/cast time/haste/clipping logic)",
+    "[Corruption] Damage per hit mismatch: CPU=266.8 vs WebGPU=227.7 (-14.7%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Corruption] Crit rate mismatch: CPU=22.2% vs WebGPU=0.0%",
+    "[Corruption] Miss rate mismatch: CPU=7.1% vs WebGPU=0.0%",
+    "[Curse of Agony] Cast count mismatch: CPU=2.81 vs WebGPU=0.00 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Agony] Damage per hit mismatch: CPU=165.1 vs WebGPU=0.0 (-100.0%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Agony] Crit rate mismatch: CPU=22.1% vs WebGPU=0.0%",
+    "[Curse of Agony] Miss rate mismatch: CPU=7.2% vs WebGPU=0.0%",
+    "[Curse of Doom] Cast count mismatch: CPU=2.15 vs WebGPU=0.00 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Doom] Damage per hit mismatch: CPU=5560.0 vs WebGPU=0.0 (-100.0%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Doom] Crit rate mismatch: CPU=22.0% vs WebGPU=0.0%",
+    "[Curse of Doom] Miss rate mismatch: CPU=6.8% vs WebGPU=0.0%",
+    "[Immolate] Cast count mismatch: CPU=0.00 vs WebGPU=9.69 (Check GCD/cast time/haste/clipping logic)",
+    "[Life Tap] Tap count differs: CPU=29.76 vs WebGPU=31.40 (Check Life Tap mana gain formula or tap threshold)"
+  ]
+}
+,
+{
+  "scenario": "full_multidot_affliction",
+  "description": "Full Multi-DoT APL: Bane of Agony (ramp ticks) + Corruption + Siphon Life + Immolate",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 223.314,
+  "summary": {
+    "cpu_mean_dps": 492.635,
+    "webgpu_mean_dps": 482.18,
+    "dps_delta": -10.4553,
+    "dps_pct_diff": -2.12232,
+    "cpu_median_dps": 492.412,
+    "webgpu_median_dps": 482.45,
+    "cpu_std_dev": 16.6164,
+    "webgpu_std_dev": 12.8816,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 29.1456,
+    "webgpu_life_taps": 32.0111
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 61.0176, "webgpu_pct": 42.3677, "passed": false},
+    {"spell": "Corruption", "cpu_pct": 18.5837, "webgpu_pct": 17.4912, "passed": false},
+    {"spell": "Curse of Agony", "cpu_pct": 6.27651, "webgpu_pct": 20.2928, "passed": false},
+    {"spell": "Curse of Doom", "cpu_pct": 14.1222, "webgpu_pct": 0, "passed": false},
+    {"spell": "Siphon Life", "cpu_pct": 0, "webgpu_pct": 6.66262, "passed": true},
+    {"spell": "Immolate", "cpu_pct": 0, "webgpu_pct": 13.1857, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 300.594,
+      "webgpu_dps": 204.288,
+      "cpu_casts": 44.9775,
+      "webgpu_casts": 32.542,
+      "cpu_avg_hit": 1242.48,
+      "webgpu_avg_hit": 1164.89,
+      "cpu_crit_pct": 27.1363,
+      "webgpu_crit_pct": 281457,
+      "passed": false
+    },
+    {
+      "name": "Corruption",
+      "cpu_dps": 91.5497,
+      "webgpu_dps": 84.3391,
+      "cpu_casts": 10.0771,
+      "webgpu_casts": 9.765,
+      "cpu_avg_hit": 304.667,
+      "webgpu_avg_hit": 259.106,
+      "cpu_crit_pct": 27.1213,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Agony",
+      "cpu_dps": 30.9203,
+      "webgpu_dps": 97.8478,
+      "cpu_casts": 3.0566,
+      "webgpu_casts": 8.2453,
+      "cpu_avg_hit": 206.2,
+      "webgpu_avg_hit": 178.007,
+      "cpu_crit_pct": 27.0337,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Doom",
+      "cpu_dps": 69.5709,
+      "webgpu_dps": 0,
+      "cpu_casts": 2.0618,
+      "webgpu_casts": 0,
+      "cpu_avg_hit": 6261.38,
+      "webgpu_avg_hit": 0,
+      "cpu_crit_pct": 27.005,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Siphon Life",
+      "cpu_dps": 0,
+      "webgpu_dps": 32.1258,
+      "cpu_casts": 0,
+      "webgpu_casts": 6.181,
+      "cpu_avg_hit": 0,
+      "webgpu_avg_hit": 93.5552,
+      "cpu_crit_pct": 0,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Immolate",
+      "cpu_dps": 0,
+      "webgpu_dps": 63.5787,
+      "cpu_casts": 0,
+      "webgpu_casts": 9.3315,
+      "cpu_avg_hit": 0,
+      "webgpu_avg_hit": 204.4,
+      "cpu_crit_pct": 0,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Cast count mismatch: CPU=44.98 vs WebGPU=32.54 (Check GCD/cast time/haste/clipping logic)",
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1242.5 vs WebGPU=1164.9 (-6.2%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=27.1% vs WebGPU=281456.9%",
+    "[Corruption] Damage per hit mismatch: CPU=304.7 vs WebGPU=259.1 (-15.0%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Corruption] Crit rate mismatch: CPU=27.1% vs WebGPU=0.0%",
+    "[Corruption] Miss rate mismatch: CPU=3.0% vs WebGPU=0.0%",
+    "[Curse of Agony] Cast count mismatch: CPU=3.06 vs WebGPU=8.25 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Agony] Damage per hit mismatch: CPU=206.2 vs WebGPU=178.0 (-13.7%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Agony] Crit rate mismatch: CPU=27.0% vs WebGPU=0.0%",
+    "[Curse of Agony] Miss rate mismatch: CPU=3.0% vs WebGPU=0.0%",
+    "[Curse of Doom] Cast count mismatch: CPU=2.06 vs WebGPU=0.00 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Doom] Damage per hit mismatch: CPU=6261.4 vs WebGPU=0.0 (-100.0%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Doom] Crit rate mismatch: CPU=27.0% vs WebGPU=0.0%",
+    "[Curse of Doom] Miss rate mismatch: CPU=3.0% vs WebGPU=0.0%",
+    "[Siphon Life] Cast count mismatch: CPU=0.00 vs WebGPU=6.18 (Check GCD/cast time/haste/clipping logic)",
+    "[Immolate] Cast count mismatch: CPU=0.00 vs WebGPU=9.33 (Check GCD/cast time/haste/clipping logic)",
+    "[Life Tap] Tap count differs: CPU=29.15 vs WebGPU=32.01 (Check Life Tap mana gain formula or tap threshold)"
+  ]
+}
+,
+{
+  "scenario": "curse_of_doom_burst",
+  "description": "Bane of Doom (60s delayed burst) + Corruption + Shadow Bolt",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 4.51285,
+  "summary": {
+    "cpu_mean_dps": 412.082,
+    "webgpu_mean_dps": 393.486,
+    "dps_delta": -18.5967,
+    "dps_pct_diff": -4.51285,
+    "cpu_median_dps": 411.756,
+    "webgpu_median_dps": 393.113,
+    "cpu_std_dev": 16.6259,
+    "webgpu_std_dev": 15.6395,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 28.9933,
+    "webgpu_life_taps": 28.3354
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 66.9737, "webgpu_pct": 67.4045, "passed": true},
+    {"spell": "Corruption", "cpu_pct": 17.0389, "webgpu_pct": 16.5283, "passed": true},
+    {"spell": "Curse of Doom", "cpu_pct": 15.9873, "webgpu_pct": 16.0672, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 275.987,
+      "webgpu_dps": 265.227,
+      "cpu_casts": 45.5413,
+      "webgpu_casts": 45.9143,
+      "cpu_avg_hit": 1169.53,
+      "webgpu_avg_hit": 1094.33,
+      "cpu_crit_pct": 25.0792,
+      "webgpu_crit_pct": 253215,
+      "passed": false
+    },
+    {
+      "name": "Corruption",
+      "cpu_dps": 70.2145,
+      "webgpu_dps": 65.0367,
+      "cpu_casts": 9.3067,
+      "webgpu_casts": 8.4283,
+      "cpu_avg_hit": 262.242,
+      "webgpu_avg_hit": 231.494,
+      "cpu_crit_pct": 25.2212,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Doom",
+      "cpu_dps": 65.881,
+      "webgpu_dps": 63.2221,
+      "cpu_casts": 3.1569,
+      "webgpu_casts": 2.9945,
+      "cpu_avg_hit": 5929.29,
+      "webgpu_avg_hit": 3800.29,
+      "cpu_crit_pct": 25.345,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1169.5 vs WebGPU=1094.3 (-6.4%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=25.1% vs WebGPU=253214.5%",
+    "[Corruption] Cast count mismatch: CPU=9.31 vs WebGPU=8.43 (Check GCD/cast time/haste/clipping logic)",
+    "[Corruption] Damage per hit mismatch: CPU=262.2 vs WebGPU=231.5 (-11.7%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Corruption] Crit rate mismatch: CPU=25.2% vs WebGPU=0.0%",
+    "[Corruption] Miss rate mismatch: CPU=5.1% vs WebGPU=0.0%",
+    "[Curse of Doom] Damage per hit mismatch: CPU=5929.3 vs WebGPU=3800.3 (-35.9%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Doom] Crit rate mismatch: CPU=25.3% vs WebGPU=0.0%",
+    "[Curse of Doom] Miss rate mismatch: CPU=5.0% vs WebGPU=0.0%"
+  ]
+}
+,
+{
+  "scenario": "pet_active_imp",
+  "description": "Active Imp Pet with modern Firebolt scaling and +30% Improved Imp talent",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 243.408,
+  "summary": {
+    "cpu_mean_dps": 286.489,
+    "webgpu_mean_dps": 318.069,
+    "dps_delta": 31.5806,
+    "dps_pct_diff": 11.0233,
+    "cpu_median_dps": 286.809,
+    "webgpu_median_dps": 318.306,
+    "cpu_std_dev": 13.0899,
+    "webgpu_std_dev": 12.4306,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 29,
+    "webgpu_life_taps": 29
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 94.6172, "webgpu_pct": 81.5151, "passed": false},
+    {"spell": "Total Pet", "cpu_pct": 5.38279, "webgpu_pct": 18.4849, "passed": false},
+    {"spell": "Pet Firebolt", "cpu_pct": 5.38279, "webgpu_pct": 18.4849, "passed": false}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 271.068,
+      "webgpu_dps": 259.274,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 972.093,
+      "webgpu_avg_hit": 912.617,
+      "cpu_crit_pct": 20.1578,
+      "webgpu_crit_pct": 228837,
+      "passed": false
+    },
+    {
+      "name": "Pet: Firebolt",
+      "cpu_dps": 15.4211,
+      "webgpu_dps": 58.7948,
+      "cpu_casts": 23,
+      "webgpu_casts": 90,
+      "cpu_avg_hit": 129.764,
+      "webgpu_avg_hit": 117.59,
+      "cpu_crit_pct": 19.9934,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=972.1 vs WebGPU=912.6 (-6.1%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=20.2% vs WebGPU=228836.8%",
+    "[Pet: Firebolt] Cast count mismatch: CPU=23.00 vs WebGPU=90.00 (Check GCD/cast time/haste/clipping logic)",
+    "[Pet: Firebolt] Damage per hit mismatch: CPU=129.8 vs WebGPU=117.6 (-9.4%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Pet: Firebolt] Crit rate mismatch: CPU=20.0% vs WebGPU=0.0%",
+    "[Pet: Firebolt] Miss rate mismatch: CPU=7.0% vs WebGPU=0.0%"
+  ]
+}
+,
+{
+  "scenario": "pet_active_succubus",
+  "description": "Active Succubus with Melee swings, Lash of Pain shadow nuke, and armor reduction",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 4.33739,
+  "summary": {
+    "cpu_mean_dps": 334.907,
+    "webgpu_mean_dps": 320.544,
+    "dps_delta": -14.3625,
+    "dps_pct_diff": -4.28851,
+    "cpu_median_dps": 335.379,
+    "webgpu_median_dps": 320.942,
+    "cpu_std_dev": 14.4113,
+    "webgpu_std_dev": 13.488,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 28,
+    "webgpu_life_taps": 28
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 86.6459, "webgpu_pct": 86.0716, "passed": true},
+    {"spell": "Total Pet", "cpu_pct": 13.3541, "webgpu_pct": 13.9284, "passed": true},
+    {"spell": "Pet Melee", "cpu_pct": 10.5975, "webgpu_pct": 11.0572, "passed": true},
+    {"spell": "Pet Lash of Pain", "cpu_pct": 2.75657, "webgpu_pct": 2.87122, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 290.183,
+      "webgpu_dps": 275.898,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 1040.05,
+      "webgpu_avg_hit": 1017.59,
+      "cpu_crit_pct": 22.0247,
+      "webgpu_crit_pct": 306305,
+      "passed": false
+    },
+    {
+      "name": "Pet: Melee",
+      "cpu_dps": 35.4918,
+      "webgpu_dps": 35.4431,
+      "cpu_casts": 90,
+      "webgpu_casts": 90,
+      "cpu_avg_hit": 83.0482,
+      "webgpu_avg_hit": 82.977,
+      "cpu_crit_pct": 26.7579,
+      "webgpu_crit_pct": 26.6669,
+      "passed": true
+    },
+    {
+      "name": "Pet: Lash of Pain",
+      "cpu_dps": 9.23194,
+      "webgpu_dps": 9.20353,
+      "cpu_casts": 15,
+      "webgpu_casts": 15,
+      "cpu_avg_hit": 119.173,
+      "webgpu_avg_hit": 118.875,
+      "cpu_crit_pct": 22.0346,
+      "webgpu_crit_pct": 22.2065,
+      "passed": true
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Crit rate mismatch: CPU=22.0% vs WebGPU=306304.6%",
+    "[Shadow Bolt] Miss rate mismatch: CPU=6.9% vs WebGPU=11.3%"
+  ]
+}
+,
+{
+  "scenario": "demonic_sacrifice_succubus",
+  "description": "Demonic Sacrifice: Succubus granting flat +15% Shadow Damage",
+  "iterations": 10000,
+  "duration": 180,
+  "passed": false,
+  "max_discrepancy_pct": 5.00047,
+  "summary": {
+    "cpu_mean_dps": 321.83,
+    "webgpu_mean_dps": 305.737,
+    "dps_delta": -16.093,
+    "dps_pct_diff": -5.00047,
+    "cpu_median_dps": 321.916,
+    "webgpu_median_dps": 305.807,
+    "cpu_std_dev": 14.0707,
+    "webgpu_std_dev": 13.2087,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 28,
+    "webgpu_life_taps": 28
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 100, "webgpu_pct": 100, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 321.83,
+      "webgpu_dps": 305.737,
+      "cpu_casts": 55,
+      "webgpu_casts": 55,
+      "cpu_avg_hit": 1129.19,
+      "webgpu_avg_hit": 1053.57,
+      "cpu_crit_pct": 22.1343,
+      "webgpu_crit_pct": 221962,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1129.2 vs WebGPU=1053.6 (-6.7%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=22.1% vs WebGPU=221961.6%"
+  ]
+}
+,
+{
+  "scenario": "mana_stress_600s",
+  "description": "600s prolonged endurance fight testing Life Tap weaving & MP5 regeneration",
+  "iterations": 10000,
+  "duration": 600,
+  "passed": false,
+  "max_discrepancy_pct": 3207.08,
+  "summary": {
+    "cpu_mean_dps": 449.552,
+    "webgpu_mean_dps": 415.821,
+    "dps_delta": -33.7311,
+    "dps_pct_diff": -7.50328,
+    "cpu_median_dps": 449.454,
+    "webgpu_median_dps": 415.93,
+    "cpu_std_dev": 9.58184,
+    "webgpu_std_dev": 7.02488,
+    "cpu_isb_uptime": 0,
+    "webgpu_isb_uptime": 0,
+    "cpu_life_taps": 88,
+    "webgpu_life_taps": 91.8783
+  },
+  "breakdowns": [
+    {"spell": "Shadow Bolt", "cpu_pct": 63.5826, "webgpu_pct": 52.7465, "passed": false},
+    {"spell": "Corruption", "cpu_pct": 15.8286, "webgpu_pct": 15.0553, "passed": true},
+    {"spell": "Curse of Agony", "cpu_pct": 0.572797, "webgpu_pct": 18.9428, "passed": false},
+    {"spell": "Curse of Doom", "cpu_pct": 20.0161, "webgpu_pct": 0, "passed": false},
+    {"spell": "Immolate", "cpu_pct": 0, "webgpu_pct": 13.2554, "passed": true}
+  ],
+  "spells": [
+    {
+      "name": "Shadow Bolt",
+      "cpu_dps": 285.837,
+      "webgpu_dps": 219.331,
+      "cpu_casts": 156.723,
+      "webgpu_casts": 128.597,
+      "cpu_avg_hit": 1152.41,
+      "webgpu_avg_hit": 1077.17,
+      "cpu_crit_pct": 22.0819,
+      "webgpu_crit_pct": 231495,
+      "passed": false
+    },
+    {
+      "name": "Corruption",
+      "cpu_dps": 71.1576,
+      "webgpu_dps": 62.6029,
+      "cpu_casts": 29.4579,
+      "webgpu_casts": 27.6273,
+      "cpu_avg_hit": 258.248,
+      "webgpu_avg_hit": 226.598,
+      "cpu_crit_pct": 22.1597,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Agony",
+      "cpu_dps": 2.57502,
+      "webgpu_dps": 78.7682,
+      "cpu_casts": 1.5185,
+      "webgpu_casts": 27.7941,
+      "cpu_avg_hit": 152.94,
+      "webgpu_avg_hit": 141.7,
+      "cpu_crit_pct": 22.14,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Curse of Doom",
+      "cpu_dps": 89.9826,
+      "webgpu_dps": 0,
+      "cpu_casts": 9.4775,
+      "webgpu_casts": 0,
+      "cpu_avg_hit": 5998.84,
+      "webgpu_avg_hit": 0,
+      "cpu_crit_pct": 21.9711,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    },
+    {
+      "name": "Immolate",
+      "cpu_dps": 0,
+      "webgpu_dps": 55.1186,
+      "cpu_casts": 0,
+      "webgpu_casts": 29.0389,
+      "cpu_avg_hit": 0,
+      "webgpu_avg_hit": 189.809,
+      "cpu_crit_pct": 0,
+      "webgpu_crit_pct": 0,
+      "passed": false
+    }
+  ],
+  "diagnostics": [
+    "[Shadow Bolt] Cast count mismatch: CPU=156.72 vs WebGPU=128.60 (Check GCD/cast time/haste/clipping logic)",
+    "[Shadow Bolt] Damage per hit mismatch: CPU=1152.4 vs WebGPU=1077.2 (-6.5%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Shadow Bolt] Crit rate mismatch: CPU=22.1% vs WebGPU=231494.8%",
+    "[Corruption] Cast count mismatch: CPU=29.46 vs WebGPU=27.63 (Check GCD/cast time/haste/clipping logic)",
+    "[Corruption] Damage per hit mismatch: CPU=258.2 vs WebGPU=226.6 (-12.3%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Corruption] Crit rate mismatch: CPU=22.2% vs WebGPU=0.0%",
+    "[Corruption] Miss rate mismatch: CPU=5.0% vs WebGPU=0.0%",
+    "[Curse of Agony] Cast count mismatch: CPU=1.52 vs WebGPU=27.79 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Agony] Damage per hit mismatch: CPU=152.9 vs WebGPU=141.7 (-7.3%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Agony] Crit rate mismatch: CPU=22.1% vs WebGPU=0.0%",
+    "[Curse of Agony] Miss rate mismatch: CPU=5.0% vs WebGPU=0.0%",
+    "[Curse of Doom] Cast count mismatch: CPU=9.48 vs WebGPU=0.00 (Check GCD/cast time/haste/clipping logic)",
+    "[Curse of Doom] Damage per hit mismatch: CPU=5998.8 vs WebGPU=0.0 (-100.0%) (Check base damage/SP coeff/talents/school multiplier)",
+    "[Curse of Doom] Crit rate mismatch: CPU=22.0% vs WebGPU=0.0%",
+    "[Curse of Doom] Miss rate mismatch: CPU=5.0% vs WebGPU=0.0%",
+    "[Immolate] Cast count mismatch: CPU=0.00 vs WebGPU=29.04 (Check GCD/cast time/haste/clipping logic)"
+  ]
+}
+
+]

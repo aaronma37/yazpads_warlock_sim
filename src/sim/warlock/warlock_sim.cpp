@@ -1332,7 +1332,10 @@ SimResult WarlockSimulator::run_single_simulation(FastRNG& rng) {
                 case PriorityAction::SHADOWBURN_ISB: {
                     bool sb_cond = true;
                     if (!is_oracle && !policy.use_custom_apl) {
-                        if (eff_rotation == RotationChoice::FIRE_DESTRO || eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2) {
+                        if (eff_rotation == RotationChoice::FIRE_DESTRO ||
+                            eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_2 ||
+                            eff_rotation == RotationChoice::FIRE_DESTRO_NO_CORRUPTION ||
+                            eff_rotation == RotationChoice::SHADOW_AND_FLAME_FIRE_BANE) {
                             sb_cond = (talents.destro.shadow_and_flame > 0 && now >= shadow_and_flame_fire_expire) || (policy.shadowburn == ShadowburnPolicy::ON_COOLDOWN);
                         } else if (policy.shadowburn == ShadowburnPolicy::EXECUTE_ONLY) {
                             sb_cond = execute_phase;

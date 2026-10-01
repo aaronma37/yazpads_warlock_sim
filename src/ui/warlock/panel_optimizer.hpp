@@ -1213,6 +1213,14 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
   }
   else if (opt_mode == 1)
   {
+    static int standard_specs_engine = 1; // WebGPU by default
+    const char* standard_specs_engines[] = {"CPU DES", "WebGPU"};
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Simulator");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(150.0f);
+    ImGui::Combo("##standard_specs_simulator", &standard_specs_engine, standard_specs_engines, IM_ARRAYSIZE(standard_specs_engines));
+
     static float specs_export_timer = 0.0f;
     static std::string specs_export_msg = "";
     if (specs_export_timer > 0.0f)
@@ -1249,6 +1257,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
     };
 
 #if defined(__EMSCRIPTEN__)
+    bool is_busy = is_optimizing;
     if (WowButton("Simulate Standard Specs", ImVec2(240, 28), !is_optimizing))
     {
       is_optimizing = true;
@@ -1262,7 +1271,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
             current_opt_target = name;
           },
           compare_all_races,
-          calculate_stat_weights);
+          calculate_stat_weights,
+          standard_specs_engine == 1);
       is_optimizing = false;
       opt_progress = 1.0f;
     }
@@ -1277,6 +1287,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
         int iters = iters_per_candidate;
         bool all_races = compare_all_races;
         bool calc_weights = calculate_stat_weights;
+        bool use_webgpu = standard_specs_engine == 1;
 
         worker.is_running = true;
         worker.stop_requested = false;
@@ -1290,7 +1301,7 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
           worker.worker.join();
 
         worker.worker = std::thread(
-            [sim_copy, iters, all_races, calc_weights]()
+            [sim_copy, iters, all_races, calc_weights, use_webgpu]()
             {
               auto& w = get_opt_worker_state();
               auto results = Optimizer::optimize_talents(
@@ -1303,7 +1314,8 @@ inline void render_panel_optimizer(WarlockSimulator& sim,
                     w.current_status = name;
                   },
                   all_races,
-                  calc_weights);
+                  calc_weights,
+                  use_webgpu);
 
               {
                 std::lock_guard<std::mutex> lk(w.mtx);

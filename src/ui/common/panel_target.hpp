@@ -6,6 +6,7 @@
 #include "src/sim/warlock_sim.hpp"
 #include "src/sim/priest/priest_sim.hpp"
 #include "src/sim/priest/parallel_runner.hpp"
+#include "src/sim/webgpu/webgpu_sim_runner.hpp"
 #include "src/ui/common/damage_breakdown_view.hpp"
 #include "src/ui/common/panel_results.hpp"
 #include "src/ui/priest/panel_results.hpp"
@@ -29,6 +30,9 @@ inline void render_panel_sim_config(SimType& sim,
 {
   float total_avail_w = ImGui::GetContentRegionAvail().x;
   float left_w = std::min(400.0f, std::max(320.0f, total_avail_w * 0.38f));
+
+  static int selected_engine = std::is_same_v<SimType, WarlockSimulator> ? 1 : 0;
+  static int selected_gpu_scheduler = 0; // 0 = Next-Event, 1 = Fixed 1ms, 2 = Fixed 10ms, 3 = Fixed 50ms
 
   // =========================================================================
   // LEFT SIDE: Sim Configuration
@@ -72,7 +76,42 @@ inline void render_panel_sim_config(SimType& sim,
     ImGui::TableNextColumn();
     render_input_int("Iterations", "##SimIterations", &iterations, 100, 1000000, 20.0f);
     ImGui::TableNextColumn();
-    render_input_int("Worker Threads", "##SimThreads", &thread_count, 1, 64, 20.0f);
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+    {
+      if (selected_engine == 1)
+      {
+        ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "GPU Scheduler");
+        const char* scheds[] = {"Next-Event", "Fixed 1ms", "Fixed 10ms", "Fixed 50ms"};
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::Combo("##GpuSched", &selected_gpu_scheduler, scheds, IM_ARRAYSIZE(scheds));
+      }
+      else
+      {
+        render_input_int("Worker Threads", "##SimThreads", &thread_count, 1, 64, 20.0f);
+      }
+    }
+    else
+    {
+      render_input_int("Worker Threads", "##SimThreads", &thread_count, 1, 64, 20.0f);
+    }
+
+    if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+    {
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, 36.0f);
+      ImGui::TableNextColumn();
+      ImGui::TextColored(ImVec4(0.92f, 0.85f, 0.72f, 1.0f), "Sim Engine");
+      const char* engines[] = {"CPU (DES)", "WebGPU (GPU)"};
+      ImGui::SetNextItemWidth(120.0f);
+      ImGui::Combo("##SimEngine", &selected_engine, engines, IM_ARRAYSIZE(engines));
+      ImGui::TableNextColumn();
+      if (selected_engine == 1)
+      {
+        if (last_result.total_iterations > 0)
+          ImGui::TextDisabled(last_result.gpu_used ? "Backend: WebGPU GPU" : "Backend: CPU fallback");
+        else
+          ImGui::TextDisabled("Kernel: Event WGSL");
+      }
+    }
 
     ImGui::EndTable();
   }
@@ -84,11 +123,29 @@ inline void render_panel_sim_config(SimType& sim,
   }
 
   ImGui::Spacing();
-  if (WowButton(button_text, ImVec2(left_w, 32.0f), !is_running))
+  const char* active_button_text = (selected_engine == 1 && std::is_same_v<SimType, WarlockSimulator>)
+      ? "RUN WEBGPU SIMULATION"
+      : button_text;
+
+  if (WowButton(active_button_text, ImVec2(left_w, 32.0f), !is_running))
   {
     is_running = true;
     progress = 0.0f;
-    last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+    if (selected_engine == 1)
+    {
+      if constexpr (std::is_same_v<SimType, WarlockSimulator>)
+      {
+        uint32_t step_us = 0;
+        if (selected_gpu_scheduler == 1) step_us = 1000;
+        else if (selected_gpu_scheduler == 2) step_us = 10000;
+        else if (selected_gpu_scheduler == 3) step_us = 50000;
+        last_result = WebGPUSimRunner::run_batch(sim, iterations, step_us);
+      }
+    }
+    else
+    {
+      last_result = RunnerType::run_batch(sim, iterations, thread_count, [&](float p) { progress = p; });
+    }
     is_running = false;
     progress = 1.0f;
   }
@@ -169,6 +226,13 @@ inline void render_panel_sim_config(SimType& sim,
 
   if (last_result.total_iterations > 0)
   {
+    ImGui::TextColored(ImVec4(0.40f, 1.0f, 0.40f, 1.0f),
+                       "Completed %d sims in %.4fs (%.0f sims/sec)",
+                       last_result.total_iterations,
+                       last_result.total_sim_time_seconds,
+                       last_result.iterations_per_second);
+    ImGui::Spacing();
+
     ImGui::TextDisabled("MEAN DPS");
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(0.30f, 1.0f, 0.40f, 1.0f), "%.1f DPS", last_result.mean_dps);

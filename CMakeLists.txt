@@ -29,6 +29,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/common
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/warlock
     ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/priest
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/webgpu
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/common
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/warlock
@@ -52,6 +53,10 @@ set(SIM_SOURCES
     src/sim/priest/priest_sim.cpp
     src/sim/priest/parallel_runner.cpp
     src/sim/priest/optimizer.cpp
+    src/sim/webgpu/reference.cpp
+    src/sim/webgpu/native_gpu.cpp
+    src/sim/webgpu/webgpu_sim_runner.cpp
+    src/sim/webgpu/parity_comparator.cpp
 )
 
 set(UI_SOURCES
@@ -102,6 +107,18 @@ else()
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
     )
 
+    # Standalone WebGPU vs CPU Parity Pipeline Executable
+    add_executable(webgpu_parity_pipeline
+        src/sim/webgpu/parity_pipeline_main.cpp
+        ${SIM_SOURCES}
+    )
+    if(UNIX)
+        target_link_libraries(webgpu_parity_pipeline PRIVATE pthread m)
+    endif()
+    set_target_properties(webgpu_parity_pipeline PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+    )
+
     # Test Suite
     enable_testing()
 
@@ -130,6 +147,8 @@ else()
         tests/test_gbdt_policy.cpp
         tests/test_ppo_training.cpp
         tests/test_imitation_training.cpp
+        tests/test_webgpu_runner.cpp
+        tests/test_webgpu_parity.cpp
     )
 
     add_executable(sim_tests
@@ -151,4 +170,33 @@ else()
     )
 
     add_test(NAME AllUnitTests COMMAND sim_tests)
+endif()
+
+# Native WebGPU backend for the desktop app and parity pipeline. The bundled
+# runtime is wgpu-native; other targets retain the C++ reference fallback.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+    set(WGPU_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/wgpu-native/linux-x86_64")
+    if(EXISTS "${WGPU_NATIVE_DIR}/libwgpu_native.so")
+        add_library(wgpu_native SHARED IMPORTED GLOBAL)
+        set_target_properties(wgpu_native PROPERTIES IMPORTED_LOCATION "${WGPU_NATIVE_DIR}/libwgpu_native.so")
+        foreach(target warlock_sim webgpu_parity_pipeline sim_tests webgpu_oracle)
+            if(TARGET ${target})
+                target_include_directories(${target} PRIVATE "${WGPU_NATIVE_DIR}/include")
+                target_compile_definitions(${target} PRIVATE WARLOCK_HAS_NATIVE_WEBGPU=1
+                    WARLOCK_WEBGPU_SHADER_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/sim/webgpu/combat.wgsl")
+                target_link_libraries(${target} PRIVATE wgpu_native)
+                set_property(TARGET ${target} APPEND PROPERTY BUILD_RPATH "${WGPU_NATIVE_DIR}")
+            endif()
+        endforeach()
+    endif()
+endif()
+
+# Opt-in independent CPU fixtures for the WebGPU scheduler experiment.
+option(BUILD_WEBGPU_ORACLE "Build legacy CPU fixture generator for WebGPU" OFF)
+if(BUILD_WEBGPU_ORACLE AND NOT EMSCRIPTEN)
+    add_executable(webgpu_oracle tests/webgpu/oracle.cpp ${SIM_SOURCES})
+    if(UNIX)
+        target_link_libraries(webgpu_oracle PRIVATE pthread m)
+    endif()
+    set_target_properties(webgpu_oracle PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 endif()

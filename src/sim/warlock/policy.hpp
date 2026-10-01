@@ -868,6 +868,17 @@ struct PolicyConfig
 
     auto add_agony = [&]()
     {
+      if (curse == CurseChoice::NONE) return;
+      if (curse == CurseChoice::BANE_OF_DOOM)
+      {
+        rules.push_back({PriorityAction::CURSE_OF_DOOM,
+                         SpellID::CURSE_OF_DOOM,
+                         "Bane of Doom",
+                         "DoT Expired / Missing",
+                         "Trigger when: Bane of Doom is not active on target and cooldown is ready (60s).",
+                         "Deals massive delayed Shadow damage after 60 seconds."});
+        return;
+      }
       if (curse == CurseChoice::BANE_OF_AGONY || eff == RotationChoice::DEEP_AFFLICTION ||
           eff == RotationChoice::DEEP_AFFLICTION_SB || eff == RotationChoice::DEEP_AFFLICTION_SB_NO_SL ||
           eff == RotationChoice::SM_RUIN || eff == RotationChoice::AFFLICTION_HYBRID_DOTS ||

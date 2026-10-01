@@ -37,6 +37,7 @@ inline double spell_avg_hit(const BatchSpellStats& s) {
 }
 
 struct BatchSimResult {
+    bool gpu_used = false;
     int total_iterations = 0;
     double total_sim_time_seconds = 0.0;
     double iterations_per_second = 0.0;
