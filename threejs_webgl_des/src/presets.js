@@ -315,9 +315,9 @@ export function renderPresetsLeaderboard(onSelectPreset) {
 
     const splitHtml = isSim
       ? `<div class="damage-split-bar" title="Shadow: ${split.shadow}% | Fire: ${split.fire}% | Pet: ${split.pet}%">
-          ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;">${split.shadow}%</div>` : ''}
-          ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;">${split.fire}%</div>` : ''}
-          ${split.pet > 0 ? `<div class="split-seg pet" style="width: ${split.pet}%;">${split.pet}%</div>` : ''}
+          ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;"></div>` : ''}
+          ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;"></div>` : ''}
+          ${split.pet > 0 ? `<div class="split-seg pet" style="width: ${split.pet}%;"></div>` : ''}
         </div>`
       : `<div class="damage-split-bar" style="background:#13111a; border-color:#2a2434; display:flex; align-items:center; justify-content:center;">
           <span style="color:#666; font-size:9px;">--</span>
@@ -330,12 +330,12 @@ export function renderPresetsLeaderboard(onSelectPreset) {
     if (showStatWeights) {
       if (weights && weights.valid) {
         extraColsHtml += `
-          <td class="stat-weight-cell stat-weight-sp">+${weights.dps_per_sp.toFixed(2)}</td>
-          <td class="stat-weight-cell stat-weight-hit">+${weights.dps_per_hit.toFixed(1)}</td>
-          <td class="stat-weight-cell stat-weight-crit">+${weights.dps_per_crit.toFixed(1)}</td>
-          <td class="stat-weight-cell stat-weight-haste">+${weights.dps_per_haste.toFixed(1)}</td>
-          <td class="stat-weight-cell stat-weight-int">+${weights.dps_per_int.toFixed(2)}</td>
-          <td class="stat-weight-cell stat-weight-spirit">+${weights.dps_per_spirit.toFixed(2)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_sp.toFixed(2)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_hit.toFixed(1)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_crit.toFixed(1)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_haste.toFixed(1)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_int.toFixed(2)}</td>
+          <td class="stat-weight-cell">+${weights.dps_per_spirit.toFixed(2)}</td>
         `;
       } else {
         extraColsHtml += `
@@ -353,7 +353,7 @@ export function renderPresetsLeaderboard(onSelectPreset) {
       <td class="rank-col" style="text-align: center;">${rankHtml}</td>
       <td class="spec-name-col">
         <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
-          <span class="spec-talents-tag">[<span style="color:#c084fc;">${talentDist.aff}</span>/<span style="color:#38bdf8;">${talentDist.demo}</span>/<span style="color:#fb923c;">${talentDist.destro}</span>]</span>
+          <span class="spec-talents-tag">[${talentDist.aff}/${talentDist.demo}/${talentDist.destro}]</span>
           <a href="javascript:void(0)" class="spec-name-link" title="Click to load into Current Configuration">${cleanSpecName}</a>
         </div>
       </td>
@@ -487,7 +487,7 @@ export function renderSelectedPresetDetails(p) {
     perSpellRowsHtml = `
       <div style="margin-top: 0.65rem;">
         <span class="sub-label" style="color: var(--text-gold); font-size: 0.78rem; font-weight: 700; margin-bottom: 0.35rem; display:block;">Detailed Spell Damage Split:</span>
-        <div class="table-scroll" style="max-height: 160px;">
+        <div class="damage-table-wrapper">
           <table class="damage-table">
             <thead>
               <tr>
@@ -575,7 +575,7 @@ export function renderSelectedPresetDetails(p) {
   container.innerHTML = `
     <div class="selected-preset-header">
       <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-        <span class="spec-talents-tag" style="font-size:0.8rem; padding: 2px 6px;">[<span style="color:#c084fc;">${talentDist.aff}</span> / <span style="color:#38bdf8;">${talentDist.demo}</span> / <span style="color:#fb923c;">${talentDist.destro}</span>]</span>
+        <span class="spec-talents-tag" style="font-size:0.8rem; padding: 2px 6px;">[${talentDist.aff} / ${talentDist.demo} / ${talentDist.destro}]</span>
         <span class="selected-preset-title">#${p.id} ${cleanSpecName} (${p.race})</span>
         <button type="button" class="wow-button wow-btn-small" id="btn-load-selected-preset" style="font-size:0.75rem; margin-left: 0.5rem;">Load Into Armory</button>
       </div>
@@ -615,7 +615,7 @@ export function renderSelectedPresetDetails(p) {
 
 export async function runBatchPresetSimulation(signal, onProgress, onSelectPreset, activeConfig = {}) {
   const metaPresets = getFilteredPresets();
-  const numSims = Number(document.getElementById('compare-num-sims')?.value || 3000);
+  const numSims = Number(document.getElementById('compare-num-sims')?.value || 1000);
   const calcWeights = !!document.getElementById('compare-stat-weights')?.checked;
   const progContainer = document.getElementById('topbar-progress-container');
   const progFill = document.getElementById('topbar-progress-fill');

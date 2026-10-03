@@ -220,6 +220,7 @@ void output_preset_info_json(const SpecPreset& p) {
     double af_bonus = (talents.destro.agonizing_flames == 1) ? 0.03 : 
                      ((talents.destro.agonizing_flames == 2) ? 0.07 : 
                      ((talents.destro.agonizing_flames == 3) ? 0.10 : 0.0));
+    double aftermath_bonus = talents.destro.aftermath * 0.10;
     double malevolence = talents.aff.malevolence * 1.0;
     double malediction_bonus = talents.aff.malediction * 0.01;
     double shadow_mastery_bonus = talents.aff.shadow_mastery * 0.01;
@@ -278,6 +279,8 @@ void output_preset_info_json(const SpecPreset& p) {
               << ",\"crit\":" << crit
               << ",\"malevolence\":" << malevolence
               << ",\"afBonus\":" << af_bonus
+              << ",\"aftermathBonus\":" << aftermath_bonus
+              << ",\"resistance\":24.0"
               << ",\"maledictionBonus\":" << malediction_bonus
               << ",\"shadowMasteryBonus\":" << shadow_mastery_bonus
               << ",\"improvedCorruptionBonus\":" << improved_corruption_bonus

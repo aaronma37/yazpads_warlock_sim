@@ -313,9 +313,9 @@ export function renderGALeaderboard() {
     const pPct = Math.round(cand.pet_pct || 0);
     tdSplit.innerHTML = `
       <div class="damage-split-bar" style="height: 16px;">
-        ${sPct > 0 ? `<div class="split-seg shadow" style="width: ${sPct}%;">${sPct}%</div>` : ''}
-        ${fPct > 0 ? `<div class="split-seg fire" style="width: ${fPct}%;">${fPct}%</div>` : ''}
-        ${pPct > 0 ? `<div class="split-seg pet" style="width: ${pPct}%;">${pPct}%</div>` : ''}
+        ${sPct > 0 ? `<div class="split-seg shadow" style="width: ${sPct}%;"></div>` : ''}
+        ${fPct > 0 ? `<div class="split-seg fire" style="width: ${fPct}%;"></div>` : ''}
+        ${pPct > 0 ? `<div class="split-seg pet" style="width: ${pPct}%;"></div>` : ''}
       </div>
     `;
     tr.appendChild(tdSplit);

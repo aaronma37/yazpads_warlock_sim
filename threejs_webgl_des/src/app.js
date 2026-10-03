@@ -337,48 +337,158 @@ function applyEquippedStatsToForm(stats) {
   if ($('in-mp5')) $('in-mp5').value = Math.round(stats.mp5);
 }
 
-function updateCombatStatsSummary() {
+function getEffectiveBuffsAndStats() {
   const sp = Number($('in-spellPower')?.value || 500);
   const shadowSpBonus = Number($('in-shadowPower')?.value || 0);
   const fireSpBonus = Number($('in-firePower')?.value || 0);
   const hit = Number($('in-hit')?.value || 12);
   const crit = Number($('in-crit')?.value || 15);
-  let int = Number($('in-intellect')?.value || 200);
-  let stam = Number($('in-stamina')?.value || 220);
-  let spirit = Number($('in-spirit')?.value || 100);
-  const mp5 = Number($('in-mp5')?.value || 20);
+  const haste = Number($('in-haste')?.value || 0);
+  const baseInt = Number($('in-intellect')?.value || 200);
+  const baseStam = Number($('in-stamina')?.value || 220);
+  const baseSpirit = Number($('in-spirit')?.value || 100);
+  const baseMp5 = Number($('in-mp5')?.value || 20);
+  const baseResistance = Number($('in-resistance')?.value || 0);
+  const bossArmor = Number($('in-boss-armor')?.value || 3731);
 
-  // Racial adjustments
-  if (activeRace === 'GNOME') int = Math.round(int * 1.05);
-  if (activeRace === 'HUMAN') spirit = Math.round(spirit * 1.05);
+  // Read checkboxes from the form
+  const isFlaskSupreme = !!form.elements.namedItem('flaskSupremePower')?.checked;
+  const isGreaterArcane = !!form.elements.namedItem('greaterArcaneElixir')?.checked;
+  const isShadowPowerElixir = !!form.elements.namedItem('shadowPowerElixir')?.checked;
+  const isGreaterFirepowerElixir = !!form.elements.namedItem('greaterFirepowerElixir')?.checked;
+  const isWizardOil = !!form.elements.namedItem('wizardOil')?.checked;
+  const isMageblood = !!form.elements.namedItem('magebloodElixir')?.checked;
+  const isNightfin = !!form.elements.namedItem('nightfinSoup')?.checked;
 
-  const effectiveShadow = sp + shadowSpBonus;
-  const effectiveFire = sp + fireSpBonus;
-  const maxMana = Math.round(1400 + (int * 15));
-  const maxHealth = Math.round(1500 + (stam * 10));
+  const isArcaneIntellect = !!form.elements.namedItem('arcaneIntellect')?.checked;
+  const isMarkOfTheWild = !!form.elements.namedItem('markOfTheWild')?.checked;
+  const isBlessingOfKings = !!form.elements.namedItem('blessingOfKings')?.checked;
+  const isBlessingOfWisdom = !!form.elements.namedItem('blessingOfWisdom')?.checked;
+  const isManaSpringTotem = !!form.elements.namedItem('manaSpringTotem')?.checked;
 
-  let shadowMult = 1.0;
-  let fireMult = 1.0;
+  const isDragonslayer = !!form.elements.namedItem('dragonslayer')?.checked;
+  const isSongflower = !!form.elements.namedItem('songflower')?.checked;
+  const isWarchiefsBlessing = !!form.elements.namedItem('warchiefsBlessing')?.checked;
+  const isSpiritOfZandalar = !!form.elements.namedItem('spiritOfZandalar')?.checked;
+  const isSaygesFortune = !!form.elements.namedItem('saygesFortune')?.checked;
+
+  const isCurseOfShadow = !!form.elements.namedItem('curseOfShadow')?.checked;
+  const isCurseOfElements = !!form.elements.namedItem('curseOfElements')?.checked;
+  const isShadowWeaving = !!form.elements.namedItem('shadowWeaving')?.checked;
+  const isImprovedScorch = !!form.elements.namedItem('improvedScorch')?.checked;
+  const isNightfallDebuff = !!form.elements.namedItem('nightfallProcDebuff')?.checked;
+
+  // Stat Additions
+  let addedSP = 0;
+  if (isFlaskSupreme) addedSP += 150;
+  if (isGreaterArcane) addedSP += 35;
+  if (isWizardOil) addedSP += 36;
+
+  let addedShadowSP = isShadowPowerElixir ? 40 : 0;
+  let addedFireSP = isGreaterFirepowerElixir ? 40 : 0;
+
+  let addedInt = 0, addedStam = 0, addedSpirit = 0;
+  if (isArcaneIntellect) addedInt += 31;
+  if (isMarkOfTheWild) { addedInt += 12; addedStam += 12; addedSpirit += 12; }
+  if (isSongflower) { addedInt += 15; addedStam += 15; addedSpirit += 15; }
+
+  let statMultiplier = 1.0;
+  if (isBlessingOfKings) statMultiplier *= 1.10;
+  if (isSpiritOfZandalar) statMultiplier *= 1.15;
+
+  let finalInt = (baseInt + addedInt) * statMultiplier;
+  let finalStam = (baseStam + addedStam) * statMultiplier;
+  let finalSpirit = (baseSpirit + addedSpirit) * statMultiplier;
+
+  // Racial modifiers
+  if (activeRace === 'GNOME') finalInt *= 1.05;
+  if (activeRace === 'HUMAN') finalSpirit *= 1.05;
+
+  finalInt = Math.round(finalInt);
+  finalStam = Math.round(finalStam);
+  finalSpirit = Math.round(finalSpirit);
+
+  let addedCrit = 0;
+  if (isWizardOil) addedCrit += 1.0;
+  if (isDragonslayer) addedCrit += 10.0;
+  if (isSongflower) addedCrit += 5.0;
+  const finalCrit = crit + addedCrit;
+
+  let addedMP5 = 0;
+  if (isMageblood) addedMP5 += 12;
+  if (isNightfin) addedMP5 += 8;
+  if (isBlessingOfWisdom) addedMP5 += 30;
+  if (isManaSpringTotem) addedMP5 += 25;
+  if (isWarchiefsBlessing) addedMP5 += 10;
+  const finalMP5 = baseMp5 + addedMP5;
+
+  const finalSP = sp + addedSP;
+  const finalShadowSP = shadowSpBonus + addedShadowSP;
+  const finalFireSP = fireSpBonus + addedFireSP;
+
+  const maxMana = Math.round(1400 + (finalInt * 15));
+  const maxHealth = Math.round(1500 + (finalStam * 10) + (isWarchiefsBlessing ? 300 : 0));
+
+  // Multipliers
+  let allDamageMult = 1.0;
+  if (isSaygesFortune) allDamageMult *= 1.10;
+  if (isNightfallDebuff) allDamageMult *= 1.15;
+
+  let shadowMult = allDamageMult;
+  let fireMult = allDamageMult;
+
+  if (isCurseOfShadow) shadowMult *= 1.10;
+  if (isCurseOfElements) fireMult *= 1.10;
+  if (isShadowWeaving) shadowMult *= 1.15;
+  if (isImprovedScorch) fireMult *= 1.15;
+
   if (activeDS === 'imp') shadowMult *= 1.15;
   if (activeDS === 'succubus') fireMult *= 1.15;
 
+  const finalResistance = Math.max(0, baseResistance - (isCurseOfShadow || isCurseOfElements ? 75 : 0));
+
+  return {
+    spellPower: finalSP,
+    shadowPower: finalShadowSP,
+    firePower: finalFireSP,
+    hit,
+    crit: finalCrit,
+    haste,
+    intellect: finalInt,
+    stamina: finalStam,
+    spirit: finalSpirit,
+    mp5: finalMP5,
+    maxMana,
+    maxHealth,
+    shadowMultiplier: shadowMult,
+    fireMultiplier: fireMult,
+    resistance: finalResistance,
+    bossArmor
+  };
+}
+
+function updateCombatStatsSummary() {
+  const eff = getEffectiveBuffsAndStats();
+  const effectiveShadow = eff.spellPower + eff.shadowPower;
+  const effectiveFire = eff.spellPower + eff.firePower;
+
   if ($('sum-shadow-sp')) $('sum-shadow-sp').textContent = effectiveShadow;
   if ($('sum-fire-sp')) $('sum-fire-sp').textContent = effectiveFire;
-  if ($('sum-max-mana')) $('sum-max-mana').textContent = format(maxMana);
-  if ($('sum-max-health')) $('sum-max-health').textContent = format(maxHealth);
-  if ($('sum-spell-hit')) $('sum-spell-hit').textContent = `${hit.toFixed(1)}%`;
-  if ($('sum-spell-crit')) $('sum-spell-crit').textContent = `${crit.toFixed(1)}%`;
-  if ($('sum-intellect')) $('sum-intellect').textContent = int;
-  if ($('sum-stamina')) $('sum-stamina').textContent = stam;
-  if ($('sum-mp5')) $('sum-mp5').textContent = mp5;
-  if ($('sum-shadow-mult')) $('sum-shadow-mult').textContent = `${shadowMult.toFixed(2)}x`;
-  if ($('sum-fire-mult')) $('sum-fire-mult').textContent = `${fireMult.toFixed(2)}x`;
+  if ($('sum-max-mana')) $('sum-max-mana').textContent = format(eff.maxMana);
+  if ($('sum-max-health')) $('sum-max-health').textContent = format(eff.maxHealth);
+  if ($('sum-spell-hit')) $('sum-spell-hit').textContent = `${eff.hit.toFixed(1)}%`;
+  if ($('sum-spell-crit')) $('sum-spell-crit').textContent = `${eff.crit.toFixed(1)}%`;
+  if ($('sum-intellect')) $('sum-intellect').textContent = eff.intellect;
+  if ($('sum-stamina')) $('sum-stamina').textContent = eff.stamina;
+  if ($('sum-mp5')) $('sum-mp5').textContent = eff.mp5;
+  if ($('sum-shadow-mult')) $('sum-shadow-mult').textContent = `${eff.shadowMultiplier.toFixed(2)}x`;
+  if ($('sum-fire-mult')) $('sum-fire-mult').textContent = `${eff.fireMultiplier.toFixed(2)}x`;
 
   // Update Constrained Spec Search Subheader Base Stats
   if ($('ga-base-shadow-sp')) $('ga-base-shadow-sp').textContent = effectiveShadow;
   if ($('ga-base-fire-sp')) $('ga-base-fire-sp').textContent = effectiveFire;
-  if ($('ga-base-hit')) $('ga-base-hit').textContent = `${hit.toFixed(1)}%`;
-  if ($('ga-base-crit')) $('ga-base-crit').textContent = `${crit.toFixed(1)}%`;
+  if ($('ga-base-hit')) $('ga-base-hit').textContent = `${eff.hit.toFixed(1)}%`;
+  if ($('ga-base-crit')) $('ga-base-crit').textContent = `${eff.crit.toFixed(1)}%`;
   const dur = Number(form.elements.namedItem('duration')?.value || 180);
   if ($('ga-base-fight')) $('ga-base-fight').textContent = `${dur}s`;
 }
@@ -411,8 +521,8 @@ $('btn-load-build')?.addEventListener('click', () => {
   }
 });
 
-form.addEventListener('input', () => { importedConfig = null; });
-form.addEventListener('change', () => { importedConfig = null; });
+form.addEventListener('input', () => { importedConfig = null; updateCombatStatsSummary(); });
+form.addEventListener('change', () => { importedConfig = null; updateCombatStatsSummary(); });
 
 function readForm() {
   if (importedConfig) return importedConfig;
@@ -424,6 +534,22 @@ function readForm() {
     }
     return [key, typeof value === 'number' ? Number(input.value) : input.value];
   }));
+
+  const eff = getEffectiveBuffsAndStats();
+  base.spellPower = eff.spellPower;
+  base.shadowPower = eff.shadowPower;
+  base.firePower = eff.firePower;
+  base.hit = eff.hit;
+  base.crit = eff.crit;
+  base.intellect = eff.intellect;
+  base.stamina = eff.stamina;
+  base.spirit = eff.spirit;
+  base.mp5 = eff.mp5;
+  base.resistance = eff.resistance;
+  base.bossArmor = eff.bossArmor;
+  base.shadowMultiplier = eff.shadowMultiplier;
+  base.fireMultiplier = eff.fireMultiplier;
+
   base.rotation = activeRotation;
   const talent = getSimTalentFlags();
   const activeActions = new Set(getActiveAPL().filter(rule => rule.enabled).map(rule => rule.id));
@@ -714,24 +840,30 @@ export function loadFullPreset(preset) {
 }
 
 function getActiveStatsConfig() {
-  const sp = Number($('in-spellPower')?.value || 500);
-  const shadowSp = Number($('in-shadowPower')?.value || 0);
-  const fireSp = Number($('in-firePower')?.value || 0);
-  const hit = Number($('in-hit')?.value || 12);
-  const crit = Number($('in-crit')?.value || 15);
-  const int = Number($('in-intellect')?.value || 200);
-  const stam = Number($('in-stamina')?.value || 220);
-  const spirit = Number($('in-spirit')?.value || 100);
-  const mp5 = Number($('in-mp5')?.value || 20);
+  const eff = getEffectiveBuffsAndStats();
   const duration = Number(form.elements.namedItem('duration')?.value || 180);
   const distance = Number(form.elements.namedItem('distance')?.value || 30);
-  const resistance = Number(form.elements.namedItem('resistance')?.value || 0);
   const penetration = Number(form.elements.namedItem('penetration')?.value || 0);
   const tapThreshold = Number(form.elements.namedItem('tapThreshold')?.value || 25);
   return {
-    spellPower: sp, shadowPower: shadowSp, firePower: fireSp,
-    hit, crit, intellect: int, stamina: stam, spirit, mp5,
-    duration, distance, resistance, penetration, tapThreshold
+    spellPower: eff.spellPower,
+    shadowPower: eff.shadowPower,
+    firePower: eff.firePower,
+    hit: eff.hit,
+    crit: eff.crit,
+    haste: eff.haste,
+    intellect: eff.intellect,
+    stamina: eff.stamina,
+    spirit: eff.spirit,
+    mp5: eff.mp5,
+    resistance: eff.resistance,
+    bossArmor: eff.bossArmor,
+    shadowMultiplier: eff.shadowMultiplier,
+    fireMultiplier: eff.fireMultiplier,
+    duration,
+    distance,
+    penetration,
+    tapThreshold
   };
 }
 
@@ -804,8 +936,7 @@ $('btn-batch-sim')?.addEventListener('click', async (e) => {
     setStatus('Running batch GPU simulation across standard meta presets with current stats…');
     const currentStats = getActiveStatsConfig();
     const results = await runBatchPresetSimulation(controller.signal, progress, (selectedPreset) => loadFullPreset(selectedPreset), currentStats);
-    setStatus('Batch meta preset simulation complete! Leaderboard updated with live GPU results.');
-    const numSims = Number(document.getElementById('compare-num-sims')?.value || 3000);
+    const numSims = Number(document.getElementById('compare-num-sims')?.value || 1000);
     const totalFights = results.totalFights || (results.length * numSims);
     const elapsed = results.timing?.elapsedMs || 300;
     const tp = totalFights / (Math.max(1, elapsed) / 1000);

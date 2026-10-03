@@ -576,7 +576,7 @@ def run_presets_comparison(repo_root, port, event, breakdown=False, target_prese
             "hit": p.get("hit", 12),
             "crit": p.get("crit", 15),
             "mp5": 20,
-            "distance": 30, "resistance": 0, "penetration": 0, "tapThreshold": 25,
+            "distance": 30, "resistance": p.get("resistance", 24), "penetration": 0, "tapThreshold": 25,
             "book": False, "charges": False, "partialResists": True, "piercing": True,
             "corruption": p.get("corruption", True),
             "agony": p.get("agony", True),
@@ -608,6 +608,7 @@ def run_presets_comparison(repo_root, port, event, breakdown=False, target_prese
             "fireMultiplier": p.get("fireMultiplier", 1.0),
             "malevolence": p.get("malevolence", 0.0),
             "afBonus": p.get("afBonus", 0.0),
+            "aftermathBonus": p.get("aftermathBonus", 0.0),
             "maledictionBonus": p.get("maledictionBonus", 0.0),
             "shadowMasteryBonus": p.get("shadowMasteryBonus", 0.0),
             "improvedCorruptionBonus": p.get("improvedCorruptionBonus", 0.0),
@@ -642,6 +643,8 @@ def run_presets_comparison(repo_root, port, event, breakdown=False, target_prese
     if not report:
         print(f"{RED}Failed to execute WebGL simulation.{RESET}")
         return None
+    if "error" in report:
+        print(f"{RED}Simulation error: {report['error']}{RESET}")
 
     results = report.get("results", [])
     for r in results:

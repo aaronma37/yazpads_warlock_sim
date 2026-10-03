@@ -102,8 +102,8 @@ void damage(uint spell,float amount,bool crit){
  switch(spell){${Array.from({length:6},(_,i)=>`case ${i}u:s.damage${i}+=amount;s.hits${i}++;s.crits${i}+=uint(crit);break;`).join('')}}
 }
 float isbMultiplier(){
- if(s.now>=s.isbEnd||s.isbCharges==0u)return 1.0;
- if(c.charges!=0u)s.isbCharges--;s.isbConsumed++;return 1.0+c.isb;
+ if(s.now>=s.isbEnd)return 1.0;
+ s.isbConsumed++;return 1.0+c.isb;
 }
 float resistanceMultiplier(){
  float resistance=c.resistance-c.penetration;
@@ -126,7 +126,7 @@ void applyDot(uint spell){
 void immolateImpact(){
  if(random01()>=c.hit){countMiss(3u);return;}
  bool crit=random01()<c.fireCrit;
- float amount=(c.immDirect+0.20*currentPower())*(crit?c.directCrit:1.0)*currentFireMult()*(1.0+c.afBonus);
+ float amount=(c.immDirect+0.20*currentPower())*(crit?c.directCrit:1.0)*currentFireMult()*(1.0+c.afBonus+c.aftermathBonus);
  amount*=resistanceMultiplier();damage(3u,amount,crit);
  s.immTicks=5u;s.immGen++;s.immEnd=s.now+15000000u;enqueue(s.now+3000000u,3u,3u,s.immGen);
 }
@@ -148,7 +148,7 @@ void directImpact(uint spell){
   if((1.0-fightProg)<=0.35&&c.decimation!=0u)amount*=(1.0+0.03*float(c.decimationRank));
   amount*=isbMultiplier();
   crit=random01()<c.shadowCrit;
-  if(crit){amount*=c.directCrit;if(c.isb>0.0){s.isbEnd=s.now+12000000u;s.isbCharges=c.charges!=0u?4u:0xffffffffu;s.isbProcs++;}}
+  if(crit){amount*=c.directCrit;if(c.isb>0.0){s.isbEnd=s.now+12000000u;s.isbProcs++;}}
  }
  else if(spell==4u){
   amount=(201.0+roll*32.0+(2.5/3.5)*p)*(s.immTicks>0u?1.25:1.0)*currentFireMult()*(1.0+c.afBonus);
@@ -192,7 +192,7 @@ void tick(Event e){
   return;
  }else if(e.spell==3u){
   if(e.generation!=s.immGen||s.immTicks==0u)return;
-  s.immTicks--;remaining=s.immTicks;amount=(c.immTick+0.13*p)*currentFireMult()*(1.0+c.afBonus);
+  s.immTicks--;remaining=s.immTicks;amount=(c.immTick+0.13*p)*currentFireMult()*(1.0+c.afBonus+c.maledictionBonus);
   bool crit=random01()<c.fireCrit;if(crit)amount*=c.directCrit;
   damage(3u,amount,crit);
   if(remaining>0u)enqueue(s.now+3000000u,3u,3u,e.generation);
@@ -335,7 +335,7 @@ void decide(){
   }else if(cond==12u){ // DOOM_MISSING
    condPass=(s.doomActive==0u);
   }else if(cond==13u){ // ISB_ACTIVE
-   condPass=(s.now<s.isbEnd&&s.isbCharges>0u);
+   condPass=(s.now<s.isbEnd);
   }else if(cond==14u){ // FIGHT_TIME_GE and named DoT missing
    bool missing=(targetSpell==1u?s.corrTicks==0u:targetSpell==2u?s.agonyTicks==0u:targetSpell==22u?s.doomActive==0u:targetSpell==3u?s.immTicks==0u:targetSpell==15u?s.siphonTicks==0u:false);
    condPass=(c.end>=s.now&&float(c.end-s.now)>=param*1000000.0&&missing);
@@ -425,7 +425,7 @@ void advance(){
  if(s.size==0u){s.done=3u;return;}
  Event e=dequeue();lastEvent=e;
  if(e.at<s.now){s.done=4u;return;}
- s.now=e.at;s.events++;eventDamage=0.0;eventFlags=0u;if(s.now>=s.isbEnd)s.isbCharges=0u;
+ s.now=e.at;s.events++;eventDamage=0.0;eventFlags=0u;
  switch(e.kind){
  case 13u:s.done=1u;break;
  case 1u:
@@ -445,6 +445,7 @@ void advance(){
  case 5u:decide();break;
  case 6u:
   if(e.spell==100u){ // Imp Firebolt
+   uint delay=2000000u;
    if(s.petMana>=115.0){
     s.petCasts++;
     s.petMana-=115.0;
@@ -458,15 +459,17 @@ void advance(){
      }
      s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;if(crit)eventFlags|=1u;
     }
+   }else{
+    delay=1000000u;
    }
-   if(s.now+2000000u<c.end)enqueue(s.now+2000000u,6u,100u,0u);
+   if(s.now+delay<c.end)enqueue(s.now+delay,6u,100u,0u);
   }else if(e.spell==200u){ // Succubus Melee
    s.petCasts++;
    float roll=random01()*100.0;
    if(roll>=14.5){
-    float dmg=(101.0+(c.petAP/14.0)*2.0)*0.59581844*c.petMeleeMult;
+    float dmg=(101.0+(c.petAP/14.0)*2.0)*c.petMeleeMult;
     bool glance=(roll<54.5);
-    bool crit=(!glance&&roll<(54.5+max(0.0,c.crit*100.0-11.8)));
+    bool crit=(!glance&&roll<(54.5+max(0.0,c.crit*100.0+2.72)));
     if(glance)dmg*=0.65;
     if(crit)dmg*=2.0;
     if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
@@ -478,6 +481,7 @@ void advance(){
    }
    if(s.now+2000000u<c.end)enqueue(s.now+2000000u,6u,200u,0u);
   }else if(e.spell==201u){ // Succubus Lash of Pain
+   uint delay=12000000u;
    if(s.petMana>=160.0){
     s.petCasts++;
     s.petMana-=160.0;
@@ -491,8 +495,10 @@ void advance(){
      }
      s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;if(crit)eventFlags|=1u;
     }
+   }else{
+    delay=1500000u;
    }
-   if(s.now+12000000u<c.end)enqueue(s.now+12000000u,6u,201u,0u);
+   if(s.now+delay<c.end)enqueue(s.now+delay,6u,201u,0u);
   }
   break;
  case 8u:if(s.now>=s.tranceEnd)s.trance=0u;break;

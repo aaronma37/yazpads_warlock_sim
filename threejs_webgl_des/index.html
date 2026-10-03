@@ -24,7 +24,7 @@
       </div>
       <div class="brand">
         <span class="brand-title">WARLOCK SIMULATOR</span>
-        <span class="brand-sub">Classic WoW Discrete Event Simulation Lab</span>
+        <span class="brand-sub">GPU DES</span>
       </div>
     </div>
 
@@ -244,22 +244,22 @@
               </section>
 
               <!-- 1. Consumables & Elixirs Accordion -->
-              <details class="wow-accordion" open>
+              <details class="wow-accordion">
                 <summary>Consumables & Elixirs</summary>
                 <div class="accordion-body">
                   <div class="buff-items-list">
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="flaskSupremePower" id="buff-flask-supreme" checked>
+                      <input type="checkbox" name="flaskSupremePower" id="buff-flask-supreme">
                       <img src="./assets/icons/inv_potion_41.png" alt="Flask of Supreme Power">
                       <span>Flask of Supreme Power (+150 SP)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="greaterArcaneElixir" id="buff-greater-arcane" checked>
+                      <input type="checkbox" name="greaterArcaneElixir" id="buff-greater-arcane">
                       <img src="./assets/icons/inv_potion_25.png" alt="Greater Arcane Elixir">
                       <span>Greater Arcane Elixir (+35 SP)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="shadowPowerElixir" id="buff-shadow-power" checked>
+                      <input type="checkbox" name="shadowPowerElixir" id="buff-shadow-power">
                       <img src="./assets/icons/inv_potion_46.png" alt="Elixir of Shadow Power">
                       <span>Elixir of Shadow Power (+40 Shadow SP)</span>
                     </label>
@@ -269,7 +269,7 @@
                       <span>Elixir of Greater Firepower (+40 Fire SP)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="wizardOil" id="buff-wizard-oil" checked>
+                      <input type="checkbox" name="wizardOil" id="buff-wizard-oil">
                       <img src="./assets/icons/inv_potion_105.png" alt="Brilliant Wizard Oil">
                       <span>Brilliant Wizard Oil (+36 SP, +1% Crit)</span>
                     </label>
@@ -293,17 +293,17 @@
                 <div class="accordion-body">
                   <div class="buff-items-list">
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="arcaneIntellect" id="buff-ai" checked>
+                      <input type="checkbox" name="arcaneIntellect" id="buff-ai">
                       <img src="./assets/icons/spell_holy_magicalsentry.png" alt="Arcane Intellect">
                       <span>Arcane Intellect (+31 Int)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="markOfTheWild" id="buff-motw" checked>
+                      <input type="checkbox" name="markOfTheWild" id="buff-motw">
                       <img src="./assets/icons/spell_nature_regeneration.png" alt="Mark of the Wild">
                       <span>Mark of the Wild (+12 All Stats)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="blessingOfKings" id="buff-bok" checked>
+                      <input type="checkbox" name="blessingOfKings" id="buff-bok">
                       <img src="./assets/icons/spell_magic_magearmor.png" alt="Blessing of Kings">
                       <span>Blessing of Kings (+10% Stats)</span>
                     </label>
@@ -321,9 +321,9 @@
                 </div>
               </details>
 
-              <!-- 3. World Buffs (Default Off) Accordion -->
+              <!-- 3. World Buffs Accordion -->
               <details class="wow-accordion">
-                <summary>World Buffs (Default Off)</summary>
+                <summary>World Buffs</summary>
                 <div class="accordion-body">
                   <div class="buff-items-list">
                     <label class="wow-checkbox-label buff-item-row">
@@ -366,12 +366,12 @@
                       <span>Curse of Shadows (+10% Shadow/Arcane Dmg, -75 Resist)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="curseOfElements">
+                      <input type="checkbox" name="curseOfElements" checked>
                       <img src="./assets/icons/Spell_Fire_LavaSpawn.png" alt="Curse of the Elements">
                       <span>Curse of the Elements (+10% Fire/Frost Dmg, -75 Resist)</span>
                     </label>
                     <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="shadowWeaving" checked>
+                      <input type="checkbox" name="shadowWeaving">
                       <img src="./assets/icons/Spell_Shadow_BlackPlague.png" alt="Shadow Weaving">
                       <span>Shadow Weaving 5/5 (+15% Shadow Dmg)</span>
                     </label>
@@ -404,6 +404,10 @@
                       </select>
                     </div>
                     <div class="stat-field">
+                      <label>Boss Armor</label>
+                      <input class="wow-input" name="bossArmor" id="in-boss-armor" type="number" min="0" max="10000" value="3731">
+                    </div>
+                    <div class="stat-field">
                       <label>Target Resistance</label>
                       <input class="wow-input" name="resistance" id="in-resistance" type="number" min="0" max="1000" value="0" required>
                     </div>
@@ -415,30 +419,6 @@
                       <label>Target Count</label>
                       <input class="wow-input" name="targetCount" type="number" min="1" max="10" value="1">
                     </div>
-                  </div>
-                </div>
-              </details>
-
-              <!-- 6. Game Mechanics Accordion -->
-              <details class="wow-accordion">
-                <summary>Game Mechanics</summary>
-                <div class="accordion-body">
-                  <div class="buff-items-list">
-                    <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="charges" checked>
-                      <img src="./assets/icons/Spell_Shadow_ShadowBolt.png" alt="ISB Charges">
-                      <span>Track Improved Shadow Bolt (+20% SB Dmg / 4 Charges)</span>
-                    </label>
-                    <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="partialResists" checked>
-                      <img src="./assets/icons/Spell_Shadow_UnholyFrenzy.png" alt="Partial Resists">
-                      <span>Enable Partial Resist Roll Simulation</span>
-                    </label>
-                    <label class="wow-checkbox-label buff-item-row">
-                      <input type="checkbox" name="spellBatching">
-                      <img src="./assets/icons/inv_misc_pocketwatch_01.png" alt="Spell Batching">
-                      <span>400ms Spell Batching Window</span>
-                    </label>
                   </div>
                 </div>
               </details>
@@ -620,12 +600,12 @@
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
           <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <input class="wow-input" type="number" id="compare-num-sims" value="3000" style="width: 110px;">
+            <input class="wow-input" type="number" id="compare-num-sims" value="1000" style="width: 110px;">
             <label class="wow-checkbox-label">
-              <input type="checkbox" id="compare-all-races"> Compare across all races
+              <input type="checkbox" id="compare-all-races" checked> Compare across all races
             </label>
             <label class="wow-checkbox-label">
-              <input type="checkbox" id="compare-stat-weights"> Calculate Stat Weights
+              <input type="checkbox" id="compare-stat-weights" checked> Calculate Stat Weights
             </label>
           </div>
 

@@ -77,8 +77,8 @@ export function createBaseConfig(index = 0) {
         boltMax: 538.0,
         dotBase: 137.0,     // Corruption tick base
         dotMultiplier: 1.0,
-        isbBonus: 0.20,     // Improved Shadow Bolt +20% shadow damage
-        isbCharges: 4.0,    // 4 charges per ISB crit
+        isbBonus: 0.20,     // Improved Shadow Bolt +20% shadow damage (12s buff, no charges)
+        isbCharges: 0.0,    // 12 second buff, no charges
         executeBonus: 0.0,  // Execute phase damage boost
         agonyBase: 113.0,
         agonyMultiplier: 1.0,

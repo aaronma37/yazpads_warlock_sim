@@ -148,22 +148,23 @@ body {
 /* Authentic WoW Classic Character Tabs */
 .nav-tabs {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   align-items: flex-end;
   margin-bottom: -2px;
 }
 
 .nav-tab {
   font-family: var(--font-serif);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 0.45rem 1.15rem 0.35rem;
+  padding: 0.45rem 1.4rem 0.35rem;
   color: #c9b380;
   text-shadow: 1px 1px 2px #000;
   background: transparent;
   border: none;
   cursor: pointer;
-  min-height: 34px;
+  min-height: 32px;
+  min-width: 145px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -176,7 +177,11 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: url('./assets/wow_classic/Tabs/UI-CHARACTER-INACTIVETAB.PNG') center/100% 100% no-repeat;
+  border-style: solid;
+  border-width: 0 20px 0 20px;
+  border-image-source: url('./assets/wow_classic/Tabs/UI-CHARACTER-INACTIVETAB.PNG');
+  border-image-slice: 0 20 0 20 fill;
+  border-image-repeat: stretch;
   transform: scaleY(-1);
   z-index: -1;
   pointer-events: none;
@@ -197,7 +202,7 @@ body {
 }
 
 .nav-tab.active::before {
-  background: url('./assets/wow_classic/Tabs/UI-CHARACTER-ACTIVETAB.PNG') center/100% 100% no-repeat;
+  border-image-source: url('./assets/wow_classic/Tabs/UI-CHARACTER-ACTIVETAB.PNG');
   filter: none;
 }
 
@@ -215,7 +220,7 @@ body {
 .topbar-status-engine {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #c084fc;
+  color: #9b95a8;
   letter-spacing: 0.02em;
   font-family: var(--font-sans);
   display: flex;
@@ -246,7 +251,7 @@ body {
 }
 
 .topbar-status-metric.done {
-  color: #4ade80;
+  color: #9b95a8;
 }
 
 @keyframes pulse-dot {
@@ -1477,6 +1482,7 @@ input[type="checkbox"]:checked::after {
   font-family: var(--font-mono);
   font-size: 0.76rem;
   font-weight: 700;
+  color: var(--text-gold);
   background: transparent;
   border: none;
   padding: 0;
@@ -1563,14 +1569,17 @@ input[type="checkbox"]:checked::after {
   font-size: 0.75rem;
   font-weight: 600;
   text-align: right;
+  color: #9ca3af;
 }
 
-.stat-weight-sp { color: #60a5fa; }
-.stat-weight-hit { color: #fbbf24; }
-.stat-weight-crit { color: #f472b6; }
-.stat-weight-haste { color: #4ade80; }
-.stat-weight-int { color: #93c5fd; }
-.stat-weight-spirit { color: #2dd4bf; }
+.stat-weight-sp,
+.stat-weight-hit,
+.stat-weight-crit,
+.stat-weight-haste,
+.stat-weight-int,
+.stat-weight-spirit {
+  color: #9ca3af;
+}
 
 .stat-weights-inspector-box {
   background: #0c0a12;
