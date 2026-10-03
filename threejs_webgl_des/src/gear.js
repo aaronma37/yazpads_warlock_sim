@@ -14,7 +14,7 @@ const DEFAULT_ENCHANTS = {
 
 export async function initGear(onStatsChange) {
   try {
-    const res = await fetch('./data/items.json');
+    const res = await fetch(new URL('../data/items.json', import.meta.url));
     itemDb = await res.json();
   } catch (err) {
     console.error('Failed to load items.json:', err);

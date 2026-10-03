@@ -1,6 +1,6 @@
 import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
-import { runSimulation, getEngineMode } from './engine.js';
+import { runSimulation } from './engine.js';
 import { compare } from '../validation/compare.js';
 import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
@@ -8,6 +8,8 @@ import { initPresets, getPresets, getPresetPetAndSac, runBatchPresetSimulation, 
 import { initGear, setGearMode, calculateEquippedStats } from './gear.js';
 import { initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules } from './apl.js';
 import { initTooltips, showTooltip, hideTooltip } from './tooltips.js';
+import { initConstrainedSearchView, readGAConfig, updateGALiveView, setGAExecutionResults } from './constrained_search_view.js';
+import { runConstrainedGeneticSearch } from './genetic_optimizer.js';
 
 const $ = id => document.getElementById(id);
 const form = $('setup-form');
@@ -22,46 +24,40 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   });
 }
 
-// Check WebGL2 Support & Execution Mode
-let engineModeName = 'WebGL2 Active';
+// Check WebGL2 Support
 let capable = false;
 try {
   const probe = document.createElement('canvas').getContext('webgl2');
   capable = !!probe;
   probe?.getExtension('WEBGL_lose_context')?.loseContext();
-  if (capable) {
-    const mode = getEngineMode();
-    engineModeName = `WebGL2 (${mode})`;
-  }
 } catch {
   capable = false;
 }
 
 if ($('gpu-badge')) {
   $('gpu-badge').innerHTML = capable
-    ? `<span class="status-dot">●</span> ${engineModeName}`
+    ? '<span class="status-dot">●</span> WebGL2 Active'
     : '<span class="status-dot" style="color:#ef4444;">●</span> WebGL2 Unavailable';
 }
 if ($('top-sim-status')) {
   $('top-sim-status').textContent = 'Ready to simulate';
 }
 if (!capable) {
-  $('run').disabled = true;
-  $('validate').disabled = true;
-  setStatus('WebGL2 is unavailable. Enable hardware acceleration or try another browser.', true);
+  if ($('run')) $('run').disabled = true;
+  if ($('validate')) $('validate').disabled = true;
+  if ($('status')) $('status').textContent = 'WebGL2 is unavailable. Enable hardware acceleration or try another browser.';
 }
 
 // Navigation Tabs Matching Desktop App
 const tabs = [
   { btn: 'btn-current-build', pane: 'tab-current-build' },
   { btn: 'btn-compare-specs', pane: 'tab-compare-specs' },
-  { btn: 'btn-talents', pane: 'tab-talents' },
-  { btn: 'btn-buffs', pane: 'tab-buffs' },
-  { btn: 'btn-checks', pane: 'tab-checks' }
+  { btn: 'btn-constrained-search', pane: 'tab-constrained-search' }
 ];
 
 tabs.forEach(({ btn, pane }) => {
-  $(btn)?.addEventListener('click', () => {
+  $(btn)?.addEventListener('click', (e) => {
+    e?.preventDefault();
     tabs.forEach(t => {
       const b = $(t.btn);
       const p = $(t.pane);
@@ -208,8 +204,8 @@ function setupInteractiveSlots() {
   const dsSlot = $('slot-ds-picker');
   if (dsSlot) {
     dsSlot.addEventListener('mouseenter', (e) => {
-      const dsName = activeDS === 'succubus' ? 'Succubus (+15% Shadow Damage)' : activeDS === 'imp' ? 'Imp (+15% Fire Damage)' : 'No Demonic Sacrifice';
-      const desc = activeDS === 'succubus' ? 'Sacrifices your Succubus to increase Shadow damage by 15%.' : activeDS === 'imp' ? 'Sacrifices your Imp to increase Fire damage by 15%.' : 'Demonic Sacrifice buff is currently not active.';
+      const dsName = activeDS === 'imp' ? 'Imp (+15% Shadow Damage)' : activeDS === 'succubus' ? 'Succubus (+15% Fire Damage)' : 'No Demonic Sacrifice';
+      const desc = activeDS === 'imp' ? 'Sacrifices your Imp to increase Shadow damage by 15%.' : activeDS === 'succubus' ? 'Sacrifices your Succubus to increase Fire damage by 15%.' : 'Demonic Sacrifice buff is currently not active.';
       showTooltip(e, {
         title: `Sacrifice: ${activeDS.charAt(0).toUpperCase() + activeDS.slice(1)}`,
         subtitle: 'Click to Select Sacrifice Buff',
@@ -363,8 +359,8 @@ function updateCombatStatsSummary() {
 
   let shadowMult = 1.0;
   let fireMult = 1.0;
-  if (activeDS === 'succubus') shadowMult *= 1.15;
-  if (activeDS === 'imp') fireMult *= 1.15;
+  if (activeDS === 'imp') shadowMult *= 1.15;
+  if (activeDS === 'succubus') fireMult *= 1.15;
 
   if ($('sum-shadow-sp')) $('sum-shadow-sp').textContent = effectiveShadow;
   if ($('sum-fire-sp')) $('sum-fire-sp').textContent = effectiveFire;
@@ -377,6 +373,14 @@ function updateCombatStatsSummary() {
   if ($('sum-mp5')) $('sum-mp5').textContent = mp5;
   if ($('sum-shadow-mult')) $('sum-shadow-mult').textContent = `${shadowMult.toFixed(2)}x`;
   if ($('sum-fire-mult')) $('sum-fire-mult').textContent = `${fireMult.toFixed(2)}x`;
+
+  // Update Constrained Spec Search Subheader Base Stats
+  if ($('ga-base-shadow-sp')) $('ga-base-shadow-sp').textContent = effectiveShadow;
+  if ($('ga-base-fire-sp')) $('ga-base-fire-sp').textContent = effectiveFire;
+  if ($('ga-base-hit')) $('ga-base-hit').textContent = `${hit.toFixed(1)}%`;
+  if ($('ga-base-crit')) $('ga-base-crit').textContent = `${crit.toFixed(1)}%`;
+  const dur = Number(form.elements.namedItem('duration')?.value || 180);
+  if ($('ga-base-fight')) $('ga-base-fight').textContent = `${dur}s`;
 }
 
 // Copy build string
@@ -447,7 +451,7 @@ function setTopStatus(type, data) {
     metricEl.className = 'topbar-status-metric in-progress';
     metricEl.textContent = `${data.completed} / ${data.total} fights`;
   } else if (type === 'done') {
-    if (engineEl) engineEl.innerHTML = `<span class="status-dot">●</span> ${engineModeName}`;
+    if (engineEl) engineEl.innerHTML = '<span class="status-dot">●</span> WebGL2 Active';
     metricEl.className = 'topbar-status-metric done';
     const tpFormatted = Math.round(data.throughput) >= 1000000
       ? `${(data.throughput / 1000000).toFixed(2)}M`
@@ -461,18 +465,37 @@ function setTopStatus(type, data) {
   }
 }
 
+const SPELL_ICONS_MAP = {
+  'Shadow Bolt': 'Spell_Shadow_ShadowBolt.png',
+  'Corruption': 'Spell_Shadow_AbominationExplosion.png',
+  'Bane of Agony': 'Spell_Shadow_CurseOfSargeras.png',
+  'Immolate': 'Spell_Fire_Immolation.png',
+  'Incinerate': 'Spell_Fire_Incinerate.png',
+  'Searing Pain': 'Spell_Fire_SoulBurn.png',
+  'Pet': 'Spell_Shadow_SummonImp.png',
+  'Imp': 'Spell_Shadow_SummonImp.png',
+  'Succubus': 'Spell_Shadow_SummonSuccubus.png',
+  'Life Tap': 'Spell_Shadow_BurningSpirit.png'
+};
+
 function busy(active) {
-  $('inputs').disabled = active;
-  $('run').disabled = active || !capable;
-  $('validate').disabled = active || !capable;
+  if ($('inputs')) $('inputs').disabled = active;
+  if ($('run')) $('run').disabled = active || !capable;
+  if ($('validate')) $('validate').disabled = active || !capable;
   const batchBtn = $('btn-batch-sim');
   if (batchBtn) batchBtn.disabled = active || !capable;
-  $('cancel').hidden = !active;
-  $('cancel').disabled = false;
+  if ($('cancel')) {
+    $('cancel').hidden = !active;
+    $('cancel').disabled = false;
+  }
   
   const progContainer = $('progress-container');
   if (progContainer) progContainer.style.display = active ? 'block' : 'none';
-  $('export').disabled = active || !currentResult;
+  const topProgContainer = $('topbar-progress-container');
+  if (topProgContainer && !active) {
+    topProgContainer.style.display = 'none';
+  }
+  if ($('export')) $('export').disabled = active || !currentResult;
 }
 
 function progress(p) {
@@ -481,6 +504,14 @@ function progress(p) {
   const text = $('progress-text');
   if (fill) fill.style.width = `${pct}%`;
   if (text) text.textContent = `${p.phase}: ${format(p.completed)} / ${format(p.total)} (${pct}%)`;
+
+  const topProgContainer = $('topbar-progress-container');
+  const topFill = $('topbar-progress-fill');
+  const topText = $('topbar-progress-text');
+  if (topProgContainer) topProgContainer.style.display = 'block';
+  if (topFill) topFill.style.width = `${pct}%`;
+  if (topText) topText.textContent = `${pct}%`;
+
   setStatus(`${p.phase} · ${format(p.completed)} / ${format(p.total)} completed`);
   if (p.phase && p.phase.toLowerCase().includes('compil')) {
     setTopStatus('compiling', p);
@@ -535,33 +566,110 @@ function render(result) {
   $('throughput').textContent = `${format(c.iterations / (t.elapsedMs / 1000))} fights/s`;
   
   // Update Damage Split Segmented Bar
-  const totalDmg = s.damage || 1;
-  const shadowPct = Math.round(((s.shadowDamage || totalDmg) / totalDmg) * 100);
-  const firePct = Math.round(((s.fireDamage || 0) / totalDmg) * 100);
+  const totalDmg = s.damage || (s.mean * c.duration) || 1;
+  const shadowDmg = s.shadowDamage || 0;
+  const fireDmg = s.fireDamage || 0;
+  const petDmg = s.petDamage || 0;
+  
+  const shadowPct = Math.round((shadowDmg / totalDmg) * 100);
+  const firePct = Math.round((fireDmg / totalDmg) * 100);
   const petPct = Math.max(0, 100 - shadowPct - firePct);
 
-  const splitBar = $('damage-split-fill');
+  const splitBar = $('current-sim-damage-split');
   if (splitBar) {
     splitBar.innerHTML = '';
-    if (shadowPct > 0) splitBar.innerHTML += `<div class="split-seg shadow" style="width:${shadowPct}%;">${shadowPct}% Shadow</div>`;
-    if (firePct > 0) splitBar.innerHTML += `<div class="split-seg fire" style="width:${firePct}%;">${firePct}% Fire</div>`;
-    if (petPct > 0) splitBar.innerHTML += `<div class="split-seg pet" style="width:${petPct}%;">${petPct}% Pet</div>`;
+    if (shadowPct > 0) splitBar.innerHTML += `<div class="split-seg shadow" style="width:${shadowPct}%;" title="Shadow: ${shadowPct}% (${format(shadowDmg / c.duration, 1)} DPS)">${shadowPct}% Shadow</div>`;
+    if (firePct > 0) splitBar.innerHTML += `<div class="split-seg fire" style="width:${firePct}%;" title="Fire: ${firePct}% (${format(fireDmg / c.duration, 1)} DPS)">${firePct}% Fire</div>`;
+    if (petPct > 0) splitBar.innerHTML += `<div class="split-seg pet" style="width:${petPct}%;" title="Pet: ${petPct}% (${format(petDmg / c.duration, 1)} DPS)">${petPct}% Pet</div>`;
   }
 
   // Update Per-Spell Stats Breakdown Table
-  const tbody = $('results-breakdown-body');
-  if (tbody && s.spellBreakdown) {
+  const tbody = $('breakdown');
+  if (tbody) {
     tbody.innerHTML = '';
-    Object.entries(s.spellBreakdown).forEach(([spell, stats]) => {
+    const activeSpells = (s.spells || []).filter(sp => (sp.damage > 0 || sp.casts > 0));
+    
+    // Find max damage for relative progress bar scaling
+    const maxSpellDmg = Math.max(...activeSpells.map(sp => sp.damage), petDmg, 1);
+
+    activeSpells.forEach(sp => {
+      const spellDps = sp.damage / c.duration;
+      const pctOfTotal = totalDmg > 0 ? (sp.damage / totalDmg * 100).toFixed(1) : '0.0';
+      const critPct = sp.casts > 0 ? ((sp.crits / sp.casts) * 100).toFixed(1) : '0.0';
+      const icon = SPELL_ICONS_MAP[sp.name] || 'Spell_Shadow_ShadowBolt.png';
+      const isFire = ['Immolate', 'Incinerate', 'Searing Pain'].includes(sp.name);
+      const barClass = isFire ? 'fire' : 'shadow';
+      const barWidth = Math.min(100, Math.max(4, Math.round((sp.damage / maxSpellDmg) * 100)));
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="color: var(--text-parchment);">${spell}</td>
-        <td style="color: var(--text-gold); font-family: var(--font-mono);">${format(stats.damage || 0)}</td>
-        <td style="font-family: var(--font-mono);">${stats.casts || 0}</td>
-        <td style="color: #4ade80; font-family: var(--font-mono);">${stats.crits || 0}</td>
+        <td>
+          <div class="spell-breakdown-cell">
+            <img src="./assets/icons/${icon}" class="spell-breakdown-icon" alt="${sp.name}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
+            <span class="spell-breakdown-name">${sp.name}</span>
+          </div>
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-weight: 600; white-space: nowrap;">
+          ${format(sp.damage, 0)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${pctOfTotal}%)</span>
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-weight: 700; white-space: nowrap;">
+          ${format(spellDps, 1)}
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-parchment); white-space: nowrap;">
+          ${sp.casts.toFixed(1)}
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; white-space: nowrap;">
+          ${sp.crits.toFixed(1)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${critPct}%)</span>
+        </td>
+        <td>
+          <div class="spell-mini-bar-track">
+            <div class="spell-mini-bar-fill ${barClass}" style="width: ${barWidth}%;"></div>
+          </div>
+        </td>
       `;
       tbody.appendChild(tr);
     });
+
+    // Add Pet row if active & dealt damage
+    if (petDmg > 0) {
+      const petDps = petDmg / c.duration;
+      const petPctOfTotal = (petDmg / totalDmg * 100).toFixed(1);
+      const petIcon = activePet === 'succubus' ? 'Spell_Shadow_SummonSuccubus.png' : 'Spell_Shadow_SummonImp.png';
+      const petName = activePet === 'succubus' ? 'Succubus (Lash)' : 'Imp (Firebolt)';
+      const petBarWidth = Math.min(100, Math.max(4, Math.round((petDmg / maxSpellDmg) * 100)));
+
+      const petTr = document.createElement('tr');
+      petTr.innerHTML = `
+        <td>
+          <div class="spell-breakdown-cell">
+            <img src="./assets/icons/${petIcon}" class="spell-breakdown-icon" alt="${petName}">
+            <span class="spell-breakdown-name">${petName}</span>
+          </div>
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-weight: 600; white-space: nowrap;">
+          ${format(petDmg, 0)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${petPctOfTotal}%)</span>
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-weight: 700; white-space: nowrap;">
+          ${format(petDps, 1)}
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-parchment); white-space: nowrap;">
+          -
+        </td>
+        <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; white-space: nowrap;">
+          -
+        </td>
+        <td>
+          <div class="spell-mini-bar-track">
+            <div class="spell-mini-bar-fill pet" style="width: ${petBarWidth}%;"></div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(petTr);
+    }
+
+    if (activeSpells.length === 0 && petDmg === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 0.75rem;">No damage dealt in simulation. Check your APL rules and mana stats.</td></tr>';
+    }
   }
 }
 
@@ -687,7 +795,8 @@ initPresets((selectedPreset) => {
   $('btn-current-build')?.click();
 }, () => activeRace);
 
-$('btn-batch-sim')?.addEventListener('click', async () => {
+$('btn-batch-sim')?.addEventListener('click', async (e) => {
+  e?.preventDefault();
   if (controller) return;
   controller = new AbortController();
   busy(true);
@@ -697,8 +806,8 @@ $('btn-batch-sim')?.addEventListener('click', async () => {
     const results = await runBatchPresetSimulation(controller.signal, progress, (selectedPreset) => loadFullPreset(selectedPreset), currentStats);
     setStatus('Batch meta preset simulation complete! Leaderboard updated with live GPU results.');
     const numSims = Number(document.getElementById('compare-num-sims')?.value || 3000);
-    const totalFights = results.length * numSims;
-    const elapsed = results[0]?.result?.timing?.elapsedMs || 60;
+    const totalFights = results.totalFights || (results.length * numSims);
+    const elapsed = results.timing?.elapsedMs || 300;
     const tp = totalFights / (Math.max(1, elapsed) / 1000);
     setTopStatus('done', { fights: totalFights, throughput: tp, elapsedMs: elapsed });
   } catch (err) {
@@ -749,9 +858,113 @@ $('validate')?.addEventListener('click', async () => {
   }
 });
 
+// Constrained Spec Search Execution & Candidate Application
+let gaController = null;
+
+function applyCandidateBuild(cand) {
+  if (!cand) return;
+  if (cand.race) setRace(cand.race);
+  if (cand.pet) setPet(cand.pet);
+  if (cand.sacImp) setDS('imp');
+  else if (cand.sacSuccubus) setDS('succubus');
+  else setDS('none');
+
+  if (cand.rotation) {
+    if (cand.rotation.includes('FIRE') || cand.rotation.includes('INCIN')) setRotation('fire');
+    else if (cand.rotation.includes('SEARING')) setRotation('searing');
+    else setRotation('shadow');
+  }
+
+  if (cand.talents) {
+    applyTalentsObject(cand.talents);
+  }
+
+  updateCombatStatsSummary();
+  setStatus(`Applied evolved spec: ${cand.name}. Switched to Current Configuration.`);
+  $('btn-current-build')?.click();
+}
+
+initConstrainedSearchView((cand) => {
+  applyCandidateBuild(cand);
+});
+
+$('btn-run-ga')?.addEventListener('click', async (e) => {
+  e?.preventDefault();
+  if (gaController) return;
+  gaController = new AbortController();
+
+  const runBtn = $('btn-run-ga');
+  const stopBtn = $('btn-stop-ga');
+  if (runBtn) runBtn.style.display = 'none';
+  if (stopBtn) stopBtn.style.display = 'inline-block';
+
+  const progContainer = $('topbar-progress-container');
+  const progFill = $('topbar-progress-fill');
+  const progText = $('topbar-progress-text');
+  if (progContainer) progContainer.style.display = 'block';
+
+  try {
+    setStatus('Running genetic algorithm spec search across multi-config GPU shader simulation…');
+    setTopStatus('compiling');
+
+    const baseStats = getActiveStatsConfig();
+    baseStats.race = activeRace;
+    const gaConfig = readGAConfig();
+    gaConfig.presetsList = getPresets();
+
+    const startTime = performance.now();
+    const results = await runConstrainedGeneticSearch(baseStats, gaConfig, {
+      signal: gaController.signal,
+      onProgress: (p) => {
+        const pct = Math.round((p.completed / Math.max(1, p.total)) * 100);
+        if (progFill) progFill.style.width = `${pct}%`;
+        if (progText) progText.textContent = `${pct}%`;
+        setStatus(`${p.phase} (${p.completed}/${p.total})`);
+        setTopStatus('in-progress', { completed: p.completed, total: p.total });
+      },
+      onGeneration: (genData) => {
+        updateGALiveView(genData);
+        const pct = Math.round((genData.gen / Math.max(1, genData.maxGens)) * 100);
+        if (progFill) progFill.style.width = `${pct}%`;
+        if (progText) progText.textContent = `${pct}%`;
+        if ($('top-sim-status')) {
+          $('top-sim-status').textContent = `Gen ${genData.gen}/${genData.maxGens} · Best ${genData.bestDps.toFixed(1)} DPS`;
+        }
+      }
+    });
+
+    const elapsedMs = performance.now() - startTime;
+    const totalFights = results.totalSimulations || (results.totalEvaluations * (gaConfig.screeningSims || 100));
+    const tp = Math.round(totalFights / (Math.max(1, elapsedMs) / 1000));
+
+    setGAExecutionResults(results);
+    setStatus(`Genetic optimization completed (${totalFights.toLocaleString()} total fights across ${results.totalEvaluations.toLocaleString()} evaluated candidate specs).`);
+    setTopStatus('done', { fights: totalFights, throughput: tp, elapsedMs });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      setStatus('Genetic optimization stopped by user. Best discovered candidates preserved.');
+    } else {
+      setStatus(`Genetic optimization failed: ${err.message}`, true);
+      setTopStatus('error', { message: err.message });
+    }
+  } finally {
+    gaController = null;
+    if (runBtn) runBtn.style.display = 'inline-block';
+    if (stopBtn) stopBtn.style.display = 'none';
+    if (progContainer) progContainer.style.display = 'none';
+  }
+});
+
+$('btn-stop-ga')?.addEventListener('click', () => {
+  if (gaController) {
+    gaController.abort();
+  }
+});
+
 // Initial Setup
 initTooltips();
 setupInteractiveSlots();
 updateRacialsDisplay();
 updateCombatStatsSummary();
 populateTalentPresetsDropdown();
+

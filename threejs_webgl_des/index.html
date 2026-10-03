@@ -15,10 +15,10 @@
   <header class="topbar">
     <div class="brand-section">
       <div class="class-switcher">
-        <button class="class-icon-btn active" id="btn-class-warlock" title="Warlock (Active)">
+        <button type="button" class="class-icon-btn active" id="btn-class-warlock" title="Warlock (Active)">
           <img src="./assets/icons/Class_Warlock.png" alt="Warlock">
         </button>
-        <button class="class-icon-btn disabled" id="btn-class-priest" title="Priest (Disabled)">
+        <button type="button" class="class-icon-btn disabled" id="btn-class-priest" title="Priest (Disabled)">
           <img src="./assets/icons/Class_Priest.png" alt="Priest">
         </button>
       </div>
@@ -29,16 +29,18 @@
     </div>
 
     <nav class="nav-tabs" role="tablist">
-      <button class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
-      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
-      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-talents" id="btn-talents">Talent Trees</button>
-      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-buffs" id="btn-buffs">Consumables & Buffs</button>
-      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-checks" id="btn-checks">CPU Checks</button>
+      <button type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
+      <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
+      <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-constrained-search" id="btn-constrained-search">Constrained Spec Search</button>
     </nav>
 
     <div class="topbar-status-block">
       <div class="topbar-status-engine" id="gpu-badge"><span class="status-dot">●</span> WebGL2 Active</div>
       <div class="topbar-status-metric" id="top-sim-status">Ready to simulate</div>
+      <div class="wow-progress-container topbar-progress" id="topbar-progress-container" style="display: none;">
+        <div class="wow-progress-bar" id="topbar-progress-fill"></div>
+        <span class="wow-progress-text" id="topbar-progress-text">0%</span>
+      </div>
     </div>
   </header>
   <div class="tiled-border-separator"></div>
@@ -109,11 +111,11 @@
                       <img id="slot-ds-icon" src="./assets/icons/Spell_Shadow_RitualOfSacrifice.png" alt="Demonic Sacrifice">
                     </div>
                     <div class="slot-popover-picker" id="popover-ds" style="display: none;">
-                      <button type="button" class="picker-opt-btn" data-ds="succubus">
-                        <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus">+15% Shadow Dmg
-                      </button>
                       <button type="button" class="picker-opt-btn" data-ds="imp">
-                        <img src="./assets/icons/Spell_Shadow_SummonImp.png" alt="Imp">+15% Fire Dmg
+                        <img src="./assets/icons/Spell_Shadow_SummonImp.png" alt="Imp">+15% Shadow Dmg
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-ds="succubus">
+                        <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus">+15% Fire Dmg
                       </button>
                       <button type="button" class="picker-opt-btn" data-ds="none">
                         <img src="./assets/icons/Spell_Shadow_SacrificialShield.png" alt="None"> No Sacrifice
@@ -241,38 +243,7 @@
                 </div>
               </section>
 
-            </div>
-
-            <!-- COLUMN 2: COMBAT STATS SUMMARY & 7 COLLAPSIBLE ACCORDIONS (~380px) -->
-            <div class="build-col-summary-buffs">
-              
-              <!-- 1. Combat Stats Summary Accordion (Open by Default) -->
-              <details class="wow-accordion" open>
-                <summary>Combat Stats Summary</summary>
-                <div class="accordion-body">
-                  <div class="stats-summary-grid">
-                    <div class="stat-metric"><span>Shadow SP:</span><strong id="sum-shadow-sp">500</strong></div>
-                    <div class="stat-metric"><span>Max Mana:</span><strong id="sum-max-mana">4,200</strong></div>
-                    <div class="stat-metric"><span>Fire SP:</span><strong id="sum-fire-sp">500</strong></div>
-                    <div class="stat-metric"><span>Max Health:</span><strong id="sum-max-health">3,850</strong></div>
-                    <div class="stat-metric"><span>Spell Hit:</span><strong id="sum-spell-hit">12.0%</strong></div>
-                    <div class="stat-metric"><span>MP5:</span><strong id="sum-mp5">20</strong></div>
-                    <div class="stat-metric"><span>Spell Crit:</span><strong id="sum-spell-crit">15.0%</strong></div>
-                    <div class="stat-metric"><span>Intellect:</span><strong id="sum-intellect">200</strong></div>
-                    <div class="stat-metric"><span>Spell Pen:</span><strong id="sum-spell-pen">0</strong></div>
-                    <div class="stat-metric"><span>Stamina:</span><strong id="sum-stamina">220</strong></div>
-                    <div class="stat-metric"><span>Shadow Mult:</span><strong id="sum-shadow-mult">1.00x</strong></div>
-                    <div class="stat-metric"><span>Fire Mult:</span><strong id="sum-fire-mult">1.00x</strong></div>
-                  </div>
-                  <div class="build-action-buttons">
-                    <button type="button" class="wow-button wow-btn-small" id="btn-copy-build">Copy Build</button>
-                    <button type="button" class="wow-button wow-btn-small" id="btn-load-build">Load Build</button>
-                    <button type="button" class="wow-button wow-btn-small" id="export" disabled>Export JSON</button>
-                  </div>
-                </div>
-              </details>
-
-              <!-- 2. Consumables & Elixirs Accordion -->
+              <!-- 1. Consumables & Elixirs Accordion -->
               <details class="wow-accordion" open>
                 <summary>Consumables & Elixirs</summary>
                 <div class="accordion-body">
@@ -316,7 +287,7 @@
                 </div>
               </details>
 
-              <!-- 3. Raid Buffs Accordion -->
+              <!-- 2. Raid Buffs Accordion -->
               <details class="wow-accordion">
                 <summary>Raid Buffs</summary>
                 <div class="accordion-body">
@@ -350,7 +321,7 @@
                 </div>
               </details>
 
-              <!-- 4. World Buffs (Default Off) Accordion -->
+              <!-- 3. World Buffs (Default Off) Accordion -->
               <details class="wow-accordion">
                 <summary>World Buffs (Default Off)</summary>
                 <div class="accordion-body">
@@ -384,7 +355,7 @@
                 </div>
               </details>
 
-              <!-- 5. Target Raid Debuffs Accordion -->
+              <!-- 4. Target Raid Debuffs Accordion -->
               <details class="wow-accordion">
                 <summary>Target Raid Debuffs</summary>
                 <div class="accordion-body">
@@ -418,7 +389,7 @@
                 </div>
               </details>
 
-              <!-- 6. Target Configuration Accordion -->
+              <!-- 5. Target Configuration Accordion -->
               <details class="wow-accordion">
                 <summary>Target Configuration</summary>
                 <div class="accordion-body">
@@ -448,7 +419,7 @@
                 </div>
               </details>
 
-              <!-- 7. Game Mechanics Accordion -->
+              <!-- 6. Game Mechanics Accordion -->
               <details class="wow-accordion">
                 <summary>Game Mechanics</summary>
                 <div class="accordion-body">
@@ -474,10 +445,9 @@
 
             </div>
 
-            <!-- COLUMN 3: TALENT TREES ON TOP, SIDE-BY-SIDE SIM CONFIG & RESULTS -->
-            <div class="build-col-talents-sim">
-              
-              <!-- 1. Interactive 3-Tree Talents Planner -->
+            <!-- COLUMN 2: TALENT TREES & COMBAT STATS SUMMARY (MIDDLE COLUMN) -->
+            <div class="build-col-talents">
+              <!-- Interactive 3-Tree Talents Planner -->
               <section class="wow-panel">
                 <div class="talents-header-bar">
                   <div class="wow-panel-header" style="border:none; margin:0; padding:0;">
@@ -494,115 +464,142 @@
                 <div id="talent-trees-container" class="talent-trees-layout"></div>
               </section>
 
-              <!-- 2. Side-by-Side Simulation Configuration and Simulation Results -->
-              <div class="sim-subpanels-grid">
-                
-                <!-- Left Subpanel: Sim Configuration -->
-                <div class="sim-subpanel">
-                  <div class="sim-subpanel-title">Sim Configuration</div>
-                  <div class="sim-fields-grid">
-                    <div class="stat-field">
-                      <label>Iterations</label>
-                      <select class="wow-select" name="iterations">
-                        <option>1000</option>
-                        <option selected>4096</option>
-                        <option>16384</option>
-                        <option>65536</option>
-                        <option>262144</option>
-                        <option>1000000</option>
-                      </select>
-                    </div>
-                    <div class="stat-field">
-                      <label>Fight Length (s)</label>
-                      <input class="wow-input" name="duration" type="number" min="1" max="1800" step="1" value="180" required>
-                    </div>
-                    <div class="stat-field">
-                      <label>Distance (yds)</label>
-                      <select class="wow-select" name="distance">
-                        <option>0</option>
-                        <option selected>30</option>
-                        <option>60</option>
-                      </select>
-                    </div>
+              <!-- Combat Stats Summary (Open Panel) -->
+              <section class="wow-panel" style="margin-top: 0.75rem;">
+                <div class="wow-panel-header">
+                  <span>Combat Stats Summary</span>
+                  <span style="font-size: 0.72rem; color: var(--text-dim);">Live Multipliers & Attributes</span>
+                </div>
+                <div class="stats-summary-grid" style="margin-top: 0.5rem;">
+                  <div class="stat-metric"><span>Shadow SP:</span><strong id="sum-shadow-sp">500</strong></div>
+                  <div class="stat-metric"><span>Max Mana:</span><strong id="sum-max-mana">4,200</strong></div>
+                  <div class="stat-metric"><span>Fire SP:</span><strong id="sum-fire-sp">500</strong></div>
+                  <div class="stat-metric"><span>Max Health:</span><strong id="sum-max-health">3,850</strong></div>
+                  <div class="stat-metric"><span>Spell Hit:</span><strong id="sum-spell-hit">12.0%</strong></div>
+                  <div class="stat-metric"><span>MP5:</span><strong id="sum-mp5">20</strong></div>
+                  <div class="stat-metric"><span>Spell Crit:</span><strong id="sum-spell-crit">15.0%</strong></div>
+                  <div class="stat-metric"><span>Intellect:</span><strong id="sum-intellect">200</strong></div>
+                  <div class="stat-metric"><span>Spell Pen:</span><strong id="sum-spell-pen">0</strong></div>
+                  <div class="stat-metric"><span>Stamina:</span><strong id="sum-stamina">220</strong></div>
+                  <div class="stat-metric"><span>Shadow Mult:</span><strong id="sum-shadow-mult">1.00x</strong></div>
+                  <div class="stat-metric"><span>Fire Mult:</span><strong id="sum-fire-mult">1.00x</strong></div>
+                </div>
+                <div class="build-action-buttons" style="margin-top: 0.65rem;">
+                  <button type="button" class="wow-button wow-btn-small" id="btn-copy-build">Copy Build</button>
+                  <button type="button" class="wow-button wow-btn-small" id="btn-load-build">Load Build</button>
+                  <button type="button" class="wow-button wow-btn-small" id="export" disabled>Export JSON</button>
+                </div>
+              </section>
+            </div>
+
+            <!-- COLUMN 3: SIM CONFIGURATION & SIMULATION RESULTS (RIGHT COLUMN) -->
+            <div class="build-col-sim">
+              <!-- 1. Sim Configuration Subpanel -->
+              <div class="sim-subpanel">
+                <div class="sim-subpanel-title">Sim Configuration</div>
+                <div class="sim-fields-grid">
+                  <div class="stat-field">
+                    <label>Iterations</label>
+                    <select class="wow-select" name="iterations">
+                      <option>1000</option>
+                      <option selected>4096</option>
+                      <option>16384</option>
+                      <option>65536</option>
+                      <option>262144</option>
+                      <option>1000000</option>
+                    </select>
                   </div>
-
-                  <input type="hidden" name="tapThreshold" value="25">
-                  <input type="hidden" name="seed" value="42">
-                  <input type="hidden" name="penetration" value="0">
-                  <input type="hidden" name="piercing" value="true">
-                  <input type="hidden" name="book" value="true">
-
-                  <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem;">
-                    <button class="wow-button wow-btn-big" id="run" type="submit" style="min-width: 110px;">
-                      Run
-                    </button>
-                    <button class="wow-button wow-btn-big" id="cancel" type="button" hidden style="min-width: 100px;">
-                      Cancel
-                    </button>
+                  <div class="stat-field">
+                    <label>Fight Length (s)</label>
+                    <input class="wow-input" name="duration" type="number" min="1" max="1800" step="1" value="180" required>
                   </div>
-
-                  <!-- Animated WoW Progress Bar -->
-                  <div class="wow-progress-container" id="progress-container" style="display: none; margin-top: 0.5rem;">
-                    <div class="wow-progress-bar" id="progress-bar-fill"></div>
-                    <span class="wow-progress-text" id="progress-text">Simulating…</span>
-                    <progress id="progress" max="1" value="0" style="display:none;"></progress>
+                  <div class="stat-field">
+                    <label>Distance (yds)</label>
+                    <select class="wow-select" name="distance">
+                      <option>0</option>
+                      <option selected>30</option>
+                      <option>60</option>
+                    </select>
                   </div>
                 </div>
 
-                <!-- Right Subpanel: Simulation Results -->
-                <div class="sim-subpanel">
-                  <div class="sim-subpanel-title" style="display: flex; justify-content: space-between;">
-                    <span>Simulation Results</span>
-                    <span id="status" style="font-size: 0.75rem; color: var(--text-parchment);">Ready.</span>
-                  </div>
+                <input type="hidden" name="tapThreshold" value="25">
+                <input type="hidden" name="seed" value="42">
+                <input type="hidden" name="penetration" value="0">
+                <input type="hidden" name="piercing" value="true">
+                <input type="hidden" name="book" value="true">
 
-                  <!-- Metrics Summary Cards -->
-                  <div class="results-metric-cards">
-                    <div class="metric-card major">
-                      <span>Mean DPS</span>
-                      <strong id="mean">—</strong>
-                      <small id="confidence">Run batch</small>
-                    </div>
-                    <div class="metric-card">
-                      <span>90% Range</span>
-                      <strong id="range">—</strong>
-                      <small>5th–95th %</small>
-                    </div>
-                    <div class="metric-card">
-                      <span>Wall Time</span>
-                      <strong id="elapsed">—</strong>
-                      <small id="throughput">GPU readback</small>
-                    </div>
-                  </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem;">
+                  <button class="wow-button wow-btn-big" id="run" type="submit" style="min-width: 110px;">
+                    Run
+                  </button>
+                  <button class="wow-button wow-btn-big" id="cancel" type="button" hidden style="min-width: 100px;">
+                    Cancel
+                  </button>
+                </div>
 
-                  <!-- Damage Breakdown Segmented Bar -->
-                  <div style="font-size: 0.75rem; color: var(--text-parchment); margin-bottom: 0.25rem;">Damage Split:</div>
-                  <div class="damage-split-bar" id="current-sim-damage-split">
-                    <div class="split-seg shadow" style="width: 82%;">82% Shadow</div>
-                    <div class="split-seg fire" style="width: 0%; display:none;">0% Fire</div>
-                    <div class="split-seg pet" style="width: 18%;">18% Pet</div>
-                  </div>
+                <!-- Animated WoW Progress Bar -->
+                <div class="wow-progress-container" id="progress-container" style="display: none; margin-top: 0.5rem;">
+                  <div class="wow-progress-bar" id="progress-bar-fill"></div>
+                  <span class="wow-progress-text" id="progress-text">Simulating…</span>
+                  <progress id="progress" max="1" value="0" style="display:none;"></progress>
+                </div>
+              </div>
 
-                  <!-- Spell Breakdown Table -->
-                  <div style="margin-top: 0.5rem;">
-                    <div class="table-scroll" style="max-height: 180px;">
-                      <table class="damage-table">
-                        <thead>
-                          <tr>
-                            <th>Spell</th>
-                            <th>Dmg</th>
-                            <th>Casts</th>
-                            <th>Crits</th>
-                          </tr>
-                        </thead>
-                        <tbody id="breakdown">
-                          <tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 0.5rem;">Click Run Simulation to inspect spell damage.</td></tr>
-                        </tbody>
-                      </table>
-                    </div>
+              <!-- 2. Simulation Results Subpanel -->
+              <div class="sim-subpanel">
+                <div class="sim-subpanel-title" style="display: flex; justify-content: space-between;">
+                  <span>Simulation Results</span>
+                  <span id="status" style="font-size: 0.75rem; color: var(--text-parchment);">Ready.</span>
+                </div>
+
+                <!-- Metrics Summary Cards -->
+                <div class="results-metric-cards">
+                  <div class="metric-card major">
+                    <span>Mean DPS</span>
+                    <strong id="mean">—</strong>
+                    <small id="confidence">Run batch</small>
+                  </div>
+                  <div class="metric-card">
+                    <span>90% Range</span>
+                    <strong id="range">—</strong>
+                    <small>5th–95th %</small>
+                  </div>
+                  <div class="metric-card">
+                    <span>Wall Time</span>
+                    <strong id="elapsed">—</strong>
+                    <small id="throughput">GPU readback</small>
                   </div>
                 </div>
 
+                <!-- Damage Breakdown Segmented Bar -->
+                <div style="font-size: 0.75rem; color: var(--text-parchment); margin-bottom: 0.25rem;">Damage Split:</div>
+                <div class="damage-split-bar" id="current-sim-damage-split">
+                  <div class="split-seg shadow" style="width: 82%;">82% Shadow</div>
+                  <div class="split-seg fire" style="width: 0%; display:none;">0% Fire</div>
+                  <div class="split-seg pet" style="width: 18%;">18% Pet</div>
+                </div>
+
+                <!-- Spell Breakdown Table -->
+                <div style="margin-top: 0.5rem;">
+                  <div class="damage-table-wrapper">
+                    <table class="damage-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 130px;">Spell</th>
+                          <th style="text-align: right; width: 110px;">Damage</th>
+                          <th style="text-align: right; width: 65px;">DPS</th>
+                          <th style="text-align: right; width: 50px;">Casts</th>
+                          <th style="text-align: right; width: 85px;">Crits</th>
+                          <th style="width: 65px;">Split</th>
+                        </tr>
+                      </thead>
+                      <tbody id="breakdown">
+                        <tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 0.75rem;">Click Run to simulate and inspect spell damage.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
 
             </div>
@@ -630,22 +627,12 @@
             <label class="wow-checkbox-label">
               <input type="checkbox" id="compare-stat-weights"> Calculate Stat Weights
             </label>
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-              <span style="font-size: 0.8rem; color: var(--text-muted);">Simulator:</span>
-              <strong style="color: #c084fc; font-size: 0.82rem; background: #1f1a2e; padding: 0.2rem 0.5rem; border: 1px solid #4a3e60; border-radius: 3px;">WebGL2 GPU</strong>
-            </div>
           </div>
 
           <div style="display: flex; gap: 0.6rem;">
-            <button id="btn-batch-sim" class="wow-button" style="min-width: 120px;">Simulate Specs</button>
-            <button id="btn-export-specs" class="wow-button" style="min-width: 100px;">Save All</button>
+            <button type="button" id="btn-batch-sim" class="wow-button" style="min-width: 120px;">Simulate Specs</button>
+            <button type="button" id="btn-export-specs" class="wow-button" style="min-width: 100px;">Save All</button>
           </div>
-        </div>
-
-        <!-- Compare Specs GPU Progress Bar -->
-        <div class="wow-progress-container" id="compare-progress-container" style="display: none; margin-top: 0.5rem;">
-          <div class="wow-progress-bar" id="compare-progress-bar-fill"></div>
-          <span class="wow-progress-text" id="compare-progress-text">Simulating specs…</span>
         </div>
       </section>
 
@@ -710,54 +697,165 @@
     </div>
 
     <!-- ====================================================================
-         PAGE 3: TALENT TREES PLANNER (FULL VIEW)
+         PAGE 3: CONSTRAINED SPEC SEARCH (AI GENETIC OPTIMIZER & MAP-ELITES)
          ==================================================================== -->
-    <div id="tab-talents" class="tab-pane" role="tabpanel" hidden>
-      <section class="wow-panel">
-        <div class="talents-header-bar">
-          <div>
-            <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Interactive Talent Tree Planner</h2>
-            <p style="font-size: 0.82rem; color: var(--text-muted);">Left-click to allocate points; Right-click to refund. Points synchronize directly with your rotation.</p>
+    <div id="tab-constrained-search" class="tab-pane" role="tabpanel" hidden>
+      <!-- TOP SIMULATION SETTINGS & CONSTRAINTS EXECUTION -->
+      <section class="wow-panel" style="padding: 0.65rem 0.85rem; margin-bottom: 0.65rem;">
+        
+        <!-- Algorithm Hyperparameters -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Generations:</span>
+              <input class="wow-input" type="number" id="ga-generations" value="15" min="1" max="1000" style="width: 85px;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Population:</span>
+              <input class="wow-input" type="number" id="ga-pop-size" value="1000" min="2" max="10000" style="width: 95px;" title="1,000 configs x 100 fights = 100k fights per shader pass">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Screening Sims:</span>
+              <input class="wow-input" type="number" id="ga-screening-sims" value="100" min="10" max="10000" style="width: 95px;" title="GPU shader simulation iterations per config per generation">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Final Precision:</span>
+              <input class="wow-input" type="number" id="ga-final-sims" value="2000" min="100" max="50000" style="width: 95px;" title="High-precision benchmarking iterations for discovered elites">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="ga-seed-presets" checked> Seed with standard presets
+              </label>
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="ga-optimize-race" checked> Optimize Race
+              </label>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="ga-advanced-tuning-chk"> Advanced Convergence Tuning
+              </label>
+            </div>
           </div>
-          <div style="display:flex; align-items:center; gap:0.5rem;">
-            <span class="talent-points-badge" id="talents-summary-badge-2">0 / 0 / 0 (51 remaining)</span>
-            <button type="button" id="btn-reset-talents-2" class="wow-button wow-btn-small">Reset All</button>
+
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="button" id="btn-run-ga" class="wow-button wow-btn-big" style="min-width: 170px; color: #ffd100;">Run AI Genetic Optimization</button>
+            <button type="button" id="btn-stop-ga" class="wow-button wow-btn-big" style="min-width: 150px; display: none; background: #7f1d1d; border-color: #ef4444;">🛑 Stop & Keep Best</button>
+            <button type="button" id="btn-export-ga" class="wow-button" style="min-width: 100px;">Save All</button>
           </div>
         </div>
-        <div id="talent-trees-container-full" class="talent-trees-layout"></div>
+
+        <!-- Advanced Tuning Collapsible Box -->
+        <div id="ga-advanced-tuning-box" style="display: none; background: #0e0c14; border: 1px solid #332a40; border-radius: 4px; padding: 0.5rem 0.75rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Mutation Rate:</span>
+              <input class="wow-input" type="number" id="ga-mutation-rate" value="0.45" step="0.05" min="0" max="1" style="width: 75px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Start Exploration:</span>
+              <input class="wow-input" type="number" id="ga-init-explore" value="0.50" step="0.05" min="0" max="1" style="width: 75px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">End Exploration:</span>
+              <input class="wow-input" type="number" id="ga-min-explore" value="0.15" step="0.05" min="0" max="1" style="width: 75px;">
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Controls random talent exploration vs surrogate guided swaps. Pets and rotations evolve independently.</span>
+          </div>
+        </div>
+
+        <!-- Build Constraints Selection Row -->
+        <div style="border-top: 1px solid #292434; padding-top: 0.5rem;">
+          <div style="font-size: 0.78rem; color: var(--text-gold); font-weight: 700; margin-bottom: 0.35rem;">
+            Build Constraints:
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Req Talent 1:</span>
+              <select class="wow-select" id="ga-req-talent-1" style="width: 175px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Req Talent 2:</span>
+              <select class="wow-select" id="ga-req-talent-2" style="width: 175px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Req Talent 3:</span>
+              <select class="wow-select" id="ga-req-talent-3" style="width: 175px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Locked Race:</span>
+              <select class="wow-select" id="ga-locked-race" style="width: 140px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Locked Rotation:</span>
+              <select class="wow-select" id="ga-locked-rotation" style="width: 180px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Locked Pet / DS:</span>
+              <select class="wow-select" id="ga-locked-pet-ds" style="width: 180px;"></select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BASE STATS & OPTIONS SUBHEADER BAR -->
+      <div class="specs-stats-subheader-bar">
+        <div class="specs-base-stats-text">
+          <span style="color: var(--text-gold); font-weight: 700;">Genetic Spec Search</span>
+          <span style="color: #666;">|</span>
+          <span>Active Gear Stats:</span>
+          <span>Shadow SP: <strong style="color:#c084fc;" id="ga-base-shadow-sp">500</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fire SP: <strong style="color:#fb923c;" id="ga-base-fire-sp">500</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Hit: <strong style="color:#60a5fa;" id="ga-base-hit">12.0%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Crit: <strong style="color:#facc15;" id="ga-base-crit">15.0%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fight: <strong id="ga-base-fight">180s</strong></span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="ga-chk-pct-leader"> % from Leader
+          </label>
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="ga-chk-show-sd"> Show Std Dev
+          </label>
+        </div>
+      </div>
+
+      <!-- MAIN RESULTS TABLE -->
+      <section class="wow-panel" style="padding: 0; margin-bottom: 0.75rem; overflow: hidden;">
+        <div class="table-scroll" style="max-height: 480px;">
+          <table class="leaderboard-table compare-specs-table">
+            <thead>
+              <tr>
+                <th style="width: 44px; text-align: center;">Rank</th>
+                <th style="width: 250px;">Spec Name & Archetype</th>
+                <th style="width: 42px; text-align: center;">Race</th>
+                <th style="width: 65px; text-align: center;">Pet / Sac</th>
+                <th>Action Priority Chain</th>
+                <th style="width: 125px;">Damage Split</th>
+                <th style="width: 85px; text-align: right;">Mean DPS</th>
+                <th style="width: 65px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ga-leaderboard-body">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to search. Set constraints and click "Run AI Genetic Optimization".</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SELECTED CANDIDATE DETAILS SECTION -->
+      <section class="wow-panel" id="ga-selected-spec-details-panel">
+        <div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
+          Run genetic optimization to discover and inspect high-performing constrained spec solutions.
+        </div>
       </section>
     </div>
 
-    <!-- ====================================================================
-         PAGE 4: CONSUMABLES & BUFFS (FULL VIEW)
-         ==================================================================== -->
-    <div id="tab-buffs" class="tab-pane" role="tabpanel" hidden>
-      <section class="wow-panel">
-        <div class="wow-panel-header">
-          <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Consumables & Raid Buffs Overview</h2>
-          <div id="buffs-summary-badge" class="badge">+0 Spell Power</div>
-        </div>
-        <div id="buffs-selector-container"></div>
-      </section>
-    </div>
-
-    <!-- ====================================================================
-         PAGE 5: CPU REFERENCE CHECKS
-         ==================================================================== -->
-    <div id="tab-checks" class="tab-pane" role="tabpanel" hidden>
-      <section class="wow-panel">
-        <div class="wow-panel-header">
-          <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Deterministic CPU Parity Validation</h2>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Bit-level verification against C++ oracle</span>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-parchment); margin-bottom: 0.75rem;">
-          Run the compute shader against fixtures produced by the native C++ simulator. Counters, mana spends, and random sequences must agree within epsilon bounds.
-        </p>
-        <button id="validate" class="wow-button wow-btn-big">Run Checks</button>
-        <p id="validation-status" style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-gold);">Checks have not run on this device.</p>
-        <div id="validation-results" style="margin-top: 0.75rem;"></div>
-      </section>
-    </div>
   </main>
 
   <!-- POPUP MODAL FOR APL CONDITION EDITING -->
@@ -791,9 +889,13 @@
   </div>
 
   <footer>
-    <span>WARLOCK SIMULATOR <span style="color: var(--text-dim);">/ High-Throughput WebGL2 DES Engine</span></span>
-    <a href="./README.md">Documentation & Parity Architecture ↗</a>
-    <span>Three.js · WebGL2 Compute Kernel</span>
+    <div class="footer-left">
+      <span class="footer-brand">WARLOCK SIMULATOR</span>
+      <span class="footer-sub">Discrete Event Simulation Engine</span>
+    </div>
+    <div class="footer-right">
+      <span>Three.js · WebGL2 Compute Kernel · Classic WoW Armory</span>
+    </div>
   </footer>
 
   <script type="module" src="./src/app.js"></script>

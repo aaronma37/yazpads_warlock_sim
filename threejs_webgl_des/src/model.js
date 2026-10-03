@@ -267,7 +267,7 @@ export function packConfig(input) {
   let sMult = c.shadowMultiplier;
   let fMult = c.fireMultiplier;
 
-  // Apply baseline sacrifice multipliers if not already factored in (Forever: Imp = +15% Shadow, Succ = +15% Fire)
+  // Baseline sacrifice multipliers: Sac Imp = +15% Shadow, Sac Succ = +15% Fire
   if (c.sacImp && c.shadowMultiplier === 1.0) sMult *= 1.15;
   if (c.sacSucc && c.fireMultiplier === 1.0) fMult *= 1.15;
 

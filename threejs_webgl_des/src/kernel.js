@@ -7,57 +7,14 @@ in vec3 position;
 void main(){ gl_Position=vec4(position,1.0); }`;
 
 // Complete Table-Driven APL Bytecode VM Discrete Event Simulation per fragment.
-// Supports standard 4 MRT mode (desktop) and single-attachment striped fallback mode (mobile).
-export function buildFragmentShader(useSingleAttachment = false) {
-  const outputs = useSingleAttachment
-    ? `layout(location=0) out uvec4 report0;`
-    : `layout(location=0) out uvec4 report0;
-layout(location=1) out uvec4 report1;
-layout(location=2) out uvec4 report2;
-layout(location=3) out uvec4 report3;`;
-
-  const outputEmission = useSingleAttachment
-    ? `if(mode==2u){
-  uint traceStripe = y % 2u;
-  if (traceStripe == 0u) {
-    report0 = uvec4(s.now, lastEvent.kind, lastEvent.spell, floatBitsToUint(eventDamage));
-  } else {
-    report0 = uvec4(floatBitsToUint(s.mana), eventFlags, floatBitsToUint(s.total), s.rngCalls);
-  }
- } else {
-  uint base = stripe * 4u;
-  report0 = outputFour(base);
- }`
-    : `if(mode==2u){
-  report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));
-  report1=uvec4(floatBitsToUint(s.mana),eventFlags,floatBitsToUint(s.total),s.rngCalls);
- }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}`;
-
-  const coordsLogic = useSingleAttachment
-    ? `if(mode==0u){
-  uint simX=x,simY=y/8u;
-  stripe=y%8u;
-  lane=simY*gridWidth+simX;
- }else if(mode==1u){
-  lane=0u;stripe=y;
- }else{
-  lane=x;stripe=y%2u;
- }`
-    : `if(mode==0u){
-  uint simX=x,simY=y/2u;
-  stripe=y%2u;
-  lane=simY*gridWidth+simX;
- }else if(mode==1u){
-  lane=0u;stripe=y;
- }else{
-  lane=x;stripe=0u;
- }`;
-
-  return `
+export const FRAGMENT = `
 precision highp float;
 precision highp int;
 precision highp usampler2D;
-${outputs}
+layout(location=0) out uvec4 report0;
+layout(location=1) out uvec4 report1;
+layout(location=2) out uvec4 report2;
+layout(location=3) out uvec4 report3;
 uniform uint configWords[${Object.keys(CONFIG).length}];
 uniform highp usampler2D configTex;
 uniform uint numConfigs;
@@ -558,9 +515,16 @@ uvec4 outputFour(uint index){return uvec4(outputWord(index),outputWord(index+1u)
 void main(){
  uint x=uint(gl_FragCoord.x),y=uint(gl_FragCoord.y);
  uint lane,stripe;
- ${coordsLogic}
- report0=uvec4(0u);
-${useSingleAttachment ? '' : ' report1=uvec4(0u);report2=uvec4(0u);report3=uvec4(0u);'}
+ if(mode==0u){
+  uint simX=x,simY=y/2u;
+  stripe=y%2u;
+  lane=simY*gridWidth+simX;
+ }else if(mode==1u){
+  lane=0u;stripe=y;
+ }else{
+  lane=x;stripe=0u;
+ }
+ report0=uvec4(0u);report1=uvec4(0u);report2=uvec4(0u);report3=uvec4(0u);
  if(lane>=count&&mode==0u)return;
  uint globalLane=offset+lane;
  currentCfgIdx=0u;
@@ -584,10 +548,10 @@ ${useSingleAttachment ? '' : ' report1=uvec4(0u);report2=uvec4(0u);report3=uvec4
  if(mode!=2u&&s.done==0u)s.done=6u;
  ${Array.from({length:6},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n')}
  ${Array.from({length:4},(_,i)=>`s.rng${i*2}=rng[${i}].x;s.rng${i*2+1}=rng[${i}].y;`).join('\n')}
- ${outputEmission}
+ if(mode==2u){
+  report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));
+  report1=uvec4(floatBitsToUint(s.mana),eventFlags,floatBitsToUint(s.total),s.rngCalls);
+ }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}
 }
 `;
-}
-
-export const FRAGMENT = buildFragmentShader(false);
 

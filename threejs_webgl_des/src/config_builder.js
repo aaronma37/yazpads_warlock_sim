@@ -7,7 +7,12 @@ export function buildFightConfig({ base = {}, talent = {}, pet = 'none', sac = '
   // Build strings and exported simulation results contain an already-resolved
   // config. Validate it through the same boundary without applying talents twice.
   if (resolvedConfig) return validate(resolvedConfig);
-  const config = { ...DEFAULTS, ...base, rotation, petChoice: pet };
+  const config = { ...DEFAULTS };
+  for (const [k, v] of Object.entries(base)) {
+    if (k in DEFAULTS) config[k] = v;
+  }
+  config.rotation = rotation;
+  config.petChoice = pet;
   config.sacSucc = sac === 'succubus' && talent.sacRank > 0;
   config.sacImp = sac === 'imp' && talent.sacRank > 0;
   config.hit += talent.suppressionHit || 0;
