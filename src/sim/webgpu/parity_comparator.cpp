@@ -396,6 +396,10 @@ void ParityReport::print_summary(std::ostream& os, bool verbose) const {
     os << " SCENARIO: " << scenario_name << "\n";
     os << " " << description << "\n";
     os << " WebGPU execution: " << (webgpu_result.gpu_used ? "native GPU" : "CPU fallback") << "\n";
+    os << " Runtime: CPU DES " << format_float(cpu_result.total_sim_time_seconds, 2) << " s ("
+       << format_float(cpu_result.iterations_per_second, 0) << " sims/s), WebGPU "
+       << format_float(webgpu_result.total_sim_time_seconds, 2) << " s ("
+       << format_float(webgpu_result.iterations_per_second, 0) << " sims/s)\n";
     os << " Status: " << (overall_passed ? "[PASS]" : "[FAIL]")
        << " | DPS Diff: " << format_pct(mean_dps_metric.pct_diff, 2)
        << " (" << format_float(mean_dps_metric.delta, 1) << " DPS)\n";

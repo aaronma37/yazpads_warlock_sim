@@ -8,6 +8,14 @@ and retains the existing CPU simulator as an independent reference. See the
 [measured results, supported mechanics, and run instructions](docs/research/webgpu.md).
 Build the standalone demo with `./scripts/build_webgpu.sh`.
 
+The full C++ parity pipeline also runs in a browser through WebGPU. Build the
+WASM app with `./scripts/build_desktop_wasm.sh`, then serve `docs/` over
+localhost or HTTPS and open `webgpu/pipeline.html`. Choose **Spec presets** to
+run the browser equivalent of `./bin/webgpu_parity_pipeline --presets`; it
+executes both the C++ CPU reference and WebGPU kernel and lets you download the
+JSON and Markdown reports. The browser build uses Asyncify to wait for GPU
+completion and readback.
+
 ## Training recurrent policies on CPU
 
 The **PPO + GRU** approach in the Warlock **Train Policies** tab uses the vendored [rl-tools](https://github.com/rl-tools/rl-tools)

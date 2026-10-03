@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111016">
+  <title>Classic WoW Warlock DES Simulator & Web Armory</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23b3a0ff' d='M32 2 60 20 48 55 16 55 4 20Z'/%3E%3Cpath fill='%2314151d' d='m32 12 9 20-9 20-9-20Z'/%3E%3C/svg%3E">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+  <!-- TOPBAR & NAVIGATION TABS MATCHING DESKTOP UI_APP.HPP -->
+  <header class="topbar">
+    <div class="brand-section">
+      <div class="class-switcher">
+        <button class="class-icon-btn active" id="btn-class-warlock" title="Warlock (Active)">
+          <img src="./assets/icons/Class_Warlock.png" alt="Warlock">
+        </button>
+        <button class="class-icon-btn disabled" id="btn-class-priest" title="Priest (Disabled)">
+          <img src="./assets/icons/Class_Priest.png" alt="Priest">
+        </button>
+      </div>
+      <div class="brand">
+        <span class="brand-title">WARLOCK SIMULATOR</span>
+        <span class="brand-sub">Classic WoW Discrete Event Simulation Lab</span>
+      </div>
+    </div>
+
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
+      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
+      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-talents" id="btn-talents">Talent Trees</button>
+      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-buffs" id="btn-buffs">Consumables & Buffs</button>
+      <button class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-checks" id="btn-checks">CPU Checks</button>
+    </nav>
+
+    <div class="topbar-status-block">
+      <div class="topbar-status-engine" id="gpu-badge"><span class="status-dot">●</span> WebGL2 Active</div>
+      <div class="topbar-status-metric" id="top-sim-status">Ready to simulate</div>
+    </div>
+  </header>
+  <div class="tiled-border-separator"></div>
+
+  <main>
+    <!-- ====================================================================
+         PAGE 1: CURRENT CONFIGURATION (MATCHING SCREENSHOT_20261001_223712.PNG)
+         ==================================================================== -->
+    <div id="tab-current-build" class="tab-pane active" role="tabpanel">
+      <form id="setup-form">
+        <fieldset id="inputs" style="border:none; padding:0; margin:0;">
+          <div class="current-build-grid">
+            
+            <!-- COLUMN 1: RACE/PET/DS SLOTS, DIRECT STATS & APL PRIORITY LIST (~360px) -->
+            <div class="build-col-armory">
+              
+              <!-- Top Bar: Race / Pet / DS Interactive Slots & Racials -->
+              <section class="race-pet-slots-bar">
+                <div class="slots-picker-group">
+                  <!-- Race Slot -->
+                  <div class="slot-item-interactive" id="slot-race-picker" title="Click to Change Race">
+                    <span class="slot-label">Race</span>
+                    <div class="slot-icon-frame">
+                      <img id="slot-race-icon" src="./assets/icons/Achievement_Character_Human_Male.png" alt="Race">
+                    </div>
+                    <div class="slot-popover-picker" id="popover-race" style="display: none;">
+                      <button type="button" class="picker-opt-btn" data-race="HUMAN">
+                        <img src="./assets/icons/Achievement_Character_Human_Male.png" alt="Human"> Human (+5% Spirit)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-race="ORC">
+                        <img src="./assets/icons/Achievement_Character_Orc_Male.png" alt="Orc"> Orc (Blood Fury, +5% Pet)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-race="UNDEAD">
+                        <img src="./assets/icons/Achievement_Character_Undead_Male.png" alt="Undead"> Undead (WotF)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-race="TROLL">
+                        <img src="./assets/icons/Achievement_Character_Troll_Male.png" alt="Troll"> Troll (Berserking)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-race="GNOME">
+                        <img src="./assets/icons/Achievement_Character_Gnome_Male.png" alt="Gnome"> Gnome (+5% Int)
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Pet Slot -->
+                  <div class="slot-item-interactive" id="slot-pet-picker" title="Click to Select Pet">
+                    <span class="slot-label">Pet</span>
+                    <div class="slot-icon-frame">
+                      <img id="slot-pet-icon" src="./assets/icons/Spell_Shadow_SummonImp.png" alt="Pet">
+                    </div>
+                    <div class="slot-popover-picker" id="popover-pet" style="display: none;">
+                      <button type="button" class="picker-opt-btn" data-pet="imp">
+                        <img src="./assets/icons/Spell_Shadow_SummonImp.png" alt="Imp"> Imp (Firebolt)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-pet="succubus">
+                        <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus"> Succubus (Lash)
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-pet="none">
+                        <img src="./assets/icons/Spell_Shadow_SacrificialShield.png" alt="None"> None
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- DS Slot -->
+                  <div class="slot-item-interactive" id="slot-ds-picker" title="Click to Select Demonic Sacrifice">
+                    <span class="slot-label">DS</span>
+                    <div class="slot-icon-frame">
+                      <img id="slot-ds-icon" src="./assets/icons/Spell_Shadow_RitualOfSacrifice.png" alt="Demonic Sacrifice">
+                    </div>
+                    <div class="slot-popover-picker" id="popover-ds" style="display: none;">
+                      <button type="button" class="picker-opt-btn" data-ds="succubus">
+                        <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus">+15% Shadow Dmg
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-ds="imp">
+                        <img src="./assets/icons/Spell_Shadow_SummonImp.png" alt="Imp">+15% Fire Dmg
+                      </button>
+                      <button type="button" class="picker-opt-btn" data-ds="none">
+                        <img src="./assets/icons/Spell_Shadow_SacrificialShield.png" alt="None"> No Sacrifice
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Vertical Divider -->
+                <div class="slots-vertical-divider"></div>
+
+                <!-- Racials Icons -->
+                <div class="racials-icons-list" id="racials-list-container" title="Active Racial Traits">
+                  <div class="racial-icon-badge" title="The Human Spirit: Spirit increased by 5%">
+                    <img src="./assets/icons/Spell_Holy_MagicalSentry.png" alt="Spirit">
+                  </div>
+                  <div class="racial-icon-badge" title="Perception: Dramatically increases stealth detection">
+                    <img src="./assets/icons/Spell_Holy_MindVision.png" alt="Perception">
+                  </div>
+                </div>
+              </section>
+
+              <!-- Stats & Paperdoll Panel -->
+              <section class="wow-panel">
+                <!-- Mode Switcher: Direct Stats vs Equipped Items -->
+                <div class="mode-toggle-group">
+                  <button type="button" class="wow-button wow-btn-small active" id="btn-mode-direct">Direct Stats</button>
+                  <button type="button" class="wow-button wow-btn-small" id="btn-mode-equipped">Equipped Items</button>
+                </div>
+
+                <!-- Equipped Items View (Paperdoll) -->
+                <div id="paperdoll-view" style="display: none;">
+                  <div class="bis-presets-row" id="bis-presets-bar"></div>
+                  <div class="table-scroll" style="max-height: 480px;">
+                    <table class="gear-table">
+                      <tbody id="gear-table-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Direct Stats View -->
+                <div id="direct-stats-view">
+                  <div class="direct-stats-grid">
+                    <div class="stat-field">
+                      <label>Spell Power</label>
+                      <input class="wow-input" name="spellPower" id="in-spellPower" type="number" min="0" max="10000" value="500" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Shadow Power</label>
+                      <input class="wow-input" name="shadowPower" id="in-shadowPower" type="number" min="0" max="10000" value="0" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Fire Power</label>
+                      <input class="wow-input" name="firePower" id="in-firePower" type="number" min="0" max="10000" value="0" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Spell Hit %</label>
+                      <input class="wow-input" name="hit" id="in-hit" type="number" min="0" max="100" value="12" step=".1" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Spell Crit %</label>
+                      <input class="wow-input" name="crit" id="in-crit" type="number" min="0" max="100" value="15" step=".1" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Spell Haste %</label>
+                      <input class="wow-input" name="haste" id="in-haste" type="number" min="0" max="100" value="0" step=".1">
+                    </div>
+                    <div class="stat-field">
+                      <label>Intellect</label>
+                      <input class="wow-input" name="intellect" id="in-intellect" type="number" min="0" max="5000" value="200" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Stamina</label>
+                      <input class="wow-input" name="stamina" id="in-stamina" type="number" min="0" max="5000" value="220">
+                    </div>
+                    <div class="stat-field">
+                      <label>Spirit</label>
+                      <input class="wow-input" name="spirit" id="in-spirit" type="number" min="0" max="5000" value="100" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>MP5</label>
+                      <input class="wow-input" name="mp5" id="in-mp5" type="number" min="0" max="10000" value="20" required>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Combat Decision Policy & APL Table -->
+              <section class="wow-panel">
+                <div class="wow-panel-header">
+                  <span>Combat Decision Policy</span>
+                  <span style="font-size: 0.75rem; color: var(--text-gold);">Customizable APL</span>
+                </div>
+                
+                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 0.78rem; color: var(--text-parchment); font-weight: 700;">Action Priority List:</span>
+                  <span style="font-size: 0.7rem; color: var(--text-dim);">Drag rows or click ↗ to edit</span>
+                </div>
+
+                <!-- APL Priority Table -->
+                <div class="apl-table-container">
+                  <table class="apl-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 28px;"></th>
+                        <th style="width: 32px;">#</th>
+                        <th style="width: 110px;">Spell</th>
+                        <th>Condition Rule</th>
+                        <th style="width: 48px; text-align: right;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="apl-table-body">
+                      <!-- Rendered dynamically by apl.js -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Multi-Target Policy Options -->
+                <div style="margin-top: 0.55rem; padding-top: 0.45rem; border-top: 1px solid #2d2636;">
+                  <div style="font-size: 0.78rem; color: var(--text-gold); font-weight: 700; margin-bottom: 0.35rem;">Multi-Target Policy</div>
+                  <label class="wow-checkbox-label">
+                    <input type="checkbox" id="check-multidot-corruption" checked>
+                    <span>Multi-DoT Corruption (Maintain on all targets)</span>
+                  </label>
+                </div>
+              </section>
+
+            </div>
+
+            <!-- COLUMN 2: COMBAT STATS SUMMARY & 7 COLLAPSIBLE ACCORDIONS (~380px) -->
+            <div class="build-col-summary-buffs">
+              
+              <!-- 1. Combat Stats Summary Accordion (Open by Default) -->
+              <details class="wow-accordion" open>
+                <summary>Combat Stats Summary</summary>
+                <div class="accordion-body">
+                  <div class="stats-summary-grid">
+                    <div class="stat-metric"><span>Shadow SP:</span><strong id="sum-shadow-sp">500</strong></div>
+                    <div class="stat-metric"><span>Max Mana:</span><strong id="sum-max-mana">4,200</strong></div>
+                    <div class="stat-metric"><span>Fire SP:</span><strong id="sum-fire-sp">500</strong></div>
+                    <div class="stat-metric"><span>Max Health:</span><strong id="sum-max-health">3,850</strong></div>
+                    <div class="stat-metric"><span>Spell Hit:</span><strong id="sum-spell-hit">12.0%</strong></div>
+                    <div class="stat-metric"><span>MP5:</span><strong id="sum-mp5">20</strong></div>
+                    <div class="stat-metric"><span>Spell Crit:</span><strong id="sum-spell-crit">15.0%</strong></div>
+                    <div class="stat-metric"><span>Intellect:</span><strong id="sum-intellect">200</strong></div>
+                    <div class="stat-metric"><span>Spell Pen:</span><strong id="sum-spell-pen">0</strong></div>
+                    <div class="stat-metric"><span>Stamina:</span><strong id="sum-stamina">220</strong></div>
+                    <div class="stat-metric"><span>Shadow Mult:</span><strong id="sum-shadow-mult">1.00x</strong></div>
+                    <div class="stat-metric"><span>Fire Mult:</span><strong id="sum-fire-mult">1.00x</strong></div>
+                  </div>
+                  <div class="build-action-buttons">
+                    <button type="button" class="wow-button wow-btn-small" id="btn-copy-build">Copy Build</button>
+                    <button type="button" class="wow-button wow-btn-small" id="btn-load-build">Load Build</button>
+                    <button type="button" class="wow-button wow-btn-small" id="export" disabled>Export JSON</button>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 2. Consumables & Elixirs Accordion -->
+              <details class="wow-accordion" open>
+                <summary>Consumables & Elixirs</summary>
+                <div class="accordion-body">
+                  <div class="buff-items-list">
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="flaskSupremePower" id="buff-flask-supreme" checked>
+                      <img src="./assets/icons/inv_potion_41.png" alt="Flask of Supreme Power">
+                      <span>Flask of Supreme Power (+150 SP)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="greaterArcaneElixir" id="buff-greater-arcane" checked>
+                      <img src="./assets/icons/inv_potion_25.png" alt="Greater Arcane Elixir">
+                      <span>Greater Arcane Elixir (+35 SP)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="shadowPowerElixir" id="buff-shadow-power" checked>
+                      <img src="./assets/icons/inv_potion_46.png" alt="Elixir of Shadow Power">
+                      <span>Elixir of Shadow Power (+40 Shadow SP)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="greaterFirepowerElixir" id="buff-greater-fire">
+                      <img src="./assets/icons/inv_potion_60.png" alt="Elixir of Greater Firepower">
+                      <span>Elixir of Greater Firepower (+40 Fire SP)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="wizardOil" id="buff-wizard-oil" checked>
+                      <img src="./assets/icons/inv_potion_105.png" alt="Brilliant Wizard Oil">
+                      <span>Brilliant Wizard Oil (+36 SP, +1% Crit)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="magebloodElixir" id="buff-mageblood">
+                      <img src="./assets/icons/inv_potion_45.png" alt="Mageblood Potion">
+                      <span>Mageblood Potion (+12 MP5)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="nightfinSoup" id="buff-nightfin">
+                      <img src="./assets/icons/inv_misc_fish_03.png" alt="Nightfin Soup">
+                      <span>Nightfin Soup (+8 MP5)</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 3. Raid Buffs Accordion -->
+              <details class="wow-accordion">
+                <summary>Raid Buffs</summary>
+                <div class="accordion-body">
+                  <div class="buff-items-list">
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="arcaneIntellect" id="buff-ai" checked>
+                      <img src="./assets/icons/spell_holy_magicalsentry.png" alt="Arcane Intellect">
+                      <span>Arcane Intellect (+31 Int)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="markOfTheWild" id="buff-motw" checked>
+                      <img src="./assets/icons/spell_nature_regeneration.png" alt="Mark of the Wild">
+                      <span>Mark of the Wild (+12 All Stats)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="blessingOfKings" id="buff-bok" checked>
+                      <img src="./assets/icons/spell_magic_magearmor.png" alt="Blessing of Kings">
+                      <span>Blessing of Kings (+10% Stats)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="blessingOfWisdom" id="buff-bow">
+                      <img src="./assets/icons/spell_holy_sealofwisdom.png" alt="Blessing of Wisdom">
+                      <span>Blessing of Wisdom (+30 MP5)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="manaSpringTotem" id="buff-mst">
+                      <img src="./assets/icons/spell_nature_manaregentotem.png" alt="Mana Spring Totem">
+                      <span>Mana Spring Totem (+25 MP5)</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 4. World Buffs (Default Off) Accordion -->
+              <details class="wow-accordion">
+                <summary>World Buffs (Default Off)</summary>
+                <div class="accordion-body">
+                  <div class="buff-items-list">
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="dragonslayer" id="buff-ony">
+                      <img src="./assets/icons/inv_misc_head_dragon_01.png" alt="Rallying Cry of the Dragonslayer">
+                      <span>Rallying Cry of the Dragonslayer (+10% Crit)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="songflower" id="buff-songflower">
+                      <img src="./assets/icons/spell_holy_mindvision.png" alt="Songflower Serenade">
+                      <span>Songflower Serenade (+5% Crit, +15 Stats)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="warchiefsBlessing" id="buff-rend">
+                      <img src="./assets/icons/spell_arcane_teleportorgrimmar.png" alt="Warchief's Blessing">
+                      <span>Warchief's Blessing (+300 HP, +10 MP5)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="spiritOfZandalar" id="buff-zg">
+                      <img src="./assets/icons/ability_creature_poison_05.png" alt="Spirit of Zandalar">
+                      <span>Spirit of Zandalar (+15% Stats)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="saygesFortune" id="buff-dmf">
+                      <img src="./assets/icons/inv_misc_gem_variety_02.png" alt="Sayge's Fortune">
+                      <span>Sayge's Fortune (+10% Damage)</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 5. Target Raid Debuffs Accordion -->
+              <details class="wow-accordion">
+                <summary>Target Raid Debuffs</summary>
+                <div class="accordion-body">
+                  <div class="buff-items-list">
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="curseOfShadow" checked>
+                      <img src="./assets/icons/Spell_Shadow_CurseOfAchimonde.png" alt="Curse of Shadows">
+                      <span>Curse of Shadows (+10% Shadow/Arcane Dmg, -75 Resist)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="curseOfElements">
+                      <img src="./assets/icons/Spell_Fire_LavaSpawn.png" alt="Curse of the Elements">
+                      <span>Curse of the Elements (+10% Fire/Frost Dmg, -75 Resist)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="shadowWeaving" checked>
+                      <img src="./assets/icons/Spell_Shadow_BlackPlague.png" alt="Shadow Weaving">
+                      <span>Shadow Weaving 5/5 (+15% Shadow Dmg)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="improvedScorch">
+                      <img src="./assets/icons/Spell_Fire_SoulBurn.png" alt="Improved Scorch">
+                      <span>Improved Scorch 5/5 (+15% Fire Dmg)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="nightfallProcDebuff">
+                      <img src="./assets/icons/inv_axe_12.png" alt="Nightfall Axe Debuff">
+                      <span>Nightfall Spell Vulnerability (+15% Spell Dmg)</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 6. Target Configuration Accordion -->
+              <details class="wow-accordion">
+                <summary>Target Configuration</summary>
+                <div class="accordion-body">
+                  <div class="direct-stats-grid">
+                    <div class="stat-field">
+                      <label>Target Level</label>
+                      <select class="wow-select" name="targetLevel" id="target-level">
+                        <option value="63" selected>63 (Raid Boss - 83/17% base hit cap)</option>
+                        <option value="62">62 (+2 Level)</option>
+                        <option value="61">61 (+1 Level)</option>
+                        <option value="60">60 (Level 60 Mob)</option>
+                      </select>
+                    </div>
+                    <div class="stat-field">
+                      <label>Target Resistance</label>
+                      <input class="wow-input" name="resistance" id="in-resistance" type="number" min="0" max="1000" value="0" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Initial Target HP</label>
+                      <input class="wow-input" name="targetHP" type="number" min="1000" max="10000000" value="1000000">
+                    </div>
+                    <div class="stat-field">
+                      <label>Target Count</label>
+                      <input class="wow-input" name="targetCount" type="number" min="1" max="10" value="1">
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <!-- 7. Game Mechanics Accordion -->
+              <details class="wow-accordion">
+                <summary>Game Mechanics</summary>
+                <div class="accordion-body">
+                  <div class="buff-items-list">
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="charges" checked>
+                      <img src="./assets/icons/Spell_Shadow_ShadowBolt.png" alt="ISB Charges">
+                      <span>Track Improved Shadow Bolt (+20% SB Dmg / 4 Charges)</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="partialResists" checked>
+                      <img src="./assets/icons/Spell_Shadow_UnholyFrenzy.png" alt="Partial Resists">
+                      <span>Enable Partial Resist Roll Simulation</span>
+                    </label>
+                    <label class="wow-checkbox-label buff-item-row">
+                      <input type="checkbox" name="spellBatching">
+                      <img src="./assets/icons/inv_misc_pocketwatch_01.png" alt="Spell Batching">
+                      <span>400ms Spell Batching Window</span>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+            </div>
+
+            <!-- COLUMN 3: TALENT TREES ON TOP, SIDE-BY-SIDE SIM CONFIG & RESULTS -->
+            <div class="build-col-talents-sim">
+              
+              <!-- 1. Interactive 3-Tree Talents Planner -->
+              <section class="wow-panel">
+                <div class="talents-header-bar">
+                  <div class="wow-panel-header" style="border:none; margin:0; padding:0;">
+                    <span>Talent Tree Configuration</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap: wrap;">
+                    <span class="talent-points-badge" id="talents-summary-badge">0 / 0 / 0 (51 remaining)</span>
+                    <select id="talent-preset-select" class="wow-select" style="width: auto;">
+                      <option value="">Load Preset…</option>
+                    </select>
+                    <button type="button" id="btn-reset-talents" class="wow-button wow-btn-small">Reset All</button>
+                  </div>
+                </div>
+                <div id="talent-trees-container" class="talent-trees-layout"></div>
+              </section>
+
+              <!-- 2. Side-by-Side Simulation Configuration and Simulation Results -->
+              <div class="sim-subpanels-grid">
+                
+                <!-- Left Subpanel: Sim Configuration -->
+                <div class="sim-subpanel">
+                  <div class="sim-subpanel-title">Sim Configuration</div>
+                  <div class="sim-fields-grid">
+                    <div class="stat-field">
+                      <label>Iterations</label>
+                      <select class="wow-select" name="iterations">
+                        <option>1000</option>
+                        <option selected>4096</option>
+                        <option>16384</option>
+                        <option>65536</option>
+                        <option>262144</option>
+                        <option>1000000</option>
+                      </select>
+                    </div>
+                    <div class="stat-field">
+                      <label>Fight Length (s)</label>
+                      <input class="wow-input" name="duration" type="number" min="1" max="1800" step="1" value="180" required>
+                    </div>
+                    <div class="stat-field">
+                      <label>Distance (yds)</label>
+                      <select class="wow-select" name="distance">
+                        <option>0</option>
+                        <option selected>30</option>
+                        <option>60</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <input type="hidden" name="tapThreshold" value="25">
+                  <input type="hidden" name="seed" value="42">
+                  <input type="hidden" name="penetration" value="0">
+                  <input type="hidden" name="piercing" value="true">
+                  <input type="hidden" name="book" value="true">
+
+                  <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.65rem;">
+                    <button class="wow-button wow-btn-big" id="run" type="submit" style="min-width: 110px;">
+                      Run
+                    </button>
+                    <button class="wow-button wow-btn-big" id="cancel" type="button" hidden style="min-width: 100px;">
+                      Cancel
+                    </button>
+                  </div>
+
+                  <!-- Animated WoW Progress Bar -->
+                  <div class="wow-progress-container" id="progress-container" style="display: none; margin-top: 0.5rem;">
+                    <div class="wow-progress-bar" id="progress-bar-fill"></div>
+                    <span class="wow-progress-text" id="progress-text">Simulating…</span>
+                    <progress id="progress" max="1" value="0" style="display:none;"></progress>
+                  </div>
+                </div>
+
+                <!-- Right Subpanel: Simulation Results -->
+                <div class="sim-subpanel">
+                  <div class="sim-subpanel-title" style="display: flex; justify-content: space-between;">
+                    <span>Simulation Results</span>
+                    <span id="status" style="font-size: 0.75rem; color: var(--text-parchment);">Ready.</span>
+                  </div>
+
+                  <!-- Metrics Summary Cards -->
+                  <div class="results-metric-cards">
+                    <div class="metric-card major">
+                      <span>Mean DPS</span>
+                      <strong id="mean">—</strong>
+                      <small id="confidence">Run batch</small>
+                    </div>
+                    <div class="metric-card">
+                      <span>90% Range</span>
+                      <strong id="range">—</strong>
+                      <small>5th–95th %</small>
+                    </div>
+                    <div class="metric-card">
+                      <span>Wall Time</span>
+                      <strong id="elapsed">—</strong>
+                      <small id="throughput">GPU readback</small>
+                    </div>
+                  </div>
+
+                  <!-- Damage Breakdown Segmented Bar -->
+                  <div style="font-size: 0.75rem; color: var(--text-parchment); margin-bottom: 0.25rem;">Damage Split:</div>
+                  <div class="damage-split-bar" id="current-sim-damage-split">
+                    <div class="split-seg shadow" style="width: 82%;">82% Shadow</div>
+                    <div class="split-seg fire" style="width: 0%; display:none;">0% Fire</div>
+                    <div class="split-seg pet" style="width: 18%;">18% Pet</div>
+                  </div>
+
+                  <!-- Spell Breakdown Table -->
+                  <div style="margin-top: 0.5rem;">
+                    <div class="table-scroll" style="max-height: 180px;">
+                      <table class="damage-table">
+                        <thead>
+                          <tr>
+                            <th>Spell</th>
+                            <th>Dmg</th>
+                            <th>Casts</th>
+                            <th>Crits</th>
+                          </tr>
+                        </thead>
+                        <tbody id="breakdown">
+                          <tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 0.5rem;">Click Run Simulation to inspect spell damage.</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </fieldset>
+      </form>
+    </div>
+
+    <!-- ====================================================================
+         PAGE 2: COMPARE STANDARD SPECS (MATCHING DESKTOP PANEL_OPTIMIZER.HPP)
+         ==================================================================== -->
+    <div id="tab-compare-specs" class="tab-pane" role="tabpanel" hidden>
+      <!-- TOP SIMULATION SETTINGS & EXECUTION -->
+      <section class="wow-panel" style="padding: 0.65rem 0.85rem; margin-bottom: 0.65rem;">
+        <div style="font-size: 0.8rem; color: var(--text-parchment); margin-bottom: 0.4rem; font-weight: 700;">
+          Number of Simulations:
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <input class="wow-input" type="number" id="compare-num-sims" value="3000" style="width: 110px;">
+            <label class="wow-checkbox-label">
+              <input type="checkbox" id="compare-all-races"> Compare across all races
+            </label>
+            <label class="wow-checkbox-label">
+              <input type="checkbox" id="compare-stat-weights"> Calculate Stat Weights
+            </label>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Simulator:</span>
+              <strong style="color: #c084fc; font-size: 0.82rem; background: #1f1a2e; padding: 0.2rem 0.5rem; border: 1px solid #4a3e60; border-radius: 3px;">WebGL2 GPU</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.6rem;">
+            <button id="btn-batch-sim" class="wow-button" style="min-width: 120px;">Simulate Specs</button>
+            <button id="btn-export-specs" class="wow-button" style="min-width: 100px;">Save All</button>
+          </div>
+        </div>
+
+        <!-- Compare Specs GPU Progress Bar -->
+        <div class="wow-progress-container" id="compare-progress-container" style="display: none; margin-top: 0.5rem;">
+          <div class="wow-progress-bar" id="compare-progress-bar-fill"></div>
+          <span class="wow-progress-text" id="compare-progress-text">Simulating specs…</span>
+        </div>
+      </section>
+
+      <!-- SPECS BASE STATS SUBHEADER BAR -->
+      <div class="specs-stats-subheader-bar">
+        <div class="specs-base-stats-text">
+          <span style="color: var(--text-gold); font-weight: 700;">Specs</span>
+          <span style="color: #666;">|</span>
+          <span>Base Stats:</span>
+          <span>Shadow SP: <strong style="color:#c084fc;">415</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fire SP: <strong style="color:#fb923c;">415</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Hit: <strong style="color:#60a5fa;">3.0%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Crit: <strong style="color:#facc15;">7.13%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>MP5: <strong style="color:#38bdf8;">4</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Pet SP: <strong style="color:#4ade80;">10%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Pet AP: <strong style="color:#4ade80;">16.7%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fight: <strong>180s +/- 30s</strong></span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="chk-pct-leader"> % from Leader
+          </label>
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="chk-show-sd"> Show Std Dev
+          </label>
+        </div>
+      </div>
+
+      <!-- MAIN RESULTS TABLE -->
+      <section class="wow-panel" style="padding: 0; margin-bottom: 0.75rem; overflow: hidden;">
+        <div class="table-scroll" style="max-height: 480px;">
+          <table class="leaderboard-table compare-specs-table">
+            <thead id="presets-leaderboard-head">
+              <tr>
+                <th style="width: 44px;">Rank</th>
+                <th style="width: 260px;">Spec Name</th>
+                <th style="width: 42px; text-align: center;">Race</th>
+                <th style="width: 65px; text-align: center;">Pet / Sac</th>
+                <th>Action Priority Chain</th>
+                <th style="width: 125px;">Damage Split</th>
+                <th style="width: 75px; text-align: right;">Mean DPS</th>
+              </tr>
+            </thead>
+            <tbody id="presets-leaderboard-body">
+              <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 2rem;">Loading meta presets…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SELECTED ROW DETAILS SECTION (MATCHING SCREENSHOT) -->
+      <section class="wow-panel" id="selected-preset-details-panel">
+        <!-- Rendered dynamically by presets.js -->
+      </section>
+    </div>
+
+    <!-- ====================================================================
+         PAGE 3: TALENT TREES PLANNER (FULL VIEW)
+         ==================================================================== -->
+    <div id="tab-talents" class="tab-pane" role="tabpanel" hidden>
+      <section class="wow-panel">
+        <div class="talents-header-bar">
+          <div>
+            <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Interactive Talent Tree Planner</h2>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">Left-click to allocate points; Right-click to refund. Points synchronize directly with your rotation.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="talent-points-badge" id="talents-summary-badge-2">0 / 0 / 0 (51 remaining)</span>
+            <button type="button" id="btn-reset-talents-2" class="wow-button wow-btn-small">Reset All</button>
+          </div>
+        </div>
+        <div id="talent-trees-container-full" class="talent-trees-layout"></div>
+      </section>
+    </div>
+
+    <!-- ====================================================================
+         PAGE 4: CONSUMABLES & BUFFS (FULL VIEW)
+         ==================================================================== -->
+    <div id="tab-buffs" class="tab-pane" role="tabpanel" hidden>
+      <section class="wow-panel">
+        <div class="wow-panel-header">
+          <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Consumables & Raid Buffs Overview</h2>
+          <div id="buffs-summary-badge" class="badge">+0 Spell Power</div>
+        </div>
+        <div id="buffs-selector-container"></div>
+      </section>
+    </div>
+
+    <!-- ====================================================================
+         PAGE 5: CPU REFERENCE CHECKS
+         ==================================================================== -->
+    <div id="tab-checks" class="tab-pane" role="tabpanel" hidden>
+      <section class="wow-panel">
+        <div class="wow-panel-header">
+          <h2 style="font-family: var(--font-serif); color: var(--text-gold); font-size: 1.25rem;">Deterministic CPU Parity Validation</h2>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Bit-level verification against C++ oracle</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-parchment); margin-bottom: 0.75rem;">
+          Run the compute shader against fixtures produced by the native C++ simulator. Counters, mana spends, and random sequences must agree within epsilon bounds.
+        </p>
+        <button id="validate" class="wow-button wow-btn-big">Run Checks</button>
+        <p id="validation-status" style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-gold);">Checks have not run on this device.</p>
+        <div id="validation-results" style="margin-top: 0.75rem;"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- POPUP MODAL FOR APL CONDITION EDITING -->
+  <div id="apl-condition-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <img id="apl-modal-spell-icon" src="./assets/icons/Spell_Shadow_ShadowBolt.png" width="24" height="24" alt="Icon" style="border-radius:2px; border:1px solid #ffd100;">
+          <h3 id="apl-modal-spell-title">Edit Condition: Spell Name</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-apl-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-row">
+          <label style="font-size: 0.78rem; color: var(--text-gold);">Display Label / Summary:</label>
+          <input type="text" class="wow-input" id="apl-modal-cond-label" placeholder="e.g. Target TTDie >= 15s & !Active">
+        </div>
+        <div class="field-row">
+          <label style="font-size: 0.78rem; color: var(--text-gold);">Condition Expression / Raw Rule:</label>
+          <input type="text" class="wow-input" id="apl-modal-cond-raw" placeholder="e.g. target_ttd >= 15 && !target.has_debuff('Corruption')">
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); background: #0c0b10; padding: 0.5rem; border-radius: 3px; border: 1px solid #332a40;">
+          Supported variables: <code>mana_pct</code>, <code>target_ttd</code>, <code>target_hp_pct</code>, <code>target.has_debuff(name)</code>, <code>target.debuff_remains(name)</code>, <code>talent.nightfall</code>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="wow-button wow-btn-small" id="btn-cancel-apl-cond">Cancel</button>
+        <button type="button" class="wow-button wow-btn-small" id="btn-save-apl-cond">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>WARLOCK SIMULATOR <span style="color: var(--text-dim);">/ High-Throughput WebGL2 DES Engine</span></span>
+    <a href="./README.md">Documentation & Parity Architecture ↗</a>
+    <span>Three.js · WebGL2 Compute Kernel</span>
+  </footer>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

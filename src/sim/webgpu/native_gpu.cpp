@@ -1,6 +1,112 @@
 #include "native_gpu.hpp"
 
-#ifdef WARLOCK_HAS_NATIVE_WEBGPU
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#include <cmath>
+#include <chrono>
+#include <cstdint>
+#include <vector>
+
+namespace warlock {
+namespace {
+EM_ASYNC_JS(int, run_browser_webgpu, (const Config* configs, uint32_t candidateCount,
+                                     uint32_t replicas, uint32_t seed, uint32_t stepUs,
+                                     void* statesOut), {
+    try {
+      const stageMs = {};
+      const t0 = performance.now();
+      const initStart = performance.now();
+      const gpu = window.WarlockPipelineGPU || (window.WarlockPipelineGPU = {});
+      if (!gpu.device) {
+        if (!navigator.gpu) throw new Error('WebGPU is unavailable in this browser.');
+        const adapter = await navigator.gpu.requestAdapter({powerPreference: 'high-performance'});
+        if (!adapter) throw new Error('No WebGPU adapter was returned.');
+        gpu.device = await adapter.requestDevice();
+        gpu.info = adapter.info || {};
+        const response = await fetch(new URL('./combat.wgsl', location.href));
+        if (!response.ok) throw new Error(`Could not load combat.wgsl (${response.status}).`);
+        gpu.module = gpu.device.createShaderModule({code: await response.text()});
+      }
+      stageMs.adapterDeviceShaderInit = performance.now()-initStart;
+      const d = gpu.device;
+      const total = candidateCount * replicas;
+      const configBytes = candidateCount * 576;
+      const stateBytes = total * 448;
+      if (stateBytes > Math.min(d.limits.maxStorageBufferBindingSize, d.limits.maxBufferSize) ||
+          configBytes > d.limits.maxStorageBufferBindingSize || Math.ceil(total / 64) > d.limits.maxComputeWorkgroupsPerDimension) {
+        throw new Error('Batch exceeds this adapter’s WebGPU limits.');
+      }
+      const key = `${stepUs}`;
+      if (!gpu.pipelines) gpu.pipelines = new Map();
+      let pipeline = gpu.pipelines.get(key);
+      const pipelineStart = performance.now();
+      if (!pipeline) {
+        pipeline = await d.createComputePipelineAsync({layout:'auto',compute:{module:gpu.module,entryPoint:'simulate',constants:{FIXED:stepUs!==0?1:0,STEP_US:stepUs,CHUNK:stepUs!==0?4096:256,GROUP_SIZE:64}}});
+        gpu.pipelines.set(key,pipeline);
+      }
+      stageMs.pipelineLookupOrCompile = performance.now()-pipelineStart;
+      const setupStart = performance.now();
+      const make = (size, usage) => d.createBuffer({size,usage});
+      const cfg=make(configBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);
+      const params=make(16,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);
+      const state=make(stateBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC);
+      const read=make(stateBytes,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
+      try {
+        const heap = HEAPU8;
+        d.queue.writeBuffer(cfg,0,heap.subarray(configs,configs+configBytes));
+        d.queue.writeBuffer(params,0,new Uint32Array([total,replicas,seed,0]));
+        const group=d.createBindGroup({layout:pipeline.getBindGroupLayout(0),entries:[cfg,params,state].map((buffer,binding)=>({binding,resource:{buffer}}))});
+        const f32=HEAPF32;
+        let duration=0;
+        for(let i=0;i<candidateCount;i++) duration=Math.max(duration,f32[(configs>>2)+i*144]);
+        if(duration<=0) duration=120;
+        const rounds=stepUs ? Math.max(1,Math.ceil((Math.ceil(duration*1e6/stepUs)+1)/4096)) : Math.max(1,Math.ceil((Math.ceil(duration)*4+8+255)/256));
+        const encoder=d.createCommandEncoder();
+        for(let i=0;i<rounds;i++){const pass=encoder.beginComputePass();pass.setPipeline(pipeline);pass.setBindGroup(0,group);pass.dispatchWorkgroups(Math.ceil(total/64));pass.end();}
+        d.queue.submit([encoder.finish()]);
+        stageMs.setupUploadEncode = performance.now()-setupStart;
+        const gpuStart=performance.now();
+        await d.queue.onSubmittedWorkDone();
+        stageMs.gpuQueueWait = performance.now()-gpuStart;
+        const copyEncoder=d.createCommandEncoder();
+        copyEncoder.copyBufferToBuffer(state,0,read,0,stateBytes);
+        d.queue.submit([copyEncoder.finish()]);
+        const mapStart=performance.now();
+        await read.mapAsync(GPUMapMode.READ);
+        stageMs.copyAndMapWait = performance.now()-mapStart;
+        const heapCopyStart=performance.now();
+        HEAPU8.set(new Uint8Array(read.getMappedRange()),statesOut);
+        stageMs.mappedToWasmCopy = performance.now()-heapCopyStart;
+        read.unmap();
+        stageMs.total = performance.now()-t0;
+        if (typeof Module !== 'undefined' && Module.print) {
+          Module.print(`[WebGPU timing] adapter/device/shader init ${stageMs.adapterDeviceShaderInit.toFixed(2)} ms; pipeline lookup/compile ${stageMs.pipelineLookupOrCompile.toFixed(2)} ms; buffer setup/upload/encode ${stageMs.setupUploadEncode.toFixed(2)} ms; submitted GPU work wait ${stageMs.gpuQueueWait.toFixed(2)} ms; readback copy+map wait ${stageMs.copyAndMapWait.toFixed(2)} ms; mapped data to WASM ${stageMs.mappedToWasmCopy.toFixed(2)} ms; JS total ${stageMs.total.toFixed(2)} ms; readback ${(stateBytes/1048576).toFixed(1)} MiB`);
+        }
+        return 1;
+      } finally {cfg.destroy();params.destroy();state.destroy();read.destroy();}
+    } catch (error) {
+      console.error('[WebGPU parity pipeline]',error);
+      return 0;
+    }
+});
+}
+
+bool run_native_webgpu(const std::vector<Config>& configs, uint32_t replicas, uint32_t seed, uint32_t step_us,
+                       std::vector<State>& states, double& elapsed_seconds, std::string& error) {
+    if (configs.empty() || replicas == 0 || uint64_t(configs.size()) * replicas * sizeof(State) > 128ull * 1024ull * 1024ull ||
+        uint64_t(configs.size()) * sizeof(Config) > 128ull * 1024ull * 1024ull) {
+        error = "GPU batch exceeds the 128 MiB per-buffer limit"; return false;
+    }
+    states.resize(configs.size() * static_cast<size_t>(replicas));
+    const auto start = std::chrono::steady_clock::now();
+    if (!run_browser_webgpu(configs.data(), static_cast<uint32_t>(configs.size()), replicas, seed, step_us, states.data())) {
+        error = "Browser WebGPU execution failed"; return false;
+    }
+    elapsed_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+    return true;
+}
+}
+#elif defined(WARLOCK_HAS_NATIVE_WEBGPU)
 #include <webgpu/webgpu.h>
 #include <algorithm>
 #include <chrono>

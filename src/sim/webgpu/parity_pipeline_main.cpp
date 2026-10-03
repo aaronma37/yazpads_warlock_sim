@@ -2,6 +2,9 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+#endif
 #include "parity_comparator.hpp"
 
 using namespace warlock;
@@ -27,7 +30,7 @@ void print_help() {
     std::cout << "======================================================================\n";
 }
 
-int main(int argc, char** argv) {
+int run_pipeline(int argc, char** argv) {
     bool run_all = true;
     bool run_presets = false;
     std::string sweep_type = "";
@@ -171,3 +174,21 @@ int main(int argc, char** argv) {
 
     return (total_failed == 0) ? 0 : 1;
 }
+
+#if defined(__EMSCRIPTEN__)
+extern "C" EMSCRIPTEN_KEEPALIVE int run_web_pipeline(int iterations, uint32_t seed, int presets) {
+    std::vector<std::string> args = {
+        "webgpu_parity_pipeline", presets ? "--presets" : "--all",
+        "--iterations", std::to_string(iterations), "--seed", std::to_string(seed),
+        "--json", "/webgpu-report.json", "--markdown", "/webgpu-report.md"
+    };
+    std::vector<char*> argv;
+    argv.reserve(args.size());
+    for (std::string& arg : args) argv.push_back(arg.data());
+    return run_pipeline(static_cast<int>(argv.size()), argv.data());
+}
+#else
+int main(int argc, char** argv) {
+    return run_pipeline(argc, argv);
+}
+#endif

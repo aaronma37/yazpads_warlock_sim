@@ -1,0 +1,3382 @@
+[
+  {
+    "id": 1,
+    "name": "12/31/8 Aff/DP Brand (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3,
+        "malediction": 1,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + Demonic Brand + SB"
+  },
+  {
+    "id": 2,
+    "name": "12/31/8 Aff/DP Brand (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3,
+        "malediction": 1,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + Demonic Brand + SB"
+  },
+  {
+    "id": 3,
+    "name": "12/31/8 Aff/DP Brand (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3,
+        "malediction": 1,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + Demonic Brand + SB"
+  },
+  {
+    "id": 4,
+    "name": "12/31/8 Aff/DP Brand (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3,
+        "malediction": 1,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + Demonic Brand + SB"
+  },
+  {
+    "id": 5,
+    "name": "12/31/8 Aff/DP Brand (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3,
+        "malediction": 1,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + Demonic Brand + SB"
+  },
+  {
+    "id": 6,
+    "name": "13/7/31 Aff Incinerate (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 2,
+        "malediction": 1,
+        "improved_bane_of_agony": 2,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 1,
+        "unholy_power": 4,
+        "fel_vitality": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 3,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 7,
+    "name": "13/7/31 Aff Incinerate (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 2,
+        "malediction": 1,
+        "improved_bane_of_agony": 2,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 1,
+        "unholy_power": 4,
+        "fel_vitality": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 3,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 8,
+    "name": "13/7/31 Aff Incinerate (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 2,
+        "malediction": 1,
+        "improved_bane_of_agony": 2,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 1,
+        "unholy_power": 4,
+        "fel_vitality": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 3,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 9,
+    "name": "13/7/31 Aff Incinerate (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 2,
+        "malediction": 1,
+        "improved_bane_of_agony": 2,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 1,
+        "unholy_power": 4,
+        "fel_vitality": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 3,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 10,
+    "name": "13/7/31 Aff Incinerate (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 2,
+        "malediction": 1,
+        "improved_bane_of_agony": 2,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "improved_imp": 1,
+        "unholy_power": 4,
+        "fel_vitality": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 3,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 11,
+    "name": "12/31/8 Aff/DP (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 4,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "fel_domination": 1,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 3,
+        "bane": 5
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 12,
+    "name": "12/31/8 Aff/DP (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 4,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "fel_domination": 1,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 3,
+        "bane": 5
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 13,
+    "name": "12/31/8 Aff/DP (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 4,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "fel_domination": 1,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 3,
+        "bane": 5
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 14,
+    "name": "12/31/8 Aff/DP (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 4,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "fel_domination": 1,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 3,
+        "bane": 5
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 15,
+    "name": "12/31/8 Aff/DP (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 4,
+        "amplify_curse": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2,
+        "fel_domination": 1,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 3,
+        "bane": 5
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 16,
+    "name": "2/31/18 DP/AF Shadow Corruption (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 17,
+    "name": "2/31/18 DP/AF Shadow Corruption (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 18,
+    "name": "2/31/18 DP/AF Shadow Corruption (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 19,
+    "name": "2/31/18 DP/AF Shadow Corruption (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 20,
+    "name": "2/31/18 DP/AF Shadow Corruption (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 21,
+    "name": "2/31/18 DP/AF Shadow (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 22,
+    "name": "2/31/18 DP/AF Shadow (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 23,
+    "name": "2/31/18 DP/AF Shadow (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 24,
+    "name": "2/31/18 DP/AF Shadow (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 25,
+    "name": "2/31/18 DP/AF Shadow (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Shadow - Corruption + Bane + SB"
+  },
+  {
+    "id": 26,
+    "name": "7/13/31 Incinerate - Suppression + Succubus (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 27,
+    "name": "7/13/31 Incinerate - Suppression + Succubus (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 28,
+    "name": "7/13/31 Incinerate - Suppression + Succubus (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 29,
+    "name": "7/13/31 Incinerate - Suppression + Succubus (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 30,
+    "name": "7/13/31 Incinerate - Suppression + Succubus (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 31,
+    "name": "8/13/30 Shadow and Flame Shadow (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave"
+  },
+  {
+    "id": 32,
+    "name": "8/13/30 Shadow and Flame Shadow (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave"
+  },
+  {
+    "id": 33,
+    "name": "8/13/30 Shadow and Flame Shadow (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave"
+  },
+  {
+    "id": 34,
+    "name": "8/13/30 Shadow and Flame Shadow (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave"
+  },
+  {
+    "id": 35,
+    "name": "8/13/30 Shadow and Flame Shadow (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "suppression": 5,
+        "improved_corruption": 2
+      },
+      "demonology": {
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "improved_sayaad": 3
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave"
+  },
+  {
+    "id": 36,
+    "name": "10/10/31 Incinerate - Suppression + Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 37,
+    "name": "10/10/31 Incinerate - Suppression + Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 38,
+    "name": "10/10/31 Incinerate - Suppression + Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 39,
+    "name": "10/10/31 Incinerate - Suppression + Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 40,
+    "name": "10/10/31 Incinerate - Suppression + Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 3
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Shadow & Flame Fire - Incinerate + Conflag + Bane"
+  },
+  {
+    "id": 41,
+    "name": "9/11/31 Incinerate - Suppression + DS (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 4
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 42,
+    "name": "9/11/31 Incinerate - Suppression + DS (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 4
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 43,
+    "name": "9/11/31 Incinerate - Suppression + DS (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 4
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 44,
+    "name": "9/11/31 Incinerate - Suppression + DS (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 4
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 45,
+    "name": "9/11/31 Incinerate - Suppression + DS (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 5,
+        "improved_corruption": 4
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 1,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 46,
+    "name": "5/11/35 DS/AF DS-Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 47,
+    "name": "5/11/35 DS/AF DS-Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 48,
+    "name": "5/11/35 DS/AF DS-Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 49,
+    "name": "5/11/35 DS/AF DS-Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 50,
+    "name": "5/11/35 DS/AF DS-Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 51,
+    "name": "5/11/35 DS/Searing Pain DS-Succ (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 2,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 52,
+    "name": "5/11/35 DS/Searing Pain DS-Succ (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 2,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 53,
+    "name": "5/11/35 DS/Searing Pain DS-Succ (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 2,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 54,
+    "name": "5/11/35 DS/Searing Pain DS-Succ (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 2,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 55,
+    "name": "5/11/35 DS/Searing Pain DS-Succ (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "destructive_reach": 2,
+        "improved_shadow_bolt": 2,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 56,
+    "name": "1/17/33 Incinerate - Decimate + Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 57,
+    "name": "1/17/33 Incinerate - Decimate + Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 58,
+    "name": "1/17/33 Incinerate - Decimate + Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 59,
+    "name": "1/17/33 Incinerate - Decimate + Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 60,
+    "name": "1/17/33 Incinerate - Decimate + Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag"
+  },
+  {
+    "id": 61,
+    "name": "2/17/32 Shadow and Flame Shadow - Decimate (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 62,
+    "name": "2/17/32 Shadow and Flame Shadow - Decimate (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 63,
+    "name": "2/17/32 Shadow and Flame Shadow - Decimate (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 64,
+    "name": "2/17/32 Shadow and Flame Shadow - Decimate (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 65,
+    "name": "2/17/32 Shadow and Flame Shadow - Decimate (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "intensity": 3,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 66,
+    "name": "0/31/20 DP/AF Fire (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {},
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 4,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain"
+  },
+  {
+    "id": 67,
+    "name": "0/31/20 DP/AF Fire (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {},
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 4,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain"
+  },
+  {
+    "id": 68,
+    "name": "0/31/20 DP/AF Fire (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {},
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 4,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain"
+  },
+  {
+    "id": 69,
+    "name": "0/31/20 DP/AF Fire (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {},
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 4,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain"
+  },
+  {
+    "id": 70,
+    "name": "0/31/20 DP/AF Fire (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {},
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 4,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain"
+  },
+  {
+    "id": 71,
+    "name": "7/11/33 Incinerate - Suppression + DS (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 72,
+    "name": "7/11/33 Incinerate - Suppression + DS (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 73,
+    "name": "7/11/33 Incinerate - Suppression + DS (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 74,
+    "name": "7/11/33 Incinerate - Suppression + DS (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 75,
+    "name": "7/11/33 Incinerate - Suppression + DS (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 76,
+    "name": "23/10/18 NF/AF (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 4,
+        "malevolence": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 77,
+    "name": "23/10/18 NF/AF (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 4,
+        "malevolence": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 78,
+    "name": "23/10/18 NF/AF (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 4,
+        "malevolence": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 79,
+    "name": "23/10/18 NF/AF (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 4,
+        "malevolence": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 80,
+    "name": "23/10/18 NF/AF (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 4,
+        "malevolence": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 5,
+        "demonic_energies": 2
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 81,
+    "name": "19/11/21 NF/DS/Ruin DS-Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 82,
+    "name": "19/11/21 NF/DS/Ruin DS-Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 83,
+    "name": "19/11/21 NF/DS/Ruin DS-Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 84,
+    "name": "19/11/21 NF/DS/Ruin DS-Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 85,
+    "name": "19/11/21 NF/DS/Ruin DS-Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "nightfall": 2
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "cataclysm": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Destro - Conflag Weave + Decimation"
+  },
+  {
+    "id": 86,
+    "name": "32/0/19 SM/AF (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "shadow_mastery": 5
+      },
+      "demonology": {},
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 87,
+    "name": "32/0/19 SM/AF (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "shadow_mastery": 5
+      },
+      "demonology": {},
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 88,
+    "name": "32/0/19 SM/AF (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "shadow_mastery": 5
+      },
+      "demonology": {},
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 89,
+    "name": "32/0/19 SM/AF (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "shadow_mastery": 5
+      },
+      "demonology": {},
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 90,
+    "name": "32/0/19 SM/AF (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "shadow_mastery": 5
+      },
+      "demonology": {},
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Shadow Mastery - DoTs + SB"
+  },
+  {
+    "id": 91,
+    "name": "40/11/0 Deep Affliction DS-Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "improved_drains": 3,
+        "amplify_curse": 1,
+        "pandemic": 3,
+        "malevolence": 5,
+        "curse_of_exhaustion": 1,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {}
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 92,
+    "name": "40/11/0 Deep Affliction DS-Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "improved_drains": 3,
+        "amplify_curse": 1,
+        "pandemic": 3,
+        "malevolence": 5,
+        "curse_of_exhaustion": 1,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {}
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 93,
+    "name": "40/11/0 Deep Affliction DS-Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "improved_drains": 3,
+        "amplify_curse": 1,
+        "pandemic": 3,
+        "malevolence": 5,
+        "curse_of_exhaustion": 1,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {}
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 94,
+    "name": "40/11/0 Deep Affliction DS-Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "improved_drains": 3,
+        "amplify_curse": 1,
+        "pandemic": 3,
+        "malevolence": 5,
+        "curse_of_exhaustion": 1,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {}
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 95,
+    "name": "40/11/0 Deep Affliction DS-Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "malediction": 5,
+        "improved_drains": 3,
+        "amplify_curse": 1,
+        "pandemic": 3,
+        "malevolence": 5,
+        "curse_of_exhaustion": 1,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1
+      },
+      "destruction": {}
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 96,
+    "name": "3/17/31 Incinerate - DS + Decimate (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 3
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "destructive_reach": 1,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 97,
+    "name": "3/17/31 Incinerate - DS + Decimate (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 3
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "destructive_reach": 1,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 98,
+    "name": "3/17/31 Incinerate - DS + Decimate (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 3
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "destructive_reach": 1,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 99,
+    "name": "3/17/31 Incinerate - DS + Decimate (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 3
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "destructive_reach": 1,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 100,
+    "name": "3/17/31 Incinerate - DS + Decimate (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 3
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 5,
+        "demonic_aegis": 2,
+        "fel_vitality": 3,
+        "demonic_sacrifice": 1,
+        "master_summoner": 2,
+        "decimation": 2
+      },
+      "destruction": {
+        "destructive_reach": 1,
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "shadowburn": 1,
+        "agonizing_flames": 3,
+        "conflagrate": 1,
+        "bane_of_havoc": 1,
+        "fire_and_brimstone": 3,
+        "shadow_and_flame": 5,
+        "incinerate": 1
+      }
+    },
+    "rotation": "Fire Destro - Incinerate + Conflag (No Corruption)"
+  },
+  {
+    "id": 101,
+    "name": "35/6/10 Deep Affliction Imp (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "improved_drains": 3,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 2,
+        "demonic_energies": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5
+      }
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 102,
+    "name": "35/6/10 Deep Affliction Imp (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "improved_drains": 3,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 2,
+        "demonic_energies": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5
+      }
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 103,
+    "name": "35/6/10 Deep Affliction Imp (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "improved_drains": 3,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 2,
+        "demonic_energies": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5
+      }
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 104,
+    "name": "35/6/10 Deep Affliction Imp (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "improved_drains": 3,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 2,
+        "demonic_energies": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5
+      }
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 105,
+    "name": "35/6/10 Deep Affliction Imp (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 2,
+        "suppression": 5,
+        "improved_corruption": 5,
+        "improved_drains": 3,
+        "pandemic": 3,
+        "malevolence": 5,
+        "nightfall": 2,
+        "siphon_life": 1,
+        "soul_siphon": 3,
+        "shadow_mastery": 5,
+        "wrack": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "unholy_power": 2,
+        "demonic_energies": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5
+      }
+    },
+    "rotation": "Deep Affliction - Wrack (SB Filler)"
+  },
+  {
+    "id": 106,
+    "name": "2/31/18 DP Fire - Searing Pain (Human)",
+    "race": "Human",
+    "talents": {
+      "affliction": {
+        "suppression": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation"
+  },
+  {
+    "id": 107,
+    "name": "2/31/18 DP Fire - Searing Pain (Orc)",
+    "race": "Orc",
+    "talents": {
+      "affliction": {
+        "suppression": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation"
+  },
+  {
+    "id": 108,
+    "name": "2/31/18 DP Fire - Searing Pain (Undead)",
+    "race": "Undead",
+    "talents": {
+      "affliction": {
+        "suppression": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation"
+  },
+  {
+    "id": 109,
+    "name": "2/31/18 DP Fire - Searing Pain (Troll)",
+    "race": "Troll",
+    "talents": {
+      "affliction": {
+        "suppression": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation"
+  },
+  {
+    "id": 110,
+    "name": "2/31/18 DP Fire - Searing Pain (Gnome)",
+    "race": "Gnome",
+    "talents": {
+      "affliction": {
+        "suppression": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 3,
+        "demonic_embrace": 2,
+        "unholy_power": 5,
+        "fel_vitality": 3,
+        "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "bane": 5,
+        "cataclysm": 3,
+        "aftermath": 2,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation"
+  }
+]

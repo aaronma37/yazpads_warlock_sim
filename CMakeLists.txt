@@ -10,8 +10,8 @@ if (MSVC)
     add_compile_options(/O2 /permissive-)
 elseif (EMSCRIPTEN)
     if (CMAKE_BUILD_TYPE STREQUAL "Release" OR NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pthread")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
     else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
@@ -101,6 +101,35 @@ if (EMSCRIPTEN)
         -sMAX_WEBGL_VERSION=2
         --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets_web@/assets
         --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/web_shell.html
+    )
+    target_compile_options(warlock_sim PRIVATE -pthread)
+
+    # Browser build of the actual C++ parity pipeline. Its WebGPU calls are
+    # bridged to navigator.gpu in native_gpu.cpp and require Asyncify while
+    # the browser completes GPU submissions and result readback.
+    add_executable(webgpu_parity_pipeline_web
+        src/sim/webgpu/parity_pipeline_main.cpp
+        ${SIM_SOURCES}
+    )
+    set_target_properties(webgpu_parity_pipeline_web PROPERTIES
+        OUTPUT_NAME "pipeline"
+        SUFFIX ".js"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/webgpu"
+    )
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/webgpu/pipeline.html
+        ${CMAKE_CURRENT_SOURCE_DIR}/docs/webgpu/pipeline.html
+        COPYONLY
+    )
+    target_link_options(webgpu_parity_pipeline_web PRIVATE
+        -O3
+        -sASYNCIFY
+        -sALLOW_MEMORY_GROWTH=1
+        -sINITIAL_MEMORY=512MB
+        -sFILESYSTEM=1
+        -sINVOKE_RUN=0
+        -sEXIT_RUNTIME=1
+        -sEXPORTED_RUNTIME_METHODS=ccall,FS
     )
 else()
     set_target_properties(warlock_sim PROPERTIES

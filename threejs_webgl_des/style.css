@@ -1,0 +1,1760 @@
+/* WoW Classic Authentic Theme & Simulation Layout */
+
+@font-face {
+  font-family: 'FrizQuadrata';
+  src: url('./assets/fonts/FRIZQT__.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'ArialNarrow';
+  src: url('./assets/fonts/ARIALN.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MedievalSharp';
+  src: url('./assets/fonts/MedievalSharp-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --bg-main: #0c0b0f;
+  --bg-panel: #141318;
+  --bg-card: #1c1a22;
+  --bg-card-hover: #262430;
+  --border: #383446;
+  --border-gold: #c89b3c;
+  --text-main: #f3f0e8;
+  --text-gold: #ffd100;
+  --text-parchment: #ded3b8;
+  --text-muted: #9b95a8;
+  --text-dim: #787384;
+  --accent-purple: #b3a0ff;
+  --accent-warlock: #9482c9;
+  --accent-green: #10b981;
+  --accent-red: #d32f2f;
+  --quality-epic: #a335ee;
+  --quality-rare: #0070dd;
+  --quality-uncommon: #1eff00;
+  --quality-common: #ffffff;
+  --radius: 6px;
+  --font-serif: "FrizQuadrata", "Spectral", "Georgia", serif;
+  --font-sans: "FrizQuadrata", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "ArialNarrow", ui-monospace, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background-color: var(--bg-main);
+  background-image: radial-gradient(circle at 50% 0%, #1f1a2e 0%, #0c0b0f 70%);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.4;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   TOPBAR & WOW CLASSIC NAVIGATION TABS
+   ========================================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1.25rem 0.35rem;
+  background: #111016 url('./assets/wow_classic/PanelBackgrounds/UI-Background-Rock.PNG') repeat;
+  border-bottom: 2px solid #4a3e2e;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.class-switcher {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.class-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  border: 1.5px solid #5a4870;
+  background: #181422;
+  cursor: pointer;
+  padding: 1px;
+  transition: all 0.15s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.class-icon-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.class-icon-btn.active {
+  border-color: #c084fc;
+  box-shadow: 0 0 10px rgba(192, 132, 252, 0.6);
+  background: #3b225c;
+}
+
+.class-icon-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(80%);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+}
+
+.brand-title {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-gold);
+  text-shadow: 1px 1px 2px #000;
+}
+
+.brand-sub {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Authentic WoW Classic Character Tabs */
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.nav-tab {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.5rem 1.1rem 0.45rem;
+  color: #c9b380;
+  text-shadow: 1px 1px 2px #000;
+  background: url('./assets/wow_classic/Tabs/UI-CHARACTER-INACTIVETAB.PNG') center/100% 100% no-repeat;
+  border: none;
+  cursor: pointer;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s ease;
+  position: relative;
+}
+
+.nav-tab:hover {
+  color: #fff;
+  background: url('./assets/wow_classic/Tabs/UI-Character-Tab-Highlight-yellow.PNG') center/100% 100% no-repeat;
+}
+
+.nav-tab.active {
+  color: #ffd100;
+  background: url('./assets/wow_classic/Tabs/UI-CHARACTER-ACTIVETAB.PNG') center/100% 100% no-repeat;
+  text-shadow: 0 0 6px rgba(255, 209, 0, 0.8), 1px 1px 2px #000;
+}
+
+.topbar-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: right;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.topbar-status-engine {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c084fc;
+  letter-spacing: 0.02em;
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-status-engine .status-dot {
+  font-size: 0.65rem;
+  color: #4ade80;
+}
+
+.topbar-status-engine .status-dot.compiling {
+  color: #ffd100;
+  animation: pulse-dot 0.8s infinite ease-in-out;
+}
+
+.topbar-status-metric {
+  font-size: 0.68rem;
+  color: #9b95a8;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  transition: color 0.15s ease;
+}
+
+.topbar-status-metric.in-progress {
+  color: #ffd100;
+}
+
+.topbar-status-metric.done {
+  color: #4ade80;
+}
+
+@keyframes pulse-dot {
+  0% { opacity: 0.35; }
+  50% { opacity: 1; }
+  100% { opacity: 0.35; }
+}
+
+.badge {
+  font-size: 0.75rem;
+  background: #1e1a29;
+  border: 1px solid #4a3e60;
+  padding: 0.25rem 0.65rem;
+  border-radius: 12px;
+  color: var(--accent-purple);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tiled-border-separator {
+  height: 8px;
+  background: url('./assets/wow_classic/Common/Common-Input-Border-T.PNG') repeat-x;
+  width: 100%;
+}
+
+/* ==========================================================================
+   MAIN CONTAINER
+   ========================================================================== */
+main {
+  flex: 1;
+  padding: 0.85rem 1.25rem 1.5rem;
+  max-width: 1720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ==========================================================================
+   WOW CLASSIC BUTTONS & INPUTS
+   ========================================================================== */
+.wow-button {
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffd100;
+  text-shadow: 1px 1px 2px #000;
+  background: url('./assets/wow_classic/Buttons/UI-Panel-Button-Up.PNG') no-repeat center / 100% 100%;
+  border: none;
+  padding: 0 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 28px;
+  min-height: 28px;
+  box-sizing: border-box;
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  transition: filter 0.05s ease;
+}
+
+.wow-button:hover {
+  color: #ffffff;
+  background: url('./assets/wow_classic/Buttons/UI-Panel-Button-Highlight.PNG') no-repeat center / 100% 100%;
+}
+
+.wow-button:active, .wow-button.active {
+  color: #ffd100;
+  background: url('./assets/wow_classic/Buttons/UI-Panel-Button-Down.PNG') no-repeat center / 100% 100%;
+  padding: 0 0.8rem;
+  transform: translate(1px, 1px);
+}
+
+.wow-button:disabled {
+  color: #777777;
+  background: url('./assets/wow_classic/Buttons/UI-Panel-Button-Disabled.PNG') no-repeat center / 100% 100%;
+  cursor: not-allowed;
+  opacity: 0.7;
+  box-shadow: none;
+  transform: none;
+}
+
+.wow-btn-big {
+  height: 34px;
+  min-height: 34px;
+  font-size: 0.9rem;
+  padding: 0 1.25rem;
+}
+
+.wow-btn-small {
+  height: 26px;
+  min-height: 26px;
+  font-size: 0.75rem;
+  padding: 0 0.6rem;
+}
+
+/* Dialog Frame / WoW Panels */
+.wow-panel {
+  background: #131218 url('./assets/wow_classic/DialogFrame/UI-DialogBox-Background-Dark.PNG') repeat;
+  border: 1.5px solid #4a3e2e;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 3px 10px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+  position: relative;
+}
+
+.wow-panel-header {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-gold);
+  text-shadow: 1px 1px 2px #000;
+  border-bottom: 1px solid #3d3428;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wow-input, .wow-select {
+  background: #0d0c11;
+  border: 1px solid #4a3e2e;
+  color: var(--text-parchment);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 3px;
+  width: 100%;
+}
+
+.wow-input:focus, .wow-select:focus {
+  outline: none;
+  border-color: #ffd100;
+  box-shadow: 0 0 5px rgba(255, 209, 0, 0.4);
+}
+
+.wow-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--text-parchment);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Authentic WoW Classic Checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #0d0a08 url('./assets/wow_classic/Buttons/UI-CheckBox-Up.PNG') center/28px 28px no-repeat;
+  border: 1px solid #3d3222;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.9);
+}
+
+input[type="checkbox"]:hover {
+  border-color: #ffd100;
+  background-image: url('./assets/wow_classic/Buttons/UI-CheckBox-Highlight.PNG');
+}
+
+input[type="checkbox"]:checked {
+  background: #0d0a08 url('./assets/wow_classic/Buttons/UI-CheckBox-Up.PNG') center/28px 28px no-repeat;
+  border-color: #a38c4c;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -2px;
+  width: 26px;
+  height: 26px;
+  background: url('./assets/wow_classic/Buttons/UI-CheckBox-Check.PNG') center/contain no-repeat;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   DESKTOP 3-COLUMN LAYOUT (CURRENT CONFIGURATION)
+   ========================================================================== */
+.current-build-grid {
+  display: grid;
+  grid-template-columns: 360px 380px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 1380px) {
+  .current-build-grid {
+    grid-template-columns: 360px 1fr;
+  }
+  .build-col-talents-sim {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .current-build-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   COLUMN 1: RACE/PET/DS SLOTS, STATS & APL PRIORITY
+   ========================================================================== */
+.race-pet-slots-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: #15131c;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid #4a3e2e;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.slots-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.slots-vertical-divider {
+  width: 1px;
+  height: 38px;
+  background: linear-gradient(180deg, transparent, #6e563b 20%, #6e563b 80%, transparent);
+  margin: 0 0.5rem;
+  flex-shrink: 0;
+}
+
+.slot-item-interactive {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.slot-item-interactive .slot-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-weight: 700;
+}
+
+.slot-icon-frame {
+  width: 42px;
+  height: 42px;
+  border: 1.5px solid var(--border-gold);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.slot-item-interactive:hover .slot-icon-frame {
+  border-color: #ffd100;
+  transform: scale(1.05);
+}
+
+.slot-icon-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.racials-icons-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.racial-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 3px;
+  border: 1.5px solid #d4af37;
+  overflow: hidden;
+  background: #000;
+  cursor: help;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+  transition: transform 0.1s ease, border-color 0.1s ease;
+  position: relative;
+}
+
+.racial-icon-badge:hover {
+  border-color: #ffffff;
+  transform: scale(1.08);
+}
+
+.racial-icon-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==========================================================================
+   AUTHENTIC WOW FLOATING TOOLTIPS
+   ========================================================================== */
+.wow-tooltip {
+  position: fixed;
+  z-index: 999999;
+  background: rgba(10, 8, 14, 0.97);
+  border: 1.5px solid #d4af37;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.95), inset 0 0 10px rgba(0, 0, 0, 0.85);
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  max-width: 320px;
+  min-width: 180px;
+  pointer-events: none;
+  font-family: inherit;
+  color: var(--text-parchment);
+}
+
+.wow-tooltip-title {
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #ffd100;
+  text-shadow: 1px 1px 2px #000;
+  margin-bottom: 0.2rem;
+}
+
+.wow-tooltip-subtitle {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-bottom: 0.35rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.wow-tooltip-desc {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #ffd100;
+  margin-bottom: 0.35rem;
+}
+
+.wow-tooltip-next-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-top: 0.4rem;
+  margin-bottom: 0.15rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 0.35rem;
+}
+
+.wow-tooltip-next-desc {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #9ca3af;
+  margin-bottom: 0.35rem;
+}
+
+.wow-tooltip-footer {
+  font-size: 0.75rem;
+  color: #4ade80;
+  margin-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.3rem;
+  line-height: 1.3;
+}
+
+.wow-tooltip-footer.error {
+  color: #f87171;
+}
+
+/* Popover Picker Menu */
+.slot-popover-picker {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  z-index: 1000;
+  background: #14121a;
+  border: 1.5px solid var(--border-gold);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.9);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 150px;
+}
+
+.picker-opt-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  background: #1c1a24;
+  border: 1px solid #332a40;
+  border-radius: 3px;
+  color: var(--text-parchment);
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease;
+}
+
+.picker-opt-btn:hover {
+  background: #3b2812;
+  border-color: #ffd100;
+  color: #fff;
+}
+
+.picker-opt-btn img {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid #444;
+}
+
+/* Mode Switcher */
+.mode-toggle-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.bis-presets-row {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+/* Paperdoll Slots Table */
+.gear-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.gear-row td {
+  padding: 0.2rem 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.slot-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: #aaa;
+}
+
+.wow-icon-slot {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #444;
+  border-radius: 2px;
+  background: #000;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.wow-icon-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slot-item-col select {
+  font-size: 0.78rem;
+  padding: 0.2rem 0.4rem;
+}
+
+/* Direct Stats Grid */
+.direct-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.stat-field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-parchment);
+  margin-bottom: 0.2rem;
+}
+
+/* Decision Policy & APL Table */
+.apl-table-container {
+  border: 1px solid #3d3428;
+  border-radius: 3px;
+  background: #0d0c11;
+  overflow: hidden;
+  margin-bottom: 0.65rem;
+}
+
+.apl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.apl-table th {
+  background: #171520;
+  color: var(--text-gold);
+  font-family: var(--font-serif);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #3d3428;
+  font-weight: 700;
+}
+
+.apl-table td {
+  padding: 0.25rem 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.apl-row {
+  cursor: grab;
+  transition: background 0.1s ease;
+}
+
+.apl-row:hover {
+  background: rgba(255, 209, 0, 0.05);
+}
+
+.apl-row.dragging {
+  opacity: 0.4;
+  background: #2a2010;
+}
+
+.apl-row.drag-over {
+  border-top: 2px solid #ffd100;
+}
+
+.apl-row.disabled-row {
+  opacity: 0.45;
+  filter: grayscale(70%);
+}
+
+.apl-reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.apl-btn-move {
+  background: #1a1724;
+  border: 1px solid #3d3428;
+  color: var(--text-gold);
+  font-size: 0.6rem;
+  padding: 0 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.apl-btn-move:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.apl-prio-badge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #ffd100;
+  font-size: 0.8rem;
+}
+
+.apl-spell-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.apl-spell-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid #4a3e60;
+  background: #000;
+}
+
+.apl-spell-name {
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.apl-condition-badge {
+  background: #16141e;
+  border: 1px solid #332b3d;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.apl-condition-badge code {
+  color: #a3e635;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.apl-btn-edit {
+  background: #221c10;
+  border: 1px solid var(--border-gold);
+  color: #ffd100;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.apl-btn-toggle {
+  background: transparent;
+  border: none;
+  color: #10b981;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+.apl-row.disabled-row .apl-btn-toggle {
+  color: #666;
+}
+
+/* ==========================================================================
+   COLUMN 2: COMBAT STATS SUMMARY & AUTHENTIC ACCORDIONS (+ / - BUTTONS)
+   ========================================================================== */
+.stats-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  background: #0e0d14;
+  padding: 0.65rem;
+  border: 1px solid #382e22;
+  border-radius: 3px;
+  margin-bottom: 0.75rem;
+}
+
+.stat-metric {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.15rem;
+}
+
+.stat-metric span {
+  color: var(--text-muted);
+}
+
+.stat-metric strong {
+  color: var(--text-gold);
+  font-family: var(--font-mono);
+}
+
+.build-action-buttons {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Authentic WoW Classic Accordion with Plus/Minus Button Textures */
+.wow-accordion {
+  border: 1px solid #3a3224;
+  border-radius: 3px;
+  background: #111016;
+  margin-bottom: 0.55rem;
+}
+
+.wow-accordion summary {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-gold);
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  background: #1a1720;
+  border-bottom: 1px solid transparent;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none; /* Hide native browser marker */
+}
+
+.wow-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+/* WoW Classic Plus / Minus Texture Button */
+.wow-accordion summary::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: url('./assets/wow_classic/Buttons/UI-PlusButton-Up.PNG') center/contain no-repeat;
+  flex-shrink: 0;
+}
+
+.wow-accordion[open] summary::before {
+  background-image: url('./assets/wow_classic/Buttons/UI-MinusButton-Up.PNG');
+}
+
+.wow-accordion[open] summary {
+  border-bottom-color: #3a3224;
+}
+
+.accordion-body {
+  padding: 0.65rem;
+}
+
+.buff-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.buff-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-parchment);
+}
+
+.buff-item-row img {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid #555;
+}
+
+/* ==========================================================================
+   COLUMN 3: TALENTS ON TOP, SIDE-BY-SIDE SIM CONFIG & RESULTS
+   ========================================================================== */
+.talents-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.talent-points-badge {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--text-gold);
+  font-weight: 700;
+}
+
+/* Tree-level [X] Reset button */
+.tree-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tree-reset-btn {
+  background: #2a1515;
+  border: 1px solid #7c2d12;
+  color: #ef4444;
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.tree-reset-btn:hover {
+  background: #dc2626;
+  color: #fff;
+  border-color: #f87171;
+}
+
+/* Side-by-Side Simulation Subpanels */
+.sim-subpanels-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .sim-subpanels-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sim-subpanel {
+  background: #111016;
+  border: 1px solid #3d3428;
+  border-radius: 3px;
+  padding: 0.75rem;
+}
+
+.sim-subpanel-title {
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--text-gold);
+  font-weight: 700;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid #282436;
+  padding-bottom: 0.25rem;
+}
+
+/* Simulation Controls Fields */
+.sim-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Authentic WoW Progress Bar */
+.wow-progress-container {
+  margin: 0.5rem 0;
+  position: relative;
+  height: 22px;
+  background: #08080a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.wow-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7e22ce, #a855f7, #c084fc);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.wow-progress-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 2px #000;
+}
+
+/* Live Results Highlight Metrics */
+.results-metric-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.metric-card {
+  background: #16141f;
+  border: 1px solid #3a3224;
+  border-radius: 3px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-card span {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-card strong {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  color: #fff;
+  margin: 0.1rem 0;
+}
+
+.metric-card.major strong {
+  color: var(--text-gold);
+  text-shadow: 0 0 8px rgba(255, 209, 0, 0.4);
+}
+
+.metric-card small {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* Charts */
+.chart-container {
+  height: 120px;
+  background: #0b0a10;
+  border: 1px solid #282436;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.chart-container.empty {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.chart-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Spell Damage Breakdown Table */
+.damage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.damage-table th {
+  background: #181520;
+  color: var(--text-parchment);
+  font-family: var(--font-serif);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #3a3224;
+}
+
+.damage-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ==========================================================================
+   COMPARE STANDARD SPECS TAB
+   ========================================================================== */
+.specs-stats-subheader-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  background: #15131b;
+  border: 1px solid #3d3428;
+  border-radius: 3px;
+  margin-bottom: 0.65rem;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.specs-base-stats-text {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-parchment);
+  flex-wrap: wrap;
+}
+
+.table-scroll {
+  overflow-y: auto;
+  overflow-x: auto;
+  max-height: 480px;
+  position: relative;
+}
+
+.table-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #3e3328;
+  border-radius: 3px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: #121017;
+}
+
+.compare-specs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  line-height: 1.15;
+}
+
+.compare-specs-table th {
+  background: #171520;
+  color: var(--text-gold);
+  font-family: var(--font-serif);
+  padding: 0.22rem 0.38rem;
+  text-align: left;
+  border-bottom: 1.5px solid #4a3e2e;
+  font-weight: 700;
+  font-size: 0.73rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+
+.compare-specs-table td {
+  padding: 0.16rem 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.compare-specs-table tr.preset-row {
+  cursor: pointer;
+  transition: background 0.1s ease;
+  height: 23px;
+}
+
+.compare-specs-table tr.preset-row:hover td {
+  background: rgba(255, 209, 0, 0.06);
+}
+
+.compare-specs-table tr.preset-row.active td {
+  background: #46341d !important;
+  border-top: 1px solid #7c5e34;
+  border-bottom: 1px solid #7c5e34;
+}
+
+.compare-specs-table tr.preset-row.simulated-done td {
+  border-bottom-color: rgba(74, 222, 128, 0.2);
+}
+
+.compare-specs-table tr.preset-row.simulated-done .dps-col {
+  color: #4ade80 !important;
+  text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+.spec-name-link {
+  color: #60a5fa;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.spec-name-link:hover {
+  text-decoration: underline;
+  color: #93c5fd;
+}
+
+.race-mini-portrait {
+  width: 17px;
+  height: 17px;
+  border-radius: 2px;
+  border: 1px solid #5a4830;
+  display: block;
+}
+
+.pet-mini-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 2px;
+  border: 1px solid #444;
+  display: inline-block;
+}
+
+.apl-chain-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+}
+
+.apl-mini-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid #3e364a;
+  background: #000;
+}
+
+/* Damage Split Bar */
+.damage-split-bar {
+  display: flex;
+  height: 13px;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #282436;
+  background: #0e0d14;
+  font-family: var(--font-mono);
+  font-size: 0.60rem;
+  font-weight: 700;
+  line-height: 13px;
+}
+
+.damage-split-bar.large-split {
+  height: 22px;
+  font-size: 0.72rem;
+  line-height: 22px;
+  margin-bottom: 0.65rem;
+}
+
+.split-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-shadow: 1px 1px 2px #000;
+}
+
+.split-seg.shadow {
+  background: #7e22ce;
+}
+
+.split-seg.fire {
+  background: #ea580c;
+}
+
+.split-seg.pet {
+  background: #16a34a;
+}
+
+/* Stat Weights Columns */
+.stat-weight-cell {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.stat-weight-sp { color: #60a5fa; }
+.stat-weight-hit { color: #fbbf24; }
+.stat-weight-crit { color: #f472b6; }
+.stat-weight-haste { color: #4ade80; }
+.stat-weight-int { color: #93c5fd; }
+.stat-weight-spirit { color: #2dd4bf; }
+
+.stat-weights-inspector-box {
+  background: #0c0a12;
+  border: 1px solid #332a40;
+  border-radius: 3px;
+  padding: 0.45rem 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.stat-weights-inspector-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.35rem 0 0 0;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 0.75rem;
+}
+
+/* Selected Spec Detail View */
+.selected-spec-card {
+  background: #13111a;
+  border: 1.5px solid #4a3e2e;
+  border-radius: 4px;
+  padding: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.spec-detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #3d3428;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.spec-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .spec-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spec-detail-box {
+  background: #0e0d14;
+  border: 1px solid #332b20;
+  border-radius: 3px;
+  padding: 0.65rem;
+}
+
+.spec-box-title {
+  font-size: 0.8rem;
+  color: var(--text-gold);
+  font-family: var(--font-serif);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.spell-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.spell-bar-label {
+  width: 95px;
+  color: var(--text-parchment);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spell-bar-track {
+  flex: 1;
+  height: 14px;
+  background: #181522;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid #3e364a;
+}
+
+.spell-bar-fill {
+  height: 100%;
+}
+
+.spell-bar-fill.shadow { background: #9333ea; }
+.spell-bar-fill.fire { background: #f97316; }
+.spell-bar-fill.pet { background: #22c55e; }
+
+.spell-bar-val {
+  width: 55px;
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--text-gold);
+}
+
+.opener-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem;
+}
+
+.opener-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.opener-icon-frame {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid #4a3e60;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #000;
+}
+
+.opener-icon-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.opener-time {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.opener-arrow {
+  position: absolute;
+  right: -8px;
+  top: 6px;
+  font-size: 0.65rem;
+  color: #666;
+}
+
+/* ==========================================================================
+   TALENT TREES WIDGET
+   ========================================================================== */
+.talent-trees-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .talent-trees-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.talent-tree-panel {
+  border: 1.5px solid #4a3e2e;
+  border-radius: 4px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 480px;
+  padding: 0.65rem;
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.9);
+}
+
+.talent-tree-panel.affliction {
+  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/affliction_bg.png');
+}
+
+.talent-tree-panel.demonology {
+  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/demonology_bg.png');
+}
+
+.talent-tree-panel.destruction {
+  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/destruction_bg.png');
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--text-gold);
+  text-shadow: 1px 1px 2px #000;
+  border-bottom: 1px solid rgba(255, 209, 0, 0.3);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.talent-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(7, 46px);
+  gap: 8px 4px;
+}
+
+.talent-node {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  justify-self: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.talent-icon-frame {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  border: 1.5px solid #444;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+}
+
+.talent-node.active .talent-icon-frame {
+  border-color: #23e623;
+  box-shadow: 0 0 8px rgba(35, 230, 35, 0.6);
+}
+
+.talent-node.max .talent-icon-frame {
+  border-color: #ffd100;
+  box-shadow: 0 0 8px rgba(255, 209, 0, 0.7);
+}
+
+.talent-node img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.talent-node.disabled img {
+  filter: grayscale(100%) brightness(50%);
+}
+
+.talent-rank-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: #000;
+  border: 1px solid #777;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #777;
+  padding: 0 0.2rem;
+  line-height: 1.1;
+}
+
+.talent-node.active .talent-rank-badge {
+  border-color: #23e623;
+  color: #23e623;
+}
+
+.talent-node.max .talent-rank-badge {
+  border-color: #ffd100;
+  color: #ffd100;
+}
+
+.talent-node.disabled .talent-rank-badge {
+  border-color: #444;
+  color: #555;
+}
+
+/* ==========================================================================
+   MODAL / POPUP DIALOGS (APL CONDITION EDITOR)
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-dialog {
+  background: #15131b url('./assets/wow_classic/DialogFrame/UI-DialogBox-Background-Dark.PNG') repeat;
+  border: 2px solid var(--border-gold);
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  width: 90%;
+  max-width: 480px;
+  padding: 1.25rem;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1.5px solid #4a3e2e;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.modal-header h3 {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  color: var(--text-gold);
+  text-shadow: 1px 1px 2px #000;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.modal-close-btn:hover {
+  color: #fff;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid #382e22;
+  padding-top: 0.75rem;
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+footer {
+  padding: 0.75rem 1.25rem;
+  background: #0d0c11;
+  border-top: 1px solid #282436;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+footer a {
+  color: var(--accent-purple);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}

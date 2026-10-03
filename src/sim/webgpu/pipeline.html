@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Warlock WebGPU parity pipeline</title>
+  <style>
+    body{font:16px system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1rem;background:#11151b;color:#e8edf2}
+    h1{font-size:1.6rem}p{color:#b9c4ce}label{display:block;margin:.8rem 0}input,select,button{font:inherit;padding:.45rem;background:#202832;color:inherit;border:1px solid #536170;border-radius:4px}
+    button{cursor:pointer;background:#315d87}button:disabled{opacity:.5;cursor:wait}pre{white-space:pre-wrap;overflow:auto;max-height:65vh;padding:1rem;background:#090c10;border:1px solid #303b46;border-radius:5px}
+    #status{font-weight:600}.downloads a{margin-right:1rem;color:#91caff}
+  </style>
+</head>
+<body>
+  <h1>Warlock WebGPU parity pipeline</h1>
+  <p>This runs the C++ DES reference and C++ WebGPU pipeline in your browser. The WASM CPU reference is single threaded, so total parity runtime can be much longer than the GPU run alone; each scenario reports separate CPU and GPU timings. Results are computed locally and are not uploaded.</p>
+  <p id="status">Loading WebAssembly…</p>
+  <label>Suite
+    <select id="suite"><option value="--presets">Spec presets</option><option value="--all">Standard suite</option></select>
+  </label>
+  <label>Iterations per scenario <input id="iterations" type="number" min="1" max="1000000" step="1000" value="10000"></label>
+  <label>Seed <input id="seed" type="number" min="0" max="4294967295" value="42"></label>
+  <button id="run" disabled>Run pipeline</button>
+  <div class="downloads" id="downloads"></div>
+  <pre id="output" aria-live="polite"></pre>
+  <script>
+    const output=document.querySelector('#output'), status=document.querySelector('#status'), runButton=document.querySelector('#run');
+    function saveFile(path,name,type){try{const data=Module.FS.readFile(path);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.textContent=`Download ${name}`;document.querySelector('#downloads').append(a);a.after(' ');}catch(e){}}
+    var Module={
+      print(line){output.textContent+=line+'\n';output.scrollTop=output.scrollHeight;},
+      printErr(line){output.textContent+='[stderr] '+line+'\n';output.scrollTop=output.scrollHeight;},
+      onAbort(reason){status.textContent=`WebAssembly failed to load: ${reason}`;runButton.disabled=true;},
+      onRuntimeInitialized(){status.textContent=navigator.gpu?'Ready · WebGPU available':'Ready · WebGPU unavailable';runButton.disabled=false;},
+    };
+    window.addEventListener('error',event=>{if(status.textContent.startsWith('Loading'))status.textContent=`Page startup error: ${event.message||event}`;});
+    window.addEventListener('unhandledrejection',event=>{if(status.textContent.startsWith('Loading'))status.textContent=`WebAssembly startup error: ${event.reason?.message||event.reason||event}`;});
+  runButton.addEventListener('click',async()=>{
+      const iterations=Number(document.querySelector('#iterations').value),seed=Number(document.querySelector('#seed').value);
+      if(!Number.isInteger(iterations)||iterations<1||iterations>1000000||!Number.isInteger(seed)||seed<0||seed>0xffffffff){status.textContent='Enter valid iterations and uint32 seed.';return;}
+      output.textContent='';document.querySelector('#downloads').replaceChildren();runButton.disabled=true;status.textContent='Running…';
+      try{
+        const code=await Module.ccall('run_web_pipeline','number',['number','number','number'],[iterations,seed,document.querySelector('#suite').value==='--presets'?1:0],{async:true});
+        status.textContent=`Finished with exit code ${code}`;
+        saveFile('/webgpu-report.json','webgpu-report.json','application/json');saveFile('/webgpu-report.md','webgpu-report.md','text/markdown');
+      } catch(e){status.textContent=`Pipeline error: ${e.message||e}`;}
+      finally{runButton.disabled=false;}
+    });
+  </script>
+  <script src="pipeline.js" onerror="document.querySelector('#status').textContent='Could not load pipeline.js; rebuild the browser pipeline and publish pipeline.js and pipeline.wasm together.'"></script>
+</body>
+</html>

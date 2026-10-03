@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -67,6 +68,7 @@ public:
         std::vector<BatchSimResult> results;
         results.reserve(sims.size());
         const double per_candidate_seconds = elapsed_seconds / static_cast<double>(sims.size());
+        const auto process_start = std::chrono::steady_clock::now();
         for (size_t i = 0; i < sims.size(); ++i) {
             const auto begin = states.begin() + static_cast<std::ptrdiff_t>(i * iterations);
             const std::vector<State> candidate_states(begin, begin + iterations);
@@ -74,6 +76,12 @@ public:
             result.gpu_used = gpu_used;
             results.push_back(std::move(result));
         }
+        const double process_ms = std::chrono::duration<double, std::milli>(
+            std::chrono::steady_clock::now() - process_start).count();
+#if defined(__EMSCRIPTEN__)
+        std::printf("[WebGPU timing] C++ result aggregation and result construction %.2f ms (%zu candidates, %d fights each)\n",
+                    process_ms, sims.size(), iterations);
+#endif
         return results;
     }
 

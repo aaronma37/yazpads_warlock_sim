@@ -1,0 +1,16 @@
+{
+  "name": "Warlock Simulation Lab",
+  "short_name": "WarlockSim",
+  "description": "GPU Discrete-Event Warlock Combat Simulator in Three.js WebGL2",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0e0f14",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23b3a0ff' d='M32 2 60 20 48 55 16 55 4 20Z'/%3E%3Cpath fill='%2314151d' d='m32 12 9 20-9 20-9-20Z'/%3E%3C/svg%3E",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
