@@ -311,8 +311,12 @@ void output_preset_info_json(const SpecPreset& p) {
               << ",\"instantCorruption\":" << ((talents.aff.improved_corruption >= 5) ? "true" : "false")
               << ",\"nightfall\":" << ((talents.aff.nightfall > 0) ? "true" : "false")
               << ",\"isb\":" << ((talents.destro.improved_shadow_bolt > 0) ? "true" : "false")
+              << ",\"isbBonus\":" << (talents.destro.improved_shadow_bolt * 0.04)
               << ",\"ruin\":" << ((talents.destro.ruin > 0) ? "true" : "false")
+              << ",\"ruinRank\":" << talents.destro.ruin
               << ",\"improvedTap\":" << ((talents.aff.improved_life_tap > 0) ? "true" : "false")
+              << ",\"tapBonus\":" << (talents.aff.improved_life_tap * 0.10)
+              << ",\"nightfallChance\":" << (talents.aff.nightfall * 0.02)
               << ",\"masterDemo\":0"
               << ",\"shadowMultiplier\":" << s_mult
               << ",\"fireMultiplier\":" << f_mult

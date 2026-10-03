@@ -116,16 +116,16 @@ export function buildDefaultAPLRules(c) {
     }
   };
 
-  if (rot === 'searing' && c.decimation) {
+  if (rot === 'searing' && (c.petChoice !== 0 && c.petChoice !== 'none' || c.decimation)) {
     // Dedicated DP_RUIN_FIRE APL
     add(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 57.0, 2);
     add(APL_ACTION.CURSE_OF_AGONY, APL_COND.DOT_REM_LE, 2.5, 2);
     add(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 2.5, 1);
     add(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 2.5, 3);
-    add(APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, APL_COND.DEMONIC_BRAND_MISSING, 0.0, 5);
-    add(APL_ACTION.DECIMATION_SEARING_PAIN, APL_COND.DECIMATION_INACTIVE, 28.0, 5);
+    if (c.demonicBrand) add(APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, APL_COND.DEMONIC_BRAND_MISSING, 0.0, 5);
+    if (c.decimation) add(APL_ACTION.DECIMATION_SEARING_PAIN, APL_COND.DECIMATION_INACTIVE, 28.0, 5);
     add(APL_ACTION.LIFE_TAP, APL_COND.MANA_LE, 17.0);
-    add(APL_ACTION.DECIMATION_SOUL_FIRE, APL_COND.DECIMATION_ACTIVE, 28.0, 13);
+    if (c.decimation) add(APL_ACTION.DECIMATION_SOUL_FIRE, APL_COND.DECIMATION_ACTIVE, 28.0, 13);
     add(APL_ACTION.LIFE_TAP, APL_COND.MANA_LE, 37.0);
     add(APL_ACTION.SEARING_PAIN_FILLER, APL_COND.ALWAYS);
     return rules;
@@ -154,7 +154,7 @@ export function buildDefaultAPLRules(c) {
 
   // Immolate DoT & Conflagrate Burst
   if (c.immolate) {
-    add(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 2.5, 3);
+    add(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 0.0, 3);
   }
   if (c.conflagrate) {
     add(APL_ACTION.CONFLAGRATE, APL_COND.ALWAYS);
@@ -167,7 +167,7 @@ export function buildDefaultAPLRules(c) {
 
   // Corruption DoT
   if (c.corruption) {
-    add(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 2.5, 1);
+    add(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 0.0, 1);
   }
 
   // Adaptive Curse: Curse of Doom (>60s left) / Bane of Agony
@@ -175,7 +175,7 @@ export function buildDefaultAPLRules(c) {
     add(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 60.0, 2);
   }
   if (c.agony) {
-    add(APL_ACTION.CURSE_OF_AGONY, APL_COND.DOT_REM_LE, 2.5, 2);
+    add(APL_ACTION.CURSE_OF_AGONY, APL_COND.DOT_REM_LE, 0.0, 2);
   }
 
   // Siphon Life DoT
@@ -286,8 +286,11 @@ export function packConfig(input) {
   const baseCrit = (1.7 + int / 60.6 + c.crit + 2) / 100;
   const shadowCrit = (1.7 + int / 60.6 + c.crit + 2 + (c.malevolence || 0)) / 100;
 
+  const impCorrRanks = c.improvedCorruptionBonus > 0 ? Math.round(c.improvedCorruptionBonus / 0.02) : (c.instantCorruption ? 5 : 0);
+  const corrCastTime = Math.max(0, 2.0 - 0.4 * impCorrRanks);
+
   const values = {
-    end: c.duration * 1e6, travel: c.distance / 24 * 1e6, corrCast: c.instantCorruption ? 0 : 2e6,
+    end: c.duration * 1e6, travel: c.distance / 24 * 1e6, corrCast: Math.round(corrCastTime * 1e6),
     baneRank: c.baneRank, decimationRank: c.decimationRank,
     filler: ({shadow:0, bolt:0, fire:4, searing:5})[c.rotation],
     corr: +(c.corruption && c.rotation !== 'bolt'), agony: +(c.agony && c.rotation !== 'bolt'),

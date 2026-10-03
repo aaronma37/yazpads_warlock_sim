@@ -212,7 +212,7 @@ export function generateAPLForPreset(presetName = '', talentsObj = null) {
   // 4. Immolate & Conflagrate
   const hasImmo = isFire || (hasConflag && hasTalent('destruction', 'shadow_and_flame'));
   if (hasImmo) {
-    list.push({ id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Immolate") <= 2.5', enabled: true });
+    list.push({ id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Immolate") <= 0', enabled: true });
   }
   if (hasConflag && hasImmo && !name.includes('dp/ruin fire')) {
     list.push({ id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', condition: 'Always when available', rawCond: 'true', enabled: true });
@@ -225,13 +225,13 @@ export function generateAPLForPreset(presetName = '', talentsObj = null) {
 
   // 6. Corruption
   if (!noCorruption) {
-    list.push({ id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Corruption") <= 2.5', enabled: true });
+    list.push({ id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Corruption") <= 0', enabled: true });
   }
 
   // 7. Curses: Doom & Agony
   if (!noBane) {
     list.push({ id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60', enabled: true });
-    list.push({ id: 'agony', spell: 'Curse of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Curse of Agony") <= 2.5', enabled: true });
+    list.push({ id: 'agony', spell: 'Curse of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Curse of Agony") <= 0', enabled: true });
   }
 
   // 8. Siphon Life & Wrack

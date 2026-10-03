@@ -1,6 +1,6 @@
 import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
-import { runSimulation } from './engine.js';
+import { runSimulation, getEngineMode } from './engine.js';
 import { compare } from '../validation/compare.js';
 import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
@@ -22,13 +22,24 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   });
 }
 
-// Check WebGL2 Support
-const probe = document.createElement('canvas').getContext('webgl2');
-const capable = !!probe;
-probe?.getExtension('WEBGL_lose_context')?.loseContext();
+// Check WebGL2 Support & Execution Mode
+let engineModeName = 'WebGL2 Active';
+let capable = false;
+try {
+  const probe = document.createElement('canvas').getContext('webgl2');
+  capable = !!probe;
+  probe?.getExtension('WEBGL_lose_context')?.loseContext();
+  if (capable) {
+    const mode = getEngineMode();
+    engineModeName = `WebGL2 (${mode})`;
+  }
+} catch {
+  capable = false;
+}
+
 if ($('gpu-badge')) {
   $('gpu-badge').innerHTML = capable
-    ? '<span class="status-dot">●</span> WebGL2 Active'
+    ? `<span class="status-dot">●</span> ${engineModeName}`
     : '<span class="status-dot" style="color:#ef4444;">●</span> WebGL2 Unavailable';
 }
 if ($('top-sim-status')) {
@@ -436,7 +447,7 @@ function setTopStatus(type, data) {
     metricEl.className = 'topbar-status-metric in-progress';
     metricEl.textContent = `${data.completed} / ${data.total} fights`;
   } else if (type === 'done') {
-    if (engineEl) engineEl.innerHTML = '<span class="status-dot">●</span> WebGL2 Active';
+    if (engineEl) engineEl.innerHTML = `<span class="status-dot">●</span> ${engineModeName}`;
     metricEl.className = 'topbar-status-metric done';
     const tpFormatted = Math.round(data.throughput) >= 1000000
       ? `${(data.throughput / 1000000).toFixed(2)}M`

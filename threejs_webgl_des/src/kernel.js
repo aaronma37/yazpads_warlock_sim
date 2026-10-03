@@ -7,15 +7,57 @@ in vec3 position;
 void main(){ gl_Position=vec4(position,1.0); }`;
 
 // Complete Table-Driven APL Bytecode VM Discrete Event Simulation per fragment.
-// Four integer render targets transport exact bits; two fragment rows emit the 32-word batch report.
-export const FRAGMENT=`
+// Supports standard 4 MRT mode (desktop) and single-attachment striped fallback mode (mobile).
+export function buildFragmentShader(useSingleAttachment = false) {
+  const outputs = useSingleAttachment
+    ? `layout(location=0) out uvec4 report0;`
+    : `layout(location=0) out uvec4 report0;
+layout(location=1) out uvec4 report1;
+layout(location=2) out uvec4 report2;
+layout(location=3) out uvec4 report3;`;
+
+  const outputEmission = useSingleAttachment
+    ? `if(mode==2u){
+  uint traceStripe = y % 2u;
+  if (traceStripe == 0u) {
+    report0 = uvec4(s.now, lastEvent.kind, lastEvent.spell, floatBitsToUint(eventDamage));
+  } else {
+    report0 = uvec4(floatBitsToUint(s.mana), eventFlags, floatBitsToUint(s.total), s.rngCalls);
+  }
+ } else {
+  uint base = stripe * 4u;
+  report0 = outputFour(base);
+ }`
+    : `if(mode==2u){
+  report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));
+  report1=uvec4(floatBitsToUint(s.mana),eventFlags,floatBitsToUint(s.total),s.rngCalls);
+ }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}`;
+
+  const coordsLogic = useSingleAttachment
+    ? `if(mode==0u){
+  uint simX=x,simY=y/8u;
+  stripe=y%8u;
+  lane=simY*gridWidth+simX;
+ }else if(mode==1u){
+  lane=0u;stripe=y;
+ }else{
+  lane=x;stripe=y%2u;
+ }`
+    : `if(mode==0u){
+  uint simX=x,simY=y/2u;
+  stripe=y%2u;
+  lane=simY*gridWidth+simX;
+ }else if(mode==1u){
+  lane=0u;stripe=y;
+ }else{
+  lane=x;stripe=0u;
+ }`;
+
+  return `
 precision highp float;
 precision highp int;
 precision highp usampler2D;
-layout(location=0) out uvec4 report0;
-layout(location=1) out uvec4 report1;
-layout(location=2) out uvec4 report2;
-layout(location=3) out uvec4 report3;
+${outputs}
 uniform uint configWords[${Object.keys(CONFIG).length}];
 uniform highp usampler2D configTex;
 uniform uint numConfigs;
@@ -163,6 +205,10 @@ void directImpact(uint spell){
   amount*=currentFireMult()*(1.0+c.afBonus);
   crit=random01()<(c.fireCrit+c.afBonus);
   if(crit)amount*=c.directCrit;
+ }
+ else if(spell==13u){
+  soulFireImpact();
+  return;
  }
  else{amount=0.0;}
  amount*=resistanceMultiplier();damage(spell,amount,crit);
@@ -429,7 +475,7 @@ void advance(){
   s.casting=0u;spend(e.spell);
   if(e.spell==1u)applyDot(1u);
   else if(e.spell==3u)immolateImpact();
-  else if(e.spell==13u){float sfCD=60.0*(1.0-0.45*float(c.decimationRank));s.soulFireReady=s.now+uint(sfCD*1000000.0);soulFireImpact();}
+  else if(e.spell==13u){float sfCD=60.0*(1.0-0.45*float(c.decimationRank));s.soulFireReady=s.now+uint(sfCD*1000000.0);enqueue(s.now+c.travel,2u,13u,0u);}
   else enqueue(s.now+c.travel,2u,e.spell,0u);
   if(c.decimation!=0u&&(e.spell==0u||e.spell==5u)){
    float fightProg=float(s.now)/max(1.0,float(c.end));
@@ -446,7 +492,7 @@ void advance(){
     s.petCasts++;
     s.petMana-=115.0;
     if(random01()<c.hit){
-     float roll=random01();float dmg=(44.0+(2.0/3.5)*c.petSP)*c.petFireboltMult;
+     float dmg=(44.0+(2.0/3.5)*c.petSP)*c.petFireboltMult;
      bool crit=random01()<c.fireCrit;if(crit)dmg*=1.5;dmg*=resistanceMultiplier();
      if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
       s.brandCharges--;
@@ -463,7 +509,7 @@ void advance(){
    if(roll>=14.5){
     float dmg=(101.0+(c.petAP/14.0)*2.0)*0.59581844*c.petMeleeMult;
     bool glance=(roll<54.5);
-    bool crit=(!glance&&roll<(54.5+max(0.0,c.crit*100.0+2.72)));
+    bool crit=(!glance&&roll<(54.5+max(0.0,c.crit*100.0-11.8)));
     if(glance)dmg*=0.65;
     if(crit)dmg*=2.0;
     if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
@@ -512,16 +558,9 @@ uvec4 outputFour(uint index){return uvec4(outputWord(index),outputWord(index+1u)
 void main(){
  uint x=uint(gl_FragCoord.x),y=uint(gl_FragCoord.y);
  uint lane,stripe;
- if(mode==0u){
-  uint simX=x,simY=y/2u;
-  stripe=y%2u;
-  lane=simY*gridWidth+simX;
- }else if(mode==1u){
-  lane=0u;stripe=y;
- }else{
-  lane=x;stripe=0u;
- }
- report0=uvec4(0u);report1=uvec4(0u);report2=uvec4(0u);report3=uvec4(0u);
+ ${coordsLogic}
+ report0=uvec4(0u);
+${useSingleAttachment ? '' : ' report1=uvec4(0u);report2=uvec4(0u);report3=uvec4(0u);'}
  if(lane>=count&&mode==0u)return;
  uint globalLane=offset+lane;
  currentCfgIdx=0u;
@@ -545,9 +584,10 @@ void main(){
  if(mode!=2u&&s.done==0u)s.done=6u;
  ${Array.from({length:6},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n')}
  ${Array.from({length:4},(_,i)=>`s.rng${i*2}=rng[${i}].x;s.rng${i*2+1}=rng[${i}].y;`).join('\n')}
- if(mode==2u){
-  report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));
-  report1=uvec4(floatBitsToUint(s.mana),eventFlags,floatBitsToUint(s.total),s.rngCalls);
- }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}
+ ${outputEmission}
 }
 `;
+}
+
+export const FRAGMENT = buildFragmentShader(false);
+
