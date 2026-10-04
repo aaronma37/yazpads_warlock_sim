@@ -1,3 +1,4 @@
+import { fallbackRow } from './apl_fallback_view.js';
 // Authentic Action Priority List (APL) Engine & Interactive Manager
 // Matches desktop ImGui simulator APL table with drag-and-drop, up/down reordering, condition editing, and presets.
 import { APL_ACTION, APL_COND } from './model.js';
@@ -5,7 +6,7 @@ import { APL_ACTION, APL_COND } from './model.js';
 export const DEFAULT_APL = [
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana < 20%', rawCond: 'mana_pct < 20', enabled: true },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', condition: 'Shadow Trance active', rawCond: 'buff.shadow_trance', enabled: true },
-  { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
+  { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'ability_demonhunter_chaoticimprint_fire.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
   { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Target HP < 35%, buff inactive', rawCond: 'decimation.inactive', enabled: false },
   { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', condition: 'Target HP < 35%, buff active', rawCond: 'decimation.active', enabled: false },
   { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60 && !target.has_debuff("Bane of Doom")', enabled: true },
@@ -16,9 +17,9 @@ export const DEFAULT_APL = [
   { id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', condition: 'Always when available', rawCond: 'true', enabled: false },
   { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Always', rawCond: 'true', enabled: false },
-  { id: 'drain', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'drain', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', condition: 'Missing Siphon Life', rawCond: 'target.debuff_remains("Siphon Life") <= 0', enabled: false },
-  { id: 'wrack', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: true }
 ];
 
@@ -26,6 +27,14 @@ let currentAPL = JSON.parse(JSON.stringify(DEFAULT_APL));
 let editingIndex = -1;
 let dragSourceIndex = -1;
 let onChangeCallback = null;
+let fallbackRotationGetter = () => 'shadow';
+
+export function refreshAPLFallback() {
+  const tbody = document.getElementById('apl-table-body');
+  if (!tbody) return;
+  tbody.querySelector('.apl-fallback-row')?.remove();
+  tbody.insertAdjacentHTML('beforeend', fallbackRow(fallbackRotationGetter(), 5));
+}
 
 export function applySynthesizedAPL(rules) {
   if (!Array.isArray(rules)) return;
@@ -205,7 +214,8 @@ export function getActiveBytecodeRules() {
   return compileAPLToBytecode(currentAPL);
 }
 
-export function initAPL(onAPLChange) {
+export function initAPL(onAPLChange, getFallbackRotation = () => 'shadow') {
+  fallbackRotationGetter = getFallbackRotation;
   onChangeCallback = onAPLChange;
   renderAPLTable();
   setupConditionModal();
@@ -236,9 +246,11 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   const isSearing = rot === 'dp_af_fire' || rot === 'searing' || name.includes('searing') || name.includes('dp fire') || name.includes('dp_fire');
   const isFire = isIncinerate || isSearing || rot.includes('fire') || name.includes('fire');
   const hasConflag = hasTalent('destruction', 'conflagrate');
-  const hasShadowburn = hasTalent('destruction', 'shadowburn') && !name.includes('deep affliction');
-  const hasSiphon = hasTalent('affliction', 'siphon_life') && (name.includes('deep affliction') || name.includes('affliction hybrid'));
-  const hasWrack = hasTalent('affliction', 'wrack') && (name.includes('deep affliction') || name.includes('affliction hybrid'));
+  // Search results have generated point-split names instead of descriptive
+  // preset names, so determine talent actions from their ranks directly.
+  const hasShadowburn = hasTalent('destruction', 'shadowburn');
+  const hasSiphon = hasTalent('affliction', 'siphon_life');
+  const hasWrack = hasTalent('affliction', 'wrack');
   const hasNightfall = hasTalent('affliction', 'nightfall') || (!isFire && !name.includes('pure shadow bolt'));
   const noCorruption = name.includes('no corruption') || name.includes('pure shadow bolt');
   const noBane = name.includes('no bane');
@@ -250,7 +262,7 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
       { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Bane of Agony") <= 2.5', enabled: true },
       { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Corruption") <= 2.5', enabled: true },
       { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Immolate") <= 2.5', enabled: true },
-      { id: 'brand', spell: 'Demonic Brand', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: isBrand },
+      { id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: isBrand },
       { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Target HP <= 28%, buff inactive', rawCond: 'decimation.inactive', enabled: true },
       { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana <= 17%', rawCond: 'mana_pct <= 17', enabled: true },
       { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', condition: 'Target HP <= 28%, buff active', rawCond: 'decimation.active', enabled: true },
@@ -273,7 +285,7 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
 
   // 3. Demonic Brand
   if (isBrand) {
-    list.push({ id: 'brand', spell: 'Demonic Brand', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: true });
+    list.push({ id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: true });
   }
 
   // 4. Immolate & Conflagrate
@@ -306,7 +318,7 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     list.push({ id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', condition: 'DoT Remains <= 0s', rawCond: 'target.debuff_remains("Siphon Life") <= 0', enabled: true });
   }
   if (hasWrack) {
-    list.push({ id: 'wrack', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always when available', rawCond: 'true', enabled: true });
+    list.push({ id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
 
   // 9. Shadowburn
@@ -437,6 +449,7 @@ export function renderAPLTable() {
 
     tbody.appendChild(tr);
   });
+  refreshAPLFallback();
 }
 
 function moveAPLEntry(fromIdx, toIdx) {

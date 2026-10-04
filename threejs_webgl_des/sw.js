@@ -1,9 +1,10 @@
-const CACHE_NAME = 'warlock-sim-v1';
+const CACHE_NAME = 'warlock-sim-v6';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './src/app.js',
+  './src/apl_fallback_view.js',
   './src/engine.js',
   './src/kernel.js',
   './src/model.js',

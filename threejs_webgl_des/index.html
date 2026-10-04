@@ -29,8 +29,8 @@
     </div>
 
     <nav class="nav-tabs" role="tablist">
-      <button type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
-      <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
+      <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
+      <button type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
       <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-constrained-search" id="btn-constrained-search">Constrained Spec Search</button>
       <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-apl-synthesis" id="btn-apl-synthesis">APL Synthesis</button>
     </nav>
@@ -50,7 +50,7 @@
     <!-- ====================================================================
          PAGE 1: CURRENT CONFIGURATION (MATCHING SCREENSHOT_20261001_223712.PNG)
          ==================================================================== -->
-    <div id="tab-current-build" class="tab-pane active" role="tabpanel">
+    <div id="tab-current-build" class="tab-pane" role="tabpanel" hidden>
       <form id="setup-form">
         <fieldset id="inputs" style="border:none; padding:0; margin:0;">
           <div class="current-build-grid">
@@ -100,7 +100,7 @@
                         <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus"> Succubus (Lash)
                       </button>
                       <button type="button" class="picker-opt-btn" data-pet="none">
-                        <img src="./assets/icons/Spell_Shadow_SacrificialShield.png" alt="None"> None
+                        <span class="empty-slot-icon" aria-hidden="true"></span> None
                       </button>
                     </div>
                   </div>
@@ -109,7 +109,7 @@
                   <div class="slot-item-interactive" id="slot-ds-picker" title="Click to Select Demonic Sacrifice">
                     <span class="slot-label">DS</span>
                     <div class="slot-icon-frame">
-                      <img id="slot-ds-icon" src="./assets/icons/Spell_Shadow_RitualOfSacrifice.png" alt="Demonic Sacrifice">
+                      <img id="slot-ds-icon" src="./assets/icons/Spell_Shadow_RitualOfSacrifice.png" alt="Demonic Sacrifice" style="display:none">
                     </div>
                     <div class="slot-popover-picker" id="popover-ds" style="display: none;">
                       <button type="button" class="picker-opt-btn" data-ds="imp">
@@ -119,7 +119,7 @@
                         <img src="./assets/icons/Spell_Shadow_SummonSuccubus.png" alt="Succubus">+15% Fire Dmg
                       </button>
                       <button type="button" class="picker-opt-btn" data-ds="none">
-                        <img src="./assets/icons/Spell_Shadow_SacrificialShield.png" alt="None"> No Sacrifice
+                        <span class="empty-slot-icon" aria-hidden="true"></span> No Sacrifice
                       </button>
                     </div>
                   </div>
@@ -405,6 +405,19 @@
                       </select>
                     </div>
                     <div class="stat-field">
+                      <label for="racial-policy">Racial cooldown timing</label>
+                      <select class="wow-select" name="racialPolicy" id="racial-policy">
+                        <option value="execute">Execute (below 35% HP)</option>
+                        <option value="cooldown">On cooldown</option>
+                        <option value="align-execute">Align with execute</option>
+                        <option value="align-doom">Align with Bane of Doom</option>
+                      </select>
+                      <small>Orc and Gnome prioritize an upcoming Doom tick.</small>
+                    </div>
+                    <div class="stat-field">
+                      <label><input type="checkbox" name="targetIsBeast"> Beast target (Troll: +5% damage)</label>
+                    </div>
+                    <div class="stat-field">
                       <label>Boss Armor</label>
                       <input class="wow-input" name="bossArmor" id="in-boss-armor" type="number" min="0" max="10000" value="3731">
                     </div>
@@ -590,7 +603,7 @@
     <!-- ====================================================================
          PAGE 2: COMPARE STANDARD SPECS (MATCHING DESKTOP PANEL_OPTIMIZER.HPP)
          ==================================================================== -->
-    <div id="tab-compare-specs" class="tab-pane" role="tabpanel" hidden>
+    <div id="tab-compare-specs" class="tab-pane active" role="tabpanel">
       <!-- TOP SIMULATION SETTINGS & EXECUTION -->
       <section class="wow-panel" style="padding: 0.65rem 0.85rem; margin-bottom: 0.65rem;">
         <div style="font-size: 0.8rem; color: var(--text-parchment); margin-bottom: 0.4rem; font-weight: 700;">
@@ -618,22 +631,22 @@
         <div class="specs-base-stats-text">
           <span style="color: var(--text-gold); font-weight: 700;">Specs</span>
           <span style="color: #666;">|</span>
-          <span>Base Stats:</span>
-          <span>Shadow SP: <strong style="color:#c084fc;">415</strong></span>
+          <span>Current Base Stats:</span>
+          <span>Shadow SP: <strong style="color:#c084fc;" id="compare-base-shadow-sp">—</strong></span>
           <span style="color: #666;">|</span>
-          <span>Fire SP: <strong style="color:#fb923c;">415</strong></span>
+          <span>Fire SP: <strong style="color:#fb923c;" id="compare-base-fire-sp">—</strong></span>
           <span style="color: #666;">|</span>
-          <span>Hit: <strong style="color:#60a5fa;">3.0%</strong></span>
+          <span>Hit: <strong style="color:#60a5fa;" id="compare-base-hit">—</strong></span>
           <span style="color: #666;">|</span>
-          <span>Crit: <strong style="color:#facc15;">7.13%</strong></span>
+          <span>Crit: <strong style="color:#facc15;" id="compare-base-crit">—</strong></span>
           <span style="color: #666;">|</span>
-          <span>MP5: <strong style="color:#38bdf8;">4</strong></span>
+          <span>MP5: <strong style="color:#38bdf8;" id="compare-base-mp5">—</strong></span>
           <span style="color: #666;">|</span>
-          <span>Pet SP: <strong style="color:#4ade80;">10%</strong></span>
+          <span title="Pets inherit 10% of player spell power before pet-specific bonuses.">Pet SP inheritance: <strong style="color:#4ade80;">10%</strong></span>
           <span style="color: #666;">|</span>
-          <span>Pet AP: <strong style="color:#4ade80;">16.7%</strong></span>
+          <span title="Pet attack power inherits one sixth of player spell power.">Pet AP inheritance: <strong style="color:#4ade80;">16.7%</strong></span>
           <span style="color: #666;">|</span>
-          <span>Fight: <strong>180s +/- 30s</strong></span>
+          <span>Fight: <strong id="compare-base-fight">—</strong></span>
         </div>
         <div style="display: flex; gap: 1rem; align-items: center;">
           <label class="wow-checkbox-label" style="font-size: 0.75rem;">

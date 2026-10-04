@@ -1,8 +1,8 @@
 // High-Fidelity Discrete Event Simulation (DES) Model & Configuration Contract
 // Fully aligned with Authoritative C++ Oracle (src/sim/warlock/warlock_sim.cpp)
 
-export const SPELLS = ['Shadow Bolt', 'Corruption', 'Bane of Agony', 'Immolate', 'Incinerate', 'Searing Pain'];
-export const CPU_IDS = [1, 2, 5, 8, 12, 9];
+export const SPELLS = ['Shadow Bolt', 'Corruption', 'Bane of Agony', 'Immolate', 'Incinerate', 'Searing Pain', 'Bane of Doom', 'Soul Fire', 'Conflagrate', 'Shadowburn', 'Siphon Life', 'Wrack', 'Touch of the Grave'];
+export const CPU_IDS = [1, 2, 5, 8, 12, 9, 6, 13, 11, 10, 17, 14, 30];
 
 export const APL_ACTION = Object.freeze({
   NONE: 0,
@@ -56,7 +56,7 @@ export const APL_COND = Object.freeze({
 export const MAX_APL_RULES = 32;
 
 export const DEFAULTS = Object.freeze({
-  duration: 180, iterations: 4096, seed: 42, rotation: 'shadow',
+  race: 'HUMAN', racialPolicy: 'execute', targetIsBeast: false, maxHealth: 0, duration: 180, iterations: 4096, seed: 42, rotation: 'shadow',
   spellPower: 500, shadowPower: 0, firePower: 0, intellect: 200, stamina: 220, spirit: 100, hit: 12, crit: 15, mp5: 20,
   distance: 30, resistance: 0, penetration: 0, tapThreshold: 25, bossArmor: 3731,
   book: false, charges: false, partialResists: true, piercing: true,
@@ -79,7 +79,7 @@ export const DEFAULTS = Object.freeze({
 
 export function validate(input) {
   const c = { ...DEFAULTS, ...input };
-  const bounds = { duration: [1, 1800], iterations: [1, 1048576], seed: [0, 4294967295],
+  const bounds = { maxHealth: [0, 100000], duration: [1, 1800], iterations: [1, 1048576], seed: [0, 4294967295],
     spellPower: [0, 10000], shadowPower: [0, 10000], firePower: [0, 10000],
     intellect: [0, 5000], stamina: [0, 5000], spirit: [0, 5000], hit: [0, 100],
     crit: [0, 100], mp5: [0, 10000], resistance: [0, 1000], penetration: [0, 1000], tapThreshold: [0, 100], bossArmor: [0, 100000],
@@ -96,6 +96,8 @@ export function validate(input) {
   }
   for (const key of ['iterations', 'seed', 'duration', 'masterDemo', 'demonicBrandRank', 'demonicKnowledge', 'ruinRank', 'baneRank', 'decimationRank']) if (!Number.isInteger(c[key])) throw new Error(`${key} must be an integer.`);
   if (![0, 30, 60, 120].includes(c.distance)) throw new Error('Supported distances: 0, 30, 60, 120 yards.');
+  if (!['execute', 'cooldown', 'align-execute', 'align-doom'].includes(c.racialPolicy)) throw new Error('Unsupported racial policy.');
+  if (!['HUMAN', 'GNOME', 'ORC', 'TROLL', 'UNDEAD'].includes(c.race)) throw new Error('Unsupported race.');
   if (!['shadow', 'fire', 'searing', 'bolt'].includes(c.rotation)) throw new Error('Unsupported rotation.');
   if (!['none', 'imp', 'succubus'].includes(c.petChoice)) throw new Error('Unsupported pet choice.');
   for (const [key, value] of Object.entries(DEFAULTS)) {
@@ -225,7 +227,7 @@ export function encodeAPLRule(rule) {
 // Explicit word schemas keep JS and GLSL offsets in one place. All scalar
 // members have four-byte alignment. Never encode counters/timestamps as floats.
 export const CONFIG = {
-  end: 'u32', travel: 'u32', corrCast: 'u32', filler: 'u32', corr: 'u32', agony: 'u32', immolate: 'u32',
+  race: 'u32', racialPolicy: 'u32', targetIsBeast: 'u32', basePower: 'f32', maxHealth: 'f32', end: 'u32', travel: 'u32', corrCast: 'u32', filler: 'u32', corr: 'u32', agony: 'u32', immolate: 'u32',
   baneRank: 'u32', decimationRank: 'u32',
   charges: 'u32', partial: 'u32', piercing: 'u32',
   petChoice: 'u32', trinketDuration: 'u32', trinketCD: 'u32',
@@ -245,7 +247,7 @@ export const CONFIG = {
 };
 
 export const STATE = {
-  initialized:'u32', done:'u32', now:'u32', size:'u32', events:'u32', highWater:'u32',
+  racialReady:'u32', racialEnd:'u32', eurekaCharges:'u32', graveReady:'u32', doomEnd:'u32', castBonus:'f32', corrBonus:'f32', agonyBonus:'f32', immBonus:'f32', siphonBonus:'f32', initialized:'u32', done:'u32', now:'u32', size:'u32', events:'u32', highWater:'u32',
   casting:'u32', ready:'u32', trance:'u32', tranceEnd:'u32', isbEnd:'u32', isbCharges:'u32',
   corrTicks:'u32', corrGen:'u32', corrEnd:'u32', agonyTicks:'u32', agonyGen:'u32', agonyEnd:'u32',
   immTicks:'u32', immGen:'u32', immEnd:'u32',
@@ -303,6 +305,9 @@ export function packConfig(input) {
   const corrCastTime = Math.max(0, 2.0 - 0.4 * impCorrRanks);
 
   const values = {
+    race: ({HUMAN:0, ORC:1, TROLL:2, GNOME:3, UNDEAD:4})[c.race],
+    racialPolicy: ({execute:0, cooldown:1, 'align-execute':2, 'align-doom':3})[c.racialPolicy], targetIsBeast: +c.targetIsBeast,
+    basePower: c.spellPower, maxHealth: c.maxHealth || 1500 + c.stamina * 10,
     end: c.duration * 1e6, travel: c.distance / 24 * 1e6, corrCast: Math.round(corrCastTime * 1e6),
     baneRank: c.baneRank, decimationRank: c.decimationRank,
     filler: ({shadow:0, bolt:0, fire:4, searing:5})[c.rotation],
@@ -321,7 +326,7 @@ export function packConfig(input) {
     siphonLife: +c.siphonLife,
     drainHope: +c.drainHope,
     power: c.spellPower + (c.rotation === 'fire' || c.rotation === 'searing' ? c.firePower : c.shadowPower),
-    maxMana: 1393 + int * 15,
+    maxMana: (1393 + int * 15) * (c.race === 'GNOME' ? 1.05 : 1),
     tapGain: (430 + 147 + c.spirit) * (1 + (c.tapBonus > 0 ? c.tapBonus : c.improvedTap ? 0.2 : 0)),
     tapThreshold: c.tapThreshold,
     mp5: c.mp5,
@@ -362,9 +367,9 @@ export function packConfig(input) {
     dotCrit: c.dotCrit !== undefined ? c.dotCrit : 1.5,
     fnbCrit: c.fnbCrit / 100,
     petMult: c.petMult || 1.0,
-    petFireboltMult: c.petFireboltMult || c.petMult || 1.0,
-    petMeleeMult: (c.petMeleeMult || c.petMult || 1.0) * (1.0 - Math.max(0, c.bossArmor !== undefined ? c.bossArmor : 3731.0) / (Math.max(0, c.bossArmor !== undefined ? c.bossArmor : 3731.0) + 400.0 + 85.0 * 60.0)),
-    petLashMult: c.petLashMult || c.petMult || 1.0,
+    petFireboltMult: (c.race === 'ORC' ? 1.05 : 1) * (c.petFireboltMult || c.petMult || 1.0),
+    petMeleeMult: (c.race === 'ORC' ? 1.05 : 1) * (c.petMeleeMult || c.petMult || 1.0) * (1.0 - Math.max(0, c.bossArmor !== undefined ? c.bossArmor : 3731.0) / (Math.max(0, c.bossArmor !== undefined ? c.bossArmor : 3731.0) + 400.0 + 85.0 * 60.0)),
+    petLashMult: (c.race === 'ORC' ? 1.05 : 1) * (c.petLashMult || c.petMult || 1.0),
     brandMult: c.brandMult || 1.0,
   };
 
@@ -403,3 +408,6 @@ export function decodeStates(buffer, count) {
   const u = new Uint32Array(buffer), f = new Float32Array(buffer);
   return Array.from({length:count}, (_, lane) => Object.fromEntries(Object.entries(STATE).map(([key, type], j) => [key, (type === 'f32' ? f : u)[lane * STATE_WORDS + j]])));
 }
+
+export const COMPACT_WORDS = 32 + (SPELLS.length - 6) * 3;
+export const COMPACT_STRIPES = Math.ceil(COMPACT_WORDS / 16);

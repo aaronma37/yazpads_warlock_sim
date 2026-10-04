@@ -30,7 +30,8 @@ const SPELL_ICONS = {
   CURSE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
   BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
   BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
-  DEMONIC_BRAND: 'Spell_Shadow_DemonBreath.png',
+  DEMONIC_BRAND: 'ability_demonhunter_chaoticimprint_fire.png',
+  DRAIN_HOPE: 'ability_deathknight_hemorrhagicfever.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
   IMP_FIREBOLT: 'Spell_Fire_FireBolt.png',
@@ -424,7 +425,6 @@ export function renderSelectedPresetDetails(p) {
 
   const isSim = !!p.is_simulated;
   const split = getSpecDamageSplit(p);
-  const aplChain = getSpecAPLChain(p);
   const weights = getSpecStatWeights(p);
   const showStatWeights = !!document.getElementById('compare-stat-weights')?.checked || isSim;
   const min = (p.min_dps || 0).toFixed(1);
@@ -436,51 +436,6 @@ export function renderSelectedPresetDetails(p) {
   const statsSummaryHtml = isSim
     ? `[<strong style="color:#4ade80; font-size:0.95rem;">${p.mean_dps.toFixed(1)} Mean DPS</strong> | Median: ${median} | 90% Range: ${min} - ${max}]`
     : `[<span style="color:#fbbf24; font-weight:600;">Not Simulated</span> · Click <strong>"Simulate Specs"</strong> above to run GPU evaluation]`;
-
-  // APL icons with '>' separators
-  const aplFullChainHtml = aplChain.map((s, i) => {
-    const icon = SPELL_ICONS[s] || 'Spell_Shadow_ShadowBolt.png';
-    return `
-      <div class="apl-icon-box">
-        <img src="./assets/icons/${icon}" alt="${s}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-        <span class="apl-icon-name">${s.replace(/_/g, ' ')}</span>
-      </div>
-      ${i < aplChain.length - 1 ? '<span class="apl-arrow">›</span>' : ''}
-    `;
-  }).join('');
-
-  // Opener cast sequence
-  const openerSpells = [
-    { name: 'LIFE_TAP', time: '0.0s' },
-    { name: 'IMMOLATE', time: '1.5s' },
-    { name: 'SEARING_PAIN', time: '3.1s' },
-    { name: 'SEARING_PAIN', time: '4.6s' },
-    { name: 'SEARING_PAIN', time: '6.1s' },
-    { name: 'SEARING_PAIN', time: '7.6s' },
-    { name: 'SEARING_PAIN', time: '9.1s' },
-    { name: 'SEARING_PAIN', time: '10.6s' },
-    { name: 'SEARING_PAIN', time: '12.1s' },
-    { name: 'SEARING_PAIN', time: '13.6s' },
-    { name: 'SEARING_PAIN', time: '15.1s' },
-    { name: 'SEARING_PAIN', time: '16.6s' },
-    { name: 'CORRUPTION', time: '18.1s' },
-    { name: 'IMMOLATE', time: '19.6s' },
-    { name: 'SEARING_PAIN', time: '21.2s' },
-    { name: 'SEARING_PAIN', time: '22.8s' }
-  ];
-
-  const openerHtml = openerSpells.map((sp, idx) => {
-    const icon = SPELL_ICONS[sp.name] || 'Spell_Fire_SoulBurn.png';
-    return `
-      <div class="opener-step">
-        <div class="opener-icon-frame">
-          <img src="./assets/icons/${icon}" alt="${sp.name}" onerror="this.src='./assets/icons/Spell_Fire_SoulBurn.png'">
-        </div>
-        <span class="opener-time">${sp.time}</span>
-        ${idx < openerSpells.length - 1 ? '<span class="opener-arrow">›</span>' : ''}
-      </div>
-    `;
-  }).join('');
 
   const epRatio = (weights && weights.dps_per_sp > 0) ? weights.dps_per_sp : 1.0;
   const statWeightsBoxHtml = (showStatWeights && weights && weights.valid) ? `
@@ -587,27 +542,8 @@ export function renderSelectedPresetDetails(p) {
       <span class="selected-preset-stats">${statsSummaryHtml}</span>
     </div>
 
-    <div class="selected-apl-section">
-      <span class="section-label">Action Priority Chain:</span>
-      <div class="selected-apl-chain">
-        ${aplFullChainHtml}
-      </div>
-    </div>
-
-    <div class="selected-details-columns">
-      <!-- Left: Damage Breakdown -->
-      <div class="details-subcol">
-        ${breakdownSectionHtml}
-      </div>
-
-      <!-- Right: Observed Combat Sequence -->
-      <div class="details-subcol">
-        <span class="section-label">Observed Combat Rotation & Cast Sequence:</span>
-        <span class="sub-label" style="color: #60a5fa; font-size: 0.78rem; font-weight: 700; margin-top: 0.25rem; display:block;">Opener Cast Sequence (First 16 Spells):</span>
-        <div class="opener-sequence-strip">
-          ${openerHtml}
-        </div>
-      </div>
+    <div class="selected-preset-breakdown">
+      ${breakdownSectionHtml}
     </div>
   `;
 
@@ -674,6 +610,7 @@ export async function runBatchPresetSimulation(signal, onProgress, onSelectPrese
 
     const rawConfig = {
       ...activeConfig,
+      race: (p.race || activeConfig.race || 'HUMAN').toUpperCase(),
       duration: baseDuration,
       iterations: numSims,
       rotation: rot,

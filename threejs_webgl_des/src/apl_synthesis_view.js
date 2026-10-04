@@ -1,3 +1,4 @@
+import { candidateFallbackRotation, fallbackRow, fallbackSummary } from './apl_fallback_view.js';
 // APL Synthesis Dashboard & View Controller for Three.js WebGL DES
 // Layout and interactive flow matching Constrained Spec Search
 
@@ -237,6 +238,7 @@ export function renderAPLGALeaderboard() {
         <div style="font-weight: 700; color: var(--text-parchment); font-size: 0.82rem;">${escapeHtml(cand.name)}</div>
         <div class="priority-chain-preview" style="margin-top: 3px;">
           ${chainIcons}
+          <span class="apl-fallback-preview">${fallbackSummary(candidateFallbackRotation(cand))}</span>
         </div>
       </td>
       <td style="text-align: center; color: var(--text-gold); font-weight: 700; font-size: 0.8rem;">
@@ -393,6 +395,7 @@ export function renderSelectedAPLCandidateDetails(cand) {
             </thead>
             <tbody>
               ${rulesHtml}
+              ${fallbackRow(candidateFallbackRotation(cand))}
             </tbody>
           </table>
         </div>
@@ -592,7 +595,8 @@ function getSpellIcon(spellName) {
   if (name.includes('bane of doom') || name.includes('curse of doom') || name.includes('doom')) return 'Spell_Shadow_AuraOfDarkness.png';
   if (name.includes('bane of agony') || name.includes('curse of agony') || name.includes('agony')) return 'Spell_Shadow_CurseOfSargeras.png';
   if (name.includes('soul fire')) return 'Spell_Fire_Fireball02.png';
-  if (name.includes('brand')) return 'Spell_Shadow_DemonBreath.png';
+  if (name.includes('brand')) return 'ability_demonhunter_chaoticimprint_fire.png';
+  if (name.includes('wrack')) return 'ability_deathknight_hemorrhagicfever.png';
   if (name.includes('life tap') || name.includes('tap')) return 'Spell_Shadow_BurningSpirit.png';
   return 'Spell_Shadow_ShadowBolt.png';
 }

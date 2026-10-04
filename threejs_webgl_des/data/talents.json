@@ -170,7 +170,7 @@
           "max": 1,
           "row": 7,
           "col": 2,
-          "icon": "spell_shadow_haunting",
+          "icon": "ability_deathknight_hemorrhagicfever",
           "desc": [
             "Tears the target apart from within, dealing 36 Shadow damage every 1 sec and increasing the damage they take from your other Shadow damage over time effects by 10%. Lasts 6 sec."
           ]
@@ -321,7 +321,7 @@
           "max": 3,
           "row": 4,
           "col": 4,
-          "icon": "spell_shadow_demonbreath",
+          "icon": "ability_demonhunter_chaoticimprint_fire",
           "desc": [
             "Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target generate high threat and deal 39 to 42 Fire or Shadow damage based on the pet."
           ]

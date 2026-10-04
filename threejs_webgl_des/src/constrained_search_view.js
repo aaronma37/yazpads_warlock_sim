@@ -1,3 +1,4 @@
+import { fallbackRow } from './apl_fallback_view.js';
 // Constrained Spec Search Dashboard & View Controller for Three.js WebGL DES
 import {
   TALENT_DEFINITIONS,
@@ -27,7 +28,7 @@ const SPELL_ICONS = {
   CURSE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
   BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
   BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
-  DEMONIC_BRAND: 'Spell_Shadow_DemonBreath.png',
+  DEMONIC_BRAND: 'ability_demonhunter_chaoticimprint_fire.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   DECIMATION_SOUL_FIRE: 'Spell_Fire_Fireball02.png',
   DRAIN_HOPE: 'ability_deathknight_hemorrhagicfever.png',
@@ -50,13 +51,20 @@ const RACE_ICONS = {
 const PET_ICONS = {
   imp: 'Spell_Shadow_SummonImp.png',
   succubus: 'Spell_Shadow_SummonSuccubus.png',
-  none: 'Spell_Shadow_SacrificialShield.png'
+  none: null
 };
 
 let currentCandidates = [];
 let selectedCandidate = null;
 let currentEvolutionHistory = [];
 let onApplyCandidateCallback = null;
+
+function applyCandidate(cand) {
+  if (!cand) return;
+  selectedCandidate = cand;
+  onApplyCandidateCallback?.(cand);
+  document.getElementById('btn-current-build')?.click();
+}
 
 export function initConstrainedSearchView(onApplyCandidate) {
   onApplyCandidateCallback = onApplyCandidate;
@@ -518,12 +526,7 @@ export function renderGALeaderboard() {
     `;
     tdName.querySelector('.spec-name-link')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      selectedCandidate = cand;
-      renderGALeaderboard();
-      renderSelectedCandidateDetails(cand);
-      if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
-      const curTab = document.getElementById('btn-current-build');
-      if (curTab) curTab.click();
+      applyCandidate(cand);
     });
     tr.appendChild(tdName);
 
@@ -538,11 +541,11 @@ export function renderGALeaderboard() {
     // 4. Pet / Sac
     const tdPet = document.createElement('td');
     tdPet.style.textAlign = 'center';
-    const petIcon = cand.pet === 'none' ? 'Spell_Shadow_SacrificialShield.png' : cand.pet === 'imp' ? 'Spell_Shadow_SummonImp.png' : 'Spell_Shadow_SummonSuccubus.png';
+    const petIcon = cand.pet === 'none' ? null : cand.pet === 'imp' ? 'Spell_Shadow_SummonImp.png' : 'Spell_Shadow_SummonSuccubus.png';
     let sacTxt = cand.sacImp ? 'Sac Imp' : cand.sacSuccubus ? 'Sac Succubus' : 'No Sac';
     tdPet.innerHTML = `
       <div style="display:inline-flex; align-items:center; justify-content:center; gap:3px;">
-        <img src="./assets/icons/${petIcon}" width="18" height="18" alt="${cand.pet}" title="Active Pet: ${cand.pet}" style="border-radius:2px;">
+        ${petIcon ? `<img src="./assets/icons/${petIcon}" width="18" height="18" alt="${cand.pet}" title="Active Pet: ${cand.pet}" style="border-radius:2px;">` : '<span class="empty-slot-icon" title="No active pet"></span>'}
         ${cand.sacImp || cand.sacSuccubus ? `<img src="./assets/icons/${cand.sacImp ? 'Spell_Shadow_SummonImp.png' : 'Spell_Shadow_SummonSuccubus.png'}" width="18" height="18" alt="Sac" title="${sacTxt}" style="border-radius:2px; border:1px solid #ef4444;">` : ''}
       </div>
     `;
@@ -592,12 +595,7 @@ export function renderGALeaderboard() {
     applyBtn.style.fontSize = '0.72rem';
     applyBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      selectedCandidate = cand;
-      renderGALeaderboard();
-      renderSelectedCandidateDetails(cand);
-      if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
-      const curTab = document.getElementById('btn-current-build');
-      if (curTab) curTab.click();
+      applyCandidate(cand);
     });
     tdAction.appendChild(applyBtn);
     tr.appendChild(tdAction);
@@ -771,9 +769,7 @@ export function renderSelectedCandidateDetails(cand) {
 
   // Hook apply button
   document.getElementById('btn-ga-apply-active')?.addEventListener('click', () => {
-    if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
-    const curTab = document.getElementById('btn-current-build');
-    if (curTab) curTab.click();
+    applyCandidate(cand);
   });
 
   // Hook subtabs
@@ -808,8 +804,8 @@ function renderTalentList(treeMap = {}) {
 }
 
 function renderAPLRows(cand) {
-  const { aplRules } = getPolicyAPLAndActions(cand.individual || cand);
-  if (aplRules.length === 0) return `<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">No custom rules.</td></tr>`;
+  const { aplRules, shaderRotation } = getPolicyAPLAndActions(cand.individual || cand);
+  if (aplRules.length === 0) return fallbackRow(shaderRotation);
 
   return aplRules.map((r, i) => {
     const spellName = getSpellNameForAPL(r.action);
@@ -828,7 +824,7 @@ function renderAPLRows(cand) {
         <td style="text-align: center; color: #4ade80;">ACTIVE</td>
       </tr>
     `;
-  }).join('');
+  }).join('') + fallbackRow(shaderRotation);
 }
 
 function renderSpellBreakdownRows(cand) {

@@ -724,6 +724,16 @@ input[type="checkbox"]:checked::after {
   border: 1px solid #444;
 }
 
+.empty-slot-icon {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #444;
+  border-radius: 2px;
+  background: #000;
+  box-sizing: border-box;
+}
+
 /* Mode Switcher */
 .mode-toggle-group {
   display: grid;
@@ -2265,3 +2275,11 @@ footer {
 }
 
 
+/* Built-in APL behavior is informational and cannot be reordered or toggled. */
+.apl-fallback-row td { padding: 0.75rem; border-top: 1px dashed var(--text-gold); background: #1d1925; white-space: normal; }
+.apl-fallback-row strong { color: var(--text-gold); }
+.apl-fallback-row div { margin: 0.3rem 0; color: var(--text-parchment); }
+.apl-fallback-row small, .apl-fallback-preview { color: var(--text-dim); font-size: 0.72rem; }
+.apl-fallback-preview { display: block; flex-basis: 100%; white-space: normal; margin-top: 0.3rem; }
+
+.selected-preset-breakdown { padding: 0.85rem; }

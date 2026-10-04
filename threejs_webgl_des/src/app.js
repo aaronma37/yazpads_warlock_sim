@@ -6,7 +6,7 @@ import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSi
 import { initBuffs, getActiveBuffStats } from './buffs.js';
 import { initPresets, getPresets, getPresetPetAndSac, runBatchPresetSimulation, renderPresetsLeaderboard } from './presets.js';
 import { initGear, setGearMode, calculateEquippedStats } from './gear.js';
-import { initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL } from './apl.js';
+import { refreshAPLFallback, initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL } from './apl.js';
 import { initTooltips, showTooltip, hideTooltip } from './tooltips.js';
 import { initConstrainedSearchView, readGAConfig, updateGALiveView, setGAExecutionResults } from './constrained_search_view.js';
 import { runConstrainedGeneticSearch } from './genetic_optimizer.js';
@@ -94,21 +94,22 @@ const RACE_ICONS_DATA = {
   ORC: {
     icon: './assets/icons/Achievement_Character_Orc_Male.png',
     traits: [
-      { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+25% Base Melee/Spell AP)', desc: 'Increases base melee and spell attack power by 25% for 15 sec.' },
-      { name: 'Command', icon: 'Ability_Hunter_Pet_Gorilla.png', title: 'Command (+5% Pet Damage)', desc: 'Damage dealt by Warlock and Hunter pets increased by 5%.' }
+      { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+10% Spell Power)', desc: 'Increases base spell power by 10% for 15 sec. 120 sec cooldown; aligned with Bane of Doom when available.' },
+      { name: 'Command', icon: 'Ability_Warrior_WarCry.png', title: 'Command (+5% Pet Damage)', desc: 'Damage dealt by Warlock and Hunter pets increased by 5%.' }
     ]
   },
   UNDEAD: {
     icon: './assets/icons/Achievement_Character_Undead_Male.png',
     traits: [
       { name: 'Will of the Forsaken', icon: 'Spell_Shadow_RaiseDead.png', title: 'Will of the Forsaken (Charm/Fear/Sleep Immunity)', desc: 'Provides immunity to Charm, Fear, and Sleep effects for 5 sec.' },
+      { name: 'Touch of the Grave', icon: 'Spell_Shadow_ChillTouch.png', title: 'Touch of the Grave', desc: 'Spell casts have a 10% chance to deal 5% of maximum health as damage. 1 sec cooldown.' },
       { name: 'Cannibalize', icon: 'Spell_Shadow_Cannibalize.png', title: 'Cannibalize', desc: 'When activated, regenerates 7% of total health every 2 sec for 10 sec.' }
     ]
   },
   TROLL: {
     icon: './assets/icons/Achievement_Character_Troll_Male.png',
     traits: [
-      { name: 'Berserking', icon: 'Racial_Troll_Berserk.png', title: 'Berserking (+10-30% Haste)', desc: 'Increases casting and attack speed by 10% to 30% depending on health.' },
+      { name: 'Berserking', icon: 'Racial_Troll_Berserk.png', title: 'Berserking (+10% Haste)', desc: 'Increases casting speed by 10% for 10 sec. 180 sec cooldown.' },
       { name: 'Beast Slaying', icon: 'Ability_Hunter_BeastSoothe.png', title: 'Beast Slaying (+5% vs Beasts)', desc: 'Damage dealt versus Beasts increased by 5%.' }
     ]
   },
@@ -116,6 +117,7 @@ const RACE_ICONS_DATA = {
     icon: './assets/icons/Achievement_Character_Gnome_Male.png',
     traits: [
       { name: 'Expansive Mind', icon: 'Spell_Nature_EnchantWater.png', title: 'Expansive Mind (+5% Intellect)', desc: 'Intellect increased by 5%.' },
+      { name: 'Eureka!', icon: 'Spell_Nature_EnchantWater.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells. 120 sec cooldown; aligned with Bane of Doom when available.' },
       { name: 'Escape Artist', icon: 'Spell_Holy_Silence.png', title: 'Escape Artist', desc: 'Escape the effects of any immobilization or movement speed reduction.' }
     ]
   }
@@ -124,13 +126,13 @@ const RACE_ICONS_DATA = {
 const PET_ICONS_DATA = {
   imp: './assets/icons/Spell_Shadow_SummonImp.png',
   succubus: './assets/icons/Spell_Shadow_SummonSuccubus.png',
-  none: './assets/icons/Spell_Shadow_SacrificialShield.png'
+  none: null
 };
 
 const DS_ICONS_DATA = {
   succubus: './assets/icons/Spell_Shadow_SummonSuccubus.png',
   imp: './assets/icons/Spell_Shadow_SummonImp.png',
-  none: './assets/icons/Spell_Shadow_SacrificialShield.png'
+  none: null
 };
 
 let activeRace = 'HUMAN';
@@ -141,6 +143,7 @@ let activeRotation = 'shadow';
 export function setRotation(rot) {
   const norm = (rot || 'shadow').toLowerCase();
   activeRotation = ['shadow', 'fire', 'searing', 'bolt'].includes(norm) ? norm : 'shadow';
+  refreshAPLFallback();
 }
 
 export function getRotation() {
@@ -161,14 +164,22 @@ export function setRace(raceKey) {
 export function setPet(petKey) {
   const norm = (petKey || 'imp').toLowerCase();
   activePet = PET_ICONS_DATA[norm] ? norm : 'none';
-  if ($('slot-pet-icon')) $('slot-pet-icon').src = PET_ICONS_DATA[activePet];
+  const icon = $('slot-pet-icon');
+  if (icon) {
+    icon.style.display = PET_ICONS_DATA[activePet] ? 'block' : 'none';
+    if (PET_ICONS_DATA[activePet]) icon.src = PET_ICONS_DATA[activePet];
+  }
   updateCombatStatsSummary();
 }
 
 export function setDS(dsKey) {
   const norm = (dsKey || 'none').toLowerCase();
   activeDS = DS_ICONS_DATA[norm] ? norm : 'none';
-  if ($('slot-ds-icon')) $('slot-ds-icon').src = DS_ICONS_DATA[activeDS];
+  const icon = $('slot-ds-icon');
+  if (icon) {
+    icon.style.display = DS_ICONS_DATA[activeDS] ? 'block' : 'none';
+    if (DS_ICONS_DATA[activeDS]) icon.src = DS_ICONS_DATA[activeDS];
+  }
   updateCombatStatsSummary();
 }
 
@@ -478,6 +489,7 @@ function getEffectiveBuffsAndStats() {
 }
 
 function updateCombatStatsSummary() {
+  refreshAPLFallback();
   const eff = getEffectiveBuffsAndStats();
   const effectiveShadow = eff.spellPower + eff.shadowPower;
   const effectiveFire = eff.spellPower + eff.firePower;
@@ -501,6 +513,19 @@ function updateCombatStatsSummary() {
   if ($('ga-base-crit')) $('ga-base-crit').textContent = `${eff.crit.toFixed(1)}%`;
   const dur = Number(form.elements.namedItem('duration')?.value || 180);
   if ($('ga-base-fight')) $('ga-base-fight').textContent = `${dur}s`;
+
+  // Same live base inputs passed to runBatchPresetSimulation; presets add their talents.
+  const comparisonStats = {
+    'compare-base-shadow-sp': effectiveShadow,
+    'compare-base-fire-sp': effectiveFire,
+    'compare-base-hit': `${eff.hit.toFixed(1)}%`,
+    'compare-base-crit': `${eff.crit.toFixed(1)}%`,
+    'compare-base-mp5': eff.mp5,
+    'compare-base-fight': `${dur}s`,
+  };
+  for (const [id, value] of Object.entries(comparisonStats)) {
+    if ($(id)) $(id).textContent = value;
+  }
 
   // Update APL Synthesis Subheader Base Stats & Target Spec Label
   if ($('apl-ga-base-shadow-sp')) $('apl-ga-base-shadow-sp').textContent = effectiveShadow;
@@ -575,13 +600,10 @@ function readForm() {
   base.shadowMultiplier = eff.shadowMultiplier;
   base.fireMultiplier = eff.fireMultiplier;
 
+  base.race = activeRace;
+  base.maxHealth = eff.maxHealth;
   base.rotation = activeRotation;
   const talent = getSimTalentFlags();
-  if (activeRace === 'ORC') {
-    talent.petFireboltMult = (talent.petFireboltMult || 1.0) * 1.05;
-    talent.petMeleeMult = (talent.petMeleeMult || 1.0) * 1.05;
-    talent.petLashMult = (talent.petLashMult || 1.0) * 1.05;
-  }
   const activeActions = new Set(getActiveAPL().filter(rule => rule.enabled).map(rule => rule.id));
   // Spell availability is derived from the editable action list so enabling a
   // supported action also enables its shader-side spell gate.
@@ -624,6 +646,12 @@ function setTopStatus(type, data) {
 const SPELL_ICONS_MAP = {
   'Shadow Bolt': 'Spell_Shadow_ShadowBolt.png',
   'Corruption': 'Spell_Shadow_AbominationExplosion.png',
+  'Bane of Doom': 'spell_shadow_auraofdarkness.png',
+  'Soul Fire': 'spell_fire_fireball02.png',
+  'Conflagrate': 'Spell_Fire_Fireball.png',
+  'Shadowburn': 'Spell_Shadow_ScourgeBuild.png',
+  'Siphon Life': 'Spell_Shadow_Requiem.png',
+  'Touch of the Grave': 'spell_shadow_chilltouch.png',
   'Bane of Agony': 'Spell_Shadow_CurseOfSargeras.png',
   'Immolate': 'Spell_Fire_Immolation.png',
   'Incinerate': 'Spell_Fire_Burnout.png',
@@ -636,7 +664,8 @@ const SPELL_ICONS_MAP = {
   'Lash of Pain (Pet)': 'Spell_Shadow_Curse.png',
   'Imp Firebolt': 'Spell_Fire_FireBolt.png',
   'Firebolt (Pet)': 'Spell_Fire_FireBolt.png',
-  'Demonic Brand': 'Spell_Shadow_DemonBreath.png',
+  'Demonic Brand': 'ability_demonhunter_chaoticimprint_fire.png',
+  'Wrack': 'ability_deathknight_hemorrhagicfever.png',
   'Pet': 'Spell_Shadow_SummonImp.png',
   'Imp': 'Spell_Shadow_SummonImp.png',
   'Succubus': 'Spell_Shadow_SummonSuccubus.png',
@@ -760,7 +789,7 @@ function render(result) {
     activeSpells.forEach(sp => {
       const spellDps = sp.damage / c.duration;
       const pctOfTotal = totalDmg > 0 ? (sp.damage / totalDmg * 100).toFixed(1) : '0.0';
-      const critPct = sp.casts > 0 ? ((sp.crits / sp.casts) * 100).toFixed(1) : '0.0';
+      const critPct = sp.hits > 0 ? ((sp.crits / sp.hits) * 100).toFixed(1) : '0.0';
       const icon = SPELL_ICONS_MAP[sp.name] || 'Spell_Shadow_ShadowBolt.png';
       const isFire = ['Immolate', 'Incinerate', 'Searing Pain', 'Imp Firebolt', 'Demonic Brand'].includes(sp.name) || sp.school === 'fire';
       const isPhys = ['Succubus Melee', 'Melee (Pet)', 'Pet Melee', 'Melee'].includes(sp.name) || sp.school === 'physical';
@@ -849,6 +878,10 @@ function getActiveStatsConfig() {
   const penetration = Number(form.elements.namedItem('penetration')?.value || 0);
   const tapThreshold = Number(form.elements.namedItem('tapThreshold')?.value || 25);
   return {
+    racialPolicy: form.elements.namedItem('racialPolicy')?.value || 'execute',
+    targetIsBeast: !!form.elements.namedItem('targetIsBeast')?.checked,
+    race: activeRace,
+    maxHealth: eff.maxHealth,
     spellPower: eff.spellPower,
     shadowPower: eff.shadowPower,
     firePower: eff.firePower,
@@ -879,7 +912,7 @@ initTalents((tf) => {
 initAPL((aplList) => {
   const enabledSpells = aplList.filter(e => e.enabled).map(e => e.spell);
   console.log('APL updated:', enabledSpells);
-});
+}, () => importedConfig?.rotation || activeRotation);
 
 // Populate Preset Dropdown Dynamically
 async function populateTalentPresetsDropdown() {
@@ -1009,6 +1042,11 @@ let gaController = null;
 function applyCandidateBuild(cand) {
   if (!cand) return;
   try {
+    // An imported config takes precedence in readForm(). Applying a search
+    // candidate updates the live controls/state, so discard that override or
+    // the next simulation would continue using the imported build.
+    importedConfig = null;
+
     // 1. Load 51-point talents
     if (cand.talents) {
       applyTalentsObject(cand.talents);
@@ -1237,4 +1275,3 @@ if (capable) {
     setTimeout(() => preloadShader(), 50);
   }
 }
-

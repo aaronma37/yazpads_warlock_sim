@@ -1,6 +1,6 @@
 import { WebGLRenderer, WebGLRenderTarget, RawShaderMaterial, BufferGeometry, BufferAttribute,
   Mesh, Scene, Camera, GLSL3, RGBAIntegerFormat, UnsignedIntType, NearestFilter, NoBlending, DataTexture } from 'three';
-import { validate, packConfig, decodeStates, STATE_WORDS, TRACE_CAPACITY, SPELLS, CONFIG, CONFIG_WORDS } from './model.js';
+import { COMPACT_WORDS, COMPACT_STRIPES, validate, packConfig, decodeStates, STATE_WORDS, TRACE_CAPACITY, SPELLS, CONFIG, CONFIG_WORDS } from './model.js';
 import { VERTEX, FRAGMENT } from './kernel.js';
 
 const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
@@ -107,7 +107,7 @@ function unpack(attachments,width,lane,words,mode=0){
  const simX=lane%width,simY=Math.floor(lane/width);
  for(let j=0;j<words;j++){
   const stripe=Math.floor(j/16),att=Math.floor(j%16/4),comp=j%4;
-  result[j]=attachments[att][((simY*2+stripe)*width+simX)*4+comp];
+  result[j]=attachments[att][((simY*COMPACT_STRIPES+stripe)*width+simX)*4+comp];
  }
  return result;
 }
@@ -117,7 +117,7 @@ function decodeBatch2D(outputs,width,count,config,first,states){
  const f0=new Float32Array(att0.buffer),f1=new Float32Array(att1.buffer),f2=new Float32Array(att2.buffer),f3=new Float32Array(att3.buffer);
  for(let lane=0;lane<count;lane++){
   const simX=lane%width,simY=Math.floor(lane/width);
-  const p0=((simY*2)*width+simX)*4,p1=((simY*2+1)*width+simX)*4;
+  const p0=((simY*COMPACT_STRIPES)*width+simX)*4,p1=((simY*COMPACT_STRIPES+1)*width+simX)*4;
   const total=f0[p0];
   const doneWord=att0[p0+1];
   const done=doneWord&65535,highWater=doneWord>>>16;
@@ -174,6 +174,13 @@ function decodeBatch2D(outputs,width,count,config,first,states){
    petMeleeDamage,petMeleeCasts,petMeleeHits,petMeleeCrits,petMeleeMisses,
    petSpellDamage,petSpellCasts,petSpellHits,petSpellCrits,petSpellMisses
   };
+  const words=unpack(outputs,width,lane,COMPACT_WORDS);
+  const floats=new Float32Array(words.buffer);
+  for(let i=6;i<SPELLS.length;i++){
+   const j=32+(i-6)*3;
+   s[`damage${i}`]=floats[j];s[`casts${i}`]=words[j+1]&65535;s[`hits${i}`]=words[j+1]>>>16;
+   s[`crits${i}`]=words[j+2]&65535;s[`misses${i}`]=words[j+2]>>>16;
+  }
   states.push(s);
  }
 }
@@ -192,7 +199,7 @@ export function summarize(states, duration) {
     hits: sum(`hits${i}`) / states.length,
     crits: sum(`crits${i}`) / states.length,
     misses: sum(`misses${i}`) / states.length,
-    school: ['Immolate', 'Incinerate', 'Searing Pain'].includes(name) ? 'fire' : 'shadow'
+    school: ['Immolate', 'Incinerate', 'Searing Pain', 'Soul Fire', 'Conflagrate'].includes(name) ? 'fire' : 'shadow'
   }));
 
   const petMeleeDamage = sum('petMeleeDamage') / states.length;
@@ -314,9 +321,9 @@ export async function runMultiSimulation(inputs, { signal, onProgress = () => {}
     const capacity = Math.min(effectiveBatch, totalFights);
     const gridWidth = Math.min(maxTexSize, Math.max(1, Math.min(1024, capacity)));
     const gridHeight = Math.ceil(capacity / gridWidth);
-    if (gridHeight * 2 > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+    if (gridHeight * COMPACT_STRIPES > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
 
-    rt = target(gridWidth, gridHeight * 2);
+    rt = target(gridWidth, gridHeight * COMPACT_STRIPES);
     e.renderer.setRenderTarget(rt);
 
     let compileMs = 0;
@@ -387,8 +394,8 @@ export async function runSimulation(input,{signal,onProgress=()=>{},batchSize=52
   const capacity=Math.min(effectiveBatch,config.iterations);
   const gridWidth=Math.min(maxTexSize,Math.max(1,Math.min(1024,capacity)));
   const gridHeight=Math.ceil(capacity/gridWidth);
-  if(gridHeight*2>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
-  rt=target(gridWidth,gridHeight*2);e.renderer.setRenderTarget(rt);
+  if(gridHeight*COMPACT_STRIPES>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+  rt=target(gridWidth,gridHeight*COMPACT_STRIPES);e.renderer.setRenderTarget(rt);
   let compileMs=0;
   if(!e.compiled){
     onProgress({phase:'Compiling GPU Shader',completed:0,total:config.iterations});

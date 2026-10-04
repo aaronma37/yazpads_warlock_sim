@@ -12,7 +12,7 @@ import { TalentGraph } from './genetic_optimizer.js';
 export const APL_SYNTHESIS_ACTIONS = [
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, category: 'Resource', defaultRaw: 'mana_pct <= 20' },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, category: 'Proc', defaultRaw: 'buff.shadow_trance' },
-  { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'Spell_Shadow_DemonBreath.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, category: 'Debuff', defaultRaw: 'debuff.demonic_brand_missing' },
+  { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'ability_demonhunter_chaoticimprint_fire.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, category: 'Debuff', defaultRaw: 'debuff.demonic_brand_missing' },
   { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.DECIMATION_SEARING_PAIN, category: 'Execute', defaultRaw: 'decimation.inactive' },
   { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', action: APL_ACTION.DECIMATION_SOUL_FIRE, category: 'Execute', defaultRaw: 'decimation.active' },
   { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', action: APL_ACTION.CURSE_OF_DOOM, category: 'Curse', defaultRaw: 'target_ttd >= 60 && !target.has_debuff("Bane of Doom")' },
@@ -24,7 +24,7 @@ export const APL_SYNTHESIS_ACTIONS = [
   { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', action: APL_ACTION.INCINERATE_FILLER, category: 'Direct', defaultRaw: 'true' },
   { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.SEARING_PAIN_FILLER, category: 'Direct', defaultRaw: 'true' },
   { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', action: APL_ACTION.SIPHON_LIFE, category: 'DoT', defaultRaw: 'target.debuff_remains("Siphon Life") <= 0 && target_ttd >= 12' },
-  { id: 'wrack', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', action: APL_ACTION.DRAIN_HOPE, category: 'Channel', defaultRaw: 'true' },
+  { id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', action: APL_ACTION.DRAIN_HOPE, category: 'Channel', defaultRaw: 'true' },
   { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', action: APL_ACTION.SHADOW_BOLT_FILLER, category: 'Direct', defaultRaw: 'true' }
 ];
 
