@@ -15,8 +15,8 @@ export const APL_SYNTHESIS_ACTIONS = [
   { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'Spell_Shadow_DemonBreath.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, category: 'Debuff', defaultRaw: 'debuff.demonic_brand_missing' },
   { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.DECIMATION_SEARING_PAIN, category: 'Execute', defaultRaw: 'decimation.inactive' },
   { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', action: APL_ACTION.DECIMATION_SOUL_FIRE, category: 'Execute', defaultRaw: 'decimation.active' },
-  { id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', action: APL_ACTION.CURSE_OF_DOOM, category: 'Curse', defaultRaw: 'target_ttd >= 60 && !target.has_debuff("Curse of Doom")' },
-  { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', action: APL_ACTION.CURSE_OF_AGONY, category: 'Curse', defaultRaw: '!target.has_debuff("Curse of Doom") && !target.has_debuff("Curse of Agony")' },
+  { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', action: APL_ACTION.CURSE_OF_DOOM, category: 'Curse', defaultRaw: 'target_ttd >= 60 && !target.has_debuff("Bane of Doom")' },
+  { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', action: APL_ACTION.CURSE_OF_AGONY, category: 'Curse', defaultRaw: '!target.has_debuff("Bane of Doom") && !target.has_debuff("Bane of Agony")' },
   { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', action: APL_ACTION.CORRUPTION, category: 'DoT', defaultRaw: 'target_ttd >= 12 && !target.has_debuff("Corruption")' },
   { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', action: APL_ACTION.IMMOLATE, category: 'DoT', defaultRaw: 'target_ttd >= 12 && !target.has_debuff("Immolate")' },
   { id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', action: APL_ACTION.CONFLAGRATE, category: 'Direct', defaultRaw: 'target.debuff_remains("Immolate") < 6' },
@@ -38,6 +38,7 @@ export const SPELL_IDS = {
   'curse of agony': 2,
   'bane of agony': 2,
   'curse of doom': 22,
+  'bane of doom': 22,
   immolate: 3,
   'siphon life': 15
 };
@@ -219,7 +220,7 @@ export function createRuleCondition(actionId, condKey, param = 0.0) {
   } else if (condKey === 'DOOM_MISSING') {
     condEnum = APL_COND.DOOM_MISSING;
     conditionText = 'Doom missing';
-    rawCond = '!target.has_debuff("Curse of Doom")';
+    rawCond = '!target.has_debuff("Bane of Doom")';
     cleanParam = 0.0;
     targetSpell = 2;
   } else if (condKey === 'FIGHT_GE_DOT_MISSING') {
@@ -231,7 +232,7 @@ export function createRuleCondition(actionId, condKey, param = 0.0) {
     cleanParam = Math.round(Math.max(15, Math.min(90, cleanParam)));
     condEnum = APL_COND.FIGHT_GE_DOOM_AGONY_MISSING;
     conditionText = `TTDie >= ${cleanParam}s & No Curses`;
-    rawCond = `target_ttd >= ${cleanParam} && !target.has_debuff("Curse of Doom") && !target.has_debuff("Curse of Agony")`;
+    rawCond = `target_ttd >= ${cleanParam} && !target.has_debuff("Bane of Doom") && !target.has_debuff("Bane of Agony")`;
     targetSpell = 2;
   } else if (condKey === 'ISB_ACTIVE') {
     condEnum = APL_COND.ISB_ACTIVE;

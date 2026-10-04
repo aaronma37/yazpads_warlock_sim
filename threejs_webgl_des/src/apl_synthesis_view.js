@@ -37,11 +37,6 @@ export function initAPLSynthesisView(onApplyAPL) {
     });
   });
 
-  // Export button
-  document.getElementById('btn-export-apl-ga')?.addEventListener('click', () => {
-    exportAPLGASpecs();
-  });
-
   // Window resize for convergence canvas
   window.addEventListener('resize', () => {
     if (currentAPLEvolutionHistory.length > 0) {
@@ -450,6 +445,8 @@ function applyCandidateAPL(cand) {
   if (onApplyAPLCallback) {
     onApplyAPLCallback(cand);
   }
+  const curTab = document.getElementById('btn-current-build');
+  if (curTab) curTab.click();
 }
 
 // 2D Canvas Convergence Graph (DPS vs Generation)
@@ -592,8 +589,8 @@ function getSpellIcon(spellName) {
   if (name.includes('shadowburn')) return 'Spell_Shadow_ScourgeBuild.png';
   if (name.includes('siphon')) return 'Spell_Shadow_Requiem.png';
   if (name.includes('drain')) return 'Spell_Shadow_Haunting.png';
-  if (name.includes('curse of doom') || name.includes('doom')) return 'Spell_Shadow_AuraOfDarkness.png';
-  if (name.includes('curse of agony') || name.includes('agony')) return 'Spell_Shadow_CurseOfSargeras.png';
+  if (name.includes('bane of doom') || name.includes('curse of doom') || name.includes('doom')) return 'Spell_Shadow_AuraOfDarkness.png';
+  if (name.includes('bane of agony') || name.includes('curse of agony') || name.includes('agony')) return 'Spell_Shadow_CurseOfSargeras.png';
   if (name.includes('soul fire')) return 'Spell_Fire_Fireball02.png';
   if (name.includes('brand')) return 'Spell_Shadow_DemonBreath.png';
   if (name.includes('life tap') || name.includes('tap')) return 'Spell_Shadow_BurningSpirit.png';

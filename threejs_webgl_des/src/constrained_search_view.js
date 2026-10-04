@@ -25,6 +25,8 @@ const SPELL_ICONS = {
   AMPLIFY_CURSE: 'Spell_Shadow_Contagion.png',
   CURSE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
   CURSE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
+  BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
+  BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
   DEMONIC_BRAND: 'Spell_Shadow_DemonBreath.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   DECIMATION_SOUL_FIRE: 'Spell_Fire_Fireball02.png',
@@ -79,11 +81,6 @@ export function initConstrainedSearchView(onApplyCandidate) {
       renderGALeaderboard();
       if (selectedCandidate) renderSelectedCandidateDetails(selectedCandidate);
     });
-  });
-
-  // Export button
-  document.getElementById('btn-export-ga')?.addEventListener('click', () => {
-    exportGASpecs();
   });
 
   // Resize listener for graph canvas
@@ -525,6 +522,8 @@ export function renderGALeaderboard() {
       renderGALeaderboard();
       renderSelectedCandidateDetails(cand);
       if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
+      const curTab = document.getElementById('btn-current-build');
+      if (curTab) curTab.click();
     });
     tr.appendChild(tdName);
 
@@ -597,6 +596,8 @@ export function renderGALeaderboard() {
       renderGALeaderboard();
       renderSelectedCandidateDetails(cand);
       if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
+      const curTab = document.getElementById('btn-current-build');
+      if (curTab) curTab.click();
     });
     tdAction.appendChild(applyBtn);
     tr.appendChild(tdAction);
@@ -771,6 +772,8 @@ export function renderSelectedCandidateDetails(cand) {
   // Hook apply button
   document.getElementById('btn-ga-apply-active')?.addEventListener('click', () => {
     if (onApplyCandidateCallback) onApplyCandidateCallback(cand);
+    const curTab = document.getElementById('btn-current-build');
+    if (curTab) curTab.click();
   });
 
   // Hook subtabs
@@ -878,7 +881,7 @@ function getSpellNameForAPL(action) {
     4: 'Decimation Soul Fire',
     5: 'Demonic Brand Searing Pain',
     6: 'Corruption',
-    7: 'Curse of Doom',
+    7: 'Bane of Doom',
     8: 'Bane of Agony',
     9: 'Immolate',
     10: 'Conflagrate',
@@ -900,8 +903,8 @@ function getIconForSpell(name) {
   if (clean.includes('NIGHTFALL')) return 'NIGHTFALL';
   if (clean.includes('SOUL_FIRE')) return 'DECIMATION_SOUL_FIRE';
   if (clean.includes('CORRUPTION')) return 'CORRUPTION';
-  if (clean.includes('DOOM')) return 'CURSE_OF_DOOM';
-  if (clean.includes('AGONY')) return 'CURSE_OF_AGONY';
+  if (clean.includes('DOOM')) return 'BANE_OF_DOOM';
+  if (clean.includes('AGONY')) return 'BANE_OF_AGONY';
   if (clean.includes('IMMOLATE')) return 'IMMOLATE';
   if (clean.includes('CONFLAGRATE')) return 'CONFLAGRATE';
   if (clean.includes('SHADOWBURN')) return 'SHADOWBURN';

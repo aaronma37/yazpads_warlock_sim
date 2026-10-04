@@ -28,6 +28,8 @@ const SPELL_ICONS = {
   AMPLIFY_CURSE: 'Spell_Shadow_Contagion.png',
   CURSE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
   CURSE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
+  BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
+  BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
   DEMONIC_BRAND: 'Spell_Shadow_DemonBreath.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
@@ -144,11 +146,11 @@ function getSpecAPLChain(p) {
     chain.push('DEMONIC_BRAND');
   }
   if (name.includes('searing pain') || name.includes('dp fire') || name.includes('dp_fire')) {
-    chain.push('CURSE_OF_DOOM', 'CURSE_OF_AGONY', 'CORRUPTION', 'IMMOLATE', 'SEARING_PAIN');
+    chain.push('BANE_OF_DOOM', 'BANE_OF_AGONY', 'CORRUPTION', 'IMMOLATE', 'SEARING_PAIN');
   } else if (name.includes('incinerate')) {
     chain.push('IMMOLATE', 'INCINERATE', 'CONFLAGRATE');
   } else if (name.includes('aff') || name.includes('corruption')) {
-    chain.push('CORRUPTION', 'CURSE_OF_AGONY', 'SHADOW_BOLT');
+    chain.push('CORRUPTION', 'BANE_OF_AGONY', 'SHADOW_BOLT');
   } else {
     chain.push('CORRUPTION', 'SHADOW_BOLT');
   }

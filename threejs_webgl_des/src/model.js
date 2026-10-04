@@ -170,7 +170,7 @@ export function buildDefaultAPLRules(c) {
     add(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 0.0, 1);
   }
 
-  // Adaptive Curse: Curse of Doom (>60s left) / Bane of Agony
+  // Adaptive Curse: Bane of Doom (>60s left) / Bane of Agony
   if (c.curseOfDoom) {
     add(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 60.0, 2);
   }

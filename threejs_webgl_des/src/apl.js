@@ -8,8 +8,8 @@ export const DEFAULT_APL = [
   { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
   { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Target HP < 35%, buff inactive', rawCond: 'decimation.inactive', enabled: false },
   { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', condition: 'Target HP < 35%, buff active', rawCond: 'decimation.active', enabled: false },
-  { id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60 && !target.has_debuff("Curse of Doom")', enabled: true },
-  { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'Target TTDie >= 20s & No Doom', rawCond: 'target_ttd >= 20 && !target.has_debuff("Curse of Doom") && !target.has_debuff("Curse of Agony")', enabled: true },
+  { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60 && !target.has_debuff("Bane of Doom")', enabled: true },
+  { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'Target TTDie >= 20s & No Doom', rawCond: 'target_ttd >= 20 && !target.has_debuff("Bane of Doom") && !target.has_debuff("Bane of Agony")', enabled: true },
   { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'Target TTDie >= 12s & !Active', rawCond: 'target_ttd >= 12 && !target.has_debuff("Corruption")', enabled: true },
   { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'Target TTDie >= 15s & !Active', rawCond: 'target_ttd >= 15 && !target.has_debuff("Immolate")', enabled: false },
   { id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', condition: 'Immolate Remaining < 6s', rawCond: 'target.debuff_remains("Immolate") < 6', enabled: false },
@@ -98,7 +98,7 @@ export function compileAPLToBytecode(aplList = currentAPL) {
   };
 
   const spellIds = {
-    'corruption': 1, 'curse of agony': 2, 'bane of agony': 2, 'curse of doom': 22,
+    'corruption': 1, 'curse of agony': 2, 'bane of agony': 2, 'curse of doom': 22, 'bane of doom': 22,
     'immolate': 3, 'siphon life': 15,
   };
   const spellFromText = text => {
@@ -156,11 +156,11 @@ export function compileAPLToBytecode(aplList = currentAPL) {
       if (ttd && missing.length === 1) {
         return { cond: APL_COND.FIGHT_GE_DOT_MISSING, param: Number(ttd[1]), targetSpell: missing[0] };
       }
-      if (ttd && missing.length === 2 && missing.includes(2)) {
+      if (ttd && missing.length === 2 && (missing.includes(2) || missing.includes(22))) {
         return { cond: APL_COND.FIGHT_GE_DOOM_AGONY_MISSING, param: Number(ttd[1]), targetSpell: 2 };
       }
     }
-    if (/^!target\.has_debuff\(\s*["']curse of doom["']\s*\)$/.test(raw))
+    if (/^!target\.has_debuff\(\s*["'](?:curse of doom|bane of doom)["']\s*\)$/i.test(raw))
       return { cond: APL_COND.DOOM_MISSING, param: 0, targetSpell: 2 };
     throw new Error(`APL condition is not supported by the shader: ${entry.rawCond}`);
   };
@@ -246,8 +246,8 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   if (isSearing && isDecimate) {
     // Dedicated DP_RUIN_FIRE APL
     return [
-      { id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 57s', rawCond: 'target_ttd >= 57', enabled: true },
-      { id: 'agony', spell: 'Curse of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Curse of Agony") <= 2.5', enabled: true },
+      { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 57s', rawCond: 'target_ttd >= 57', enabled: true },
+      { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Bane of Agony") <= 2.5', enabled: true },
       { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Corruption") <= 2.5', enabled: true },
       { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Immolate") <= 2.5', enabled: true },
       { id: 'brand', spell: 'Demonic Brand', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: isBrand },
@@ -297,8 +297,8 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
 
   // 7. Curses: Doom & Agony
   if (!noBane) {
-    list.push({ id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60', enabled: true });
-    list.push({ id: 'agony', spell: 'Curse of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Curse of Agony") <= 0', enabled: true });
+    list.push({ id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60', enabled: true });
+    list.push({ id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Bane of Agony") <= 0', enabled: true });
   }
 
   // 8. Siphon Life & Wrack

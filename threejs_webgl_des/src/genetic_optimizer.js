@@ -320,9 +320,11 @@ export class TalentGraph {
     const res = { affliction: {}, demonology: {}, destruction: {} };
     for (let i = 0; i < TOTAL_TALENT_NODES; i++) {
       const node = TALENT_DEFINITIONS[i];
-      if (node.tree === 0) res.affliction[node.id] = v[i];
-      else if (node.tree === 1) res.demonology[node.id] = v[i];
-      else res.destruction[node.id] = v[i];
+      if (v[i] > 0) {
+        if (node.tree === 0) res.affliction[node.id] = v[i];
+        else if (node.tree === 1) res.demonology[node.id] = v[i];
+        else res.destruction[node.id] = v[i];
+      }
     }
     return res;
   }
@@ -964,7 +966,7 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
     currentPool[i].batch = res;
     const key = getMapElitesKey(currentPool[i]);
     if (!mapElitesGrid.has(key) || currentPool[i].fitness > mapElitesGrid.get(key).fitness) {
-      mapElitesGrid.set(key, { ...currentPool[i] });
+      mapElitesGrid.set(key, { ...currentPool[i], talents: new Uint8Array(currentPool[i].talents) });
     }
   }
 
@@ -1019,7 +1021,7 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
       activeBatch.pool[i].batch = res;
       const key = getMapElitesKey(activeBatch.pool[i]);
       if (!mapElitesGrid.has(key) || activeBatch.pool[i].fitness > mapElitesGrid.get(key).fitness) {
-        mapElitesGrid.set(key, { ...activeBatch.pool[i] });
+        mapElitesGrid.set(key, { ...activeBatch.pool[i], talents: new Uint8Array(activeBatch.pool[i].talents) });
       }
     }
 

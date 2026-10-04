@@ -51,27 +51,34 @@ if (!capable) {
 }
 
 // Navigation Tabs Matching Desktop App
-const tabs = [
+export const tabs = [
   { btn: 'btn-current-build', pane: 'tab-current-build' },
   { btn: 'btn-compare-specs', pane: 'tab-compare-specs' },
   { btn: 'btn-constrained-search', pane: 'tab-constrained-search' },
   { btn: 'btn-apl-synthesis', pane: 'tab-apl-synthesis' }
 ];
 
-tabs.forEach(({ btn, pane }) => {
+export function switchTab(targetId) {
+  const match = tabs.find(t => t.btn === targetId || t.pane === targetId);
+  const activeBtnId = match ? match.btn : 'btn-current-build';
+  tabs.forEach(t => {
+    const b = $(t.btn);
+    const p = $(t.pane);
+    if (b && p) {
+      const isActive = (t.btn === activeBtnId);
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-selected', String(isActive));
+      p.hidden = !isActive;
+      p.classList.toggle('active', isActive);
+      p.style.display = isActive ? 'block' : 'none';
+    }
+  });
+}
+
+tabs.forEach(({ btn }) => {
   $(btn)?.addEventListener('click', (e) => {
     e?.preventDefault();
-    tabs.forEach(t => {
-      const b = $(t.btn);
-      const p = $(t.pane);
-      if (b && p) {
-        const isActive = (t.btn === btn);
-        b.classList.toggle('active', isActive);
-        b.setAttribute('aria-selected', String(isActive));
-        p.hidden = !isActive;
-        p.classList.toggle('active', isActive);
-      }
-    });
+    switchTab(btn);
   });
 });
 
@@ -865,7 +872,9 @@ function getActiveStatsConfig() {
 
 // The active talent allocation is translated into supported simulator fields
 // when readForm() builds each fight config.
-initTalents();
+initTalents((tf) => {
+  updateCombatStatsSummary();
+});
 
 initAPL((aplList) => {
   const enabledSpells = aplList.filter(e => e.enabled).map(e => e.spell);
@@ -929,7 +938,7 @@ initGear((gearStats) => {
 initPresets((selectedPreset) => {
   loadFullPreset(selectedPreset);
   // Switch to Current Configuration tab
-  $('btn-current-build')?.click();
+  switchTab('btn-current-build');
 }, () => activeRace);
 
 $('btn-batch-sim')?.addEventListener('click', async (e) => {
@@ -999,30 +1008,49 @@ let gaController = null;
 
 function applyCandidateBuild(cand) {
   if (!cand) return;
-  if (cand.race) setRace(cand.race);
-  if (cand.pet) setPet(cand.pet);
-  if (cand.sacImp) setDS('imp');
-  else if (cand.sacSuccubus) setDS('succubus');
-  else setDS('none');
+  try {
+    // 1. Load 51-point talents
+    if (cand.talents) {
+      applyTalentsObject(cand.talents);
+    }
 
-  let rot = 'shadow';
-  if (cand.rotation === 'DP_AF_FIRE') {
-    rot = 'searing';
-  } else if (cand.rotation === 'FIRE_DESTRO' || cand.rotation === 'INCINERATE_DECIMATION') {
-    rot = 'fire';
+    // 2. Load Race and racials
+    if (cand.race) {
+      setRace(cand.race.toUpperCase());
+    }
+
+    // 3. Load Pet and Demonic Sacrifice
+    const pet = cand.pet || 'none';
+    const sac = cand.sacImp ? 'imp' : cand.sacSuccubus ? 'succubus' : (cand.sac || 'none');
+    setPet(pet);
+    setDS(sac);
+
+    // 4. Determine and set active rotation
+    let rot = 'shadow';
+    const rotLower = (cand.rotation || '').toLowerCase();
+    const nameLower = (cand.name || '').toLowerCase();
+    if (rotLower.includes('searing') || rotLower === 'dp_af_fire' || nameLower.includes('searing') || nameLower.includes('dp fire')) {
+      rot = 'searing';
+    } else if (rotLower.includes('incinerate') || rotLower === 'fire_destro' || rotLower === 'incinerate_decimation' || nameLower.includes('incinerate') || nameLower.includes('fire')) {
+      rot = 'fire';
+    } else if (nameLower.includes('bolt only') || nameLower.includes('pure shadow bolt')) {
+      rot = 'bolt';
+    }
+    setRotation(rot);
+
+    if ($('talent-preset-select')) $('talent-preset-select').value = '';
+
+    // 5. Load APL Rotation tailored to this evolved candidate spec
+    setAPLPreset(cand.name, cand.talents, cand.rotation, cand.sacSuccubus || sac === 'succubus');
+
+    // 6. Update Summary Views
+    updateCombatStatsSummary();
+    setStatus(`Applied evolved spec: ${cand.name}. Switched to Current Configuration.`);
+    switchTab('btn-current-build');
+  } catch (err) {
+    console.error('Error applying candidate build:', err);
+    setStatus(`Error applying candidate spec: ${err.message}`, true);
   }
-  setRotation(rot);
-
-  if (cand.talents) {
-    applyTalentsObject(cand.talents);
-  }
-
-  // Synchronize the interactive APL Manager with candidate's exact spec & rotation
-  setAPLPreset(cand.name, cand.talents, cand.rotation, cand.sacSuccubus);
-
-  updateCombatStatsSummary();
-  setStatus(`Applied evolved spec: ${cand.name}. Switched to Current Configuration.`);
-  $('btn-current-build')?.click();
 }
 
 initConstrainedSearchView((cand) => {
@@ -1107,10 +1135,15 @@ let aplGaController = null;
 
 initAPLSynthesisView((cand) => {
   if (!cand) return;
-  applySynthesizedAPL(cand.rules);
-  updateCombatStatsSummary();
-  setStatus(`Applied synthesized APL: ${cand.name}. Switched to Current Configuration.`);
-  $('btn-current-build')?.click();
+  try {
+    applySynthesizedAPL(cand.rules);
+    updateCombatStatsSummary();
+    setStatus(`Applied synthesized APL: ${cand.name}. Switched to Current Configuration.`);
+    switchTab('btn-current-build');
+  } catch (err) {
+    console.error('Error applying synthesized APL:', err);
+    setStatus(`Error applying synthesized APL: ${err.message}`, true);
+  }
 });
 
 $('btn-run-apl-ga')?.addEventListener('click', async (e) => {

@@ -4,14 +4,16 @@ import { showTooltip, hideTooltip } from './tooltips.js';
 let talentData = null;
 let currentAllocation = {}; // key: `${treeIdx}_${talentIdx}`, value: rank
 let isDomBuilt = false;
+let activeTalentChangeCallback = null;
 
 export async function initTalents(onTalentChange) {
   try {
+    if (onTalentChange) activeTalentChangeCallback = onTalentChange;
     const res = await fetch(new URL('../data/talents.json', import.meta.url));
     if (!res.ok) throw new Error('Could not load talent data.');
     talentData = await res.json();
-    buildTalentTreesDOM(onTalentChange);
-    updateTalentsView(onTalentChange);
+    buildTalentTreesDOM(activeTalentChangeCallback);
+    updateTalentsView(activeTalentChangeCallback);
     return talentData;
   } catch (err) {
     console.error('Failed to initialize talents:', err);
@@ -39,8 +41,9 @@ export function getTotalPoints() {
 
 export function resetTalents(onTalentChange) {
   currentAllocation = {};
-  updateTalentsView(onTalentChange);
-  if (onTalentChange) onTalentChange(getSimTalentFlags());
+  const cb = onTalentChange || activeTalentChangeCallback;
+  updateTalentsView(cb);
+  if (cb) cb(getSimTalentFlags());
 }
 
 export function resetTreeTalents(treeIdx, onTalentChange) {
@@ -50,8 +53,9 @@ export function resetTreeTalents(treeIdx, onTalentChange) {
       delete currentAllocation[key];
     }
   }
-  updateTalentsView(onTalentChange);
-  if (onTalentChange) onTalentChange(getSimTalentFlags());
+  const cb = onTalentChange || activeTalentChangeCallback;
+  updateTalentsView(cb);
+  if (cb) cb(getSimTalentFlags());
 }
 
 export function applyTalentsObject(talentsObj, onTalentChange) {
@@ -70,13 +74,17 @@ export function applyTalentsObject(talentsObj, onTalentChange) {
         return tNorm === normKey || t.name.toLowerCase() === talKey.toLowerCase().replace(/_/g, ' ');
       });
       if (talIdx !== -1) {
-        currentAllocation[`${tIdx}_${talIdx}`] = Math.min(rank, tree.talents[talIdx].max);
+        const numRank = Number(rank) || 0;
+        if (numRank > 0) {
+          currentAllocation[`${tIdx}_${talIdx}`] = Math.min(numRank, tree.talents[talIdx].max);
+        }
       }
     }
   }
 
-  updateTalentsView(onTalentChange);
-  if (onTalentChange) onTalentChange(getSimTalentFlags());
+  const cb = onTalentChange || activeTalentChangeCallback;
+  updateTalentsView(cb);
+  if (cb) cb(getSimTalentFlags());
 }
 
 export function applyTalentPreset(presetObjOrName, onTalentChange) {
