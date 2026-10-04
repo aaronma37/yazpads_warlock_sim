@@ -10,7 +10,7 @@ let engine=null, running=false;
 function acquire(){
  if(engine)return engine;
  const canvas=document.createElement('canvas');
- const context=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false});
+ const context=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,powerPreference:'high-performance'});
  if(!context)throw new Error('WebGL2 is unavailable. Enable hardware acceleration or try another browser.');
  const renderer=new WebGLRenderer({canvas,context,antialias:false});
  renderer.autoClear=false;
