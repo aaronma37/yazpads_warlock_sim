@@ -4,6 +4,7 @@ import { runMultiSimulation, summarize } from './engine.js';
 import { getTalentFlagsFromRanks } from './talents.js';
 import { buildFightConfig } from './config_builder.js';
 import { APL_ACTION, APL_COND, MAX_APL_RULES } from './model.js';
+import { getPresetPetAndSac } from './presets.js';
 
 export const TOTAL_TALENT_NODES = 52;
 export const AFFLICTION_NODE_COUNT = 17;
@@ -36,13 +37,23 @@ export const ROTATION_LABELS = {
 
 export const PET_CONSTRAINTS = [
   { id: 'ALL', label: '[Search All]' },
-  { id: 'ACTIVE_IMP', label: 'Active Imp' },
-  { id: 'ACTIVE_SUCCUBUS', label: 'Active Succubus' },
+  { id: 'ACTIVE_IMP', label: 'Imp Pet' },
+  { id: 'ACTIVE_SUCCUBUS', label: 'Succubus Pet' },
   { id: 'SAC_IMP', label: 'Sac Imp (+15% Shadow)' },
   { id: 'SAC_SUCCUBUS', label: 'Sac Succubus (+15% Fire)' },
-  { id: 'DEMONIC_PACT_IMP_SUCC', label: 'Demonic Pact (Imp/Succ)' },
-  { id: 'DEMONIC_PACT_SUCC_IMP', label: 'Demonic Pact (Succ/Imp)' },
+  { id: 'DEMONIC_PACT_SUCC_IMP', label: 'Imp Pet + Sac Succubus (+15% Fire)' },
+  { id: 'DEMONIC_PACT_IMP_SUCC', label: 'Succubus Pet + Sac Imp (+15% Shadow)' },
   { id: 'NO_PET', label: 'No Pet' }
+];
+
+export const PET_MODES = [
+  { pet: 'none', imp: false, succ: false },     // No Pet
+  { pet: 'imp', imp: false, succ: false },      // Imp Pet
+  { pet: 'succubus', imp: false, succ: false }, // Succubus Pet
+  { pet: 'none', imp: true, succ: false },      // Sac Imp
+  { pet: 'none', imp: false, succ: true },      // Sac Succubus
+  { pet: 'imp', imp: false, succ: true },       // Imp Pet + Sac Succubus (DP Fire)
+  { pet: 'succubus', imp: true, succ: false }   // Succubus Pet + Sac Imp (DP Shadow)
 ];
 
 export const TALENT_DEFINITIONS = [
@@ -478,7 +489,7 @@ export function getPolicyAPLAndActions(ind) {
   // Rule 0: Life Tap resource safeguard
   addRule(APL_ACTION.LIFE_TAP, APL_COND.MANA_LE, 25.0);
 
-  if (rot === 'FIRE_DESTRO' || rot === 'INCINERATE_DECIMATION' || (tf.incinerate && ind.sacSuccubus)) {
+  if (rot === 'FIRE_DESTRO' || rot === 'INCINERATE_DECIMATION') {
     shaderRotation = 'fire';
     actions.add('corr');
     actions.add('immo');
@@ -493,10 +504,12 @@ export function getPolicyAPLAndActions(ind) {
     if (tf.immolate || tf.conflagrate) addRule(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 0.0, 3);
     if (tf.conflagrate) addRule(APL_ACTION.CONFLAGRATE, APL_COND.ALWAYS);
     if (tf.shadowburn) addRule(APL_ACTION.SHADOWBURN, APL_COND.ALWAYS);
-    addRule(APL_ACTION.INCINERATE_FILLER, APL_COND.ALWAYS);
+    addRule(tf.incinerate ? APL_ACTION.INCINERATE_FILLER : APL_ACTION.SEARING_PAIN_FILLER, APL_COND.ALWAYS);
   } else if (rot === 'DP_AF_FIRE') {
     shaderRotation = 'searing';
     actions.add('corr');
+    actions.add('agony');
+    actions.add('curse');
     actions.add('immo');
     if (tf.demonicBrand) actions.add('brand');
     if (tf.conflagrate) actions.add('conflag');
@@ -516,6 +529,7 @@ export function getPolicyAPLAndActions(ind) {
     shaderRotation = 'shadow';
     actions.add('corr');
     actions.add('agony');
+    actions.add('curse');
     if (tf.siphonLife) actions.add('siphon');
     if (tf.wrack) actions.add('wrack');
     if (tf.shadowburn) actions.add('shadowburn');
@@ -528,15 +542,13 @@ export function getPolicyAPLAndActions(ind) {
     if (tf.siphonLife) addRule(APL_ACTION.SIPHON_LIFE, APL_COND.DOT_REM_LE, 0.0, 15);
     if (tf.shadowburn) addRule(APL_ACTION.SHADOWBURN, APL_COND.ALWAYS);
     addRule(APL_ACTION.SHADOW_BOLT_FILLER, APL_COND.ALWAYS);
-  } else {
-    // SHADOW_DESTRO / SHADOW_AND_FLAME / DP_AF_SHADOW
+  } else if (rot === 'SHADOW_AND_FLAME') {
     shaderRotation = 'shadow';
     actions.add('corr');
     actions.add('agony');
-    if (rot === 'SHADOW_AND_FLAME' || tf.shadow_and_flame > 0) {
-      actions.add('immo');
-      if (tf.conflagrate) actions.add('conflag');
-    }
+    actions.add('curse');
+    actions.add('immo');
+    if (tf.conflagrate) actions.add('conflag');
     if (tf.shadowburn) actions.add('shadowburn');
     if (tf.demonicBrand) actions.add('brand');
 
@@ -545,9 +557,26 @@ export function getPolicyAPLAndActions(ind) {
     if (tf.decimation) {
       addRule(APL_ACTION.DECIMATION_SOUL_FIRE, APL_COND.DECIMATION_ACTIVE, 35.0, 13);
     }
-    if (rot === 'SHADOW_AND_FLAME') {
-      addRule(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 0.0, 3);
-      if (tf.conflagrate) addRule(APL_ACTION.CONFLAGRATE, APL_COND.ALWAYS);
+    addRule(APL_ACTION.IMMOLATE, APL_COND.DOT_REM_LE, 0.0, 3);
+    if (tf.conflagrate) addRule(APL_ACTION.CONFLAGRATE, APL_COND.ALWAYS);
+    addRule(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 0.0, 1);
+    addRule(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 60.0, 2);
+    addRule(APL_ACTION.CURSE_OF_AGONY, APL_COND.DOT_REM_LE, 0.0, 2);
+    if (tf.shadowburn) addRule(APL_ACTION.SHADOWBURN, APL_COND.ALWAYS);
+    addRule(APL_ACTION.SHADOW_BOLT_FILLER, APL_COND.ALWAYS);
+  } else {
+    // SHADOW_DESTRO / DP_AF_SHADOW
+    shaderRotation = 'shadow';
+    actions.add('corr');
+    actions.add('agony');
+    actions.add('curse');
+    if (tf.shadowburn) actions.add('shadowburn');
+    if (tf.demonicBrand) actions.add('brand');
+
+    if (tf.nightfall) addRule(APL_ACTION.NIGHTFALL_SHADOW_BOLT, APL_COND.SHADOW_TRANCE);
+    if (tf.demonicBrand) addRule(APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, APL_COND.DEMONIC_BRAND_MISSING, 0.0, 5);
+    if (tf.decimation) {
+      addRule(APL_ACTION.DECIMATION_SOUL_FIRE, APL_COND.DECIMATION_ACTIVE, 35.0, 13);
     }
     addRule(APL_ACTION.CORRUPTION, APL_COND.DOT_REM_LE, 0.0, 1);
     addRule(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 60.0, 2);
@@ -568,16 +597,37 @@ export function individualToConfig(ind, baseStatsConfig) {
   const base = {
     ...baseStatsConfig,
     rotation: shaderRotation,
-    tapThreshold: 25
+    tapThreshold: baseStatsConfig.tapThreshold !== undefined ? baseStatsConfig.tapThreshold : 25
   };
-  const baseRace = base.race;
+  const baseRace = (base.race || 'HUMAN').toUpperCase();
   delete base.race;
 
-  // Apply race stats adjustments if race differs from baseline
-  if (ind.race === 'GNOME' && baseRace !== 'GNOME') {
-    base.intellect = Math.round(base.intellect * 1.05);
-  } else if (ind.race === 'HUMAN' && baseRace !== 'HUMAN') {
-    base.spirit = Math.round(base.spirit * 1.05);
+  // Un-apply baseline race stats if needed so all candidates start from neutral baseline
+  let unscaledInt = base.intellect;
+  let unscaledSpirit = base.spirit;
+  if (baseRace === 'GNOME') {
+    unscaledInt = Math.round(unscaledInt / 1.05);
+  } else if (baseRace === 'HUMAN') {
+    unscaledSpirit = Math.round(unscaledSpirit / 1.05);
+  }
+
+  // Apply candidate's race modifiers
+  if (ind.race === 'GNOME') {
+    base.intellect = Math.round(unscaledInt * 1.05);
+    base.spirit = unscaledSpirit;
+  } else if (ind.race === 'HUMAN') {
+    base.intellect = unscaledInt;
+    base.spirit = Math.round(unscaledSpirit * 1.05);
+  } else {
+    base.intellect = unscaledInt;
+    base.spirit = unscaledSpirit;
+  }
+
+  // Orc racial: Command (+5% Pet Damage)
+  if (ind.race === 'ORC') {
+    tf.petFireboltMult = (tf.petFireboltMult || 1.0) * 1.05;
+    tf.petMeleeMult = (tf.petMeleeMult || 1.0) * 1.05;
+    tf.petLashMult = (tf.petLashMult || 1.0) * 1.05;
   }
 
   return buildFightConfig({
@@ -652,41 +702,31 @@ export function getMapElitesKey(ind) {
 }
 
 export function createRandomIndividual(rng, config) {
+  const pm = PET_MODES[rng.nextU64() % PET_MODES.length];
   const ind = {
     talents: TalentGraph.generateRandomValid(rng),
     race: config.forcedRace && config.forcedRace !== 'ALL' ? config.forcedRace : RACES[rng.nextU64() % RACES.length],
     rotation: config.forcedRotation && config.forcedRotation !== 'ALL' ? config.forcedRotation : ROTATION_CHOICES[rng.nextU64() % ROTATION_CHOICES.length],
-    pet: 'none',
-    sacImp: false,
-    sacSuccubus: false,
+    pet: pm.pet,
+    sacImp: pm.imp,
+    sacSuccubus: pm.succ,
     fitness: 0,
     batch: null
   };
-
-  const petModes = [
-    { pet: 'none', imp: false, succ: false },
-    { pet: 'imp', imp: false, succ: false },
-    { pet: 'succubus', imp: false, succ: false },
-    { pet: 'none', imp: true, succ: false },
-    { pet: 'none', imp: false, succ: true }
-  ];
-  const pm = petModes[rng.nextU64() % petModes.length];
-  ind.pet = pm.pet;
-  ind.sacImp = pm.imp;
-  ind.sacSuccubus = pm.succ;
 
   enforceConstraints(ind, config, rng);
   return ind;
 }
 
 export function crossoverIndividuals(p1, p2, rng, config) {
+  const useP1Pet = rng.nextU64() % 2 === 0;
   const child = {
     talents: new Uint8Array(TOTAL_TALENT_NODES),
     race: rng.nextU64() % 2 === 0 ? p1.race : p2.race,
     rotation: rng.nextU64() % 2 === 0 ? p1.rotation : p2.rotation,
-    pet: rng.nextU64() % 2 === 0 ? p1.pet : p2.pet,
-    sacImp: rng.nextU64() % 2 === 0 ? p1.sacImp : p2.sacImp,
-    sacSuccubus: rng.nextU64() % 2 === 0 ? p1.sacSuccubus : p2.sacSuccubus,
+    pet: useP1Pet ? p1.pet : p2.pet,
+    sacImp: useP1Pet ? p1.sacImp : p2.sacImp,
+    sacSuccubus: useP1Pet ? p1.sacSuccubus : p2.sacSuccubus,
     fitness: 0,
     batch: null
   };
@@ -722,22 +762,15 @@ export function mutateIndividual(ind, rng, config) {
     ind.race = RACES[rng.nextU64() % RACES.length];
   }
 
-  if ((!config.forcedRotation || config.forcedRotation === 'ALL') && rng.nextDouble() < mutRate) {
-    ind.rotation = ROTATION_CHOICES[rng.nextU64() % ROTATION_CHOICES.length];
-  }
-
   if ((!config.forcedPetMode || config.forcedPetMode === 'ALL') && rng.nextDouble() < mutRate) {
-    const petModes = [
-      { pet: 'none', imp: false, succ: false },
-      { pet: 'imp', imp: false, succ: false },
-      { pet: 'succubus', imp: false, succ: false },
-      { pet: 'none', imp: true, succ: false },
-      { pet: 'none', imp: false, succ: true }
-    ];
-    const pm = petModes[rng.nextU64() % petModes.length];
+    const pm = PET_MODES[rng.nextU64() % PET_MODES.length];
     ind.pet = pm.pet;
     ind.sacImp = pm.imp;
     ind.sacSuccubus = pm.succ;
+  }
+
+  if ((!config.forcedRotation || config.forcedRotation === 'ALL') && rng.nextDouble() < mutRate) {
+    ind.rotation = ROTATION_CHOICES[rng.nextU64() % ROTATION_CHOICES.length];
   }
 
   enforceConstraints(ind, config, rng);
@@ -789,7 +822,68 @@ export function createCandidateResult(ind, rank = 1) {
   };
 }
 
-// Main Constrained Genetic Algorithm Execution Engine running with WebGL2 Kernel
+// Generate unique individual key for duplicate prevention
+export function getIndUniqueKey(ind) {
+  return `${ind.race}_${ind.rotation}_${ind.pet}_${ind.sacImp ? 1 : 0}_${ind.sacSuccubus ? 1 : 0}_${Array.from(ind.talents).join(',')}`;
+}
+
+export function generateUniqueRandomIndividual(rng, config, seenConfigsSet, maxAttempts = 20) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const ind = createRandomIndividual(rng, config);
+    const key = getIndUniqueKey(ind);
+    if (!seenConfigsSet.has(key)) {
+      seenConfigsSet.add(key);
+      return ind;
+    }
+  }
+  const ind = createRandomIndividual(rng, config);
+  const key = getIndUniqueKey(ind);
+  seenConfigsSet.add(key);
+  return ind;
+}
+
+export function generateUniqueOffspring(parents, rng, config, seenConfigsSet, maxAttempts = 20) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const p1 = parents[rng.nextU64() % parents.length];
+    const p2 = parents[rng.nextU64() % parents.length];
+    const child = crossoverIndividuals(p1, p2, rng, config);
+    mutateIndividual(child, rng, config);
+    const key = getIndUniqueKey(child);
+    if (!seenConfigsSet.has(key)) {
+      seenConfigsSet.add(key);
+      return child;
+    }
+  }
+  // If still colliding after max attempts, force multi-point mutations
+  const p1 = parents[rng.nextU64() % parents.length];
+  const p2 = parents[rng.nextU64() % parents.length];
+  const child = crossoverIndividuals(p1, p2, rng, config);
+  for (let m = 0; m < 3; m++) {
+    mutateIndividual(child, rng, config);
+  }
+  const key = getIndUniqueKey(child);
+  seenConfigsSet.add(key);
+  return child;
+}
+
+function prepareOffspringBatch(parents, popSize, rng, gaConfig, baseStatsConfig, uniqueConfigsSet) {
+  const numImmigrants = Math.max(2, Math.floor(popSize * 0.15));
+  const numOffspring = Math.max(2, popSize - numImmigrants);
+  const pool = [];
+
+  for (let i = 0; i < numOffspring; i++) {
+    pool.push(generateUniqueOffspring(parents, rng, gaConfig, uniqueConfigsSet));
+  }
+
+  for (let imm = 0; imm < numImmigrants; imm++) {
+    pool.push(generateUniqueRandomIndividual(rng, gaConfig, uniqueConfigsSet));
+  }
+
+  const configs = pool.map(ind => individualToConfig(ind, baseStatsConfig));
+  return { pool, configs };
+}
+
+// Main Constrained Genetic Algorithm Execution Engine running with WebGL2 Kernel & Double Buffering
 export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { signal, onProgress = () => {}, onGeneration = () => {} } = {}) {
   const rng = new FastRNG(gaConfig.seed || 0x13374242);
   const popSize = gaConfig.populationSize || 1000;
@@ -799,45 +893,78 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
 
   const mapElitesGrid = new Map();
   const evolutionHistory = [];
+  const uniqueConfigsSet = new Set();
   let population = [];
 
-  // Seed with standard presets if requested
+  // Seed with standard presets if requested (strictly deduplicated)
   if (gaConfig.seedPresets && Array.isArray(gaConfig.presetsList) && gaConfig.presetsList.length > 0) {
     for (const p of gaConfig.presetsList) {
+      const { pet: presetPet, sac: presetSac } = getPresetPetAndSac(p);
+      const nameLower = (p.name || '').toLowerCase();
+      const rotLower = (p.rotation || '').toLowerCase();
+      const isSearing = nameLower.includes('searing') || rotLower.includes('searing') || nameLower.includes('dp fire') || nameLower.includes('dp_fire');
+      const isIncinerate = nameLower.includes('incin') || rotLower.includes('incin');
+      const isBrand = nameLower.includes('brand') || rotLower.includes('brand');
+
+      let initialRotation = 'SHADOW_DESTRO';
+      if (isSearing) initialRotation = 'DP_AF_FIRE';
+      else if (isIncinerate) initialRotation = 'FIRE_DESTRO';
+      else if (isBrand) initialRotation = 'DP_AF_SHADOW';
+
       const ind = {
         talents: TalentGraph.fromTalentsObject(p.talents),
         race: (gaConfig.forcedRace && gaConfig.forcedRace !== 'ALL') ? gaConfig.forcedRace : (p.race?.toUpperCase() || 'HUMAN'),
-        rotation: (p.name.toLowerCase().includes('incin') ? 'FIRE_DESTRO' : p.name.toLowerCase().includes('searing') ? 'DP_AF_FIRE' : 'SHADOW_DESTRO'),
-        pet: p.pet || 'none',
-        sacImp: p.sac === 'imp',
-        sacSuccubus: p.sac === 'succubus',
+        rotation: initialRotation,
+        pet: p.pet || presetPet || 'none',
+        sacImp: p.sac === 'imp' || presetSac === 'imp',
+        sacSuccubus: p.sac === 'succubus' || presetSac === 'succubus',
         fitness: 0,
         batch: null
       };
       enforceConstraints(ind, gaConfig, rng);
-      population.push(ind);
+      const key = getIndUniqueKey(ind);
+      if (!uniqueConfigsSet.has(key)) {
+        uniqueConfigsSet.add(key);
+        population.push(ind);
+      }
       if (population.length >= Math.floor(popSize / 2)) break;
     }
   }
 
-  // Fill remainder of population with random legal builds
+  // Fill remainder of population with unique random legal builds
   while (population.length < popSize) {
-    population.push(createRandomIndividual(rng, gaConfig));
+    population.push(generateUniqueRandomIndividual(rng, gaConfig, uniqueConfigsSet));
   }
 
   onProgress({ phase: 'Evaluating Initial Generation (GPU Shader)', completed: 0, total: generations + 1 });
 
-  // Evaluate Generation 0
+  let totalEvalsCount = population.length;
+  let totalSimsCount = population.length * screeningSims;
+
+  // Launch Generation 0 simulation on GPU (Buffer A)
   const gen0Configs = population.map(ind => individualToConfig(ind, baseStatsConfig));
-  const simRes0 = await runMultiSimulation(gen0Configs, { signal, iterations: screeningSims });
-  
-  for (let i = 0; i < population.length; i++) {
+  let currentSimPromise = runMultiSimulation(gen0Configs, { signal, iterations: screeningSims });
+  let currentPool = population;
+
+  // Double Buffering: Overlap CPU generation of Gen 1 while GPU simulates Gen 0!
+  let nextBatch = null;
+  if (generations >= 1) {
+    nextBatch = prepareOffspringBatch(population, popSize, rng, gaConfig, baseStatsConfig, uniqueConfigsSet);
+  }
+
+  // Await GPU simulation of Gen 0
+  const simRes0 = await currentSimPromise;
+  if (signal?.aborted) {
+    return { candidates: [], evolutionHistory: [], bestCandidate: null, totalEvaluations: 0, totalSimulations: 0, uniqueConfigsCount: 0 };
+  }
+
+  for (let i = 0; i < currentPool.length; i++) {
     const res = simRes0.results[i];
-    population[i].fitness = res.summary.mean;
-    population[i].batch = res;
-    const key = getMapElitesKey(population[i]);
-    if (!mapElitesGrid.has(key) || population[i].fitness > mapElitesGrid.get(key).fitness) {
-      mapElitesGrid.set(key, { ...population[i] });
+    currentPool[i].fitness = res.summary.mean;
+    currentPool[i].batch = res;
+    const key = getMapElitesKey(currentPool[i]);
+    if (!mapElitesGrid.has(key) || currentPool[i].fitness > mapElitesGrid.get(key).fitness) {
+      mapElitesGrid.set(key, { ...currentPool[i] });
     }
   }
 
@@ -847,53 +974,71 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
   evolutionHistory.push({ gen: 0, bestDps: gen0Best, avgDps: gen0Mean });
 
   let elites = Array.from(mapElitesGrid.values()).sort((a, b) => b.fitness - a.fitness).slice(0, 15).map((ind, i) => createCandidateResult(ind, i + 1));
-  onGeneration({ gen: 0, maxGens: generations, bestDps: gen0Best, avgDps: gen0Mean, elites, progress: 0, status: `Gen 0/${generations} [Best: ${gen0Best.toFixed(1)} DPS]` });
+  onGeneration({
+    gen: 0,
+    maxGens: generations,
+    bestDps: gen0Best,
+    avgDps: gen0Mean,
+    elites,
+    progress: 0,
+    status: `Gen 0/${generations} [Best: ${gen0Best.toFixed(1)} DPS]`,
+    evolutionHistory,
+    uniqueConfigsCount: uniqueConfigsSet.size,
+    totalEvaluations: totalEvalsCount,
+    totalSimulations: totalSimsCount
+  });
 
-  // Evolution Loop
+  // Double-Buffered Generational Evolution Loop
   for (let gen = 1; gen <= generations; gen++) {
     if (signal?.aborted) break;
 
-    const occupiedElites = Array.from(mapElitesGrid.values());
-    const parents = occupiedElites.length > 0 ? occupiedElites : population;
-    const offspringPool = [];
+    // Buffer swap: nextBatch was prepared on CPU during previous GPU simulation
+    const activeBatch = nextBatch;
+    totalEvalsCount += activeBatch.pool.length;
+    totalSimsCount += activeBatch.pool.length * screeningSims;
 
-    // Propose offspring and immigrants matching exact population batch size
-    const numImmigrants = Math.max(2, Math.floor(popSize * 0.15));
-    const numOffspring = Math.max(2, popSize - numImmigrants);
+    // 1. Immediately launch GPU simulation on activeBatch
+    currentSimPromise = runMultiSimulation(activeBatch.configs, { signal, iterations: screeningSims });
 
-    for (let i = 0; i < numOffspring; i++) {
-      const p1 = parents[rng.nextU64() % parents.length];
-      const p2 = parents[rng.nextU64() % parents.length];
-      const child = crossoverIndividuals(p1, p2, rng, gaConfig);
-      mutateIndividual(child, rng, gaConfig);
-      offspringPool.push(child);
+    // 2. Concurrently on CPU: prepare next generation's batch (Gen + 1) while GPU runs activeBatch
+    if (gen < generations) {
+      const occupiedElites = Array.from(mapElitesGrid.values());
+      const parents = occupiedElites.length > 0 ? occupiedElites : population;
+      nextBatch = prepareOffspringBatch(parents, popSize, rng, gaConfig, baseStatsConfig, uniqueConfigsSet);
+    } else {
+      nextBatch = null;
     }
 
-    // Add immigrants for diversity exploration
-    for (let imm = 0; imm < numImmigrants; imm++) {
-      offspringPool.push(createRandomIndividual(rng, gaConfig));
-    }
+    // 3. Await GPU simulation results for activeBatch
+    const offSimRes = await currentSimPromise;
+    if (signal?.aborted) break;
 
-    // Simulate Offspring concurrently on GPU
-    const offspringConfigs = offspringPool.map(ind => individualToConfig(ind, baseStatsConfig));
-    const offSimRes = await runMultiSimulation(offspringConfigs, { signal, iterations: screeningSims });
-
-    for (let i = 0; i < offspringPool.length; i++) {
+    for (let i = 0; i < activeBatch.pool.length; i++) {
       const res = offSimRes.results[i];
-      offspringPool[i].fitness = res.summary.mean;
-      offspringPool[i].batch = res;
-      const key = getMapElitesKey(offspringPool[i]);
-      if (!mapElitesGrid.has(key) || offspringPool[i].fitness > mapElitesGrid.get(key).fitness) {
-        mapElitesGrid.set(key, { ...offspringPool[i] });
+      activeBatch.pool[i].fitness = res.summary.mean;
+      activeBatch.pool[i].batch = res;
+      const key = getMapElitesKey(activeBatch.pool[i]);
+      if (!mapElitesGrid.has(key) || activeBatch.pool[i].fitness > mapElitesGrid.get(key).fitness) {
+        mapElitesGrid.set(key, { ...activeBatch.pool[i] });
       }
     }
 
-    // Replace and update population
-    population = [...population.slice(0, 5), ...offspringPool]
+    // 4. Update population without duplicates
+    const popMap = new Map();
+    for (const ind of population.slice(0, Math.min(10, population.length))) {
+      popMap.set(getIndUniqueKey(ind), ind);
+    }
+    for (const ind of activeBatch.pool) {
+      const k = getIndUniqueKey(ind);
+      if (!popMap.has(k) || ind.fitness > popMap.get(k).fitness) {
+        popMap.set(k, ind);
+      }
+    }
+    population = Array.from(popMap.values())
       .sort((a, b) => b.fitness - a.fitness)
       .slice(0, popSize);
 
-    const bestDps = population[0].fitness;
+    const bestDps = population[0]?.fitness || 0;
     const meanDps = population.reduce((s, ind) => s + ind.fitness, 0) / population.length;
     evolutionHistory.push({ gen, bestDps, avgDps: meanDps });
 
@@ -902,7 +1047,19 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
     const status = `Gen ${gen}/${generations} [Best: ${bestDps.toFixed(1)} DPS]`;
 
     onProgress({ phase: `Evolution Gen ${gen}/${generations}`, completed: gen, total: generations + 1 });
-    onGeneration({ gen, maxGens: generations, bestDps, avgDps: meanDps, elites, progress: curProg, status });
+    onGeneration({
+      gen,
+      maxGens: generations,
+      bestDps,
+      avgDps: meanDps,
+      elites,
+      progress: curProg,
+      status,
+      evolutionHistory,
+      uniqueConfigsCount: uniqueConfigsSet.size,
+      totalEvaluations: totalEvalsCount,
+      totalSimulations: totalSimsCount
+    });
 
     // Yield to browser UI
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -927,13 +1084,14 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
 
   finalCandidates.sort((a, b) => b.fitness - a.fitness);
   const finalResults = finalCandidates.map((ind, i) => createCandidateResult(ind, i + 1));
-  const totalSimulations = (evolutionHistory.length * popSize * screeningSims) + (finalCandidates.length * finalSims);
+  const totalSimulations = totalSimsCount + (finalCandidates.length * finalSims);
 
   return {
     candidates: finalResults,
     evolutionHistory,
     bestCandidate: finalResults[0] || null,
-    totalEvaluations: evolutionHistory.length * popSize,
-    totalSimulations
+    totalEvaluations: totalEvalsCount,
+    totalSimulations,
+    uniqueConfigsCount: uniqueConfigsSet.size
   };
 }

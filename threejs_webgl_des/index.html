@@ -513,9 +513,6 @@
                   <button class="wow-button wow-btn-big" id="run" type="submit" style="min-width: 110px;">
                     Run
                   </button>
-                  <button class="wow-button wow-btn-big" id="cancel" type="button" hidden style="min-width: 100px;">
-                    Cancel
-                  </button>
                 </div>
 
                 <!-- Animated WoW Progress Bar -->
@@ -602,7 +599,7 @@
           <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <input class="wow-input" type="number" id="compare-num-sims" value="1000" style="width: 110px;">
             <label class="wow-checkbox-label">
-              <input type="checkbox" id="compare-all-races" checked> Compare across all races
+              <input type="checkbox" id="compare-all-races"> Compare across all races
             </label>
             <label class="wow-checkbox-label">
               <input type="checkbox" id="compare-stat-weights" checked> Calculate Stat Weights
@@ -805,31 +802,82 @@
         </div>
       </div>
 
-      <!-- MAIN RESULTS TABLE -->
-      <section class="wow-panel" style="padding: 0; margin-bottom: 0.75rem; overflow: hidden;">
-        <div class="table-scroll" style="max-height: 480px;">
-          <table class="leaderboard-table compare-specs-table">
-            <thead>
-              <tr>
-                <th style="width: 44px; text-align: center;">Rank</th>
-                <th style="width: 250px;">Spec Name & Archetype</th>
-                <th style="width: 42px; text-align: center;">Race</th>
-                <th style="width: 65px; text-align: center;">Pet / Sac</th>
-                <th>Action Priority Chain</th>
-                <th style="width: 125px;">Damage Split</th>
-                <th style="width: 85px; text-align: right;">Mean DPS</th>
-                <th style="width: 65px; text-align: center;">Action</th>
-              </tr>
-            </thead>
-            <tbody id="ga-leaderboard-body">
-              <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to search. Set constraints and click "Run AI Genetic Optimization".</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <!-- MAIN SPLIT: DISCOVERED SPECS TABLE (LEFT) & GENERATION GRAPH + STATS (RIGHT) -->
+      <div class="ga-main-split-grid">
+        <!-- LEFT: Discovered Specs Table -->
+        <section class="wow-panel ga-table-col" style="padding: 0; margin-bottom: 0; overflow: hidden;">
+          <div class="wow-panel-header" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #383446;">
+            <span>Discovered Elite Solutions</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">MAP-Elites Quality-Diversity</span>
+          </div>
+          <div class="table-scroll" style="max-height: 520px;">
+            <table class="leaderboard-table compare-specs-table">
+              <thead>
+                <tr>
+                  <th style="width: 44px; text-align: center;">Rank</th>
+                  <th style="min-width: 170px;">Spec Name & Archetype</th>
+                  <th style="width: 42px; text-align: center;">Race</th>
+                  <th style="width: 65px; text-align: center;">Pet / Sac</th>
+                  <th style="width: 110px;">Damage Split</th>
+                  <th style="width: 80px; text-align: right;">Mean DPS</th>
+                  <th style="width: 55px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="ga-leaderboard-body">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to search. Set constraints and click "Run AI Genetic Optimization".</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- RIGHT: General Stats & Convergence Graph (DPS vs Generation) -->
+        <section class="wow-panel ga-graph-col" style="padding: 0.65rem 0.75rem; margin-bottom: 0;">
+          <!-- General Stats Cards -->
+          <div class="ga-stats-cards">
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Unique Configs Tested</span>
+              <strong id="ga-stat-unique-configs" style="font-size: 1.05rem; color: #ffd100; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">Evaluated combinations</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Total Simulations</span>
+              <strong id="ga-stat-total-fights" style="font-size: 1.05rem; color: #4ade80; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">GPU shader fights</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Best Discovered DPS</span>
+              <strong id="ga-stat-best-dps" style="font-size: 1.05rem; color: #6ee7b7; margin: 0.15rem 0;">—</strong>
+              <small id="ga-stat-gain" style="font-size: 0.68rem; color: var(--text-dim);">vs baseline</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Generations</span>
+              <strong id="ga-stat-generations" style="font-size: 1.05rem; color: #cbd5e1; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">Evolution epochs</small>
+            </div>
+          </div>
+
+          <!-- Convergence Graph Canvas Container -->
+          <div class="ga-chart-container" style="margin-top: 0.5rem;">
+            <div class="ga-chart-header">
+              <span class="ga-chart-title">Convergence: DPS vs Generation</span>
+              <div class="ga-chart-legend">
+                <span class="ga-legend-item"><span class="ga-legend-dot" style="background: #4ade80;"></span> Best Policy DPS</span>
+                <span class="ga-legend-item"><span class="ga-legend-dot" style="background: #38bdf8;"></span> Population Mean</span>
+              </div>
+            </div>
+            <div class="ga-chart-canvas-wrap" id="ga-chart-wrapper">
+              <canvas id="ga-evolution-chart"></canvas>
+              <div id="ga-chart-empty-placeholder" class="ga-chart-placeholder">
+                <span style="color: var(--text-gold); font-weight: 700; font-size: 0.85rem; margin-bottom: 4px;">Convergence Graph (DPS vs Gen)</span>
+                <span style="color: var(--text-dim); font-size: 0.75rem;">Run Genetic Optimization to track live DPS convergence curves across generations.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <!-- SELECTED CANDIDATE DETAILS SECTION -->
-      <section class="wow-panel" id="ga-selected-spec-details-panel">
+      <section class="wow-panel" id="ga-selected-spec-details-panel" style="margin-top: 0.75rem;">
         <div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
           Run genetic optimization to discover and inspect high-performing constrained spec solutions.
         </div>

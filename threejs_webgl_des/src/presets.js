@@ -31,7 +31,12 @@ const SPELL_ICONS = {
   DEMONIC_BRAND: 'Spell_Shadow_DemonBreath.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
+  IMP_FIREBOLT: 'Spell_Fire_FireBolt.png',
   PET_LASH_OF_PAIN: 'Spell_Shadow_Curse.png',
+  SUCCUBUS_LASH_OF_PAIN: 'Spell_Shadow_Curse.png',
+  PET_MELEE: 'Ability_MeleeDamage.png',
+  SUCCUBUS_MELEE: 'Ability_MeleeDamage.png',
+  MELEE: 'Ability_MeleeDamage.png',
   PET_IMP: 'Spell_Shadow_SummonImp.png',
   PET_SUCCUBUS: 'Spell_Shadow_SummonSuccubus.png',
   SAC_IMP: 'Spell_Shadow_SummonImp.png',
@@ -68,7 +73,19 @@ export async function initPresets(onSelectPreset, raceGetter) {
       p.std_dev = 0;
     });
     const list = getFilteredPresets();
-    if (list.length > 0) {
+    const currentRace = (typeof activeRaceGetter === 'function' ? activeRaceGetter() : 'Human').toLowerCase();
+    const dpFirePreset = presetsData.find(p => {
+      const name = (p.name || '').toLowerCase();
+      const raceMatch = (p.race || '').toLowerCase() === currentRace;
+      return (name.includes('dp fire') || (name.includes('dp') && name.includes('searing'))) && raceMatch;
+    }) || presetsData.find(p => {
+      const name = (p.name || '').toLowerCase();
+      return name.includes('dp fire') || (name.includes('dp') && name.includes('searing'));
+    });
+
+    if (dpFirePreset) {
+      selectedPreset = dpFirePreset;
+    } else if (list.length > 0) {
       selectedPreset = list[0];
     }
     
@@ -126,8 +143,8 @@ function getSpecAPLChain(p) {
   if (name.includes('brand')) {
     chain.push('DEMONIC_BRAND');
   }
-  if (name.includes('searing pain') || name.includes('dp fire')) {
-    chain.push('IMMOLATE', 'SEARING_PAIN', 'CONFLAGRATE');
+  if (name.includes('searing pain') || name.includes('dp fire') || name.includes('dp_fire')) {
+    chain.push('CURSE_OF_DOOM', 'CURSE_OF_AGONY', 'CORRUPTION', 'IMMOLATE', 'SEARING_PAIN');
   } else if (name.includes('incinerate')) {
     chain.push('IMMOLATE', 'INCINERATE', 'CONFLAGRATE');
   } else if (name.includes('aff') || name.includes('corruption')) {
@@ -206,17 +223,20 @@ function getPresetTalentDistribution(p) {
 function getSpecDamageSplit(p) {
   if (p && p.is_simulated && p.simulated_result?.summary) {
     const summary = p.simulated_result.summary;
-    const total = summary.damage || (summary.mean * (p.simulated_result.config?.duration || 180)) || 1;
+    const dur = p.simulated_result.config?.duration || 180;
+    const total = summary.damage || (summary.mean * dur) || 1;
     const shadowDmg = summary.shadowDamage || 0;
     const fireDmg = summary.fireDamage || 0;
+    const physDmg = summary.physicalDamage || summary.petMeleeDamage || 0;
     const petDmg = summary.petDamage || 0;
-    const totalDmg = Math.max(1, shadowDmg + fireDmg + petDmg);
+    const totalDmg = Math.max(1, shadowDmg + fireDmg + physDmg);
     const shadowPct = Math.round((shadowDmg / totalDmg) * 100);
     const firePct = Math.round((fireDmg / totalDmg) * 100);
-    const petPct = Math.max(0, 100 - shadowPct - firePct);
-    return { shadow: shadowPct, fire: firePct, pet: petPct, shadowDmg, fireDmg, petDmg, totalDmg };
+    const physPct = Math.round((physDmg / totalDmg) * 100);
+    const petPct = Math.round((petDmg / totalDmg) * 100);
+    return { shadow: shadowPct, fire: firePct, physical: physPct, pet: petPct, shadowDmg, fireDmg, physDmg, petDmg, totalDmg };
   }
-  return { shadow: 0, fire: 0, pet: 0, shadowDmg: 0, fireDmg: 0, petDmg: 0, totalDmg: 0 };
+  return { shadow: 0, fire: 0, physical: 0, pet: 0, shadowDmg: 0, fireDmg, physDmg: 0, petDmg: 0, totalDmg: 0 };
 }
 
 export function renderPresetsLeaderboard(onSelectPreset) {
@@ -482,7 +502,7 @@ export function renderSelectedPresetDetails(p) {
     const dur = p.simulated_result.config?.duration || 180;
     const totDmg = summary.damage || (summary.mean * dur) || 1;
     const activeSp = summary.spells.filter(sp => sp.damage > 0 || sp.casts > 0);
-    const maxSpDmg = Math.max(...activeSp.map(sp => sp.damage), summary.petDamage || 0, 1);
+    const maxSpDmg = Math.max(...activeSp.map(sp => sp.damage), 1);
 
     perSpellRowsHtml = `
       <div style="margin-top: 0.65rem;">
@@ -504,9 +524,11 @@ export function renderSelectedPresetDetails(p) {
                 const spDps = sp.damage / dur;
                 const spPct = (sp.damage / totDmg * 100).toFixed(1);
                 const critPct = sp.casts > 0 ? ((sp.crits / sp.casts) * 100).toFixed(1) : '0';
-                const icon = SPELL_ICONS[sp.name.toUpperCase().replace(/\s+/g, '_')] || 'Spell_Shadow_ShadowBolt.png';
-                const isFire = ['Immolate', 'Incinerate', 'Searing Pain'].includes(sp.name);
-                const barClass = isFire ? 'fire' : 'shadow';
+                const iconKey = sp.name.toUpperCase().replace(/\s+/g, '_');
+                const icon = SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+                const isFire = ['Immolate', 'Incinerate', 'Searing Pain', 'Imp Firebolt', 'Demonic Brand'].includes(sp.name) || sp.school === 'fire';
+                const isPhys = ['Succubus Melee', 'Melee (Pet)', 'Pet Melee', 'Melee'].includes(sp.name) || sp.school === 'physical';
+                const barClass = isPhys ? 'physical' : (isFire ? 'fire' : 'shadow');
                 const barW = Math.min(100, Math.max(4, Math.round((sp.damage / maxSpDmg) * 100)));
                 return `
                   <tr>
@@ -518,8 +540,8 @@ export function renderSelectedPresetDetails(p) {
                     </td>
                     <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-size: 0.75rem; white-space: nowrap;">${Math.round(sp.damage)} (${spPct}%)</td>
                     <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-size: 0.75rem; white-space: nowrap;">${spDps.toFixed(1)}</td>
-                    <td style="text-align: right; font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap;">${sp.casts.toFixed(1)}</td>
-                    <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; font-size: 0.75rem; white-space: nowrap;">${sp.crits.toFixed(1)} (${critPct}%)</td>
+                    <td style="text-align: right; font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap;">${sp.casts > 0 ? sp.casts.toFixed(1) : '-'}</td>
+                    <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; font-size: 0.75rem; white-space: nowrap;">${sp.casts > 0 ? `${sp.crits.toFixed(1)} (${critPct}%)` : '-'}</td>
                     <td>
                       <div class="spell-mini-bar-track">
                         <div class="spell-mini-bar-fill ${barClass}" style="width: ${barW}%;"></div>
@@ -528,25 +550,6 @@ export function renderSelectedPresetDetails(p) {
                   </tr>
                 `;
               }).join('')}
-              ${(summary.petDamage > 0) ? `
-                <tr>
-                  <td>
-                    <div class="spell-breakdown-cell">
-                      <img src="./assets/icons/Spell_Shadow_SummonImp.png" class="spell-breakdown-icon" alt="Pet">
-                      <span class="spell-breakdown-name">Pet Damage</span>
-                    </div>
-                  </td>
-                  <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-size: 0.75rem; white-space: nowrap;">${Math.round(summary.petDamage)} (${(summary.petDamage / totDmg * 100).toFixed(1)}%)</td>
-                  <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-size: 0.75rem; white-space: nowrap;">${(summary.petDamage / dur).toFixed(1)}</td>
-                  <td style="text-align: right; font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap;">-</td>
-                  <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; font-size: 0.75rem; white-space: nowrap;">-</td>
-                  <td>
-                    <div class="spell-mini-bar-track">
-                      <div class="spell-mini-bar-fill pet" style="width: ${Math.min(100, Math.max(4, Math.round((summary.petDamage / maxSpDmg) * 100)))}%;"></div>
-                    </div>
-                  </td>
-                </tr>
-              ` : ''}
             </tbody>
           </table>
         </div>
@@ -559,7 +562,7 @@ export function renderSelectedPresetDetails(p) {
        <div class="damage-split-bar large-split">
          ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;">${split.shadow}% Shadow</div>` : ''}
          ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;">${split.fire}% Fire</div>` : ''}
-         ${split.pet > 0 ? `<div class="split-seg pet" style="width: ${split.pet}%;">${split.pet}% Pet</div>` : ''}
+         ${split.physical > 0 ? `<div class="split-seg physical" style="width: ${split.physical}%;">${split.physical}% Physical</div>` : ''}
        </div>
        ${perSpellRowsHtml}
        ${statWeightsBoxHtml}`

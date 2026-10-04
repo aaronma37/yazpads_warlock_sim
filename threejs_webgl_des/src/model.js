@@ -116,7 +116,7 @@ export function buildDefaultAPLRules(c) {
     }
   };
 
-  if (rot === 'searing' && (c.petChoice !== 0 && c.petChoice !== 'none' || c.decimation)) {
+  if (rot === 'searing') {
     // Dedicated DP_RUIN_FIRE APL
     add(APL_ACTION.CURSE_OF_DOOM, APL_COND.FIGHT_TIME_GE, 57.0, 2);
     add(APL_ACTION.CURSE_OF_AGONY, APL_COND.DOT_REM_LE, 2.5, 2);
@@ -249,6 +249,8 @@ export const STATE = {
   snfShadowEnd:'u32', snfFireEnd:'u32',
   mana:'f32', spent:'f32', gained:'f32', total:'f32', petMana:'f32', petDamage:'f32',
   petBrandDamage:'f32',
+  petMeleeDamage:'f32', petMeleeCasts:'u32', petMeleeHits:'u32', petMeleeCrits:'u32', petMeleeMisses:'u32',
+  petSpellDamage:'f32', petSpellCasts:'u32', petSpellHits:'u32', petSpellCrits:'u32', petSpellMisses:'u32',
   ...Object.fromEntries(Array.from({length:8}, (_, i) => [`rng${i}`, 'u32'])),
   ...Object.fromEntries(SPELLS.flatMap((_, i) => [[`damage${i}`, 'f32'], [`casts${i}`, 'u32'], [`hits${i}`, 'u32'], [`crits${i}`, 'u32'], [`misses${i}`, 'u32']])),
 };

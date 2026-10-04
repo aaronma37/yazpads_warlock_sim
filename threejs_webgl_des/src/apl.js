@@ -150,8 +150,9 @@ export function getActiveAPL() {
   return currentAPL;
 }
 
-export function generateAPLForPreset(presetName = '', talentsObj = null) {
+export function generateAPLForPreset(presetName = '', talentsObj = null, rotationChoice = null, isSacSuccubus = false) {
   const name = (presetName || '').toLowerCase();
+  const rot = (rotationChoice || '').toLowerCase();
   
   const hasTalent = (tree, tal) => {
     if (!talentsObj) return false;
@@ -165,16 +166,16 @@ export function generateAPLForPreset(presetName = '', talentsObj = null) {
 
   const isBrand = name.includes('brand') || hasTalent('demonology', 'demonic_brand');
   const isDecimate = name.includes('decimate') || hasTalent('demonology', 'decimation');
-  const isIncinerate = name.includes('incinerate') || (hasTalent('destruction', 'incinerate') && !name.includes('searing'));
-  const isSearing = name.includes('searing') || name.includes('dp fire') || name.includes('dp_fire');
-  const isFire = isIncinerate || isSearing || name.includes('fire');
+  const isIncinerate = rot === 'fire_destro' || rot === 'incinerate_decimation' || name.includes('incinerate') || (hasTalent('destruction', 'incinerate') && !name.includes('searing') && rot !== 'dp_af_fire' && !rot.includes('shadow') && !rot.includes('affliction'));
+  const isSearing = rot === 'dp_af_fire' || rot === 'searing' || name.includes('searing') || name.includes('dp fire') || name.includes('dp_fire');
+  const isFire = isIncinerate || isSearing || rot.includes('fire') || name.includes('fire');
   const hasConflag = hasTalent('destruction', 'conflagrate');
   const hasShadowburn = hasTalent('destruction', 'shadowburn') && !name.includes('deep affliction');
   const hasSiphon = hasTalent('affliction', 'siphon_life') && (name.includes('deep affliction') || name.includes('affliction hybrid'));
   const hasWrack = hasTalent('affliction', 'wrack') && (name.includes('deep affliction') || name.includes('affliction hybrid'));
   const hasNightfall = hasTalent('affliction', 'nightfall') || (!isFire && !name.includes('pure shadow bolt'));
   const noCorruption = name.includes('no corruption') || name.includes('pure shadow bolt');
-  const noBane = name.includes('no bane') || isSearing;
+  const noBane = name.includes('no bane');
 
   if (isSearing && isDecimate) {
     // Dedicated DP_RUIN_FIRE APL
@@ -259,8 +260,8 @@ export function generateAPLForPreset(presetName = '', talentsObj = null) {
   return list;
 }
 
-export function setAPLPreset(presetName, talentsObj = null) {
-  currentAPL = generateAPLForPreset(presetName, talentsObj);
+export function setAPLPreset(presetName, talentsObj = null, rotationChoice = null, isSacSuccubus = false) {
+  currentAPL = generateAPLForPreset(presetName, talentsObj, rotationChoice, isSacSuccubus);
   renderAPLTable();
   if (onChangeCallback) onChangeCallback(currentAPL);
 }

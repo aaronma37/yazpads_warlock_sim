@@ -248,13 +248,13 @@ export function generate100Configs() {
             c.searingCastTime = Math.max(1.1, 1.5 * (1.0 - hasteReduction));
             c.rules = [
                 RULE_IDS.LIFE_TAP,
+                RULE_IDS.CURSE_OF_DOOM,
+                RULE_IDS.CURSE_OF_AGONY,
                 RULE_IDS.DECIMATION_SOUL_FIRE,
                 RULE_IDS.DECIMATION_SEARING,
                 RULE_IDS.CORRUPTION,
                 RULE_IDS.IMMOLATE,
-                RULE_IDS.SEARING_FILLER,
-                RULE_IDS.SHADOW_BOLT_FILLER,
-                RULE_IDS.NONE
+                RULE_IDS.SEARING_FILLER
             ];
         } else {
             // Fast Haste Burst Spec

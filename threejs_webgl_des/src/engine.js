@@ -36,6 +36,21 @@ function acquire(){
  return engine;
 }
 
+export async function preloadShader() {
+  try {
+    const e = acquire();
+    if (!e.compiled) {
+      await e.renderer.compileAsync(e.scene, e.camera);
+      if (e.error) throw e.error;
+      e.compiled = true;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Background shader compilation warning:', err);
+    return false;
+  }
+}
+
 export function disposeEngine(){
  if(running)throw new Error('Cannot dispose an active simulation.');
  if(engine){engine.material.dispose();engine.geometry.dispose();engine.renderer.dispose();engine.renderer.forceContextLoss();engine=null;}
@@ -99,24 +114,27 @@ function unpack(attachments,width,lane,words,mode=0){
 
 function decodeBatch2D(outputs,width,count,config,first,states){
  const att0=outputs[0],att1=outputs[1],att2=outputs[2],att3=outputs[3];
- const f0=new Float32Array(att0.buffer),f3=new Float32Array(att3.buffer);
- const f1_1=new Float32Array(att1.buffer),f2_1=new Float32Array(att2.buffer),f3_1=new Float32Array(att3.buffer);
+ const f0=new Float32Array(att0.buffer),f1=new Float32Array(att1.buffer),f2=new Float32Array(att2.buffer),f3=new Float32Array(att3.buffer);
  for(let lane=0;lane<count;lane++){
   const simX=lane%width,simY=Math.floor(lane/width);
-  const p0=((simY*2)*width+simX)*4,p1=((simY*2+1)*width+simX)*4;
-  const done=att1[p0],now=att1[p0+1],eventPetPacked=att1[p0+2],events=eventPetPacked&65535,highWater=att1[p0+3];
+  const p0=((simY*3)*width+simX)*4,p1=((simY*3+1)*width+simX)*4,p2=((simY*3+2)*width+simX)*4;
+  const done=att1[p0],now=att1[p0+1],events=att1[p0+2],highWater=att1[p0+3];
   const total=f0[p0],mana=f0[p0+1],spent=f0[p0+2],gained=f0[p0+3];
   if(done!==1||!Number.isFinite(total))throw new Error(`Fight ${first+lane} failed (status ${done}). Incomplete results rejected.`);
   const s={
-   total,mana,spent,gained,done,now,events,highWater,petCasts:eventPetPacked>>>16,
+   total,mana,spent,gained,done,now,events,highWater,
    taps:att2[p0],procs:att2[p0+1],isbProcs:att2[p0+2],isbConsumed:att2[p0+3],
    damage0:f3[p0],casts0:att3[p0+1]&65535,hits0:att3[p0+1]>>>16,crits0:att3[p0+2]&65535,misses0:att3[p0+2]>>>16,
    damage1:f3[p0+3],casts1:att0[p1]&65535,hits1:att0[p1]>>>16,crits1:att0[p1+1]&65535,misses1:att0[p1+1]>>>16,
    damage2:f0[p1+2],casts2:att0[p1+3]&65535,hits2:att0[p1+3]>>>16,crits2:att1[p1]&65535,misses2:att1[p1]>>>16,
-   damage3:f1_1[p1+1],casts3:att1[p1+2]&65535,hits3:att1[p1+2]>>>16,crits3:att1[p1+3]&65535,misses3:att1[p1+3]>>>16,
-   damage4:f2_1[p1],casts4:att2[p1+1]&65535,hits4:att2[p1+1]>>>16,crits4:att2[p1+2]&65535,misses4:att2[p1+2]>>>16,
-   damage5:f2_1[p1+3],casts5:att3[p1]&65535,hits5:att3[p1]>>>16,crits5:att3[p1+1]&65535,misses5:att3[p1+1]>>>16,
-   petDamage:f3_1[p1+2],petBrandDamage:f3_1[p1+3]
+   damage3:f1[p1+1],casts3:att1[p1+2]&65535,hits3:att1[p1+2]>>>16,crits3:att1[p1+3]&65535,misses3:att1[p1+3]>>>16,
+   damage4:f2[p1],casts4:att2[p1+1]&65535,hits4:att2[p1+1]>>>16,crits4:att2[p1+2]&65535,misses4:att2[p1+2]>>>16,
+   damage5:f2[p1+3],casts5:att3[p1]&65535,hits5:att3[p1]>>>16,crits5:att3[p1+1]&65535,misses5:att3[p1+1]>>>16,
+   petMeleeDamage:f3[p1+2],petMeleeCasts:att3[p1+3]&65535,petMeleeHits:att3[p1+3]>>>16,
+   petMeleeCrits:att0[p2]&65535,petMeleeMisses:att0[p2]>>>16,
+   petSpellDamage:f0[p2+1],petSpellCasts:att0[p2+2]&65535,petSpellHits:att0[p2+2]>>>16,
+   petSpellCrits:att0[p2+3]&65535,petSpellMisses:att0[p2+3]>>>16,
+   petBrandDamage:f1[p2],petDamage:f1[p2+1],petCasts:att1[p2+2],rngCalls:att1[p2+3]
   };
   states.push(s);
  }
@@ -127,7 +145,7 @@ export function summarize(states, duration) {
   let mean = 0, m2 = 0;
   dps.forEach((value,i) => { const delta = value - mean; mean += delta / (i+1); m2 += delta * (value - mean); });
   const sd = dps.length > 1 ? Math.sqrt(m2 / (dps.length-1)) : 0;
-  const sum = key => states.reduce((n,s) => n+s[key], 0);
+  const sum = key => states.reduce((n,s) => n + (s[key] || 0), 0);
   
   const spells = SPELLS.map((name,i) => ({
     name,
@@ -135,18 +153,72 @@ export function summarize(states, duration) {
     casts: sum(`casts${i}`) / states.length,
     hits: sum(`hits${i}`) / states.length,
     crits: sum(`crits${i}`) / states.length,
-    misses: sum(`misses${i}`) / states.length
+    misses: sum(`misses${i}`) / states.length,
+    school: ['Immolate', 'Incinerate', 'Searing Pain'].includes(name) ? 'fire' : 'shadow'
   }));
 
-  const petDamage = sum('petDamage') / states.length;
-  const petBrandDamage = sum('petBrandDamage') / states.length;
-  const totalPetDmg = petDamage + petBrandDamage;
+  const petMeleeDamage = sum('petMeleeDamage') / states.length;
+  const petMeleeCasts = sum('petMeleeCasts') / states.length;
+  const petMeleeHits = sum('petMeleeHits') / states.length;
+  const petMeleeCrits = sum('petMeleeCrits') / states.length;
+  const petMeleeMisses = sum('petMeleeMisses') / states.length;
 
-  // Shadow spells: Shadow Bolt (0), Corruption (1), Bane of Agony (2)
-  const shadowDmg = (spells[0]?.damage || 0) + (spells[1]?.damage || 0) + (spells[2]?.damage || 0);
-  // Fire spells: Immolate (3), Incinerate (4), Searing Pain (5)
-  const fireDmg = (spells[3]?.damage || 0) + (spells[4]?.damage || 0) + (spells[5]?.damage || 0);
-  const totalDamage = shadowDmg + fireDmg + totalPetDmg;
+  const petSpellDamage = sum('petSpellDamage') / states.length;
+  const petSpellCasts = sum('petSpellCasts') / states.length;
+  const petSpellHits = sum('petSpellHits') / states.length;
+  const petSpellCrits = sum('petSpellCrits') / states.length;
+  const petSpellMisses = sum('petSpellMisses') / states.length;
+
+  const petBrandDamage = sum('petBrandDamage') / states.length;
+  const rawPetDamage = sum('petDamage') / states.length;
+  const totalPetDmg = rawPetDamage > 0 ? rawPetDamage : (petMeleeDamage + petSpellDamage + petBrandDamage);
+
+  // Succubus Melee swing damage
+  if (petMeleeDamage > 0 || petMeleeCasts > 0) {
+    spells.push({
+      name: 'Succubus Melee',
+      damage: petMeleeDamage,
+      casts: petMeleeCasts,
+      hits: petMeleeHits,
+      crits: petMeleeCrits,
+      misses: petMeleeMisses,
+      school: 'physical'
+    });
+  }
+
+  // Pet spell damage (Imp Firebolt or Succubus Lash of Pain)
+  if (petSpellDamage > 0 || petSpellCasts > 0) {
+    const isSuccubus = (petMeleeDamage > 0 || petMeleeCasts > 0);
+    const petSpellName = isSuccubus ? 'Succubus Lash of Pain' : 'Imp Firebolt';
+    const petSchool = isSuccubus ? 'shadow' : 'fire';
+    spells.push({
+      name: petSpellName,
+      damage: petSpellDamage,
+      casts: petSpellCasts,
+      hits: petSpellHits,
+      crits: petSpellCrits,
+      misses: petSpellMisses,
+      school: petSchool
+    });
+  }
+
+  // Demonic Brand proc damage
+  if (petBrandDamage > 0) {
+    spells.push({
+      name: 'Demonic Brand',
+      damage: petBrandDamage,
+      casts: 0,
+      hits: 0,
+      crits: 0,
+      misses: 0,
+      school: 'fire'
+    });
+  }
+
+  const shadowDmg = (spells[0]?.damage || 0) + (spells[1]?.damage || 0) + (spells[2]?.damage || 0) + (petMeleeDamage > 0 ? petSpellDamage : 0);
+  const fireDmg = (spells[3]?.damage || 0) + (spells[4]?.damage || 0) + (spells[5]?.damage || 0) + (petMeleeDamage === 0 ? petSpellDamage : 0) + petBrandDamage;
+  const physicalDmg = petMeleeDamage;
+  const totalDamage = shadowDmg + fireDmg + physicalDmg;
 
   return {
     count: states.length,
@@ -162,9 +234,12 @@ export function summarize(states, duration) {
     damage: totalDamage,
     shadowDamage: shadowDmg,
     fireDamage: fireDmg,
+    physicalDamage: physicalDmg,
     petDamage: totalPetDmg,
+    petMeleeDamage,
+    petSpellDamage,
     petBrandDamage,
-    maxHeap: states.reduce((n,s)=>Math.max(n,s.highWater),0),
+    maxHeap: states.reduce((n,s)=>Math.max(n,s.highWater || 0),0),
     spells
   };
 }
@@ -201,9 +276,9 @@ export async function runMultiSimulation(inputs, { signal, onProgress = () => {}
     const capacity = Math.min(effectiveBatch, totalFights);
     const gridWidth = Math.min(maxTexSize, Math.max(1, Math.min(1024, capacity)));
     const gridHeight = Math.ceil(capacity / gridWidth);
-    if (gridHeight * 2 > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+    if (gridHeight * 3 > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
 
-    rt = target(gridWidth, gridHeight * 2);
+    rt = target(gridWidth, gridHeight * 3);
     e.renderer.setRenderTarget(rt);
 
     let compileMs = 0;
@@ -274,8 +349,8 @@ export async function runSimulation(input,{signal,onProgress=()=>{},batchSize=52
   const capacity=Math.min(effectiveBatch,config.iterations);
   const gridWidth=Math.min(maxTexSize,Math.max(1,Math.min(1024,capacity)));
   const gridHeight=Math.ceil(capacity/gridWidth);
-  if(gridHeight*2>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
-  rt=target(gridWidth,gridHeight*2);e.renderer.setRenderTarget(rt);
+  if(gridHeight*3>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+  rt=target(gridWidth,gridHeight*3);e.renderer.setRenderTarget(rt);
   let compileMs=0;
   if(!e.compiled){
     onProgress({phase:'Compiling GPU Shader',completed:0,total:config.iterations});

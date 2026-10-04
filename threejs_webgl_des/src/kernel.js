@@ -448,16 +448,20 @@ void advance(){
    uint delay=2000000u;
    if(s.petMana>=115.0){
     s.petCasts++;
+    s.petSpellCasts++;
     s.petMana-=115.0;
     if(random01()<c.hit){
+     s.petSpellHits++;
      float dmg=(44.0+(2.0/3.5)*c.petSP)*c.petFireboltMult;
-     bool crit=random01()<c.fireCrit;if(crit)dmg*=1.5;dmg*=resistanceMultiplier();
+     bool crit=random01()<c.fireCrit;if(crit){dmg*=1.5;s.petSpellCrits++;}dmg*=resistanceMultiplier();
      if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
       s.brandCharges--;
       float brandDmg=(65.0+random01()*3.0+0.078*currentPower())*c.brandMult;
       brandDmg*=resistanceMultiplier();dmg+=brandDmg;s.petBrandDamage+=brandDmg;
      }
-     s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;if(crit)eventFlags|=1u;
+     s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;s.petSpellDamage+=dmg;if(crit)eventFlags|=1u;
+    }else{
+     s.petSpellMisses++;
     }
    }else{
     delay=1000000u;
@@ -465,35 +469,43 @@ void advance(){
    if(s.now+delay<c.end)enqueue(s.now+delay,6u,100u,0u);
   }else if(e.spell==200u){ // Succubus Melee
    s.petCasts++;
+   s.petMeleeCasts++;
    float roll=random01()*100.0;
    if(roll>=14.5){
+    s.petMeleeHits++;
     float dmg=(101.0+(c.petAP/14.0)*2.0)*c.petMeleeMult;
     bool glance=(roll<54.5);
     bool crit=(!glance&&roll<(54.5+max(0.0,c.crit*100.0+2.72)));
     if(glance)dmg*=0.65;
-    if(crit)dmg*=2.0;
+    if(crit){dmg*=2.0;s.petMeleeCrits++;}
     if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
      s.brandCharges--;
       float brandDmg=(65.0+random01()*3.0+0.078*currentPower())*c.brandMult;
       brandDmg*=resistanceMultiplier();dmg+=brandDmg;s.petBrandDamage+=brandDmg;
     }
-    s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;if(crit)eventFlags|=1u;
+    s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;s.petMeleeDamage+=dmg;if(crit)eventFlags|=1u;
+   }else{
+    s.petMeleeMisses++;
    }
    if(s.now+2000000u<c.end)enqueue(s.now+2000000u,6u,200u,0u);
   }else if(e.spell==201u){ // Succubus Lash of Pain
    uint delay=12000000u;
    if(s.petMana>=160.0){
     s.petCasts++;
+    s.petSpellCasts++;
     s.petMana-=160.0;
     if(random01()<c.hit){
+     s.petSpellHits++;
      float dmg=(50.0+(1.5/3.5)*c.petSP)*c.petLashMult;
-     bool crit=random01()<c.shadowCrit;if(crit)dmg*=1.5;dmg*=resistanceMultiplier();
+     bool crit=random01()<c.shadowCrit;if(crit){dmg*=1.5;s.petSpellCrits++;}dmg*=resistanceMultiplier();
      if(c.demonicBrand!=0u&&s.brandCharges>0u&&s.now<s.brandEnd){
       s.brandCharges--;
       float brandDmg=(65.0+random01()*3.0+0.078*currentPower())*c.brandMult;
       brandDmg*=resistanceMultiplier();dmg+=brandDmg;s.petBrandDamage+=brandDmg;
      }
-     s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;if(crit)eventFlags|=1u;
+     s.total+=dmg;eventDamage+=dmg;s.petDamage+=dmg;s.petSpellDamage+=dmg;if(crit)eventFlags|=1u;
+    }else{
+     s.petSpellMisses++;
     }
    }else{
     delay=1500000u;
@@ -511,10 +523,18 @@ void advance(){
 uint stateWord(uint index){switch(index){${Object.entries(STATE).map(([k,t],i)=>`case ${i}u:return ${word(k,t)};`).join('\n')}default:return 0u;}}
 uint compactWord(uint index){switch(index){
  ${['total','mana','spent','gained'].map((k,i)=>`case ${i}u:return floatBitsToUint(s.${k});`).join('\n')}
- ${['done','now','events','highWater','taps','procs','isbProcs','isbConsumed'].map((k,i)=>`case ${i+4}u:return ${k==='events'?'(s.events&65535u)|(s.petCasts<<16u)':`s.${k}`};`).join('\n')}
+ ${['done','now','events','highWater','taps','procs','isbProcs','isbConsumed'].map((k,i)=>`case ${i+4}u:return s.${k};`).join('\n')}
  ${Array.from({length:6},(_,i)=>`case ${12+i*3}u:return floatBitsToUint(s.damage${i});case ${13+i*3}u:return s.casts${i}|(s.hits${i}<<16u);case ${14+i*3}u:return s.crits${i}|(s.misses${i}<<16u);`).join('\n')}
- case 30u:return floatBitsToUint(s.petDamage);
- case 31u:return floatBitsToUint(s.petBrandDamage);
+ case 30u:return floatBitsToUint(s.petMeleeDamage);
+ case 31u:return s.petMeleeCasts|(s.petMeleeHits<<16u);
+ case 32u:return s.petMeleeCrits|(s.petMeleeMisses<<16u);
+ case 33u:return floatBitsToUint(s.petSpellDamage);
+ case 34u:return s.petSpellCasts|(s.petSpellHits<<16u);
+ case 35u:return s.petSpellCrits|(s.petSpellMisses<<16u);
+ case 36u:return floatBitsToUint(s.petBrandDamage);
+ case 37u:return floatBitsToUint(s.petDamage);
+ case 38u:return s.petCasts;
+ case 39u:return s.rngCalls;
  default:return 0u;}}
 uint outputWord(uint index){return mode==1u?stateWord(index):compactWord(index);}
 uvec4 outputFour(uint index){return uvec4(outputWord(index),outputWord(index+1u),outputWord(index+2u),outputWord(index+3u));}
@@ -522,8 +542,8 @@ void main(){
  uint x=uint(gl_FragCoord.x),y=uint(gl_FragCoord.y);
  uint lane,stripe;
  if(mode==0u){
-  uint simX=x,simY=y/2u;
-  stripe=y%2u;
+  uint simX=x,simY=y/3u;
+  stripe=y%3u;
   lane=simY*gridWidth+simX;
  }else if(mode==1u){
   lane=0u;stripe=y;
@@ -553,6 +573,8 @@ void main(){
  }
  if(mode!=2u&&s.done==0u)s.done=6u;
  ${Array.from({length:6},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n')}
+ if(max(max(s.petMeleeCasts,s.petMeleeHits),max(s.petMeleeCrits,s.petMeleeMisses))>65535u)s.done=7u;
+ if(max(max(s.petSpellCasts,s.petSpellHits),max(s.petSpellCrits,s.petSpellMisses))>65535u)s.done=7u;
  ${Array.from({length:4},(_,i)=>`s.rng${i*2}=rng[${i}].x;s.rng${i*2+1}=rng[${i}].y;`).join('\n')}
  if(mode==2u){
   report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));

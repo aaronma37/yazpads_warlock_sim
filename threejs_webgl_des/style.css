@@ -1320,6 +1320,10 @@ input[type="checkbox"]:checked::after {
   background: linear-gradient(90deg, #15803d, #22c55e);
 }
 
+.spell-mini-bar-fill.physical {
+  background: linear-gradient(90deg, #b45309, #d97706);
+}
+
 /* ==========================================================================
    COMPARE STANDARD SPECS TAB
    ========================================================================== */
@@ -1561,6 +1565,10 @@ input[type="checkbox"]:checked::after {
 
 .split-seg.pet {
   background: linear-gradient(180deg, #16a34a, #15803d);
+}
+
+.split-seg.physical {
+  background: linear-gradient(180deg, #b45309, #78350f);
 }
 
 /* Stat Weights Columns */
@@ -2116,5 +2124,120 @@ footer {
 .spec-name-link:hover {
   text-decoration: underline;
   color: #fff !important;
+}
+
+/* Constrained Spec Search Split Grid & Convergence Graph */
+.ga-main-split-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .ga-main-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ga-table-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ga-graph-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.ga-stats-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.ga-chart-container {
+  background: #0d0b13;
+  border: 1px solid #332a40;
+  border-radius: 4px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 280px;
+  position: relative;
+}
+
+.ga-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid #221c2e;
+  padding-bottom: 0.35rem;
+}
+
+.ga-chart-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ga-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-parchment);
+}
+
+.ga-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ga-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ga-chart-canvas-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ga-chart-canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ga-chart-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(13, 11, 19, 0.9);
+  border: 1px dashed #2d2636;
+  border-radius: 4px;
+  pointer-events: none;
 }
 

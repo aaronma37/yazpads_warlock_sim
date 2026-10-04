@@ -1,6 +1,6 @@
 import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
-import { runSimulation } from './engine.js';
+import { runSimulation, preloadShader } from './engine.js';
 import { compare } from '../validation/compare.js';
 import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
@@ -552,6 +552,11 @@ function readForm() {
 
   base.rotation = activeRotation;
   const talent = getSimTalentFlags();
+  if (activeRace === 'ORC') {
+    talent.petFireboltMult = (talent.petFireboltMult || 1.0) * 1.05;
+    talent.petMeleeMult = (talent.petMeleeMult || 1.0) * 1.05;
+    talent.petLashMult = (talent.petLashMult || 1.0) * 1.05;
+  }
   const activeActions = new Set(getActiveAPL().filter(rule => rule.enabled).map(rule => rule.id));
   // Spell availability is derived from the editable action list so enabling a
   // supported action also enables its shader-side spell gate.
@@ -596,8 +601,17 @@ const SPELL_ICONS_MAP = {
   'Corruption': 'Spell_Shadow_AbominationExplosion.png',
   'Bane of Agony': 'Spell_Shadow_CurseOfSargeras.png',
   'Immolate': 'Spell_Fire_Immolation.png',
-  'Incinerate': 'Spell_Fire_Incinerate.png',
+  'Incinerate': 'Spell_Fire_Burnout.png',
   'Searing Pain': 'Spell_Fire_SoulBurn.png',
+  'Succubus Melee': 'Ability_MeleeDamage.png',
+  'Melee (Pet)': 'Ability_MeleeDamage.png',
+  'Pet Melee': 'Ability_MeleeDamage.png',
+  'Melee': 'Ability_MeleeDamage.png',
+  'Succubus Lash of Pain': 'Spell_Shadow_Curse.png',
+  'Lash of Pain (Pet)': 'Spell_Shadow_Curse.png',
+  'Imp Firebolt': 'Spell_Fire_FireBolt.png',
+  'Firebolt (Pet)': 'Spell_Fire_FireBolt.png',
+  'Demonic Brand': 'Spell_Shadow_DemonBreath.png',
   'Pet': 'Spell_Shadow_SummonImp.png',
   'Imp': 'Spell_Shadow_SummonImp.png',
   'Succubus': 'Spell_Shadow_SummonSuccubus.png',
@@ -695,18 +709,18 @@ function render(result) {
   const totalDmg = s.damage || (s.mean * c.duration) || 1;
   const shadowDmg = s.shadowDamage || 0;
   const fireDmg = s.fireDamage || 0;
-  const petDmg = s.petDamage || 0;
+  const physicalDmg = s.physicalDamage || s.petMeleeDamage || 0;
   
   const shadowPct = Math.round((shadowDmg / totalDmg) * 100);
   const firePct = Math.round((fireDmg / totalDmg) * 100);
-  const petPct = Math.max(0, 100 - shadowPct - firePct);
+  const physPct = Math.round((physicalDmg / totalDmg) * 100);
 
   const splitBar = $('current-sim-damage-split');
   if (splitBar) {
     splitBar.innerHTML = '';
     if (shadowPct > 0) splitBar.innerHTML += `<div class="split-seg shadow" style="width:${shadowPct}%;" title="Shadow: ${shadowPct}% (${format(shadowDmg / c.duration, 1)} DPS)">${shadowPct}% Shadow</div>`;
     if (firePct > 0) splitBar.innerHTML += `<div class="split-seg fire" style="width:${firePct}%;" title="Fire: ${firePct}% (${format(fireDmg / c.duration, 1)} DPS)">${firePct}% Fire</div>`;
-    if (petPct > 0) splitBar.innerHTML += `<div class="split-seg pet" style="width:${petPct}%;" title="Pet: ${petPct}% (${format(petDmg / c.duration, 1)} DPS)">${petPct}% Pet</div>`;
+    if (physPct > 0) splitBar.innerHTML += `<div class="split-seg physical" style="width:${physPct}%;" title="Physical (Melee): ${physPct}% (${format(physicalDmg / c.duration, 1)} DPS)">${physPct}% Physical</div>`;
   }
 
   // Update Per-Spell Stats Breakdown Table
@@ -716,15 +730,16 @@ function render(result) {
     const activeSpells = (s.spells || []).filter(sp => (sp.damage > 0 || sp.casts > 0));
     
     // Find max damage for relative progress bar scaling
-    const maxSpellDmg = Math.max(...activeSpells.map(sp => sp.damage), petDmg, 1);
+    const maxSpellDmg = Math.max(...activeSpells.map(sp => sp.damage), 1);
 
     activeSpells.forEach(sp => {
       const spellDps = sp.damage / c.duration;
       const pctOfTotal = totalDmg > 0 ? (sp.damage / totalDmg * 100).toFixed(1) : '0.0';
       const critPct = sp.casts > 0 ? ((sp.crits / sp.casts) * 100).toFixed(1) : '0.0';
       const icon = SPELL_ICONS_MAP[sp.name] || 'Spell_Shadow_ShadowBolt.png';
-      const isFire = ['Immolate', 'Incinerate', 'Searing Pain'].includes(sp.name);
-      const barClass = isFire ? 'fire' : 'shadow';
+      const isFire = ['Immolate', 'Incinerate', 'Searing Pain', 'Imp Firebolt', 'Demonic Brand'].includes(sp.name) || sp.school === 'fire';
+      const isPhys = ['Succubus Melee', 'Melee (Pet)', 'Pet Melee', 'Melee'].includes(sp.name) || sp.school === 'physical';
+      const barClass = isPhys ? 'physical' : (isFire ? 'fire' : 'shadow');
       const barWidth = Math.min(100, Math.max(4, Math.round((sp.damage / maxSpellDmg) * 100)));
 
       const tr = document.createElement('tr');
@@ -742,10 +757,10 @@ function render(result) {
           ${format(spellDps, 1)}
         </td>
         <td style="text-align: right; font-family: var(--font-mono); color: var(--text-parchment); white-space: nowrap;">
-          ${sp.casts.toFixed(1)}
+          ${sp.casts > 0 ? sp.casts.toFixed(1) : '-'}
         </td>
         <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; white-space: nowrap;">
-          ${sp.crits.toFixed(1)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${critPct}%)</span>
+          ${sp.casts > 0 ? `${sp.crits.toFixed(1)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${critPct}%)</span>` : '-'}
         </td>
         <td>
           <div class="spell-mini-bar-track">
@@ -756,44 +771,7 @@ function render(result) {
       tbody.appendChild(tr);
     });
 
-    // Add Pet row if active & dealt damage
-    if (petDmg > 0) {
-      const petDps = petDmg / c.duration;
-      const petPctOfTotal = (petDmg / totalDmg * 100).toFixed(1);
-      const petIcon = activePet === 'succubus' ? 'Spell_Shadow_SummonSuccubus.png' : 'Spell_Shadow_SummonImp.png';
-      const petName = activePet === 'succubus' ? 'Succubus (Lash)' : 'Imp (Firebolt)';
-      const petBarWidth = Math.min(100, Math.max(4, Math.round((petDmg / maxSpellDmg) * 100)));
-
-      const petTr = document.createElement('tr');
-      petTr.innerHTML = `
-        <td>
-          <div class="spell-breakdown-cell">
-            <img src="./assets/icons/${petIcon}" class="spell-breakdown-icon" alt="${petName}">
-            <span class="spell-breakdown-name">${petName}</span>
-          </div>
-        </td>
-        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-weight: 600; white-space: nowrap;">
-          ${format(petDmg, 0)} <span style="font-size: 0.7rem; color: var(--text-dim); white-space: nowrap;">(${petPctOfTotal}%)</span>
-        </td>
-        <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-weight: 700; white-space: nowrap;">
-          ${format(petDps, 1)}
-        </td>
-        <td style="text-align: right; font-family: var(--font-mono); color: var(--text-parchment); white-space: nowrap;">
-          -
-        </td>
-        <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; white-space: nowrap;">
-          -
-        </td>
-        <td>
-          <div class="spell-mini-bar-track">
-            <div class="spell-mini-bar-fill pet" style="width: ${petBarWidth}%;"></div>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(petTr);
-    }
-
-    if (activeSpells.length === 0 && petDmg === 0) {
+    if (activeSpells.length === 0) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 0.75rem;">No damage dealt in simulation. Check your APL rules and mana stats.</td></tr>';
     }
   }
@@ -884,12 +862,21 @@ async function populateTalentPresetsDropdown() {
   if (!presets || presets.length === 0) return;
 
   select.innerHTML = '<option value="">Load Preset…</option>';
+  let defaultPresetId = '';
   presets.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name;
+    const nameLower = p.name.toLowerCase();
+    if ((nameLower.includes('dp fire') || (nameLower.includes('dp') && nameLower.includes('searing'))) && (p.race || '').toLowerCase() === activeRace.toLowerCase()) {
+      defaultPresetId = String(p.id);
+    }
     select.appendChild(opt);
   });
+
+  if (defaultPresetId) {
+    select.value = defaultPresetId;
+  }
 
   select.addEventListener('change', (e) => {
     const val = e.target.value;
@@ -1000,15 +987,20 @@ function applyCandidateBuild(cand) {
   else if (cand.sacSuccubus) setDS('succubus');
   else setDS('none');
 
-  if (cand.rotation) {
-    if (cand.rotation.includes('FIRE') || cand.rotation.includes('INCIN')) setRotation('fire');
-    else if (cand.rotation.includes('SEARING')) setRotation('searing');
-    else setRotation('shadow');
+  let rot = 'shadow';
+  if (cand.rotation === 'DP_AF_FIRE') {
+    rot = 'searing';
+  } else if (cand.rotation === 'FIRE_DESTRO' || cand.rotation === 'INCINERATE_DECIMATION') {
+    rot = 'fire';
   }
+  setRotation(rot);
 
   if (cand.talents) {
     applyTalentsObject(cand.talents);
   }
+
+  // Synchronize the interactive APL Manager with candidate's exact spec & rotation
+  setAPLPreset(cand.name, cand.talents, cand.rotation, cand.sacSuccubus);
 
   updateCombatStatsSummary();
   setStatus(`Applied evolved spec: ${cand.name}. Switched to Current Configuration.`);
@@ -1098,4 +1090,13 @@ setupInteractiveSlots();
 updateRacialsDisplay();
 updateCombatStatsSummary();
 populateTalentPresetsDropdown();
+
+// Preload & compile WebGL2 shader asynchronously in the background on page load
+if (capable) {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => preloadShader());
+  } else {
+    setTimeout(() => preloadShader(), 50);
+  }
+}
 
