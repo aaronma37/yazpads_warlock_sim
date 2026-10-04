@@ -44,6 +44,8 @@ try{
   try{await runSimulation({iterations:64},{batchSize:16,signal:controller.signal,onProgress:p=>{if(p.completed>=16)controller.abort();}});}
   catch(e){cancelled=e.name==='AbortError';}
   checks.push({name:'cancellation after a submitted batch',pass:cancelled});
+  const {checkAccounting}=await import('./validation/accounting.js');
+  checks.push(...await checkAccounting());
   return {checks,timing:a.timing,userAgent:navigator.userAgent};
  });
  await page.selectOption('[name=iterations]','256');await page.fill('[name=duration]','30');await page.click('#run');

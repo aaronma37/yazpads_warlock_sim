@@ -267,6 +267,8 @@ export const STATE = {
 };
 
 export const STATE_WORDS = Object.keys(STATE).length;
+export const FAST_STATE = Object.fromEntries(Object.entries(STATE).filter(([key]) => !/^(damage|casts|hits|crits|misses)\d+$/.test(key)));
+export const FAST_STATE_WORDS = Object.keys(FAST_STATE).length;
 export const HEAP_CAPACITY = 40;
 export const TRACE_CAPACITY = 256;
 export const TRACE_WORDS = 8;

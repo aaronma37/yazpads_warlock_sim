@@ -721,7 +721,7 @@ form.addEventListener('submit', async event => {
     const config = readForm();
     controller = new AbortController();
     busy(true);
-    currentResult = await runSimulation(config, { signal: controller.signal, onProgress: progress });
+    currentResult = await runSimulation(config, { signal: controller.signal, onProgress: progress, detailedResults: $('detailed-results')?.checked !== false });
     render(currentResult);
     setStatus(`Simulation Complete · ${format(currentResult.summary.events)} events · ${format(currentResult.config.iterations)} fights.`);
     const tp = currentResult.config.iterations / (Math.max(1, currentResult.timing.elapsedMs) / 1000);
@@ -765,9 +765,9 @@ function render(result) {
   const fireDmg = s.fireDamage || 0;
   const physicalDmg = s.physicalDamage || s.petMeleeDamage || 0;
   
-  const shadowPct = Math.round((shadowDmg / totalDmg) * 100);
-  const firePct = Math.round((fireDmg / totalDmg) * 100);
-  const physPct = Math.round((physicalDmg / totalDmg) * 100);
+  const shadowPct = s.detailed ? Math.round((shadowDmg / totalDmg) * 100) : 0;
+  const firePct = s.detailed ? Math.round((fireDmg / totalDmg) * 100) : 0;
+  const physPct = s.detailed ? Math.round((physicalDmg / totalDmg) * 100) : 0;
 
   const splitBar = $('current-sim-damage-split');
   if (splitBar) {
@@ -781,6 +781,9 @@ function render(result) {
   const tbody = $('breakdown');
   if (tbody) {
     tbody.innerHTML = '';
+    if (!s.detailed) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:0.75rem;">Fast mode was used. Enable Detailed spell breakdown to collect per-spell results.</td></tr>';
+    }
     const activeSpells = (s.spells || []).filter(sp => (sp.damage > 0 || sp.casts > 0));
     
     // Find max damage for relative progress bar scaling

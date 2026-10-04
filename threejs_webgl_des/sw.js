@@ -1,4 +1,4 @@
-const CACHE_NAME = 'warlock-sim-v6';
+const CACHE_NAME = 'warlock-sim-v8';
 const ASSETS = [
   './',
   './index.html',

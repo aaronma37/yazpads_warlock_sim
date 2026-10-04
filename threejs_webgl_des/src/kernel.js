@@ -1,4 +1,4 @@
-import { SPELLS, COMPACT_STRIPES, CONFIG, STATE, STATE_WORDS, HEAP_CAPACITY, APL_HEADER0_OFFSET, APL_PARAM0_OFFSET, APL_HEADER1_OFFSET, APL_PARAM1_OFFSET, MAX_APL_RULES } from './model.js';
+import { SPELLS, COMPACT_STRIPES, CONFIG, STATE, FAST_STATE, HEAP_CAPACITY, APL_HEADER0_OFFSET, APL_PARAM0_OFFSET, APL_HEADER1_OFFSET, APL_PARAM1_OFFSET, MAX_APL_RULES } from './model.js';
 const type=t=>t==='u32'?'uint':'float';
 const structure=(name,schema)=>`struct ${name} { ${Object.entries(schema).map(([k,t])=>`${type(t)} ${k};`).join('\n')} };`;
 const word=(name,t)=>t==='f32'?`floatBitsToUint(s.${name})`:`s.${name}`;
@@ -7,7 +7,24 @@ in vec3 position;
 void main(){ gl_Position=vec4(position,1.0); }`;
 
 // Complete Table-Driven APL Bytecode VM Discrete Event Simulation per fragment.
-export const FRAGMENT = `
+export function buildFragment(detailed = true) {
+const stateSchema = detailed ? STATE : FAST_STATE;
+const counterSwitch = detailed ? `switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.casts${i}++;break;`).join('')}}` : '';
+const missSwitch = detailed ? `switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.misses${i}++;break;`).join('')}}` : '';
+const damageSwitch = detailed ? `switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.damage${i}+=amount;s.hits${i}++;s.crits${i}+=uint(crit);break;`).join('')}}` : '';
+const detailedCompactWord = detailed ? `uint compactWord(uint index){switch(index){
+ case 0u:return floatBitsToUint(s.total);case 1u:return s.done|(s.highWater<<16u);case 2u:return s.events;case 3u:return s.taps|(s.procs<<16u);
+ case 4u:return s.isbProcs|(s.isbConsumed<<16u);case 5u:return floatBitsToUint(s.petBrandDamage);case 6u:return floatBitsToUint(s.petDamage);case 7u:return s.petCasts|(s.rngCalls<<16u);
+ ${Array.from({length:6},(_,i)=>`case ${8+i*3}u:return floatBitsToUint(s.damage${i});case ${9+i*3}u:return s.casts${i}|(s.hits${i}<<16u);case ${10+i*3}u:return s.crits${i}|(s.misses${i}<<16u);`).join('\n')}
+ case 26u:return floatBitsToUint(s.petMeleeDamage);case 27u:return s.petMeleeCasts|(s.petMeleeHits<<16u);case 28u:return s.petMeleeCrits|(s.petMeleeMisses<<16u);
+ case 29u:return floatBitsToUint(s.petSpellDamage);case 30u:return s.petSpellCasts|(s.petSpellHits<<16u);case 31u:return s.petSpellCrits|(s.petSpellMisses<<16u);
+ ${SPELLS.slice(6).map((_,j)=>{const i=j+6,k=32+j*3;return `case ${k}u:return floatBitsToUint(s.damage${i});case ${k+1}u:return s.casts${i}|(s.hits${i}<<16u);case ${k+2}u:return s.crits${i}|(s.misses${i}<<16u);`;}).join('')}
+ default:return 0u;}}` : '';
+const stripeCount = detailed ? `${COMPACT_STRIPES}u` : '1u';
+const stateOverflow = detailed ? Array.from({length:SPELLS.length},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n') : '';
+const stateWordFunction = detailed ? `uint stateWord(uint index){switch(index){${Object.entries(stateSchema).map(([k,t],i)=>`case ${i}u:return ${word(k,t)};`).join('\n')}default:return 0u;}}` : '';
+const initialState = Object.entries(stateSchema).map(([k,t])=>`s.${k}=${t==='f32'?'0.0':'0u'};`).join('\n');
+return `
 precision highp float;
 precision highp int;
 precision highp usampler2D;
@@ -26,7 +43,7 @@ uniform uint gridWidth;
 uniform uint mode;
 uniform uint eventBudget;
 ${structure('FightConfig',CONFIG)}
-${structure('FightState',STATE)}
+${structure('FightState',stateSchema)}
 struct Event { uint at; uint data; };
 #define EV_KIND(e) ((e).data & 0xFFu)
 #define EV_SPELL(e) (((e).data >> 8u) & 0xFFu)
@@ -106,12 +123,12 @@ Event dequeue(){
   }
  }return e;
 }
-void countCast(uint spell){switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.casts${i}++;break;`).join('')}}}
-void countMiss(uint spell){eventFlags|=2u;switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.misses${i}++;break;`).join('')}}}
+void countCast(uint spell){${counterSwitch}}
+void countMiss(uint spell){eventFlags|=2u;${missSwitch}}
 void damage(uint spell,float amount,bool crit){
  if(c.race==2u&&c.targetIsBeast!=0u&&spell!=12u)amount*=1.05;
  s.total+=amount;eventDamage+=amount;if(crit)eventFlags|=1u;
- switch(spell){${Array.from({length:SPELLS.length},(_,i)=>`case ${i}u:s.damage${i}+=amount;s.hits${i}++;s.crits${i}+=uint(crit);break;`).join('')}}
+ ${damageSwitch}
 }
 float isbMultiplier(){
  if(s.now>=s.isbEnd)return 1.0;
@@ -567,50 +584,26 @@ void advance(){
  default:s.done=5u;break;
  }
 }
-uint stateWord(uint index){switch(index){${Object.entries(STATE).map(([k,t],i)=>`case ${i}u:return ${word(k,t)};`).join('\n')}default:return 0u;}}
-uint compactWord(uint index){switch(index){
- case 0u: return floatBitsToUint(s.total);
- case 1u: return s.done | (s.highWater << 16u);
- case 2u: return s.events;
- case 3u: return s.taps | (s.procs << 16u);
- case 4u: return s.isbProcs | (s.isbConsumed << 16u);
- case 5u: return floatBitsToUint(s.petBrandDamage);
- case 6u: return floatBitsToUint(s.petDamage);
- case 7u: return s.petCasts | (s.rngCalls << 16u);
- case 8u: return floatBitsToUint(s.damage0);
- case 9u: return s.casts0 | (s.hits0 << 16u);
- case 10u: return s.crits0 | (s.misses0 << 16u);
- case 11u: return floatBitsToUint(s.damage1);
- case 12u: return s.casts1 | (s.hits1 << 16u);
- case 13u: return s.crits1 | (s.misses1 << 16u);
- case 14u: return floatBitsToUint(s.damage2);
- case 15u: return s.casts2 | (s.hits2 << 16u);
- case 16u: return s.crits2 | (s.misses2 << 16u);
- case 17u: return floatBitsToUint(s.damage3);
- case 18u: return s.casts3 | (s.hits3 << 16u);
- case 19u: return s.crits3 | (s.misses3 << 16u);
- case 20u: return floatBitsToUint(s.damage4);
- case 21u: return s.casts4 | (s.hits4 << 16u);
- case 22u: return s.crits4 | (s.misses4 << 16u);
- case 23u: return floatBitsToUint(s.damage5);
- case 24u: return s.casts5 | (s.hits5 << 16u);
- case 25u: return s.crits5 | (s.misses5 << 16u);
- case 26u: return floatBitsToUint(s.petMeleeDamage);
- case 27u: return s.petMeleeCasts | (s.petMeleeHits << 16u);
- case 28u: return s.petMeleeCrits | (s.petMeleeMisses << 16u);
- case 29u: return floatBitsToUint(s.petSpellDamage);
- case 30u: return s.petSpellCasts | (s.petSpellHits << 16u);
- case 31u: return s.petSpellCrits | (s.petSpellMisses << 16u);
- ${SPELLS.slice(6).map((_,j)=>{const i=j+6,k=32+j*3;return `case ${k}u:return floatBitsToUint(s.damage${i});case ${k+1}u:return s.casts${i}|(s.hits${i}<<16u);case ${k+2}u:return s.crits${i}|(s.misses${i}<<16u);`;}).join('')}
- default: return 0u;}}
-uint outputWord(uint index){return mode==1u?stateWord(index):compactWord(index);}
+${stateWordFunction}
+${detailedCompactWord}
+uint fastWord(uint index){switch(index){
+ case 0u:return floatBitsToUint(s.total);case 1u:return s.done|(s.highWater<<16u);
+ case 2u:return s.events;case 3u:return s.taps|(s.procs<<16u);
+ case 4u:return s.isbProcs|(s.isbConsumed<<16u);case 5u:return floatBitsToUint(s.petBrandDamage);
+ case 6u:return floatBitsToUint(s.petDamage);case 7u:return s.petCasts|(s.rngCalls<<16u);
+ case 8u:return floatBitsToUint(s.petMeleeDamage);case 9u:return s.petMeleeCasts|(s.petMeleeHits<<16u);
+ case 10u:return s.petMeleeCrits|(s.petMeleeMisses<<16u);case 11u:return floatBitsToUint(s.petSpellDamage);
+ case 12u:return s.petSpellCasts|(s.petSpellHits<<16u);case 13u:return s.petSpellCrits|(s.petSpellMisses<<16u);
+ case 14u:return floatBitsToUint(s.mana);case 15u:return floatBitsToUint(s.spent);default:return 0u;}}
+uint outputWord(uint index){return ${detailed ? 'mode==1u?stateWord(index):compactWord(index)' : 'fastWord(index)'};}
 uvec4 outputFour(uint index){return uvec4(outputWord(index),outputWord(index+1u),outputWord(index+2u),outputWord(index+3u));}
 void main(){
  uint x=uint(gl_FragCoord.x),y=uint(gl_FragCoord.y);
  uint lane,stripe;
  if(mode==0u){
-  uint simX=x,simY=y/${COMPACT_STRIPES}u;
-  stripe=y%${COMPACT_STRIPES}u;
+  uint stripes=${stripeCount};
+  uint simX=x,simY=y/stripes;
+  stripe=y%stripes;
   lane=simY*gridWidth+simX;
  }else if(mode==1u){
   lane=0u;stripe=y;
@@ -637,7 +630,7 @@ void main(){
   aplParams1[numAplRules]=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM1_OFFSET+r));
   numAplRules++;
  }
- ${Object.entries(STATE).map(([k,t])=>`s.${k}=${t==='f32'?'0.0':'0u'};`).join('\n')}
+ ${initialState}
  s.initialized=1u;s.mana=c.maxMana;eventDamage=0.0;eventFlags=0u;lastEvent=MAKE_EVENT(0u,0u,0u,0u);
  seedRandom(mode==2u?0u:(numConfigs>1u?fightInCfg:globalLane));
  enqueue(c.end,13u,0u,0u);enqueue(5000000u,10u,0u,0u);
@@ -649,7 +642,7 @@ void main(){
   if(s.done!=0u)break;advance();if(mode==2u&&s.events==lane+1u)break;
  }
  if(mode!=2u&&s.done==0u)s.done=6u;
- ${Array.from({length:SPELLS.length},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n')}
+ ${stateOverflow}
  if(max(max(s.petMeleeCasts,s.petMeleeHits),max(s.petMeleeCrits,s.petMeleeMisses))>65535u)s.done=7u;
  if(max(max(s.petSpellCasts,s.petSpellHits),max(s.petSpellCrits,s.petSpellMisses))>65535u)s.done=7u;
  ${Array.from({length:4},(_,i)=>`s.rng${i*2}=rng[${i}].x;s.rng${i*2+1}=rng[${i}].y;`).join('\n')}
@@ -659,4 +652,7 @@ void main(){
  }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}
 }
 `;
+}
 
+export const FRAGMENT = buildFragment(true);
+export const FAST_FRAGMENT = buildFragment(false);

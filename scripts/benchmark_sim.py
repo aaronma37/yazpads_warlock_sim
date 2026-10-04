@@ -15,6 +15,7 @@ Usage:
   python3 scripts/benchmark_sim.py --divergence-analysis
   python3 scripts/benchmark_sim.py --scales 1000 5000 10000 50000 100000
   python3 scripts/benchmark_sim.py --multi-spec
+  python3 scripts/benchmark_sim.py --fast
   python3 scripts/benchmark_sim.py --markdown benchmark_report.md
 """
 
@@ -92,9 +93,10 @@ def get_browser_command(choice="chrome", url=""):
     return None
 
 
-def run_headless_gpu_benchmark(cases, browser_choice="chrome", timeout=180):
+def run_headless_gpu_benchmark(cases, browser_choice="chrome", timeout=180, fast=False):
     runner_html_path = Path("threejs_webgl_des/benchmark_runner.html")
     cases_js = json.dumps(cases)
+    detailed_results = json.dumps(not fast)
 
     runner_html = f"""<!DOCTYPE html>
 <html>
@@ -117,10 +119,11 @@ async function run() {{
   const statusEl = document.getElementById('status');
   try {{
     const cases = {cases_js};
+    const detailedResults = {detailed_results};
     const results = [];
 
     // Warm-up pass (compile shader and initialize WebGL buffers)
-    await runSimulation({{ duration: 180, iterations: 100, seed: 1 }});
+    await runSimulation({{ duration: 180, iterations: 100, seed: 1 }}, {{ detailedResults }});
 
     for (const testCase of cases) {{
       const configs = testCase.configs;
@@ -129,9 +132,9 @@ async function run() {{
       const t0 = performance.now();
       let simResult;
       if (configs.length === 1) {{
-        simResult = await runSimulation(configs[0]);
+        simResult = await runSimulation(configs[0], {{ detailedResults }});
       }} else {{
-        simResult = await runMultiSimulation(configs, {{ iterations: configs[0].iterations }});
+        simResult = await runMultiSimulation(configs, {{ iterations: configs[0].iterations, detailedResults }});
       }}
       const elapsedMs = performance.now() - t0;
       
@@ -161,6 +164,9 @@ async function run() {{
         avgEvents: Math.round(avgEvents * 10) / 10,
         avgTaps: Math.round(avgTaps * 10) / 10,
         petDmg: Math.round(petDmg * 10) / 10,
+        timing: simResult.timing,
+        adapter: simResult.adapter,
+        detailedResults,
         maxHeap: maxHeap
       }});
     }}
@@ -233,6 +239,7 @@ run();
         print(f"{RED}Error: Suitable browser not found for GPU benchmark.{RESET}")
         return None
 
+    proc = None
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         finished = report_event.wait(timeout=timeout)
@@ -241,6 +248,13 @@ run();
             print(f"{RED}GPU benchmark timed out after {timeout}s.{RESET}")
             return None
     finally:
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
         server.shutdown()
         server.server_close()
         runner_html_path.unlink(missing_ok=True)
@@ -375,6 +389,7 @@ def main():
     parser.add_argument("--timeout", type=int, default=180, help="Max timeout in seconds for GPU run")
     parser.add_argument("--markdown", type=str, default=None, help="Export benchmark results table to markdown file")
     parser.add_argument("--json", action="store_true", help="Output raw JSON results")
+    parser.add_argument("--fast", action="store_true", help="Skip detailed spell accounting and use one output stripe for GPU runs")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -404,7 +419,7 @@ def main():
                 "totalFights": args.spec_iterations,
                 "preset_meta": p
             })
-        spec_results = run_headless_gpu_benchmark(spec_cases, browser_choice=args.browser, timeout=args.timeout) or []
+        spec_results = run_headless_gpu_benchmark(spec_cases, browser_choice=args.browser, timeout=args.timeout, fast=args.fast) or []
         
         if spec_results:
             spec_results.sort(key=lambda r: r["throughput"], reverse=True)
@@ -464,7 +479,7 @@ def main():
             "configs": multi_configs,
             "totalFights": len(multi_configs) * args.spec_iterations
         }]
-        div_results = run_headless_gpu_benchmark(div_cases, browser_choice=args.browser, timeout=args.timeout)
+        div_results = run_headless_gpu_benchmark(div_cases, browser_choice=args.browser, timeout=args.timeout, fast=args.fast)
         if div_results:
             unified_res = div_results[0]
             sum_isolated_ms = sum(r["elapsedMs"] for r in spec_results)
@@ -514,7 +529,7 @@ def main():
     gpu_results = None
     if not args.cpu_only and gpu_cases:
         print(f"{BOLD}[Scaling] Running WebGL2 GPU Batch Scaling Benchmark...{RESET}")
-        gpu_results = run_headless_gpu_benchmark(gpu_cases, browser_choice=args.browser, timeout=args.timeout)
+        gpu_results = run_headless_gpu_benchmark(gpu_cases, browser_choice=args.browser, timeout=args.timeout, fast=args.fast)
         if not gpu_results:
             print(f"{RED}GPU benchmark failed to run or timed out.{RESET}")
 
@@ -544,8 +559,8 @@ def main():
         print(f"{BOLD}   Simulation Throughput & Scaling Summary ({args.preset}){RESET}")
         print(f"{BOLD}{CYAN}========================================================================================{RESET}\n")
 
-        st_throughput = cpu_results.get("single_thread", {}).get("throughput", 1.0)
-        mt_throughput = cpu_results.get("multi_thread", {}).get("throughput", 1.0)
+        st_throughput = cpu_results.get("single_thread", {}).get("throughput", 0.0)
+        mt_throughput = cpu_results.get("multi_thread", {}).get("throughput", 0.0)
 
         header = f"{'Batch / Workload':<24} {'Fights':<12} {'GPU Time':<12} {'GPU Throughput':<18} {'Speedup vs 1-CPU':<18} {'Speedup vs Multi-CPU'}"
         print(f"{BOLD}{header}{RESET}")
@@ -566,6 +581,9 @@ def main():
         print(f"\n{DIM}{'-'*len(header)}{RESET}")
         max_tp = max(r["throughput"] for r in gpu_results)
         print(f"  • Peak GPU Throughput reached: {BOLD}{GREEN}{max_tp:,.0f} simulations / sec{RESET}\n")
+
+    if args.json:
+        print(json.dumps({"gpu": gpu_results, "specs": spec_results, "cpu": cpu_results}, indent=2))
 
     if args.markdown:
         md_lines = [
