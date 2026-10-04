@@ -117,24 +117,62 @@ function decodeBatch2D(outputs,width,count,config,first,states){
  const f0=new Float32Array(att0.buffer),f1=new Float32Array(att1.buffer),f2=new Float32Array(att2.buffer),f3=new Float32Array(att3.buffer);
  for(let lane=0;lane<count;lane++){
   const simX=lane%width,simY=Math.floor(lane/width);
-  const p0=((simY*3)*width+simX)*4,p1=((simY*3+1)*width+simX)*4,p2=((simY*3+2)*width+simX)*4;
-  const done=att1[p0],now=att1[p0+1],events=att1[p0+2],highWater=att1[p0+3];
-  const total=f0[p0],mana=f0[p0+1],spent=f0[p0+2],gained=f0[p0+3];
+  const p0=((simY*2)*width+simX)*4,p1=((simY*2+1)*width+simX)*4;
+  const total=f0[p0];
+  const doneWord=att0[p0+1];
+  const done=doneWord&65535,highWater=doneWord>>>16;
+  const events=att0[p0+2];
+  const tapWord=att0[p0+3];
+  const taps=tapWord&65535,procs=tapWord>>>16;
   if(done!==1||!Number.isFinite(total))throw new Error(`Fight ${first+lane} failed (status ${done}). Incomplete results rejected.`);
+  const isbWord=att1[p0];
+  const isbProcs=isbWord&65535,isbConsumed=isbWord>>>16;
+  const petBrandDamage=f1[p0+1];
+  const petDamage=f1[p0+2];
+  const petCastsWord=att1[p0+3];
+  const petCasts=petCastsWord&65535,rngCalls=petCastsWord>>>16;
+
+  const damage0=f2[p0];
+  const c0=att2[p0+1],casts0=c0&65535,hits0=c0>>>16;
+  const cr0=att2[p0+2],crits0=cr0&65535,misses0=cr0>>>16;
+  const damage1=f2[p0+3];
+
+  const c1=att3[p0],casts1=c1&65535,hits1=c1>>>16;
+  const cr1=att3[p0+1],crits1=cr1&65535,misses1=cr1>>>16;
+  const damage2=f3[p0+2];
+  const c2=att3[p0+3],casts2=c2&65535,hits2=c2>>>16;
+
+  const cr2=att0[p1],crits2=cr2&65535,misses2=cr2>>>16;
+  const damage3=f0[p1+1];
+  const c3=att0[p1+2],casts3=c3&65535,hits3=c3>>>16;
+  const cr3=att0[p1+3],crits3=cr3&65535,misses3=cr3>>>16;
+
+  const damage4=f1[p1];
+  const c4=att1[p1+1],casts4=c4&65535,hits4=c4>>>16;
+  const cr4=att1[p1+2],crits4=cr4&65535,misses4=cr4>>>16;
+  const damage5=f1[p1+3];
+
+  const c5=att2[p1],casts5=c5&65535,hits5=c5>>>16;
+  const cr5=att2[p1+1],crits5=cr5&65535,misses5=cr5>>>16;
+  const petMeleeDamage=f2[p1+2];
+  const pmc=att2[p1+3],petMeleeCasts=pmc&65535,petMeleeHits=pmc>>>16;
+
+  const pmcr=att3[p1],petMeleeCrits=pmcr&65535,petMeleeMisses=pmcr>>>16;
+  const petSpellDamage=f3[p1+1];
+  const psc=att3[p1+2],petSpellCasts=psc&65535,petSpellHits=psc>>>16;
+  const pscr=att3[p1+3],petSpellCrits=pscr&65535,petSpellMisses=pscr>>>16;
+
   const s={
-   total,mana,spent,gained,done,now,events,highWater,
-   taps:att2[p0],procs:att2[p0+1],isbProcs:att2[p0+2],isbConsumed:att2[p0+3],
-   damage0:f3[p0],casts0:att3[p0+1]&65535,hits0:att3[p0+1]>>>16,crits0:att3[p0+2]&65535,misses0:att3[p0+2]>>>16,
-   damage1:f3[p0+3],casts1:att0[p1]&65535,hits1:att0[p1]>>>16,crits1:att0[p1+1]&65535,misses1:att0[p1+1]>>>16,
-   damage2:f0[p1+2],casts2:att0[p1+3]&65535,hits2:att0[p1+3]>>>16,crits2:att1[p1]&65535,misses2:att1[p1]>>>16,
-   damage3:f1[p1+1],casts3:att1[p1+2]&65535,hits3:att1[p1+2]>>>16,crits3:att1[p1+3]&65535,misses3:att1[p1+3]>>>16,
-   damage4:f2[p1],casts4:att2[p1+1]&65535,hits4:att2[p1+1]>>>16,crits4:att2[p1+2]&65535,misses4:att2[p1+2]>>>16,
-   damage5:f2[p1+3],casts5:att3[p1]&65535,hits5:att3[p1]>>>16,crits5:att3[p1+1]&65535,misses5:att3[p1+1]>>>16,
-   petMeleeDamage:f3[p1+2],petMeleeCasts:att3[p1+3]&65535,petMeleeHits:att3[p1+3]>>>16,
-   petMeleeCrits:att0[p2]&65535,petMeleeMisses:att0[p2]>>>16,
-   petSpellDamage:f0[p2+1],petSpellCasts:att0[p2+2]&65535,petSpellHits:att0[p2+2]>>>16,
-   petSpellCrits:att0[p2+3]&65535,petSpellMisses:att0[p2+3]>>>16,
-   petBrandDamage:f1[p2],petDamage:f1[p2+1],petCasts:att1[p2+2],rngCalls:att1[p2+3]
+   total,done,highWater,events,taps,procs,isbProcs,isbConsumed,
+   petBrandDamage,petDamage,petCasts,rngCalls,
+   damage0,casts0,hits0,crits0,misses0,
+   damage1,casts1,hits1,crits1,misses1,
+   damage2,casts2,hits2,crits2,misses2,
+   damage3,casts3,hits3,crits3,misses3,
+   damage4,casts4,hits4,crits4,misses4,
+   damage5,casts5,hits5,crits5,misses5,
+   petMeleeDamage,petMeleeCasts,petMeleeHits,petMeleeCrits,petMeleeMisses,
+   petSpellDamage,petSpellCasts,petSpellHits,petSpellCrits,petSpellMisses
   };
   states.push(s);
  }
@@ -276,9 +314,9 @@ export async function runMultiSimulation(inputs, { signal, onProgress = () => {}
     const capacity = Math.min(effectiveBatch, totalFights);
     const gridWidth = Math.min(maxTexSize, Math.max(1, Math.min(1024, capacity)));
     const gridHeight = Math.ceil(capacity / gridWidth);
-    if (gridHeight * 3 > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+    if (gridHeight * 2 > maxTexSize) throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
 
-    rt = target(gridWidth, gridHeight * 3);
+    rt = target(gridWidth, gridHeight * 2);
     e.renderer.setRenderTarget(rt);
 
     let compileMs = 0;
@@ -349,8 +387,8 @@ export async function runSimulation(input,{signal,onProgress=()=>{},batchSize=52
   const capacity=Math.min(effectiveBatch,config.iterations);
   const gridWidth=Math.min(maxTexSize,Math.max(1,Math.min(1024,capacity)));
   const gridHeight=Math.ceil(capacity/gridWidth);
-  if(gridHeight*3>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
-  rt=target(gridWidth,gridHeight*3);e.renderer.setRenderTarget(rt);
+  if(gridHeight*2>maxTexSize)throw new Error(`Simulation batch exceeds maximum texture height (${maxTexSize}).`);
+  rt=target(gridWidth,gridHeight*2);e.renderer.setRenderTarget(rt);
   let compileMs=0;
   if(!e.compiled){
     onProgress({phase:'Compiling GPU Shader',completed:0,total:config.iterations});

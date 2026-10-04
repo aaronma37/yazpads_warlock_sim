@@ -256,7 +256,7 @@ export const STATE = {
 };
 
 export const STATE_WORDS = Object.keys(STATE).length;
-export const HEAP_CAPACITY = 64;
+export const HEAP_CAPACITY = 40;
 export const TRACE_CAPACITY = 256;
 export const TRACE_WORDS = 8;
 export const CONFIG_WORDS = Object.keys(CONFIG).length;

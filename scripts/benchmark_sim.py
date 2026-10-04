@@ -2,15 +2,20 @@
 """
 Benchmark suite for Warlock Simulation: WebGL2 GPU Shader vs Native C++ CPU Oracle.
 
-Evaluates simulation throughput (fights/second), execution latency, batch scaling,
-and multi-spec concurrency across both GPU and multi-threaded CPU environments.
+Evaluates:
+  1. Simulation throughput (fights/second), execution latency, and batch scaling.
+  2. Per-spec isolated performance across all 22 preset configurations to identify
+     bottlenecks and slow configurations.
+  3. Multi-spec batching and SIMD/Warp divergence analysis.
+  4. Authoritative C++ CPU Oracle scaling across single and multi-core baselines.
 
 Usage:
   python3 scripts/benchmark_sim.py
-  python3 scripts/benchmark_sim.py --scales 1000 5000 10000 50000 100000 500000
+  python3 scripts/benchmark_sim.py --isolate-specs
+  python3 scripts/benchmark_sim.py --divergence-analysis
+  python3 scripts/benchmark_sim.py --scales 1000 5000 10000 50000 100000
   python3 scripts/benchmark_sim.py --multi-spec
-  python3 scripts/benchmark_sim.py --gpu-only
-  python3 scripts/benchmark_sim.py --browser chrome
+  python3 scripts/benchmark_sim.py --markdown benchmark_report.md
 """
 
 import argparse
@@ -45,7 +50,6 @@ class BenchmarkServer:
         handler = lambda *args, **kwargs: http.server.SimpleHTTPRequestHandler(
             *args, directory=str(self.directory), **kwargs
         )
-        # Suppress logging
         handler.log_message = lambda *args: None
         self.httpd = socketserver.TCPServer(("127.0.0.1", port), handler)
         self.port = self.httpd.server_address[1]
@@ -58,7 +62,6 @@ class BenchmarkServer:
 
 
 def get_browser_command(choice="chrome", url=""):
-    # Check flatpak chrome first (common in SteamOS / Linux desktop)
     flatpak = shutil.which("flatpak")
     if flatpak:
         check = subprocess.run([flatpak, "info", "com.google.Chrome"], capture_output=True, text=True)
@@ -82,7 +85,6 @@ def get_browser_command(choice="chrome", url=""):
                 "--enable-webgl", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", url
             ]
 
-    # Firefox fallback
     firefox = shutil.which("firefox")
     if firefox:
         return [firefox, "--headless", url]
@@ -90,7 +92,7 @@ def get_browser_command(choice="chrome", url=""):
     return None
 
 
-def run_headless_gpu_benchmark(cases, browser_choice="chrome", timeout=120):
+def run_headless_gpu_benchmark(cases, browser_choice="chrome", timeout=180):
     runner_html_path = Path("threejs_webgl_des/benchmark_runner.html")
     cases_js = json.dumps(cases)
 
@@ -132,8 +134,21 @@ async function run() {{
         simResult = await runMultiSimulation(configs, {{ iterations: configs[0].iterations }});
       }}
       const elapsedMs = performance.now() - t0;
-      const meanDps = (simResult.summary ? simResult.summary.mean : 
-                      (simResult.results ? simResult.results.reduce((a, b) => a + (b.summary ? b.summary.mean : 0), 0) / simResult.results.length : 0));
+      
+      let meanDps = 0, avgEvents = 0, avgTaps = 0, petDmg = 0, maxHeap = 0;
+      if (simResult.summary) {{
+        meanDps = simResult.summary.mean || 0;
+        avgEvents = simResult.summary.events ? (simResult.summary.events / totalFights) : 0;
+        avgTaps = simResult.summary.taps || 0;
+        petDmg = simResult.summary.petDamage || 0;
+        maxHeap = simResult.summary.maxHeap || 0;
+      }} else if (simResult.results) {{
+        const rLen = simResult.results.length;
+        meanDps = simResult.results.reduce((a, b) => a + (b.summary ? b.summary.mean : 0), 0) / rLen;
+        avgEvents = simResult.results.reduce((a, b) => a + (b.summary ? (b.summary.events / b.summary.count) : 0), 0) / rLen;
+        avgTaps = simResult.results.reduce((a, b) => a + (b.summary ? b.summary.taps : 0), 0) / rLen;
+        petDmg = simResult.results.reduce((a, b) => a + (b.summary ? b.summary.petDamage : 0), 0) / rLen;
+      }}
 
       results.push({{
         name: testCase.name,
@@ -142,7 +157,11 @@ async function run() {{
         totalFights: totalFights,
         elapsedMs: elapsedMs,
         throughput: Math.round((totalFights / (elapsedMs / 1000))),
-        meanDps: meanDps
+        meanDps: meanDps,
+        avgEvents: Math.round(avgEvents * 10) / 10,
+        avgTaps: Math.round(avgTaps * 10) / 10,
+        petDmg: Math.round(petDmg * 10) / 10,
+        maxHeap: maxHeap
       }});
     }}
 
@@ -243,7 +262,6 @@ def benchmark_cpu(repo_root, preset_id, iterations, workers=None):
 
     def run_worker_batch(task):
         seed_start, count = task
-        # Interactive stream protocol in cpu_fixture
         input_lines = []
         for offset in range(count):
             input_lines.append(f"PRESET {preset_id} {(seed_start + offset) & 0xFFFFFFFF} 180.0")
@@ -345,6 +363,9 @@ def main():
     parser = argparse.ArgumentParser(description="Warlock Simulation GPU/CPU Scaling & Throughput Benchmark")
     parser.add_argument("--scales", nargs="+", type=int, default=[1000, 5000, 10000, 50000, 100000, 250000, 500000, 1000000],
                         help="Simulation batch sizes to evaluate")
+    parser.add_argument("--isolate-specs", action="store_true", help="Benchmark and rank every spec preset in isolation")
+    parser.add_argument("--divergence-analysis", action="store_true", help="Analyze warp divergence overhead of mixed vs isolated specs")
+    parser.add_argument("--spec-iterations", type=int, default=5000, help="Iterations per spec for isolated benchmark (default: 5000)")
     parser.add_argument("--gpu-only", action="store_true", help="Run only GPU benchmarks")
     parser.add_argument("--cpu-only", action="store_true", help="Run only CPU benchmarks")
     parser.add_argument("--multi-spec", action="store_true", help="Include multi-spec concurrency scaling benchmark")
@@ -364,25 +385,119 @@ def main():
     print(f"{DIM}   Environment: {platform.system()} {platform.machine()} ({os.cpu_count()} CPU cores available){RESET}")
     print(f"{BOLD}{CYAN}========================================================================================{RESET}\n")
 
-    # 1. Single-Spec GPU Scaling Benchmark
+    bin_path = repo_root / "bin" / "warlock_cpu_fixture"
+    res = subprocess.run([str(bin_path), "--list-presets"], capture_output=True, text=True)
+    all_presets = json.loads(res.stdout.strip()) if res.returncode == 0 else []
+
+    # 1. Spec Isolation Benchmark
+    spec_results = []
+    if args.isolate_specs or args.divergence_analysis:
+        print(f"{BOLD}[Spec Isolation] Benchmarking all {len(all_presets)} preset configurations ({args.spec_iterations:,} fights each)...{RESET}")
+        spec_cases = []
+        for p in all_presets:
+            p_cfg = get_base_preset_config(repo_root, p["id"])
+            p_cfg["iterations"] = args.spec_iterations
+            p_cfg["seed"] = 42
+            spec_cases.append({
+                "name": p["id"],
+                "configs": [p_cfg],
+                "totalFights": args.spec_iterations,
+                "preset_meta": p
+            })
+        spec_results = run_headless_gpu_benchmark(spec_cases, browser_choice=args.browser, timeout=args.timeout) or []
+        
+        if spec_results:
+            spec_results.sort(key=lambda r: r["throughput"], reverse=True)
+            fastest_tp = spec_results[0]["throughput"] if spec_results else 1
+
+            print(f"\n{BOLD}{CYAN}==================================================================================================================={RESET}")
+            print(f"{BOLD}   Isolated Spec Presets Benchmark & Bottleneck Leaderboard ({args.spec_iterations:,} fights each){RESET}")
+            print(f"{BOLD}{CYAN}==================================================================================================================={RESET}\n")
+
+            header_spec = f"{'Rank':<5} {'Preset ID':<24} {'Pet':<9} {'Rotation':<8} {'Time':<9} {'Throughput':<16} {'Events/Fight':<13} {'Slowdown':<10} {'Diagnosis'}"
+            print(f"{BOLD}{header_spec}{RESET}")
+            print(f"{DIM}{'-'*len(header_spec)}{RESET}")
+
+            for rank, r in enumerate(spec_results, 1):
+                p_meta = next((p for p in all_presets if p["id"] == r["name"]), {})
+                pet = p_meta.get("pet", "none")
+                rot = p_meta.get("rotation", "shadow")
+                ev = r.get("avgEvents", 0)
+                tp = r["throughput"]
+                slowdown = f"{((fastest_tp - tp) / fastest_tp * 100):.1f}%" if fastest_tp > tp else "Baseline"
+                
+                # Diagnosis reasoning
+                diag = []
+                if ev > 240:
+                    diag.append("High Event Density")
+                if rot == "searing":
+                    diag.append("1.5s Searing Spam")
+                if pet == "imp":
+                    diag.append("Imp Firebolt Loops")
+                elif pet == "succubus":
+                    diag.append("Melee + Lash")
+                if p_meta.get("demonicBrand"):
+                    diag.append("Brand Weave")
+                if p_meta.get("decimation"):
+                    diag.append("Decimation Weave")
+                if not diag:
+                    diag.append("Standard Low-Divergence")
+
+                diag_str = ", ".join(diag)
+                color = GREEN if rank <= 5 else (YELLOW if rank <= 15 else RED)
+                print(f"{rank:<5} {r['name']:<24} {pet:<9} {rot:<8} {r['elapsedMs']:<9.1f} {color}{BOLD}{tp:<16,d}{RESET} {ev:<13.1f} {slowdown:<10} {DIM}{diag_str}{RESET}")
+
+            print(f"{DIM}{'-'*len(header_spec)}{RESET}\n")
+
+    # 2. Divergence Analysis
+    if args.divergence_analysis and spec_results:
+        print(f"{BOLD}[Divergence Analysis] Comparing Isolated vs Unified Multi-Spec Batching...{RESET}")
+        multi_configs = []
+        for p in all_presets:
+            p_cfg = get_base_preset_config(repo_root, p["id"])
+            p_cfg["iterations"] = args.spec_iterations
+            p_cfg["seed"] = 42
+            multi_configs.append(p_cfg)
+
+        div_cases = [{
+            "name": f"MultiSpec_Unified_{len(all_presets)}x{args.spec_iterations}",
+            "configs": multi_configs,
+            "totalFights": len(multi_configs) * args.spec_iterations
+        }]
+        div_results = run_headless_gpu_benchmark(div_cases, browser_choice=args.browser, timeout=args.timeout)
+        if div_results:
+            unified_res = div_results[0]
+            sum_isolated_ms = sum(r["elapsedMs"] for r in spec_results)
+            unified_ms = unified_res["elapsedMs"]
+            divergence_penalty_pct = ((unified_ms - sum_isolated_ms) / sum_isolated_ms * 100.0) if sum_isolated_ms > 0 else 0
+
+            print(f"\n{BOLD}{CYAN}----------------------------------------------------------------------------------------{RESET}")
+            print(f"{BOLD}   Warp / SIMD Divergence Impact Breakdown{RESET}")
+            print(f"{BOLD}{CYAN}----------------------------------------------------------------------------------------{RESET}")
+            print(f"  • Total Fights Executed:                  {BOLD}{unified_res['totalFights']:,}{RESET} ({len(all_presets)} specs × {args.spec_iterations:,} fights)")
+            print(f"  • Homogeneous Isolated Batches Sum:      {BOLD}{sum_isolated_ms:.1f} ms{RESET} (Avg {(sum_isolated_ms / len(spec_results)):.1f} ms/spec)")
+            print(f"  • Unified Heterogeneous Batch Execution:  {BOLD}{unified_ms:.1f} ms{RESET}")
+            if divergence_penalty_pct > 0:
+                print(f"  • Warp Divergence Execution Penalty:      {BOLD}{RED}+{divergence_penalty_pct:.1f}% longer{RESET} when mixing slow & fast specs in same warp.")
+            else:
+                print(f"  • Warp Divergence Execution Penalty:      {BOLD}{GREEN}{divergence_penalty_pct:.1f}% (GPU occupancy fully saturated){RESET}")
+            print(f"  • Unified Batch GPU Throughput:           {BOLD}{GREEN}{unified_res['throughput']:,} fights/sec{RESET}\n")
+
+    # 3. Standard Single-Spec GPU Scaling Benchmark
     gpu_cases = []
-    for it in args.scales:
-        cfg = dict(base_cfg)
-        cfg["iterations"] = it
-        cfg["seed"] = 42
-        gpu_cases.append({
-            "name": f"Batch_{it}",
-            "configs": [cfg],
-            "totalFights": it
-        })
+    if not (args.isolate_specs and not args.scales):
+        for it in args.scales:
+            cfg = dict(base_cfg)
+            cfg["iterations"] = it
+            cfg["seed"] = 42
+            gpu_cases.append({
+                "name": f"Batch_{it}",
+                "configs": [cfg],
+                "totalFights": it
+            })
 
-    # Add Multi-Spec concurrent tests if requested
-    if args.multi_spec:
-        # Load all available presets
-        bin_path = repo_root / "bin" / "warlock_cpu_fixture"
-        res = subprocess.run([str(bin_path), "--list-presets"], capture_output=True, text=True)
-        all_presets = json.loads(res.stdout.strip())
-
+    # Add Multi-Spec concurrent scaling tests if requested
+    if args.multi_spec and all_presets:
         for multi_it in [1000, 5000, 10000]:
             multi_configs = []
             for p in all_presets:
@@ -397,17 +512,16 @@ def main():
             })
 
     gpu_results = None
-    if not args.cpu_only:
-        print(f"{BOLD}[1/2] Running WebGL2 GPU Shader Simulation Benchmark...{RESET}")
+    if not args.cpu_only and gpu_cases:
+        print(f"{BOLD}[Scaling] Running WebGL2 GPU Batch Scaling Benchmark...{RESET}")
         gpu_results = run_headless_gpu_benchmark(gpu_cases, browser_choice=args.browser, timeout=args.timeout)
         if not gpu_results:
             print(f"{RED}GPU benchmark failed to run or timed out.{RESET}")
 
-    # 2. CPU Oracle Scaling Benchmark
+    # 4. CPU Oracle Scaling Benchmark
     cpu_results = {}
-    if not args.gpu_only:
-        print(f"\n{BOLD}[2/2] Running Authoritative C++ CPU Oracle Benchmark...{RESET}")
-        cpu_scales = [s for s in args.scales if s <= 50000] # Limit CPU to reasonable interactive durations
+    if not args.gpu_only and not args.isolate_specs:
+        print(f"\n{BOLD}[CPU Oracle] Running Authoritative C++ CPU Oracle Benchmark...{RESET}")
         
         # Single thread baseline
         print(f"  • Benchmarking Single-Threaded CPU (1 core)...")
@@ -424,19 +538,19 @@ def main():
         if mt_res:
             print(f"    ↳ Multi-Thread ({num_cores}T) Throughput: {mt_res['throughput']:,.0f} fights/s ({mt_res['elapsedMs']:.1f}ms for {mt_res['completed']:,} fights)")
 
-    # Display results table
-    print(f"\n{BOLD}{CYAN}========================================================================================{RESET}")
-    print(f"{BOLD}   Simulation Throughput & Scaling Summary{RESET}")
-    print(f"{BOLD}{CYAN}========================================================================================{RESET}\n")
-
-    st_throughput = cpu_results.get("single_thread", {}).get("throughput", 1.0)
-    mt_throughput = cpu_results.get("multi_thread", {}).get("throughput", 1.0)
-
-    header = f"{'Batch / Workload':<24} {'Fights':<12} {'GPU Time':<12} {'GPU Throughput':<18} {'Speedup vs 1-CPU':<18} {'Speedup vs Multi-CPU'}"
-    print(f"{BOLD}{header}{RESET}")
-    print(f"{DIM}{'-'*len(header)}{RESET}")
-
+    # Display scaling summary
     if gpu_results:
+        print(f"\n{BOLD}{CYAN}========================================================================================{RESET}")
+        print(f"{BOLD}   Simulation Throughput & Scaling Summary ({args.preset}){RESET}")
+        print(f"{BOLD}{CYAN}========================================================================================{RESET}\n")
+
+        st_throughput = cpu_results.get("single_thread", {}).get("throughput", 1.0)
+        mt_throughput = cpu_results.get("multi_thread", {}).get("throughput", 1.0)
+
+        header = f"{'Batch / Workload':<24} {'Fights':<12} {'GPU Time':<12} {'GPU Throughput':<18} {'Speedup vs 1-CPU':<18} {'Speedup vs Multi-CPU'}"
+        print(f"{BOLD}{header}{RESET}")
+        print(f"{DIM}{'-'*len(header)}{RESET}")
+
         for r in gpu_results:
             total_fights = r["totalFights"]
             elapsed_ms = r["elapsedMs"]
@@ -449,38 +563,50 @@ def main():
             tp_str = f"{throughput:,.0f} fights/s"
             print(f"{r['name']:<24} {fights_str:<12} {time_str:<12} {GREEN}{BOLD}{tp_str:<18}{RESET} {CYAN}{speedup_st:<18}{RESET} {YELLOW}{speedup_mt}{RESET}")
 
-    print(f"\n{DIM}{'-'*len(header)}{RESET}")
-    print(f"{BOLD}Key Insights:{RESET}")
-    if gpu_results and len(gpu_results) > 0:
+        print(f"\n{DIM}{'-'*len(header)}{RESET}")
         max_tp = max(r["throughput"] for r in gpu_results)
-        print(f"  • Peak GPU Throughput reached: {BOLD}{GREEN}{max_tp:,.0f} simulations / sec{RESET}")
-        if mt_throughput > 0:
-            print(f"  • Peak GPU Acceleration factor: {BOLD}{CYAN}{(max_tp / mt_throughput):.1f}x faster{RESET} than all {os.cpu_count()} CPU cores combined.")
-            print(f"  • Peak GPU Acceleration factor: {BOLD}{CYAN}{(max_tp / st_throughput):.1f}x faster{RESET} than a single CPU core.")
-    print()
+        print(f"  • Peak GPU Throughput reached: {BOLD}{GREEN}{max_tp:,.0f} simulations / sec{RESET}\n")
 
     if args.markdown:
         md_lines = [
-            "# Warlock Simulation Throughput & Scaling Benchmark Report\n",
+            "# Warlock Simulation Throughput & Spec Isolation Benchmark Report\n",
             f"- **Environment**: `{platform.system()} {platform.machine()}` ({os.cpu_count()} CPU cores)",
-            f"- **Date / Time**: `{time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}`",
-            f"- **Single-Core CPU Baseline**: `{st_throughput:,.0f} fights/s`",
-            f"- **Multi-Core CPU ({os.cpu_count()}T) Baseline**: `{mt_throughput:,.0f} fights/s`\n",
-            "| Batch / Workload | Total Fights | GPU Latency | GPU Throughput | Speedup vs 1-CPU | Speedup vs Multi-CPU |",
-            "|---|---|---|---|---|---|"
+            f"- **Date / Time**: `{time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}`\n"
         ]
-        if gpu_results:
-            for r in gpu_results:
-                total_fights = r["totalFights"]
-                elapsed_ms = r["elapsedMs"]
-                throughput = r["throughput"]
-                speedup_st = f"{(throughput / st_throughput):.1f}x" if st_throughput > 0 else "—"
-                speedup_mt = f"{(throughput / mt_throughput):.1f}x" if mt_throughput > 0 else "—"
-                time_str = f"{elapsed_ms:.1f} ms" if elapsed_ms < 1000 else f"{elapsed_ms/1000:.2f} s"
-                md_lines.append(f"| `{r['name']}` | {total_fights:,} | {time_str} | **{throughput:,.0f} fights/s** | `{speedup_st}` | `{speedup_mt}` |")
         
-        md_content = "\n".join(md_lines) + "\n"
-        Path(args.markdown).write_text(md_content)
+        if spec_results:
+            md_lines.append("## Isolated Spec Presets Performance & Bottleneck Analysis\n")
+            md_lines.append("| Rank | Preset ID | Pet | Rotation | Time (ms) | GPU Throughput | Mean Events | Slowdown vs Best | Bottleneck Drivers |")
+            md_lines.append("|---|---|---|---|---|---|---|---|---|")
+            fastest_tp = spec_results[0]["throughput"] if spec_results else 1
+            for rank, r in enumerate(spec_results, 1):
+                p_meta = next((p for p in all_presets if p["id"] == r["name"]), {})
+                pet = p_meta.get("pet", "none")
+                rot = p_meta.get("rotation", "shadow")
+                ev = r.get("avgEvents", 0)
+                tp = r["throughput"]
+                slowdown = f"{((fastest_tp - tp) / fastest_tp * 100):.1f}%" if fastest_tp > tp else "Baseline"
+                diag = []
+                if ev > 240: diag.append("High Event Count")
+                if rot == "searing": diag.append("1.5s Searing Spam")
+                if pet == "imp": diag.append("Imp Firebolt Loops")
+                elif pet == "succubus": diag.append("Melee + Lash")
+                if p_meta.get("demonicBrand"): diag.append("Brand Weave")
+                if p_meta.get("decimation"): diag.append("Decimation Weave")
+                if not diag: diag.append("Low Divergence")
+                md_lines.append(f"| {rank} | `{r['name']}` | {pet} | {rot} | {r['elapsedMs']:.1f} | **{tp:,} f/s** | {ev:.1f} | `{slowdown}` | {', '.join(diag)} |")
+            md_lines.append("\n")
+
+        if gpu_results:
+            md_lines.append("## Scaling Throughput Summary\n")
+            md_lines.append("| Batch / Workload | Total Fights | GPU Latency | GPU Throughput |")
+            md_lines.append("|---|---|---|---|")
+            for r in gpu_results:
+                time_str = f"{r['elapsedMs']:.1f} ms" if r['elapsedMs'] < 1000 else f"{r['elapsedMs']/1000:.2f} s"
+                md_lines.append(f"| `{r['name']}` | {r['totalFights']:,} | {time_str} | **{r['throughput']:,} fights/s** |")
+            md_lines.append("\n")
+
+        Path(args.markdown).write_text("\n".join(md_lines))
         print(f"{GREEN}✓ Benchmark report written to {args.markdown}{RESET}\n")
 
 

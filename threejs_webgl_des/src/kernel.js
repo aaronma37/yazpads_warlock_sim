@@ -27,7 +27,11 @@ uniform uint mode;
 uniform uint eventBudget;
 ${structure('FightConfig',CONFIG)}
 ${structure('FightState',STATE)}
-struct Event { uint at; uint kind; uint spell; uint generation; };
+struct Event { uint at; uint data; };
+#define EV_KIND(e) ((e).data & 0xFFu)
+#define EV_SPELL(e) (((e).data >> 8u) & 0xFFu)
+#define EV_GEN(e) ((e).data >> 16u)
+#define MAKE_EVENT(at, kind, spell, gen) Event((at), ((kind) & 0xFFu) | (((spell) & 0xFFu) << 8u) | (((gen) & 0xFFFFu) << 16u))
 FightConfig c;
 FightState s;
 Event queue[${HEAP_CAPACITY}];
@@ -36,6 +40,9 @@ float eventDamage;
 uint eventFlags;
 Event lastEvent;
 uint currentCfgIdx;
+uint aplHeaders[${MAX_APL_RULES}];
+float aplParams[${MAX_APL_RULES}];
+uint numAplRules;
 
 #define APL_HEADER_OFFSET ${APL_HEADER_OFFSET}u
 #define APL_PARAM_OFFSET ${APL_PARAM_OFFSET}u
@@ -78,8 +85,8 @@ float random01(){
 }
 void enqueue(uint at,uint kind,uint spell,uint generation){
  if(s.size>=${HEAP_CAPACITY}u){s.done=2u;return;}
- uint i=s.size++;s.highWater=max(s.highWater,s.size);Event e=Event(at,kind,spell,generation);
- for(int guard=0;guard<${HEAP_CAPACITY};guard++){
+ uint i=s.size++;s.highWater=max(s.highWater,s.size);Event e=MAKE_EVENT(at,kind,spell,generation);
+ for(int guard=0;guard<6;guard++){
   if(i==0u)break;uint parent=(i-1u)/2u;if(e.at>=queue[parent].at)break;queue[i]=queue[parent];i=parent;
  }
  queue[i]=e;
@@ -87,7 +94,7 @@ void enqueue(uint at,uint kind,uint spell,uint generation){
 Event dequeue(){
  Event e=queue[0];s.size--;
  if(s.size>0u){queue[0]=queue[s.size];uint i=0u;
-  for(int guard=0;guard<${HEAP_CAPACITY};guard++){
+  for(int guard=0;guard<6;guard++){
    uint left=2u*i+1u,right=left+1u,smallest=i;
    if(left<s.size){if(queue[left].at<queue[smallest].at)smallest=left;}
    if(right<s.size){if(queue[right].at<queue[smallest].at)smallest=right;}
@@ -172,40 +179,41 @@ void directImpact(uint spell){
 }
 void tick(Event e){
  float amount,p=currentPower();uint remaining=0u,interval=3000000u;
- if(e.spell==1u){
-  if(e.generation!=s.corrGen||s.corrTicks==0u)return;
+ uint sp=EV_SPELL(e),gen=EV_GEN(e);
+ if(sp==1u){
+  if(gen!=s.corrGen||s.corrTicks==0u)return;
   s.corrTicks--;remaining=s.corrTicks;
   amount=(c.corrBase+p*1.2/6.0)*c.corrMultiplier*(s.now<s.snfShadowEnd?(1.0+c.snfBonus):1.0)*(s.now<s.drainHopeEnd?1.10:1.0);
   bool crit=random01()<c.shadowCrit;if(crit)amount*=c.dotCrit;
   amount*=isbMultiplier();damage(1u,amount,crit);
   if(c.nightfall>0.0){if(random01()<c.nightfall){s.trance=1u;s.tranceEnd=s.now+10000000u;s.procs++;enqueue(s.tranceEnd,8u,0u,0u);}}
-  if(remaining>0u)enqueue(s.now+3000000u,3u,1u,e.generation);
+  if(remaining>0u)enqueue(s.now+3000000u,3u,1u,gen);
   return;
- }else if(e.spell==2u){
-  if(e.generation!=s.agonyGen||s.agonyTicks==0u)return;
+ }else if(sp==2u){
+  if(gen!=s.agonyGen||s.agonyTicks==0u)return;
   s.agonyTicks--;remaining=s.agonyTicks;interval=2000000u;
   uint index=12u-remaining;float ramp=index<=4u?0.5:(index<=8u?1.0:1.5);
   amount=(46.0+p*1.596/12.0)*ramp*currentShadowMult()*(1.0+c.shadowMasteryBonus+c.maledictionBonus)*(s.now<s.drainHopeEnd?1.10:1.0);
   bool crit=random01()<c.shadowCrit;if(crit)amount*=c.dotCrit;
   amount*=isbMultiplier();damage(2u,amount,crit);
-  if(remaining>0u)enqueue(s.now+interval,3u,2u,e.generation);
+  if(remaining>0u)enqueue(s.now+interval,3u,2u,gen);
   return;
- }else if(e.spell==3u){
-  if(e.generation!=s.immGen||s.immTicks==0u)return;
+ }else if(sp==3u){
+  if(gen!=s.immGen||s.immTicks==0u)return;
   s.immTicks--;remaining=s.immTicks;amount=(c.immTick+0.13*p)*currentFireMult()*(1.0+c.afBonus+c.maledictionBonus);
   bool crit=random01()<c.fireCrit;if(crit)amount*=c.directCrit;
   damage(3u,amount,crit);
-  if(remaining>0u)enqueue(s.now+3000000u,3u,3u,e.generation);
+  if(remaining>0u)enqueue(s.now+3000000u,3u,3u,gen);
   return;
- }else if(e.spell==15u){
-  if(e.generation!=s.siphonGen||s.siphonTicks==0u)return;
+ }else if(sp==15u){
+  if(gen!=s.siphonGen||s.siphonTicks==0u)return;
   s.siphonTicks--;remaining=s.siphonTicks;
   amount=(41.0+0.05*p)*currentShadowMult()*(1.0+c.shadowMasteryBonus+c.maledictionBonus)*(s.now<s.drainHopeEnd?1.10:1.0);
   bool crit=random01()<c.shadowCrit;if(crit)amount*=c.dotCrit;
   amount*=isbMultiplier();damage(1u,amount,crit);
-  if(remaining>0u)enqueue(s.now+3000000u,3u,15u,e.generation);
+  if(remaining>0u)enqueue(s.now+3000000u,3u,15u,gen);
   return;
- }else if(e.spell==16u){
+ }else if(sp==16u){
   uint affCount=(s.corrTicks>0u?1u:0u)+(s.agonyTicks>0u?1u:0u)+(s.siphonTicks>0u?1u:0u);
   float affBonus=c.shadowMasteryBonus+c.maledictionBonus+c.improvedDrainsBonus+c.soulSiphonBonus*float(min(3u,affCount));
   amount=(36.0+0.143*p)*currentShadowMult()*(1.0+affBonus);
@@ -214,8 +222,8 @@ void tick(Event e){
   damage(1u,amount,crit);
   if(c.nightfall>0.0){if(random01()<c.nightfall){s.trance=1u;s.tranceEnd=s.now+10000000u;s.procs++;enqueue(s.tranceEnd,8u,0u,0u);}}
   return;
- }else if(e.spell==20u){
-  if(e.generation!=s.agonyGen||s.doomActive==0u)return;
+ }else if(sp==20u){
+  if(gen!=s.agonyGen||s.doomActive==0u)return;
   s.doomActive=0u;amount=(1742.0+4.0*p)*currentShadowMult()*(1.0+c.shadowMasteryBonus+c.maledictionBonus)*(s.now<s.drainHopeEnd?1.10:1.0);
   bool crit=random01()<c.shadowCrit;if(crit)amount*=c.dotCrit;
   amount*=isbMultiplier();amount*=resistanceMultiplier();
@@ -289,17 +297,15 @@ void decide(){
  float targetHpPct=max(0.0,(1.0-fightProgress)*100.0);
  float playerManaPct=(s.mana/c.maxMana)*100.0;
 
- for(uint r=0u;r<MAX_APL_RULES;r++){
-  uint header=getConfigWord(currentCfgIdx,APL_HEADER_OFFSET+r);
-  if(header==0u)break;
-
+ for(uint r=0u;r<numAplRules;r++){
+  uint header=aplHeaders[r];
   uint enabled=(header>>24u)&0xFFu;
   if(enabled==0u)continue;
 
   uint action=header&0xFFu;
   uint cond=(header>>8u)&0xFFu;
   uint targetSpell=(header>>16u)&0xFFu;
-  float param=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM_OFFSET+r));
+  float param=aplParams[r];
 
   bool condPass=false;
   if(cond==0u){ // ALWAYS
@@ -426,25 +432,26 @@ void advance(){
  Event e=dequeue();lastEvent=e;
  if(e.at<s.now){s.done=4u;return;}
  s.now=e.at;s.events++;eventDamage=0.0;eventFlags=0u;
- switch(e.kind){
+ uint ekind=EV_KIND(e),espell=EV_SPELL(e);
+ switch(ekind){
  case 13u:s.done=1u;break;
  case 1u:
-  s.casting=0u;spend(e.spell);
-  if(e.spell==1u)applyDot(1u);
-  else if(e.spell==3u)immolateImpact();
-  else if(e.spell==13u){float sfCD=60.0*(1.0-0.45*float(c.decimationRank));s.soulFireReady=s.now+uint(sfCD*1000000.0);enqueue(s.now+c.travel,2u,13u,0u);}
-  else enqueue(s.now+c.travel,2u,e.spell,0u);
-  if(c.decimation!=0u&&(e.spell==0u||e.spell==5u)){
+  s.casting=0u;spend(espell);
+  if(espell==1u)applyDot(1u);
+  else if(espell==3u)immolateImpact();
+  else if(espell==13u){float sfCD=60.0*(1.0-0.45*float(c.decimationRank));s.soulFireReady=s.now+uint(sfCD*1000000.0);enqueue(s.now+c.travel,2u,13u,0u);}
+  else enqueue(s.now+c.travel,2u,espell,0u);
+  if(c.decimation!=0u&&(espell==0u||espell==5u)){
    float fightProg=float(s.now)/max(1.0,float(c.end));
    if((1.0-fightProg)<=0.35)s.decimationEnd=s.now+10000000u;
   }
-  if(e.spell==5u&&c.demonicBrand!=0u){s.brandCharges=c.demonicBrandRank*2u;s.brandEnd=s.now+10000000u;}
+  if(espell==5u&&c.demonicBrand!=0u){s.brandCharges=c.demonicBrandRank*2u;s.brandEnd=s.now+10000000u;}
   decide();break;
- case 2u:directImpact(e.spell);break;
+ case 2u:directImpact(espell);break;
  case 3u:tick(e);break;
  case 5u:decide();break;
  case 6u:
-  if(e.spell==100u){ // Imp Firebolt
+  if(espell==100u){ // Imp Firebolt
    uint delay=2000000u;
    if(s.petMana>=115.0){
     s.petCasts++;
@@ -467,7 +474,7 @@ void advance(){
     delay=1000000u;
    }
    if(s.now+delay<c.end)enqueue(s.now+delay,6u,100u,0u);
-  }else if(e.spell==200u){ // Succubus Melee
+  }else if(espell==200u){ // Succubus Melee
    s.petCasts++;
    s.petMeleeCasts++;
    float roll=random01()*100.0;
@@ -488,7 +495,7 @@ void advance(){
     s.petMeleeMisses++;
    }
    if(s.now+2000000u<c.end)enqueue(s.now+2000000u,6u,200u,0u);
-  }else if(e.spell==201u){ // Succubus Lash of Pain
+  }else if(espell==201u){ // Succubus Lash of Pain
    uint delay=12000000u;
    if(s.petMana>=160.0){
     s.petCasts++;
@@ -522,28 +529,47 @@ void advance(){
 }
 uint stateWord(uint index){switch(index){${Object.entries(STATE).map(([k,t],i)=>`case ${i}u:return ${word(k,t)};`).join('\n')}default:return 0u;}}
 uint compactWord(uint index){switch(index){
- ${['total','mana','spent','gained'].map((k,i)=>`case ${i}u:return floatBitsToUint(s.${k});`).join('\n')}
- ${['done','now','events','highWater','taps','procs','isbProcs','isbConsumed'].map((k,i)=>`case ${i+4}u:return s.${k};`).join('\n')}
- ${Array.from({length:6},(_,i)=>`case ${12+i*3}u:return floatBitsToUint(s.damage${i});case ${13+i*3}u:return s.casts${i}|(s.hits${i}<<16u);case ${14+i*3}u:return s.crits${i}|(s.misses${i}<<16u);`).join('\n')}
- case 30u:return floatBitsToUint(s.petMeleeDamage);
- case 31u:return s.petMeleeCasts|(s.petMeleeHits<<16u);
- case 32u:return s.petMeleeCrits|(s.petMeleeMisses<<16u);
- case 33u:return floatBitsToUint(s.petSpellDamage);
- case 34u:return s.petSpellCasts|(s.petSpellHits<<16u);
- case 35u:return s.petSpellCrits|(s.petSpellMisses<<16u);
- case 36u:return floatBitsToUint(s.petBrandDamage);
- case 37u:return floatBitsToUint(s.petDamage);
- case 38u:return s.petCasts;
- case 39u:return s.rngCalls;
- default:return 0u;}}
+ case 0u: return floatBitsToUint(s.total);
+ case 1u: return s.done | (s.highWater << 16u);
+ case 2u: return s.events;
+ case 3u: return s.taps | (s.procs << 16u);
+ case 4u: return s.isbProcs | (s.isbConsumed << 16u);
+ case 5u: return floatBitsToUint(s.petBrandDamage);
+ case 6u: return floatBitsToUint(s.petDamage);
+ case 7u: return s.petCasts | (s.rngCalls << 16u);
+ case 8u: return floatBitsToUint(s.damage0);
+ case 9u: return s.casts0 | (s.hits0 << 16u);
+ case 10u: return s.crits0 | (s.misses0 << 16u);
+ case 11u: return floatBitsToUint(s.damage1);
+ case 12u: return s.casts1 | (s.hits1 << 16u);
+ case 13u: return s.crits1 | (s.misses1 << 16u);
+ case 14u: return floatBitsToUint(s.damage2);
+ case 15u: return s.casts2 | (s.hits2 << 16u);
+ case 16u: return s.crits2 | (s.misses2 << 16u);
+ case 17u: return floatBitsToUint(s.damage3);
+ case 18u: return s.casts3 | (s.hits3 << 16u);
+ case 19u: return s.crits3 | (s.misses3 << 16u);
+ case 20u: return floatBitsToUint(s.damage4);
+ case 21u: return s.casts4 | (s.hits4 << 16u);
+ case 22u: return s.crits4 | (s.misses4 << 16u);
+ case 23u: return floatBitsToUint(s.damage5);
+ case 24u: return s.casts5 | (s.hits5 << 16u);
+ case 25u: return s.crits5 | (s.misses5 << 16u);
+ case 26u: return floatBitsToUint(s.petMeleeDamage);
+ case 27u: return s.petMeleeCasts | (s.petMeleeHits << 16u);
+ case 28u: return s.petMeleeCrits | (s.petMeleeMisses << 16u);
+ case 29u: return floatBitsToUint(s.petSpellDamage);
+ case 30u: return s.petSpellCasts | (s.petSpellHits << 16u);
+ case 31u: return s.petSpellCrits | (s.petSpellMisses << 16u);
+ default: return 0u;}}
 uint outputWord(uint index){return mode==1u?stateWord(index):compactWord(index);}
 uvec4 outputFour(uint index){return uvec4(outputWord(index),outputWord(index+1u),outputWord(index+2u),outputWord(index+3u));}
 void main(){
  uint x=uint(gl_FragCoord.x),y=uint(gl_FragCoord.y);
  uint lane,stripe;
  if(mode==0u){
-  uint simX=x,simY=y/3u;
-  stripe=y%3u;
+  uint simX=x,simY=y/2u;
+  stripe=y%2u;
   lane=simY*gridWidth+simX;
  }else if(mode==1u){
   lane=0u;stripe=y;
@@ -560,8 +586,16 @@ void main(){
   fightInCfg=globalLane%fightsPerConfig;
  }
  ${Object.entries(CONFIG).map(([k,t],i)=>`c.${k}=${t==='f32'?'uintBitsToFloat':''}(getConfigWord(currentCfgIdx,${i}u));`).join('\n')}
+ numAplRules=0u;
+ for(uint r=0u;r<MAX_APL_RULES;r++){
+  uint h=getConfigWord(currentCfgIdx,APL_HEADER_OFFSET+r);
+  if(h==0u)break;
+  aplHeaders[numAplRules]=h;
+  aplParams[numAplRules]=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM_OFFSET+r));
+  numAplRules++;
+ }
  ${Object.entries(STATE).map(([k,t])=>`s.${k}=${t==='f32'?'0.0':'0u'};`).join('\n')}
- s.initialized=1u;s.mana=c.maxMana;eventDamage=0.0;eventFlags=0u;lastEvent=Event(0u,0u,0u,0u);
+ s.initialized=1u;s.mana=c.maxMana;eventDamage=0.0;eventFlags=0u;lastEvent=MAKE_EVENT(0u,0u,0u,0u);
  seedRandom(mode==2u?0u:(numConfigs>1u?fightInCfg:globalLane));
  enqueue(c.end,13u,0u,0u);enqueue(5000000u,10u,0u,0u);
  if(c.trinketSP>0.0){s.trinketEnd=c.trinketDuration;s.trinketReady=c.trinketCD;enqueue(s.trinketEnd,11u,0u,0u);}
@@ -577,7 +611,7 @@ void main(){
  if(max(max(s.petSpellCasts,s.petSpellHits),max(s.petSpellCrits,s.petSpellMisses))>65535u)s.done=7u;
  ${Array.from({length:4},(_,i)=>`s.rng${i*2}=rng[${i}].x;s.rng${i*2+1}=rng[${i}].y;`).join('\n')}
  if(mode==2u){
-  report0=uvec4(s.now,lastEvent.kind,lastEvent.spell,floatBitsToUint(eventDamage));
+  report0=uvec4(s.now,EV_KIND(lastEvent),EV_SPELL(lastEvent),floatBitsToUint(eventDamage));
   report1=uvec4(floatBitsToUint(s.mana),eventFlags,floatBitsToUint(s.total),s.rngCalls);
  }else{uint base=stripe*16u;report0=outputFour(base);report1=outputFour(base+4u);report2=outputFour(base+8u);report3=outputFour(base+12u);}
 }
