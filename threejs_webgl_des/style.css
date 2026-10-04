@@ -2241,3 +2241,27 @@ footer {
   pointer-events: none;
 }
 
+.priority-chain-preview {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.prio-chain-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid #4a3e2e;
+  background: #111;
+  transition: transform 0.1s ease;
+}
+
+.prio-chain-icon:hover {
+  transform: scale(1.25);
+  border-color: #ffd100;
+  z-index: 2;
+}
+
+

@@ -24,7 +24,7 @@
       </div>
       <div class="brand">
         <span class="brand-title">WARLOCK SIMULATOR</span>
-        <span class="brand-sub">GPU DES</span>
+        <span class="brand-sub">GPU DES · v5</span>
       </div>
     </div>
 
@@ -32,6 +32,7 @@
       <button type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="tab-current-build" id="btn-current-build">Current Configuration</button>
       <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-compare-specs" id="btn-compare-specs">Compare Standard Specs</button>
       <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-constrained-search" id="btn-constrained-search">Constrained Spec Search</button>
+      <button type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="tab-apl-synthesis" id="btn-apl-synthesis">APL Synthesis</button>
     </nav>
 
     <div class="topbar-status-block">
@@ -880,6 +881,194 @@
       <section class="wow-panel" id="ga-selected-spec-details-panel" style="margin-top: 0.75rem;">
         <div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
           Run genetic optimization to discover and inspect high-performing constrained spec solutions.
+        </div>
+      </section>
+    </div>
+
+    <!-- ====================================================================
+         PAGE 4: APL SYNTHESIS (GENETIC ALGORITHM APL OPTIMIZER)
+         ==================================================================== -->
+    <div id="tab-apl-synthesis" class="tab-pane" role="tabpanel" hidden>
+      <!-- TOP SIMULATION SETTINGS & CONSTRAINTS EXECUTION -->
+      <section class="wow-panel" style="padding: 0.65rem 0.85rem; margin-bottom: 0.65rem;">
+        
+        <!-- Algorithm Hyperparameters -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Generations:</span>
+              <input class="wow-input" type="number" id="apl-ga-generations" value="15" min="1" max="1000" style="width: 85px;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Population:</span>
+              <input class="wow-input" type="number" id="apl-ga-pop-size" value="500" min="2" max="5000" style="width: 95px;" title="APL population size per generation">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Screening Sims:</span>
+              <input class="wow-input" type="number" id="apl-ga-screening-sims" value="100" min="10" max="10000" style="width: 95px;" title="GPU shader simulation iterations per candidate APL">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">Final Precision:</span>
+              <input class="wow-input" type="number" id="apl-ga-final-sims" value="2000" min="100" max="50000" style="width: 95px;" title="High-precision benchmarking iterations for synthesized elite APLs">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;" title="Keeps all 16 actions locked to their handcrafted optimal conditions while optimizing priority order and permutations">
+                <input type="checkbox" id="apl-ga-lock-conditions" checked> Lock Handcrafted Conditions (Priority Only)
+              </label>
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="apl-ga-seed-presets" checked> Seed with standard canonical APL
+              </label>
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="apl-ga-advanced-tuning-chk"> Advanced Operator Tuning
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.6rem; align-items: center;">
+            <button type="button" id="btn-run-apl-ga" class="wow-button wow-btn-big" style="min-width: 170px; color: #ffd100;">Run APL Genetic Synthesis</button>
+            <button type="button" id="btn-stop-apl-ga" class="wow-button wow-btn-big" style="min-width: 150px; display: none; background: #7f1d1d; border-color: #ef4444;">🛑 Stop & Keep Best</button>
+            <button type="button" id="btn-export-apl-ga" class="wow-button" style="min-width: 100px;">Save All</button>
+          </div>
+        </div>
+
+        <!-- Advanced Tuning Collapsible Box -->
+        <div id="apl-ga-advanced-tuning-box" style="display: none; background: #0e0c14; border: 1px solid #332a40; border-radius: 4px; padding: 0.5rem 0.75rem; margin-bottom: 0.6rem;">
+          <div style="display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Swap Rate:</span>
+              <input class="wow-input" type="number" id="apl-ga-swap-rate" value="0.40" step="0.05" min="0" max="1" style="width: 70px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Cond Mut Rate:</span>
+              <input class="wow-input" type="number" id="apl-ga-cond-rate" value="0.35" step="0.05" min="0" max="1" style="width: 70px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Param Jitter Rate:</span>
+              <input class="wow-input" type="number" id="apl-ga-jitter-rate" value="0.45" step="0.05" min="0" max="1" style="width: 70px;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.75rem; color: var(--text-parchment);">Never-Use Toggle:</span>
+              <input class="wow-input" type="number" id="apl-ga-never-rate" value="0.20" step="0.05" min="0" max="1" style="width: 70px;">
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Evolves 16-slot APL with exactly 1 copy of each action, 2 conditions per action, continuous threshold parameters, and Never-Use conditions.</span>
+          </div>
+        </div>
+
+        <!-- Synthesis Rules Constraint Notice -->
+        <div style="border-top: 1px solid #292434; padding-top: 0.45rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">
+            <strong style="color: var(--text-gold);">Structure:</strong> 16 total action slots · Exactly 1 copy of each spell · 2 conditions per action · Permutation index swapping · Continuous Mana / HP / DoT / Time thresholds · Never-Use disables.
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-parchment);">
+            Synthesizing for: <strong style="color: #c084fc;" id="apl-ga-active-spec-label">Current Configuration</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- BASE STATS & OPTIONS SUBHEADER BAR -->
+      <div class="specs-stats-subheader-bar">
+        <div class="specs-base-stats-text">
+          <span style="color: var(--text-gold); font-weight: 700;">APL Synthesis</span>
+          <span style="color: #666;">|</span>
+          <span>Target Build Stats:</span>
+          <span>Shadow SP: <strong style="color:#c084fc;" id="apl-ga-base-shadow-sp">500</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fire SP: <strong style="color:#fb923c;" id="apl-ga-base-fire-sp">500</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Hit: <strong style="color:#60a5fa;" id="apl-ga-base-hit">12.0%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Crit: <strong style="color:#facc15;" id="apl-ga-base-crit">15.0%</strong></span>
+          <span style="color: #666;">|</span>
+          <span>Fight: <strong id="apl-ga-base-fight">180s</strong></span>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="apl-ga-chk-pct-leader"> % from Leader
+          </label>
+          <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+            <input type="checkbox" id="apl-ga-chk-show-sd"> Show Std Dev
+          </label>
+        </div>
+      </div>
+
+      <!-- MAIN SPLIT: DISCOVERED APLS TABLE (LEFT) & CONVERGENCE GRAPH + STATS (RIGHT) -->
+      <div class="ga-main-split-grid">
+        <!-- LEFT: Discovered APLs Table -->
+        <section class="wow-panel ga-table-col" style="padding: 0; margin-bottom: 0; overflow: hidden;">
+          <div class="wow-panel-header" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #383446;">
+            <span>Discovered Elite APL Solutions</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">MAP-Elites Behavioral Diversity</span>
+          </div>
+          <div class="table-scroll" style="max-height: 520px;">
+            <table class="leaderboard-table compare-specs-table">
+              <thead>
+                <tr>
+                  <th style="width: 44px; text-align: center;">Rank</th>
+                  <th style="min-width: 170px;">Synthesized APL Name</th>
+                  <th style="width: 55px; text-align: center;">Active</th>
+                  <th style="width: 110px;">Damage Split</th>
+                  <th style="width: 80px; text-align: right;">Mean DPS</th>
+                  <th style="width: 55px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="apl-ga-leaderboard-body">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to synthesize. Adjust settings and click "Run APL Genetic Synthesis".</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- RIGHT: General Stats & Convergence Graph (DPS vs Generation) -->
+        <section class="wow-panel ga-graph-col" style="padding: 0.65rem 0.75rem; margin-bottom: 0;">
+          <!-- General Stats Cards -->
+          <div class="ga-stats-cards">
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Unique APLs Tested</span>
+              <strong id="apl-ga-stat-unique-configs" style="font-size: 1.05rem; color: #ffd100; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">Evaluated rotations</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Total Simulations</span>
+              <strong id="apl-ga-stat-total-fights" style="font-size: 1.05rem; color: #4ade80; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">GPU shader fights</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Best Synthesized DPS</span>
+              <strong id="apl-ga-stat-best-dps" style="font-size: 1.05rem; color: #6ee7b7; margin: 0.15rem 0;">—</strong>
+              <small id="apl-ga-stat-gain" style="font-size: 0.68rem; color: var(--text-dim);">vs baseline</small>
+            </div>
+            <div class="metric-card" style="padding: 0.45rem 0.65rem; text-align: left;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Generations</span>
+              <strong id="apl-ga-stat-generations" style="font-size: 1.05rem; color: #cbd5e1; margin: 0.15rem 0;">—</strong>
+              <small style="font-size: 0.68rem; color: var(--text-dim);">APL evolution epochs</small>
+            </div>
+          </div>
+
+          <!-- Convergence Graph Canvas Container -->
+          <div class="ga-chart-container" style="margin-top: 0.5rem;">
+            <div class="ga-chart-header">
+              <span class="ga-chart-title">APL Convergence: DPS vs Generation</span>
+              <div class="ga-chart-legend">
+                <span class="ga-legend-item"><span class="ga-legend-dot" style="background: #4ade80;"></span> Best APL DPS</span>
+                <span class="ga-legend-item"><span class="ga-legend-dot" style="background: #38bdf8;"></span> Population Mean</span>
+              </div>
+            </div>
+            <div class="ga-chart-canvas-wrap" id="apl-ga-chart-wrapper">
+              <canvas id="apl-ga-evolution-chart"></canvas>
+              <div id="apl-ga-chart-empty-placeholder" class="ga-chart-placeholder">
+                <span style="color: var(--text-gold); font-weight: 700; font-size: 0.85rem; margin-bottom: 4px;">APL Convergence Graph (DPS vs Gen)</span>
+                <span style="color: var(--text-dim); font-size: 0.75rem;">Run APL Genetic Synthesis to track live DPS convergence curves across generations.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- SELECTED APL CANDIDATE DETAILS SECTION -->
+      <section class="wow-panel" id="apl-ga-selected-spec-details-panel" style="margin-top: 0.75rem;">
+        <div style="text-align: center; color: var(--text-dim); padding: 1.5rem;">
+          Run APL genetic synthesis to discover and inspect high-performing custom action priority lists.
         </div>
       </section>
     </div>

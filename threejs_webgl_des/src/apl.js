@@ -5,27 +5,76 @@ import { APL_ACTION, APL_COND } from './model.js';
 export const DEFAULT_APL = [
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana < 20%', rawCond: 'mana_pct < 20', enabled: true },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', condition: 'Shadow Trance active', rawCond: 'buff.shadow_trance', enabled: true },
-  { id: 'brand', spell: 'Demonic Brand', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
+  { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'Spell_Shadow_DemonBreath.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
   { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Target HP < 35%, buff inactive', rawCond: 'decimation.inactive', enabled: false },
   { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', condition: 'Target HP < 35%, buff active', rawCond: 'decimation.active', enabled: false },
   { id: 'curse', spell: 'Curse of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60 && !target.has_debuff("Curse of Doom")', enabled: true },
-  { id: 'agony', spell: 'Curse of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'Target TTDie >= 20s & No Doom', rawCond: 'target_ttd >= 20 && !target.has_debuff("Curse of Doom") && !target.has_debuff("Curse of Agony")', enabled: true },
+  { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'Target TTDie >= 20s & No Doom', rawCond: 'target_ttd >= 20 && !target.has_debuff("Curse of Doom") && !target.has_debuff("Curse of Agony")', enabled: true },
   { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'Target TTDie >= 12s & !Active', rawCond: 'target_ttd >= 12 && !target.has_debuff("Corruption")', enabled: true },
   { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'Target TTDie >= 15s & !Active', rawCond: 'target_ttd >= 15 && !target.has_debuff("Immolate")', enabled: false },
-  { id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', condition: 'Immolate Remaining < 2s', rawCond: 'target.debuff_remains("Immolate") < 2', enabled: false },
+  { id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', condition: 'Immolate Remaining < 6s', rawCond: 'target.debuff_remains("Immolate") < 6', enabled: false },
   { id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', condition: 'Always when available', rawCond: 'true', enabled: false },
-  { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Fire filler', rawCond: 'true', enabled: false },
-  { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Filler (Fire Spec)', rawCond: 'true', enabled: false },
-  { id: 'drain', spell: 'Drain Soul', icon: 'Spell_Shadow_Haunting.png', condition: 'Target HP < 20% (Execute)', rawCond: 'target_hp_pct < 20', enabled: false },
+  { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'drain', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', condition: 'Missing Siphon Life', rawCond: 'target.debuff_remains("Siphon Life") <= 0', enabled: false },
-  { id: 'wrack', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Target HP < 20%', rawCond: 'target_hp_pct < 20', enabled: false },
-  { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Default Filler', rawCond: 'true', enabled: true }
+  { id: 'wrack', spell: 'Wrack', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: true }
 ];
 
 let currentAPL = JSON.parse(JSON.stringify(DEFAULT_APL));
 let editingIndex = -1;
 let dragSourceIndex = -1;
 let onChangeCallback = null;
+
+export function applySynthesizedAPL(rules) {
+  if (!Array.isArray(rules)) return;
+  let seenUnconditional = false;
+  currentAPL = rules.map(r => {
+    const cKey1 = r.condKey1 || r.condKey;
+    const cKey2 = r.condKey2;
+    const cEnum1 = r.cond1 !== undefined ? r.cond1 : r.cond;
+    const cEnum2 = r.cond2;
+
+    const isNever = !r.enabled ||
+      cKey1 === 'NEVER' || cKey2 === 'NEVER' ||
+      cEnum1 === 18 || cEnum2 === 18;
+
+    const isCond1Always = (cKey1 === 'ALWAYS') || (cKey1 === undefined && cEnum1 === 0);
+    const isCond2Always = (cKey2 === 'ALWAYS') || (cKey2 === undefined || cEnum2 === 0);
+
+    let isEnabled = true;
+    if (isNever || seenUnconditional) {
+      isEnabled = false;
+    } else if (isCond1Always && isCond2Always) {
+      isEnabled = true;
+      seenUnconditional = true;
+    }
+
+    return {
+      id: r.id,
+      spell: r.spell,
+      icon: r.icon,
+      condition: r.condition,
+      condition1: r.condition1,
+      condition2: r.condition2,
+      rawCond: r.rawCond || (isEnabled ? 'true' : 'false'),
+      enabled: isEnabled,
+      action: r.action,
+      cond: r.cond1 !== undefined ? r.cond1 : r.cond,
+      param: r.param1 !== undefined ? r.param1 : r.param,
+      targetSpell: r.targetSpell1 !== undefined ? r.targetSpell1 : r.targetSpell,
+      cond1: r.cond1,
+      param1: r.param1,
+      targetSpell1: r.targetSpell1,
+      cond2: r.cond2,
+      param2: r.param2,
+      targetSpell2: r.targetSpell2
+    };
+  });
+  renderAPLTable();
+  if (onChangeCallback) onChangeCallback(currentAPL);
+}
 
 export function compileAPLToBytecode(aplList = currentAPL) {
   const mapAction = {
@@ -119,17 +168,34 @@ export function compileAPLToBytecode(aplList = currentAPL) {
   return (aplList || currentAPL).map(entry => {
     if (entry.enabled && entry.id === 'drain')
       throw new Error('Drain Soul is not implemented by the WebGL shader yet.');
-    if (!(entry.id in mapAction)) throw new Error(`Unsupported APL action: ${entry.id}`);
-    const action = mapAction[entry.id];
-    const { cond, param, targetSpell } = entry.enabled
-      ? parseCondition(entry)
-      : { cond: APL_COND.ALWAYS, param: 0, targetSpell: 0 };
+    const action = (entry.action !== undefined && entry.action !== null) ? entry.action : mapAction[entry.id];
+    if (action === undefined) throw new Error(`Unsupported APL action: ${entry.id}`);
+    
+    let cond = APL_COND.ALWAYS, param = 0, targetSpell = 0;
+    if (entry.enabled) {
+      if (entry.cond !== undefined && entry.cond !== null) {
+        cond = entry.cond;
+        param = Number(entry.param || 0);
+        targetSpell = Number(entry.targetSpell || 0);
+      } else {
+        const parsed = parseCondition(entry);
+        cond = parsed.cond;
+        param = parsed.param;
+        targetSpell = parsed.targetSpell;
+      }
+    }
 
     return {
       action,
       cond,
       param,
       targetSpell,
+      cond1: (entry.cond1 !== undefined ? entry.cond1 : cond),
+      param1: (entry.param1 !== undefined ? entry.param1 : param),
+      targetSpell1: (entry.targetSpell1 !== undefined ? entry.targetSpell1 : targetSpell),
+      cond2: (entry.cond2 !== undefined ? entry.cond2 : APL_COND.ALWAYS),
+      param2: (entry.param2 !== undefined ? entry.param2 : 0),
+      targetSpell2: (entry.targetSpell2 !== undefined ? entry.targetSpell2 : 0),
       enabled: entry.enabled ? 1 : 0
     };
   });
@@ -248,13 +314,13 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     list.push({ id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
 
-  // 10. Fillers
+  // 10. Primary Spells
   if (isIncinerate) {
-    list.push({ id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Fire filler', rawCond: 'true', enabled: true });
+    list.push({ id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Always', rawCond: 'true', enabled: true });
   } else if (isSearing) {
-    list.push({ id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Fire filler', rawCond: 'true', enabled: true });
+    list.push({ id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Always', rawCond: 'true', enabled: true });
   } else {
-    list.push({ id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Default Filler', rawCond: 'true', enabled: true });
+    list.push({ id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: true });
   }
 
   return list;

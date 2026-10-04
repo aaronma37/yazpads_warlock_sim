@@ -1,4 +1,4 @@
-import { CONFIG, STATE, STATE_WORDS, HEAP_CAPACITY, APL_HEADER_OFFSET, APL_PARAM_OFFSET, MAX_APL_RULES } from './model.js';
+import { CONFIG, STATE, STATE_WORDS, HEAP_CAPACITY, APL_HEADER0_OFFSET, APL_PARAM0_OFFSET, APL_HEADER1_OFFSET, APL_PARAM1_OFFSET, MAX_APL_RULES } from './model.js';
 const type=t=>t==='u32'?'uint':'float';
 const structure=(name,schema)=>`struct ${name} { ${Object.entries(schema).map(([k,t])=>`${type(t)} ${k};`).join('\n')} };`;
 const word=(name,t)=>t==='f32'?`floatBitsToUint(s.${name})`:`s.${name}`;
@@ -40,12 +40,16 @@ float eventDamage;
 uint eventFlags;
 Event lastEvent;
 uint currentCfgIdx;
-uint aplHeaders[${MAX_APL_RULES}];
-float aplParams[${MAX_APL_RULES}];
+uint aplHeaders0[${MAX_APL_RULES}];
+float aplParams0[${MAX_APL_RULES}];
+uint aplHeaders1[${MAX_APL_RULES}];
+float aplParams1[${MAX_APL_RULES}];
 uint numAplRules;
 
-#define APL_HEADER_OFFSET ${APL_HEADER_OFFSET}u
-#define APL_PARAM_OFFSET ${APL_PARAM_OFFSET}u
+#define APL_HEADER0_OFFSET ${APL_HEADER0_OFFSET}u
+#define APL_PARAM0_OFFSET ${APL_PARAM0_OFFSET}u
+#define APL_HEADER1_OFFSET ${APL_HEADER1_OFFSET}u
+#define APL_PARAM1_OFFSET ${APL_PARAM1_OFFSET}u
 #define MAX_APL_RULES ${MAX_APL_RULES}u
 
 uint getConfigWord(uint cfgIdx, uint wordIdx) {
@@ -289,6 +293,59 @@ void castDoom(){
  }else{countMiss(2u);}
  gcd();
 }
+bool evalCond(uint cond, float param, uint targetSpell, float playerManaPct, float targetHpPct){
+ if(cond==0u){ // ALWAYS
+  return true;
+ }else if(cond==1u){ // MANA_LE
+  return (playerManaPct<=param);
+ }else if(cond==2u){ // MANA_GE
+  return (playerManaPct>=param);
+ }else if(cond==3u){ // TARGET_HP_LE
+  return (targetHpPct<=param);
+ }else if(cond==4u){ // TARGET_HP_GE
+  return (targetHpPct>=param);
+ }else if(cond==5u||cond==23u){ // DOT_REM_LE / DOT_REM_LT
+  float remSec=0.0;
+  if(targetSpell==1u)remSec=(s.corrTicks>0u&&s.corrEnd>s.now)?float(s.corrEnd-s.now)*0.000001:0.0;
+  else if(targetSpell==2u)remSec=(s.agonyTicks>0u&&s.agonyEnd>s.now)?float(s.agonyEnd-s.now)*0.000001:0.0;
+  else if(targetSpell==22u)remSec=(s.doomActive!=0u?60.0:0.0);
+  else if(targetSpell==3u)remSec=(s.immTicks>0u&&s.immEnd>s.now)?float(s.immEnd-s.now)*0.000001:0.0;
+  else if(targetSpell==15u)remSec=(s.siphonTicks>0u&&s.siphonEnd>s.now)?float(s.siphonEnd-s.now)*0.000001:0.0;
+  return (cond==23u?remSec<param:remSec<=param);
+ }else if(cond==6u){ // FIGHT_TIME_GE
+  return (c.end>s.now)&&(float(c.end-s.now)>param*1000000.0);
+ }else if(cond==7u){ // FIGHT_TIME_LE
+  return (c.end>=s.now)&&(float(c.end-s.now)<=param*1000000.0);
+ }else if(cond==8u){ // SHADOW_TRANCE
+  return (s.trance!=0u);
+ }else if(cond==9u){ // DECIMATION_ACTIVE
+  return (c.decimation!=0u)&&(targetHpPct<=param)&&(s.decimationEnd>s.now);
+ }else if(cond==10u){ // DECIMATION_INACTIVE
+  return (c.decimation!=0u)&&(targetHpPct<=param)&&(s.decimationEnd<=s.now);
+ }else if(cond==11u){ // DEMONIC_BRAND_MISSING
+  return (s.brandCharges==0u||s.brandEnd<=s.now);
+ }else if(cond==12u){ // DOOM_MISSING
+  return (s.doomActive==0u);
+ }else if(cond==13u){ // ISB_ACTIVE
+  return (s.now<s.isbEnd);
+ }else if(cond==14u){ // FIGHT_TIME_GE and named DoT missing
+  bool missing=(targetSpell==1u?s.corrTicks==0u:targetSpell==2u?s.agonyTicks==0u:targetSpell==22u?s.doomActive==0u:targetSpell==3u?s.immTicks==0u:targetSpell==15u?s.siphonTicks==0u:false);
+  return (c.end>=s.now&&float(c.end-s.now)>=param*1000000.0&&missing);
+ }else if(cond==15u){ // Nightfall talent enabled and named DoT missing
+  bool missing=(targetSpell==1u?s.corrTicks==0u:targetSpell==2u?s.agonyTicks==0u:targetSpell==22u?s.doomActive==0u:targetSpell==3u?s.immTicks==0u:targetSpell==15u?s.siphonTicks==0u:false);
+  return (c.nightfall>0.0&&missing);
+ }else if(cond==16u){ // Fight time threshold and both Doom/Agony missing
+  return (c.end>=s.now&&float(c.end-s.now)>=param*1000000.0&&s.doomActive==0u&&s.agonyTicks==0u);
+ }else if(cond==17u){return (playerManaPct<param);
+ }else if(cond==18u){return (playerManaPct>param);
+ }else if(cond==19u){return (targetHpPct<param);
+ }else if(cond==20u){return (targetHpPct>param);
+ }else if(cond==21u){return (c.end>s.now&&float(c.end-s.now)>param*1000000.0);
+ }else if(cond==22u){return (c.end>=s.now&&float(c.end-s.now)<param*1000000.0);
+ }else{
+  return true;
+ }
+}
 void decide(){
  if(s.casting!=0u||s.now<s.ready)return;
  checkTrinket();
@@ -298,69 +355,23 @@ void decide(){
  float playerManaPct=(s.mana/c.maxMana)*100.0;
 
  for(uint r=0u;r<numAplRules;r++){
-  uint header=aplHeaders[r];
-  uint enabled=(header>>24u)&0xFFu;
+  uint header0=aplHeaders0[r];
+  uint enabled=(header0>>24u)&0xFFu;
   if(enabled==0u)continue;
 
-  uint action=header&0xFFu;
-  uint cond=(header>>8u)&0xFFu;
-  uint targetSpell=(header>>16u)&0xFFu;
-  float param=aplParams[r];
+  uint action=header0&0xFFu;
+  uint cond1=(header0>>8u)&0xFFu;
+  uint targetSpell1=(header0>>16u)&0xFFu;
+  float param1=aplParams0[r];
 
-  bool condPass=false;
-  if(cond==0u){ // ALWAYS
-   condPass=true;
-  }else if(cond==1u){ // MANA_LE
-   condPass=(playerManaPct<=param);
-  }else if(cond==2u){ // MANA_GE
-   condPass=(playerManaPct>=param);
-  }else if(cond==3u){ // TARGET_HP_LE
-   condPass=(targetHpPct<=param);
-  }else if(cond==4u){ // TARGET_HP_GE
-   condPass=(targetHpPct>=param);
-  }else if(cond==5u||cond==23u){ // DOT_REM_LE / DOT_REM_LT
-   float remSec=0.0;
-   if(targetSpell==1u)remSec=(s.corrTicks>0u&&s.corrEnd>s.now)?float(s.corrEnd-s.now)*0.000001:0.0;
-   else if(targetSpell==2u)remSec=(s.agonyTicks>0u&&s.agonyEnd>s.now)?float(s.agonyEnd-s.now)*0.000001:0.0;
-   else if(targetSpell==22u)remSec=(s.doomActive!=0u?60.0:0.0);
-   else if(targetSpell==3u)remSec=(s.immTicks>0u&&s.immEnd>s.now)?float(s.immEnd-s.now)*0.000001:0.0;
-   else if(targetSpell==15u)remSec=(s.siphonTicks>0u&&s.siphonEnd>s.now)?float(s.siphonEnd-s.now)*0.000001:0.0;
-   condPass=(cond==23u?remSec<param:remSec<=param);
-  }else if(cond==6u){ // FIGHT_TIME_GE
-   condPass=(c.end>s.now)&&(float(c.end-s.now)>param*1000000.0);
-  }else if(cond==7u){ // FIGHT_TIME_LE
-   condPass=(c.end>=s.now)&&(float(c.end-s.now)<=param*1000000.0);
-  }else if(cond==8u){ // SHADOW_TRANCE
-   condPass=(s.trance!=0u);
-  }else if(cond==9u){ // DECIMATION_ACTIVE
-   condPass=(c.decimation!=0u)&&(targetHpPct<=param)&&(s.decimationEnd>s.now);
-  }else if(cond==10u){ // DECIMATION_INACTIVE
-   condPass=(c.decimation!=0u)&&(targetHpPct<=param)&&(s.decimationEnd<=s.now);
-  }else if(cond==11u){ // DEMONIC_BRAND_MISSING
-   condPass=(s.brandCharges==0u||s.brandEnd<=s.now);
-  }else if(cond==12u){ // DOOM_MISSING
-   condPass=(s.doomActive==0u);
-  }else if(cond==13u){ // ISB_ACTIVE
-   condPass=(s.now<s.isbEnd);
-  }else if(cond==14u){ // FIGHT_TIME_GE and named DoT missing
-   bool missing=(targetSpell==1u?s.corrTicks==0u:targetSpell==2u?s.agonyTicks==0u:targetSpell==22u?s.doomActive==0u:targetSpell==3u?s.immTicks==0u:targetSpell==15u?s.siphonTicks==0u:false);
-   condPass=(c.end>=s.now&&float(c.end-s.now)>=param*1000000.0&&missing);
-  }else if(cond==15u){ // Nightfall talent enabled and named DoT missing
-   bool missing=(targetSpell==1u?s.corrTicks==0u:targetSpell==2u?s.agonyTicks==0u:targetSpell==22u?s.doomActive==0u:targetSpell==3u?s.immTicks==0u:targetSpell==15u?s.siphonTicks==0u:false);
-   condPass=(c.nightfall>0.0&&missing);
-  }else if(cond==16u){ // Fight time threshold and both Doom/Agony missing
-   condPass=(c.end>=s.now&&float(c.end-s.now)>=param*1000000.0&&s.doomActive==0u&&s.agonyTicks==0u);
-  }else if(cond==17u){condPass=(playerManaPct<param);
-  }else if(cond==18u){condPass=(playerManaPct>param);
-  }else if(cond==19u){condPass=(targetHpPct<param);
-  }else if(cond==20u){condPass=(targetHpPct>param);
-  }else if(cond==21u){condPass=(c.end>s.now&&float(c.end-s.now)>param*1000000.0);
-  }else if(cond==22u){condPass=(c.end>=s.now&&float(c.end-s.now)<param*1000000.0);
-  }else{
-   condPass=true;
-  }
+  if(!evalCond(cond1,param1,targetSpell1,playerManaPct,targetHpPct))continue;
 
-  if(!condPass)continue;
+  uint header1=aplHeaders1[r];
+  uint cond2=header1&0xFFu;
+  uint targetSpell2=(header1>>8u)&0xFFu;
+  float param2=aplParams1[r];
+
+  if(!evalCond(cond2,param2,targetSpell2,playerManaPct,targetHpPct))continue;
 
   // Execute Action
   if(action==1u){ // LIFE_TAP
@@ -588,10 +599,12 @@ void main(){
  ${Object.entries(CONFIG).map(([k,t],i)=>`c.${k}=${t==='f32'?'uintBitsToFloat':''}(getConfigWord(currentCfgIdx,${i}u));`).join('\n')}
  numAplRules=0u;
  for(uint r=0u;r<MAX_APL_RULES;r++){
-  uint h=getConfigWord(currentCfgIdx,APL_HEADER_OFFSET+r);
-  if(h==0u)break;
-  aplHeaders[numAplRules]=h;
-  aplParams[numAplRules]=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM_OFFSET+r));
+  uint h0=getConfigWord(currentCfgIdx,APL_HEADER0_OFFSET+r);
+  if(h0==0u)break;
+  aplHeaders0[numAplRules]=h0;
+  aplParams0[numAplRules]=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM0_OFFSET+r));
+  aplHeaders1[numAplRules]=getConfigWord(currentCfgIdx,APL_HEADER1_OFFSET+r);
+  aplParams1[numAplRules]=uintBitsToFloat(getConfigWord(currentCfgIdx,APL_PARAM1_OFFSET+r));
   numAplRules++;
  }
  ${Object.entries(STATE).map(([k,t])=>`s.${k}=${t==='f32'?'0.0':'0u'};`).join('\n')}

@@ -6,10 +6,12 @@ import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSi
 import { initBuffs, getActiveBuffStats } from './buffs.js';
 import { initPresets, getPresets, getPresetPetAndSac, runBatchPresetSimulation, renderPresetsLeaderboard } from './presets.js';
 import { initGear, setGearMode, calculateEquippedStats } from './gear.js';
-import { initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules } from './apl.js';
+import { initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL } from './apl.js';
 import { initTooltips, showTooltip, hideTooltip } from './tooltips.js';
 import { initConstrainedSearchView, readGAConfig, updateGALiveView, setGAExecutionResults } from './constrained_search_view.js';
 import { runConstrainedGeneticSearch } from './genetic_optimizer.js';
+import { initAPLSynthesisView, readAPLGAConfig, updateAPLGALiveView, setAPLGAExecutionResults } from './apl_synthesis_view.js';
+import { runAPLGeneticSynthesis } from './apl_genetic_optimizer.js';
 
 const $ = id => document.getElementById(id);
 const form = $('setup-form');
@@ -52,7 +54,8 @@ if (!capable) {
 const tabs = [
   { btn: 'btn-current-build', pane: 'tab-current-build' },
   { btn: 'btn-compare-specs', pane: 'tab-compare-specs' },
-  { btn: 'btn-constrained-search', pane: 'tab-constrained-search' }
+  { btn: 'btn-constrained-search', pane: 'tab-constrained-search' },
+  { btn: 'btn-apl-synthesis', pane: 'tab-apl-synthesis' }
 ];
 
 tabs.forEach(({ btn, pane }) => {
@@ -491,6 +494,21 @@ function updateCombatStatsSummary() {
   if ($('ga-base-crit')) $('ga-base-crit').textContent = `${eff.crit.toFixed(1)}%`;
   const dur = Number(form.elements.namedItem('duration')?.value || 180);
   if ($('ga-base-fight')) $('ga-base-fight').textContent = `${dur}s`;
+
+  // Update APL Synthesis Subheader Base Stats & Target Spec Label
+  if ($('apl-ga-base-shadow-sp')) $('apl-ga-base-shadow-sp').textContent = effectiveShadow;
+  if ($('apl-ga-base-fire-sp')) $('apl-ga-base-fire-sp').textContent = effectiveFire;
+  if ($('apl-ga-base-hit')) $('apl-ga-base-hit').textContent = `${eff.hit.toFixed(1)}%`;
+  if ($('apl-ga-base-crit')) $('apl-ga-base-crit').textContent = `${eff.crit.toFixed(1)}%`;
+  if ($('apl-ga-base-fight')) $('apl-ga-base-fight').textContent = `${dur}s`;
+  if ($('apl-ga-active-spec-label')) {
+    const tf = getSimTalentFlags();
+    const aff = tf.shadowMasteryBonus > 0 ? 'Aff' : '';
+    const demo = tf.demonicPact ? 'DP' : tf.masterDemo > 0 ? 'MD' : tf.sacSucc ? 'DS' : '';
+    const destro = tf.incinerate ? 'Incin' : tf.ruinRank > 0 ? 'Ruin' : '';
+    const specStr = [aff, demo, destro].filter(Boolean).join('/') || activeRotation.toUpperCase();
+    $('apl-ga-active-spec-label').textContent = `${activeRace} · ${specStr} · ${activePet !== 'none' ? activePet : activeDS !== 'none' ? `DS ${activeDS}` : 'No Pet'}`;
+  }
 }
 
 // Copy build string
@@ -1081,6 +1099,93 @@ $('btn-run-ga')?.addEventListener('click', async (e) => {
 $('btn-stop-ga')?.addEventListener('click', () => {
   if (gaController) {
     gaController.abort();
+  }
+});
+
+// APL Synthesis Execution & Candidate Application
+let aplGaController = null;
+
+initAPLSynthesisView((cand) => {
+  if (!cand) return;
+  applySynthesizedAPL(cand.rules);
+  updateCombatStatsSummary();
+  setStatus(`Applied synthesized APL: ${cand.name}. Switched to Current Configuration.`);
+  $('btn-current-build')?.click();
+});
+
+$('btn-run-apl-ga')?.addEventListener('click', async (e) => {
+  e?.preventDefault();
+  if (aplGaController) return;
+  aplGaController = new AbortController();
+
+  const runBtn = $('btn-run-apl-ga');
+  const stopBtn = $('btn-stop-apl-ga');
+  if (runBtn) runBtn.style.display = 'none';
+  if (stopBtn) stopBtn.style.display = 'inline-block';
+
+  const progContainer = $('topbar-progress-container');
+  const progFill = $('topbar-progress-fill');
+  const progText = $('topbar-progress-text');
+  if (progContainer) progContainer.style.display = 'block';
+
+  try {
+    setStatus('Running genetic algorithm APL synthesis across GPU shader simulation…');
+    setTopStatus('compiling');
+
+    const baseStats = getActiveStatsConfig();
+    baseStats.race = activeRace;
+    baseStats.pet = activePet;
+    baseStats.sac = activeDS;
+    baseStats.talentFlags = getSimTalentFlags();
+
+    const gaConfig = readAPLGAConfig();
+
+    const startTime = performance.now();
+    const results = await runAPLGeneticSynthesis(baseStats, gaConfig, {
+      signal: aplGaController.signal,
+      onProgress: (p) => {
+        const pct = Math.round((p.completed / Math.max(1, p.total)) * 100);
+        if (progFill) progFill.style.width = `${pct}%`;
+        if (progText) progText.textContent = `${pct}%`;
+        setStatus(`${p.phase} (${p.completed}/${p.total})`);
+        setTopStatus('in-progress', { completed: p.completed, total: p.total });
+      },
+      onGeneration: (genData) => {
+        updateAPLGALiveView(genData);
+        const pct = Math.round((genData.gen / Math.max(1, genData.maxGens)) * 100);
+        if (progFill) progFill.style.width = `${pct}%`;
+        if (progText) progText.textContent = `${pct}%`;
+        if ($('top-sim-status')) {
+          $('top-sim-status').textContent = `APL Gen ${genData.gen}/${genData.maxGens} · Best ${genData.bestDps.toFixed(1)} DPS`;
+        }
+      }
+    });
+
+    const elapsedMs = performance.now() - startTime;
+    const totalFights = results.totalSimulations || (results.totalEvaluations * (gaConfig.screeningSims || 100));
+    const tp = Math.round(totalFights / (Math.max(1, elapsedMs) / 1000));
+
+    setAPLGAExecutionResults(results);
+    setStatus(`APL genetic synthesis completed (${totalFights.toLocaleString()} total fights across ${results.totalEvaluations.toLocaleString()} evaluated candidate APLs).`);
+    setTopStatus('done', { fights: totalFights, throughput: tp, elapsedMs });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      setStatus('APL genetic synthesis stopped by user. Best discovered APLs preserved.');
+    } else {
+      setStatus(`APL genetic synthesis failed: ${err.message}`, true);
+      setTopStatus('error', { message: err.message });
+    }
+  } finally {
+    aplGaController = null;
+    if (runBtn) runBtn.style.display = 'inline-block';
+    if (stopBtn) stopBtn.style.display = 'none';
+    if (progContainer) progContainer.style.display = 'none';
+  }
+});
+
+$('btn-stop-apl-ga')?.addEventListener('click', () => {
+  if (aplGaController) {
+    aplGaController.abort();
   }
 });
 

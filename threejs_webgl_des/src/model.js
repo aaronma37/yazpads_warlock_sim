@@ -53,7 +53,7 @@ export const APL_COND = Object.freeze({
   DOT_REM_LT: 23,
 });
 
-export const MAX_APL_RULES = 20;
+export const MAX_APL_RULES = 32;
 
 export const DEFAULTS = Object.freeze({
   duration: 180, iterations: 4096, seed: 42, rotation: 'shadow',
@@ -207,12 +207,19 @@ export function buildDefaultAPLRules(c) {
 
 export function encodeAPLRule(rule) {
   const action = (rule.action || 0) & 0xFF;
-  const cond = (rule.cond || 0) & 0xFF;
-  const targetSpell = (rule.targetSpell || 0) & 0xFF;
+  const cond1 = (rule.cond !== undefined ? rule.cond : (rule.cond1 || 0)) & 0xFF;
+  const targetSpell1 = (rule.targetSpell !== undefined ? rule.targetSpell : (rule.targetSpell1 || 0)) & 0xFF;
+  const param1 = Number(rule.param !== undefined ? rule.param : (rule.param1 || 0.0));
+
+  const cond2 = (rule.cond2 || 0) & 0xFF;
+  const targetSpell2 = (rule.targetSpell2 || 0) & 0xFF;
+  const param2 = Number(rule.param2 || 0.0);
+
   const enabled = (rule.enabled !== false && rule.enabled !== 0) ? 1 : 0;
-  const header = (enabled << 24) | (targetSpell << 16) | (cond << 8) | action;
-  const param = Number(rule.param || 0.0);
-  return { header, param };
+  const header0 = (enabled << 24) | (targetSpell1 << 16) | (cond1 << 8) | action;
+  const header1 = (targetSpell2 << 8) | cond2;
+
+  return { header0, param0: param1, header1, param1: param2 };
 }
 
 // Explicit word schemas keep JS and GLSL offsets in one place. All scalar
@@ -231,8 +238,10 @@ export const CONFIG = {
   shadowMult: 'f32', fireMult: 'f32', shadowMasteryBonus: 'f32', afBonus: 'f32', aftermathBonus: 'f32', maledictionBonus: 'f32', improvedCorruptionBonus: 'f32', improvedDrainsBonus: 'f32', soulSiphonBonus: 'f32',
   demonicEnergies: 'f32',
   trinketSP: 'f32', petSP: 'f32', petAP: 'f32', snfChance: 'f32', snfBonus: 'f32', dotCrit: 'f32', fnbCrit: 'f32', petMult: 'f32', petFireboltMult: 'f32', petMeleeMult: 'f32', petLashMult: 'f32', brandMult: 'f32',
-  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplHeader${i}`, 'u32'])),
-  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplParam${i}`, 'f32'])),
+  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplHeader0_${i}`, 'u32'])),
+  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplParam0_${i}`, 'f32'])),
+  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplHeader1_${i}`, 'u32'])),
+  ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplParam1_${i}`, 'f32'])),
 };
 
 export const STATE = {
@@ -260,8 +269,10 @@ export const HEAP_CAPACITY = 40;
 export const TRACE_CAPACITY = 256;
 export const TRACE_WORDS = 8;
 export const CONFIG_WORDS = Object.keys(CONFIG).length;
-export const APL_HEADER_OFFSET = Object.keys(CONFIG).indexOf('aplHeader0');
-export const APL_PARAM_OFFSET = Object.keys(CONFIG).indexOf('aplParam0');
+export const APL_HEADER0_OFFSET = Object.keys(CONFIG).indexOf('aplHeader0_0');
+export const APL_PARAM0_OFFSET = Object.keys(CONFIG).indexOf('aplParam0_0');
+export const APL_HEADER1_OFFSET = Object.keys(CONFIG).indexOf('aplHeader1_0');
+export const APL_PARAM1_OFFSET = Object.keys(CONFIG).indexOf('aplParam1_0');
 
 export function packConfig(input) {
   const c = validate(input);
@@ -357,15 +368,19 @@ export function packConfig(input) {
     brandMult: c.brandMult || 1.0,
   };
 
-  // Populate fixed 2-word bytecode entries for all 16 rules
+  // Populate bytecode entries (2 conditions per rule) for all rules
   for (let i = 0; i < MAX_APL_RULES; i++) {
     if (i < rawRules.length) {
-      const { header, param } = encodeAPLRule(rawRules[i]);
-      values[`aplHeader${i}`] = header;
-      values[`aplParam${i}`] = param;
+      const { header0, param0, header1, param1 } = encodeAPLRule(rawRules[i]);
+      values[`aplHeader0_${i}`] = header0;
+      values[`aplParam0_${i}`] = param0;
+      values[`aplHeader1_${i}`] = header1;
+      values[`aplParam1_${i}`] = param1;
     } else {
-      values[`aplHeader${i}`] = 0;
-      values[`aplParam${i}`] = 0.0;
+      values[`aplHeader0_${i}`] = 0;
+      values[`aplParam0_${i}`] = 0.0;
+      values[`aplHeader1_${i}`] = 0;
+      values[`aplParam1_${i}`] = 0.0;
     }
   }
 
