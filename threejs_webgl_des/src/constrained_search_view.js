@@ -557,7 +557,7 @@ export function renderGALeaderboard() {
     const fPct = Math.round(cand.fire_pct || 0);
     const pPct = Math.round(cand.pet_pct || 0);
     tdSplit.innerHTML = `
-      <div class="damage-split-bar" style="height: 14px;" title="Shadow: ${sPct}% | Fire: ${fPct}% | Pet: ${pPct}%">
+      <div class="damage-split-bar" style="height: 14px;" title="${cand.summary?.detailed === false ? 'Damage breakdown unavailable' : `Shadow: ${sPct}% | Fire: ${fPct}% | Pet: ${pPct}%`}">
         ${sPct > 0 ? `<div class="split-seg shadow" style="width: ${sPct}%;"></div>` : ''}
         ${fPct > 0 ? `<div class="split-seg fire" style="width: ${fPct}%;"></div>` : ''}
         ${pPct > 0 ? `<div class="split-seg pet" style="width: ${pPct}%;"></div>` : ''}

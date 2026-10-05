@@ -665,6 +665,7 @@ const SPELL_ICONS_MAP = {
   'Imp Firebolt': 'Spell_Fire_FireBolt.png',
   'Firebolt (Pet)': 'Spell_Fire_FireBolt.png',
   'Demonic Brand': 'ability_demonhunter_chaoticimprint_fire.png',
+  'Hellfire': 'Spell_Fire_Incinerate.png',
   'Wrack': 'ability_deathknight_hemorrhagicfever.png',
   'Pet': 'Spell_Shadow_SummonImp.png',
   'Imp': 'Spell_Shadow_SummonImp.png',
@@ -804,7 +805,7 @@ function render(result) {
         <td>
           <div class="spell-breakdown-cell">
             <img src="./assets/icons/${icon}" class="spell-breakdown-icon" alt="${sp.name}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-            <span class="spell-breakdown-name">${sp.name}</span>
+            <span class="spell-breakdown-name" ${sp.name === 'Hellfire' ? `title="Self damage: ${format(sp.selfDamage, 0)} (excluded from enemy DPS)"` : ''}>${sp.name}</span>
           </div>
         </td>
         <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-weight: 600; white-space: nowrap;">
@@ -913,6 +914,7 @@ initTalents((tf) => {
 });
 
 initAPL((aplList) => {
+  importedConfig = null;
   const enabledSpells = aplList.filter(e => e.enabled).map(e => e.spell);
   console.log('APL updated:', enabledSpells);
 }, () => importedConfig?.rotation || activeRotation);

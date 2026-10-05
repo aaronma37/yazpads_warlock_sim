@@ -11,6 +11,7 @@ import {
   formatAPLName
 } from './apl_genetic_optimizer.js';
 import { showTooltip, hideTooltip } from './tooltips.js';
+import { getEnabledAPLRules } from './apl_rules.js';
 import { SPELLS } from './model.js';
 
 let currentAPLCandidates = [];
@@ -20,6 +21,20 @@ let onApplyAPLCallback = null;
 
 export function initAPLSynthesisView(onApplyAPL) {
   onApplyAPLCallback = onApplyAPL;
+
+  const spellSelection = document.getElementById('apl-ga-spell-selection');
+  if (spellSelection) {
+    spellSelection.replaceChildren(...APL_SYNTHESIS_ACTIONS.map(action => {
+      const label = document.createElement('label');
+      label.className = 'wow-checkbox-label';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = true;
+      checkbox.dataset.actionId = action.id;
+      label.append(checkbox, document.createTextNode(` ${action.spell}`));
+      return label;
+    }));
+  }
 
   // Advanced tuning toggle
   const tuningChk = document.getElementById('apl-ga-advanced-tuning-chk');
@@ -67,6 +82,9 @@ export function readAPLGAConfig() {
   };
 
   return {
+    selectedActionIds: document.getElementById('apl-ga-spell-selection')
+      ? Array.from(document.querySelectorAll('#apl-ga-spell-selection input:checked'), el => el.dataset.actionId)
+      : undefined,
     generations: getNum('apl-ga-generations', 15),
     populationSize: getNum('apl-ga-pop-size', 500),
     screeningSims: getNum('apl-ga-screening-sims', 100),
@@ -147,30 +165,7 @@ export function setAPLGAExecutionResults(results) {
 }
 
 export function getEffectiveRules(rules = []) {
-  const result = [];
-  for (const r of rules) {
-    const cKey1 = r.condKey1 || r.condKey;
-    const cKey2 = r.condKey2;
-    const cEnum1 = r.cond1 !== undefined ? r.cond1 : r.cond;
-    const cEnum2 = r.cond2;
-
-    const isNever = !r.enabled ||
-      cKey1 === 'NEVER' || cKey2 === 'NEVER' ||
-      cEnum1 === 18 || cEnum2 === 18;
-
-    if (isNever) {
-      continue;
-    }
-    result.push(r);
-
-    // Truly unconditional rule (both conditions are explicitly ALWAYS / 0)
-    const isCond1Always = (cKey1 === 'ALWAYS') || (cKey1 === undefined && cEnum1 === 0);
-    const isCond2Always = (cKey2 === 'ALWAYS') || (cKey2 === undefined || cEnum2 === 0);
-    if (isCond1Always && isCond2Always) {
-      break;
-    }
-  }
-  return result;
+  return getEnabledAPLRules(rules);
 }
 
 export function renderAPLGALeaderboard() {
@@ -207,12 +202,12 @@ export function renderAPLGALeaderboard() {
 
     // Damage Split calculation
     const batch = cand.batch;
-    let shadowPct = 70, firePct = 0, petPct = 30;
+    let shadowPct = 0, firePct = 0, petPct = 0;
     if (batch && batch.spells) {
       const spells = batch.spells;
       const total = batch.summary?.mean || 1;
       const shadowDmg = (spells[0]?.dps || 0) + (spells[1]?.dps || 0) + (spells[2]?.dps || 0);
-      const fireDmg = (spells[3]?.dps || 0) + (spells[4]?.dps || 0) + (spells[5]?.dps || 0);
+      const fireDmg = (spells[3]?.dps || 0) + (spells[4]?.dps || 0) + (spells[5]?.dps || 0) + (spells[SPELLS.indexOf('Hellfire')]?.dps || 0);
       const petDmg = batch.petDps || Math.max(0, total - shadowDmg - fireDmg);
       shadowPct = Math.min(100, Math.max(0, Math.round((shadowDmg / total) * 100)));
       firePct = Math.min(100, Math.max(0, Math.round((fireDmg / total) * 100)));
@@ -245,7 +240,7 @@ export function renderAPLGALeaderboard() {
         ${effectiveRules.length} <span style="font-size:0.7rem; color:var(--text-dim);">/ ${cand.rules?.length || 16}</span>
       </td>
       <td>
-        <div class="damage-split-bar" style="height: 14px; margin: 0;">
+        <div class="damage-split-bar" style="height: 14px; margin: 0;" title="${batch?.summary?.detailed === false ? 'Damage breakdown unavailable' : 'Damage split'}">
           <div class="split-seg shadow" style="width: ${shadowPct}%;" title="Shadow: ${shadowPct}%"></div>
           <div class="split-seg fire" style="width: ${firePct}%;" title="Fire: ${firePct}%"></div>
           <div class="split-seg pet" style="width: ${petPct}%;" title="Pet: ${petPct}%"></div>
@@ -326,7 +321,7 @@ export function renderSelectedAPLCandidateDetails(cand) {
     spellRows = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim);">No damage data recorded.</td></tr>';
   }
 
-  // Effective APL Rows (hides Never-Use and everything behind an unconditional Always-Use)
+  // Show every enabled rule; availability is evaluated by the simulator.
   const effectiveRules = getEffectiveRules(cand.rules || []);
   const rulesHtml = effectiveRules.map((r, idx) => {
     let statusBadge = '';
@@ -596,6 +591,7 @@ function getSpellIcon(spellName) {
   if (name.includes('bane of agony') || name.includes('curse of agony') || name.includes('agony')) return 'Spell_Shadow_CurseOfSargeras.png';
   if (name.includes('soul fire')) return 'Spell_Fire_Fireball02.png';
   if (name.includes('brand')) return 'ability_demonhunter_chaoticimprint_fire.png';
+  if (name.includes('hellfire')) return 'Spell_Fire_Incinerate.png';
   if (name.includes('wrack')) return 'ability_deathknight_hemorrhagicfever.png';
   if (name.includes('life tap') || name.includes('tap')) return 'Spell_Shadow_BurningSpirit.png';
   return 'Spell_Shadow_ShadowBolt.png';

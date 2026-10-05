@@ -1,3 +1,4 @@
+import { isAPLRuleEnabled } from './apl_rules.js';
 import { fallbackRow } from './apl_fallback_view.js';
 // Authentic Action Priority List (APL) Engine & Interactive Manager
 // Matches desktop ImGui simulator APL table with drag-and-drop, up/down reordering, condition editing, and presets.
@@ -20,6 +21,7 @@ export const DEFAULT_APL = [
   { id: 'drain', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', condition: 'Missing Siphon Life', rawCond: 'target.debuff_remains("Siphon Life") <= 0', enabled: false },
   { id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always', rawCond: 'true', enabled: false },
+  { id: 'hellfire', spell: 'Hellfire', icon: 'Spell_Fire_Incinerate.png', condition: 'Always', rawCond: 'true', enabled: false },
   { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', condition: 'Always', rawCond: 'true', enabled: true }
 ];
 
@@ -38,27 +40,8 @@ export function refreshAPLFallback() {
 
 export function applySynthesizedAPL(rules) {
   if (!Array.isArray(rules)) return;
-  let seenUnconditional = false;
   currentAPL = rules.map(r => {
-    const cKey1 = r.condKey1 || r.condKey;
-    const cKey2 = r.condKey2;
-    const cEnum1 = r.cond1 !== undefined ? r.cond1 : r.cond;
-    const cEnum2 = r.cond2;
-
-    const isNever = !r.enabled ||
-      cKey1 === 'NEVER' || cKey2 === 'NEVER' ||
-      cEnum1 === 18 || cEnum2 === 18;
-
-    const isCond1Always = (cKey1 === 'ALWAYS') || (cKey1 === undefined && cEnum1 === 0);
-    const isCond2Always = (cKey2 === 'ALWAYS') || (cKey2 === undefined || cEnum2 === 0);
-
-    let isEnabled = true;
-    if (isNever || seenUnconditional) {
-      isEnabled = false;
-    } else if (isCond1Always && isCond2Always) {
-      isEnabled = true;
-      seenUnconditional = true;
-    }
+    const isEnabled = isAPLRuleEnabled(r);
 
     return {
       id: r.id,
@@ -66,6 +49,9 @@ export function applySynthesizedAPL(rules) {
       icon: r.icon,
       condition: r.condition,
       condition1: r.condition1,
+      condKey: r.condKey,
+      condKey1: r.condKey1,
+      condKey2: r.condKey2,
       condition2: r.condition2,
       rawCond: r.rawCond || (isEnabled ? 'true' : 'false'),
       enabled: isEnabled,
@@ -103,6 +89,7 @@ export function compileAPLToBytecode(aplList = currentAPL) {
     drain: APL_ACTION.DRAIN_SOUL_FILLER,
     siphon: APL_ACTION.SIPHON_LIFE,
     wrack: APL_ACTION.DRAIN_HOPE,
+    hellfire: APL_ACTION.HELLFIRE,
     bolt: APL_ACTION.SHADOW_BOLT_FILLER,
   };
 
@@ -126,6 +113,7 @@ export function compileAPLToBytecode(aplList = currentAPL) {
       return { cond: APL_COND.DECIMATION_INACTIVE, param: 35, targetSpell: 5 };
     if (entry.id === 'decimateSoulFire' && raw === 'decimation.active')
       return { cond: APL_COND.DECIMATION_ACTIVE, param: 35, targetSpell: 13 };
+    if (raw === 'buff.isb') return { cond: APL_COND.ISB_ACTIVE, param: 0, targetSpell: 0 };
     if (!raw || raw === 'true') return { cond: APL_COND.ALWAYS, param: 0, targetSpell: 0 };
 
     let m = match(/^mana_pct\s*(<=|<|>=|>)\s*(\d+(?:\.\d+)?)$/);
@@ -171,6 +159,9 @@ export function compileAPLToBytecode(aplList = currentAPL) {
     }
     if (/^!target\.has_debuff\(\s*["'](?:curse of doom|bane of doom)["']\s*\)$/i.test(raw))
       return { cond: APL_COND.DOOM_MISSING, param: 0, targetSpell: 2 };
+    m = match(/^!target\.has_debuff\(\s*["']([^"']+)["']\s*\)$/);
+    if (m && spellFromText(m[1]))
+      return { cond: APL_COND.FIGHT_GE_DOT_MISSING, param: 0, targetSpell: spellFromText(m[1]) };
     throw new Error(`APL condition is not supported by the shader: ${entry.rawCond}`);
   };
 
@@ -180,32 +171,31 @@ export function compileAPLToBytecode(aplList = currentAPL) {
     const action = (entry.action !== undefined && entry.action !== null) ? entry.action : mapAction[entry.id];
     if (action === undefined) throw new Error(`Unsupported APL action: ${entry.id}`);
     
-    let cond = APL_COND.ALWAYS, param = 0, targetSpell = 0;
-    if (entry.enabled) {
-      if (entry.cond !== undefined && entry.cond !== null) {
-        cond = entry.cond;
-        param = Number(entry.param || 0);
-        targetSpell = Number(entry.targetSpell || 0);
-      } else {
-        const parsed = parseCondition(entry);
-        cond = parsed.cond;
-        param = parsed.param;
-        targetSpell = parsed.targetSpell;
+    const enabled = isAPLRuleEnabled(entry);
+    let first = { cond: APL_COND.ALWAYS, param: 0, targetSpell: 0 };
+    let second = { cond: APL_COND.ALWAYS, param: 0, targetSpell: 0 };
+    if (entry.cond1 != null || entry.cond != null) {
+      first = { cond: entry.cond1 ?? entry.cond, param: Number(entry.param1 ?? entry.param ?? 0),
+        targetSpell: Number(entry.targetSpell1 ?? entry.targetSpell ?? 0) };
+      second = { cond: entry.cond2 ?? APL_COND.ALWAYS, param: Number(entry.param2 ?? 0),
+        targetSpell: Number(entry.targetSpell2 ?? 0) };
+    } else if (enabled) {
+      try {
+        first = parseCondition(entry);
+      } catch (error) {
+        // Keep existing compound conditions, then try two shader conditions joined by &&.
+        const parts = String(entry.rawCond || '').split(/\s*&&\s*/);
+        if (parts.length !== 2) throw error;
+        first = parseCondition({ ...entry, rawCond: parts[0] });
+        second = parseCondition({ ...entry, rawCond: parts[1] });
       }
     }
 
     return {
-      action,
-      cond,
-      param,
-      targetSpell,
-      cond1: (entry.cond1 !== undefined ? entry.cond1 : cond),
-      param1: (entry.param1 !== undefined ? entry.param1 : param),
-      targetSpell1: (entry.targetSpell1 !== undefined ? entry.targetSpell1 : targetSpell),
-      cond2: (entry.cond2 !== undefined ? entry.cond2 : APL_COND.ALWAYS),
-      param2: (entry.param2 !== undefined ? entry.param2 : 0),
-      targetSpell2: (entry.targetSpell2 !== undefined ? entry.targetSpell2 : 0),
-      enabled: entry.enabled ? 1 : 0
+      action, ...first,
+      cond1: first.cond, param1: first.param, targetSpell1: first.targetSpell,
+      cond2: second.cond, param2: second.param, targetSpell2: second.targetSpell,
+      enabled: enabled ? 1 : 0
     };
   });
 }
@@ -325,6 +315,8 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   if (hasShadowburn) {
     list.push({ id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
+
+  list.push({ id: 'hellfire', spell: 'Hellfire', icon: 'Spell_Fire_Incinerate.png', condition: 'Always', rawCond: 'true', enabled: false });
 
   // 10. Primary Spells
   if (isIncinerate) {
@@ -447,6 +439,11 @@ export function renderAPLTable() {
       dragSourceIndex = -1;
     });
 
+    if (entry.id === 'hellfire') {
+      const cell = tr.querySelector('.apl-spell-cell');
+      cell?.setAttribute('data-wow-tooltip-title', 'Hellfire');
+      cell?.setAttribute('data-wow-tooltip', '1300 Mana\nChanneled (15 sec)\nRequires Warlock, level 54\n210 Fire damage to the caster and nearby enemies every 1 sec for 15 sec.\nSpell coefficient: 0.022 per tick.');
+    }
     tbody.appendChild(tr);
   });
   refreshAPLFallback();
@@ -473,16 +470,38 @@ function setupConditionModal() {
     if (editingIndex >= 0 && editingIndex < currentAPL.length) {
       const labelInput = document.getElementById('apl-modal-cond-label');
       const rawInput = document.getElementById('apl-modal-cond-raw');
-      if (labelInput) currentAPL[editingIndex].condition = labelInput.value;
-      if (rawInput) currentAPL[editingIndex].rawCond = rawInput.value;
-      renderAPLTable();
-      if (onChangeCallback) onChangeCallback(currentAPL);
+      try {
+        updateAPLCondition(editingIndex, labelInput?.value, rawInput?.value);
+      } catch (error) {
+        const message = document.getElementById('apl-modal-cond-error');
+        if (message) message.textContent = error.message;
+        return;
+      }
     }
     closeConditionEditor();
   });
 }
 
+export function updateAPLCondition(index, label, rawCond) {
+  const entry = currentAPL[index];
+  if (!entry) throw new Error('APL action does not exist.');
+  const updated = { ...entry, condition: label ?? entry.condition, rawCond: rawCond ?? entry.rawCond };
+  // Remove synthesized condition metadata so the edited expression becomes authoritative.
+  if (String(updated.rawCond ?? '').trim() !== String(entry.rawCond ?? '').trim()) {
+    for (const key of ['cond', 'param', 'targetSpell', 'cond1', 'param1', 'targetSpell1',
+      'cond2', 'param2', 'targetSpell2', 'condKey', 'condKey1', 'condKey2', 'condition1', 'condition2']) {
+      delete updated[key];
+    }
+  }
+  compileAPLToBytecode([{ ...updated, enabled: true }]);
+  currentAPL[index] = updated;
+  renderAPLTable();
+  if (onChangeCallback) onChangeCallback(currentAPL);
+}
+
 function openConditionEditor(index) {
+  const message = document.getElementById('apl-modal-cond-error');
+  if (message) message.textContent = '';
   editingIndex = index;
   const entry = currentAPL[index];
   if (!entry) return;

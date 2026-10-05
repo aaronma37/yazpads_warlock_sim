@@ -148,11 +148,11 @@ float hasteMultiplier(){return c.race==2u&&s.now<s.racialEnd?1.10:1.0;}
 float baseCost(uint spell){switch(spell){
  case 0u:return c.boltCost;case 1u:return c.corrCost;case 2u:return 215.0;
  case 3u:return c.immCost;case 4u:return 355.0;case 13u:return 335.0;
- case 6u:return 300.0;case 8u:return 265.0;case 9u:case 10u:return 365.0;case 11u:return 240.0;
+ case 23u:return 1300.0;case 6u:return 300.0;case 8u:return 265.0;case 9u:case 10u:return 365.0;case 11u:return 240.0;
  default:return 168.0;}}
 float cost(uint spell){return baseCost(spell)*manaMultiplier();}
 void spend(uint spell){
- float amount=cost(spell);s.mana-=amount;s.spent+=amount;countCast(spell==13u?7u:spell);
+ float amount=cost(spell);s.mana-=amount;s.spent+=amount;countCast(spell==13u?7u:spell==23u?13u:spell);
  s.castBonus=s.eurekaCharges>0u?1.10:1.0;
  if(s.eurekaCharges>0u)s.eurekaCharges--;
  if(c.race==4u&&s.now>=s.graveReady&&random01()<0.10){s.graveReady=s.now+1000000u;damage(12u,c.maxHealth*0.05,false);}
@@ -268,6 +268,12 @@ void tick(Event e){
   amount*=isbMultiplier();amount*=resistanceMultiplier();
   damage(11u,amount,crit);
   if(c.nightfall>0.0){if(random01()<c.nightfall){s.trance=1u;s.tranceEnd=s.now+10000000u;s.procs++;enqueue(s.tranceEnd,8u,0u,0u);}}
+  return;
+ }else if(sp==23u){
+  // One nearby target; self damage is reported separately from enemy damage.
+  amount=(210.0+0.022*(p+c.hellfirePowerOffset))*currentFireMult()*(1.0+c.afBonus+c.maledictionBonus);
+  damage(13u,amount*resistanceMultiplier(),false);
+  if(gen<15u)enqueue(s.now+1000000u,3u,23u,gen+1u);
   return;
  }else if(sp==20u){
   if(gen!=s.agonyGen||s.doomActive==0u)return;
@@ -460,6 +466,11 @@ void decide(){
      gcd();return;
     }
    }
+  }else if(action==19u){ // HELLFIRE: always complete the 15-second channel
+   if(s.mana>=cost(23u)){
+    spend(23u);enqueue(s.now+1000000u,3u,23u,1u);
+    s.ready=s.now+15000000u;enqueue(s.ready,5u,0u,0u);return;
+   }else{tap();return;}
   }else if(action==18u){ // DRAIN_HOPE (Wrack)
    if(c.drainHope!=0u&&s.now>=s.drainHopeReady){
     if(s.mana>=cost(11u)){

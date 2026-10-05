@@ -1,8 +1,8 @@
 // High-Fidelity Discrete Event Simulation (DES) Model & Configuration Contract
 // Fully aligned with Authoritative C++ Oracle (src/sim/warlock/warlock_sim.cpp)
 
-export const SPELLS = ['Shadow Bolt', 'Corruption', 'Bane of Agony', 'Immolate', 'Incinerate', 'Searing Pain', 'Bane of Doom', 'Soul Fire', 'Conflagrate', 'Shadowburn', 'Siphon Life', 'Wrack', 'Touch of the Grave'];
-export const CPU_IDS = [1, 2, 5, 8, 12, 9, 6, 13, 11, 10, 17, 14, 30];
+export const SPELLS = ['Shadow Bolt', 'Corruption', 'Bane of Agony', 'Immolate', 'Incinerate', 'Searing Pain', 'Bane of Doom', 'Soul Fire', 'Conflagrate', 'Shadowburn', 'Siphon Life', 'Wrack', 'Touch of the Grave', 'Hellfire'];
+export const CPU_IDS = [1, 2, 5, 8, 12, 9, 6, 13, 11, 10, 17, 14, 30, null]; // Hellfire currently has no CPU oracle implementation.
 
 export const APL_ACTION = Object.freeze({
   NONE: 0,
@@ -24,6 +24,7 @@ export const APL_ACTION = Object.freeze({
   SHADOW_BOLT_FILLER: 16,
   SIPHON_LIFE: 17,
   DRAIN_HOPE: 18,
+  HELLFIRE: 19,
 });
 
 export const APL_COND = Object.freeze({
@@ -233,7 +234,7 @@ export const CONFIG = {
   petChoice: 'u32', trinketDuration: 'u32', trinketCD: 'u32',
   conflagrate: 'u32', shadowburn: 'u32', curseOfDoom: 'u32', incinerate: 'u32',
   decimation: 'u32', demonicBrand: 'u32', demonicBrandRank: 'u32', siphonLife: 'u32', drainHope: 'u32',
-  power: 'f32', maxMana: 'f32', tapGain: 'f32', tapThreshold: 'f32', mp5: 'f32',
+  hellfirePowerOffset: 'f32', power: 'f32', maxMana: 'f32', tapGain: 'f32', tapThreshold: 'f32', mp5: 'f32',
   hit: 'f32', crit: 'f32', fireCrit: 'f32', shadowCrit: 'f32', directCrit: 'f32', nightfall: 'f32', isb: 'f32',
   resistance: 'f32', penetration: 'f32', boltCost: 'f32', boltMin: 'f32', boltMax: 'f32',
   corrCost: 'f32', corrBase: 'f32', corrMultiplier: 'f32', immCost: 'f32', immDirect: 'f32', immTick: 'f32',
@@ -327,6 +328,7 @@ export function packConfig(input) {
     demonicBrandRank: c.demonicBrandRank,
     siphonLife: +c.siphonLife,
     drainHope: +c.drainHope,
+    hellfirePowerOffset: c.firePower - (c.rotation === 'fire' || c.rotation === 'searing' ? c.firePower : c.shadowPower),
     power: c.spellPower + (c.rotation === 'fire' || c.rotation === 'searing' ? c.firePower : c.shadowPower),
     maxMana: (1393 + int * 15) * (c.race === 'GNOME' ? 1.05 : 1),
     tapGain: (430 + 147 + c.spirit) * (1 + (c.tapBonus > 0 ? c.tapBonus : c.improvedTap ? 0.2 : 0)),

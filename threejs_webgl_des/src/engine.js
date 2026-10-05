@@ -280,7 +280,8 @@ export function summarize(states, duration) {
     hits: sum(`hits${i}`) / states.length,
     crits: sum(`crits${i}`) / states.length,
     misses: sum(`misses${i}`) / states.length,
-    school: ['Immolate', 'Incinerate', 'Searing Pain', 'Soul Fire', 'Conflagrate'].includes(name) ? 'fire' : 'shadow'
+    ...(name === 'Hellfire' ? { selfDamage: sum(`hits${i}`) / states.length * 210 } : {}),
+    school: ['Immolate', 'Incinerate', 'Searing Pain', 'Soul Fire', 'Conflagrate', 'Hellfire'].includes(name) ? 'fire' : 'shadow'
   })) : [];
 
   const petMeleeDamage = sum('petMeleeDamage') / states.length;
@@ -342,7 +343,7 @@ export function summarize(states, duration) {
   }
 
   const shadowDmg = (spells[0]?.damage || 0) + (spells[1]?.damage || 0) + (spells[2]?.damage || 0) + (petMeleeDamage > 0 ? petSpellDamage : 0);
-  const fireDmg = (spells[3]?.damage || 0) + (spells[4]?.damage || 0) + (spells[5]?.damage || 0) + (petMeleeDamage === 0 ? petSpellDamage : 0) + petBrandDamage;
+  const fireDmg = (spells[3]?.damage || 0) + (spells[4]?.damage || 0) + (spells[5]?.damage || 0) + (petMeleeDamage === 0 ? petSpellDamage : 0) + petBrandDamage + (spells[13]?.damage || 0);
   const physicalDmg = petMeleeDamage;
   const totalDamage = detailed ? shadowDmg + fireDmg + physicalDmg : sum('total') / states.length;
 

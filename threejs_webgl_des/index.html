@@ -927,7 +927,7 @@
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
-              <label class="wow-checkbox-label" style="font-size: 0.75rem;" title="Keeps all 16 actions locked to their handcrafted optimal conditions while optimizing priority order and permutations">
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;" title="Keeps all selected actions locked to their handcrafted optimal conditions while optimizing priority order and permutations">
                 <input type="checkbox" id="apl-ga-lock-conditions" checked> Lock Handcrafted Conditions (Priority Only)
               </label>
               <label class="wow-checkbox-label" style="font-size: 0.75rem;">
@@ -964,20 +964,26 @@
               <span style="font-size: 0.75rem; color: var(--text-parchment);">Never-Use Toggle:</span>
               <input class="wow-input" type="number" id="apl-ga-never-rate" value="0.20" step="0.05" min="0" max="1" style="width: 70px;">
             </div>
-            <span style="font-size: 0.72rem; color: var(--text-dim);">Evolves 16-slot APL with exactly 1 copy of each action, 2 conditions per action, continuous threshold parameters, and Never-Use conditions.</span>
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Evolves an APL with exactly 1 copy of each selected available action, 2 conditions per action, continuous threshold parameters, and Never-Use conditions.</span>
           </div>
         </div>
 
         <!-- Synthesis Rules Constraint Notice -->
         <div style="border-top: 1px solid #292434; padding-top: 0.45rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
           <div style="font-size: 0.75rem; color: var(--text-muted);">
-            <strong style="color: var(--text-gold);">Structure:</strong> 16 total action slots · Exactly 1 copy of each spell · 2 conditions per action · Permutation index swapping · Continuous Mana / HP / DoT / Time thresholds · Never-Use disables.
+            <strong style="color: var(--text-gold);">Structure:</strong> Selected available spells · Exactly 1 copy of each spell · 2 conditions per action · Permutation index swapping · Continuous Mana / HP / DoT / Time thresholds · Never-Use disables.
           </div>
           <div style="font-size: 0.75rem; color: var(--text-parchment);">
             Synthesizing for: <strong style="color: #c084fc;" id="apl-ga-active-spec-label">Current Configuration</strong>
           </div>
         </div>
       </section>
+
+      <details class="wow-panel" style="margin-bottom: 0.75rem; padding: 0.75rem;">
+        <summary style="cursor: pointer; color: var(--text-gold);">Spells to Search</summary>
+        <p style="color: var(--text-dim); font-size: 0.75rem;">Choose which spells synthesis may include. Talent requirements still apply. The automatic fallback filler and Life Tap remain available when no rule can act.</p>
+        <div id="apl-ga-spell-selection" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.6rem;"></div>
+      </details>
 
       <!-- BASE STATS & OPTIONS SUBHEADER BAR -->
       <div class="specs-stats-subheader-bar">
@@ -1105,6 +1111,7 @@
         </div>
         <div class="field-row">
           <label style="font-size: 0.78rem; color: var(--text-gold);">Condition Expression / Raw Rule:</label>
+          <p id="apl-modal-cond-error" role="alert" style="color: #f87171;"></p>
           <input type="text" class="wow-input" id="apl-modal-cond-raw" placeholder="e.g. target_ttd >= 15 && !target.has_debuff('Corruption')">
         </div>
         <div style="font-size: 0.72rem; color: var(--text-muted); background: #0c0b10; padding: 0.5rem; border-radius: 3px; border: 1px solid #332a40;">

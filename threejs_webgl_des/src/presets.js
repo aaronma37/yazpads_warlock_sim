@@ -31,6 +31,7 @@ const SPELL_ICONS = {
   BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
   BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
   DEMONIC_BRAND: 'ability_demonhunter_chaoticimprint_fire.png',
+  HELLFIRE: 'Spell_Fire_Incinerate.png',
   DRAIN_HOPE: 'ability_deathknight_hemorrhagicfever.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
   PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
@@ -224,7 +225,7 @@ function getPresetTalentDistribution(p) {
 }
 
 function getSpecDamageSplit(p) {
-  if (p && p.is_simulated && p.simulated_result?.summary) {
+  if (p && p.is_simulated && p.simulated_result?.summary?.detailed !== false && p.simulated_result?.summary) {
     const summary = p.simulated_result.summary;
     const dur = p.simulated_result.config?.duration || 180;
     const total = summary.damage || (summary.mean * dur) || 1;
@@ -239,7 +240,7 @@ function getSpecDamageSplit(p) {
     const petPct = Math.round((petDmg / totalDmg) * 100);
     return { shadow: shadowPct, fire: firePct, physical: physPct, pet: petPct, shadowDmg, fireDmg, physDmg, petDmg, totalDmg };
   }
-  return { shadow: 0, fire: 0, physical: 0, pet: 0, shadowDmg: 0, fireDmg, physDmg: 0, petDmg: 0, totalDmg: 0 };
+  return { shadow: 0, fire: 0, physical: 0, pet: 0, shadowDmg: 0, fireDmg: 0, physDmg: 0, petDmg: 0, totalDmg: 0 };
 }
 
 export function renderPresetsLeaderboard(onSelectPreset) {
@@ -336,7 +337,7 @@ export function renderPresetsLeaderboard(onSelectPreset) {
         : `<span style="color:#666; font-size:0.75rem; font-weight:normal;">--</span>`;
     }
 
-    const splitHtml = isSim
+    const splitHtml = isSim && p.simulated_result?.summary?.detailed !== false
       ? `<div class="damage-split-bar" title="Shadow: ${split.shadow}% | Fire: ${split.fire}% | Pet: ${split.pet}%">
           ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;"></div>` : ''}
           ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;"></div>` : ''}
@@ -514,7 +515,7 @@ export function renderSelectedPresetDetails(p) {
     `;
   }
 
-  const breakdownSectionHtml = isSim
+  const breakdownSectionHtml = isSim && p.simulated_result?.summary?.detailed !== false
     ? `<span class="section-label">School Damage Split:</span>
        <div class="damage-split-bar large-split">
          ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;">${split.shadow}% Shadow</div>` : ''}
@@ -523,12 +524,13 @@ export function renderSelectedPresetDetails(p) {
        </div>
        ${perSpellRowsHtml}
        ${statWeightsBoxHtml}`
+    : isSim ? `<div style="color:var(--text-dim); padding:1rem 0;">Damage breakdown unavailable for this comparison.</div>${statWeightsBoxHtml}`
     : `<span class="section-label">Damage Breakdown:</span>
        <div class="damage-split-bar large-split" style="background:#13111a; border-color:#2a2434; display:flex; align-items:center; justify-content:center;">
          <span style="color:#777; font-size:0.75rem;">Awaiting GPU Simulation</span>
        </div>
        <div style="color:var(--text-dim); font-size:0.78rem; text-align:center; padding:1rem 0.5rem; background:#0c0b10; border-radius:3px; border:1px dashed #2d2636;">
-         Click <strong>"Simulate Specs"</strong> above to compute live DPS, confidence bounds, and damage split.
+         Click <strong>"Simulate Specs"</strong> above to compute live DPS and confidence bounds.
        </div>
        ${statWeightsBoxHtml}`;
 
@@ -645,6 +647,7 @@ export async function runBatchPresetSimulation(signal, onProgress, onSelectPrese
   const multiRes = await runMultiSimulation(simConfigs, {
     signal,
     iterations: numSims,
+    detailedResults: false,
     onProgress: (p) => {
       const pct = Math.round((p.completed / p.total) * 100);
       if (progFill) progFill.style.width = `${pct}%`;

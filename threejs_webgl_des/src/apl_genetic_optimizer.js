@@ -8,7 +8,7 @@ import { APL_ACTION, APL_COND, MAX_APL_RULES } from './model.js';
 import { getPresetPetAndSac } from './presets.js';
 import { TalentGraph } from './genetic_optimizer.js';
 
-// 16 Authentic Spell Actions in the simulator
+// Spell actions available to APL synthesis
 export const APL_SYNTHESIS_ACTIONS = [
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, category: 'Resource', defaultRaw: 'mana_pct <= 20' },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, category: 'Proc', defaultRaw: 'buff.shadow_trance' },
@@ -24,11 +24,12 @@ export const APL_SYNTHESIS_ACTIONS = [
   { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', action: APL_ACTION.INCINERATE_FILLER, category: 'Direct', defaultRaw: 'true' },
   { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.SEARING_PAIN_FILLER, category: 'Direct', defaultRaw: 'true' },
   { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', action: APL_ACTION.SIPHON_LIFE, category: 'DoT', defaultRaw: 'target.debuff_remains("Siphon Life") <= 0 && target_ttd >= 12' },
+  { id: 'hellfire', spell: 'Hellfire', icon: 'Spell_Fire_Incinerate.png', action: APL_ACTION.HELLFIRE, category: 'Channel', defaultRaw: 'target_ttd >= 15' },
   { id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', action: APL_ACTION.DRAIN_HOPE, category: 'Channel', defaultRaw: 'true' },
   { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', action: APL_ACTION.SHADOW_BOLT_FILLER, category: 'Direct', defaultRaw: 'true' }
 ];
 
-export const TOTAL_APL_RULES = 16; // Exactly 1 copy of each of the 16 actions (with 2 conditions per action)
+export const TOTAL_APL_RULES = APL_SYNTHESIS_ACTIONS.length; // One copy per action, with two conditions.
 
 const ACTION_MAP_BY_ID = new Map(APL_SYNTHESIS_ACTIONS.map(a => [a.id, a]));
 const ACTION_MAP_BY_ACTION_ENUM = new Map(APL_SYNTHESIS_ACTIONS.map(a => [a.action, a]));
@@ -83,6 +84,7 @@ export const ACTION_VALID_CONDITIONS = {
   incinerate: ['TARGET_HP_LE', 'TARGET_HP_GE', 'MANA_GE', 'ALWAYS', 'NEVER'],
   searing: ['TARGET_HP_LE', 'TARGET_HP_GE', 'MANA_GE', 'ALWAYS', 'NEVER'],
   siphon: ['DOT_REM_LE', 'DOT_REM_LT', 'FIGHT_TIME_GE', 'FIGHT_GE_DOT_MISSING', 'ALWAYS', 'NEVER'],
+  hellfire: ['TARGET_HP_LE', 'TARGET_HP_GE', 'FIGHT_TIME_GE', 'MANA_GE', 'ALWAYS', 'NEVER'],
   wrack: ['TARGET_HP_LE', 'TARGET_HP_LT', 'FIGHT_TIME_GE', 'ALWAYS', 'NEVER'],
   bolt: ['TARGET_HP_LE', 'TARGET_HP_GE', 'MANA_GE', 'ALWAYS', 'NEVER']
 };
@@ -411,6 +413,8 @@ export function getHandcraftedRuleForAction(actionId) {
       return createTwoConditionRule('incinerate', 'ALWAYS', 0, 'ALWAYS', 0);
     case 'searing': // Searing Pain: always
       return createTwoConditionRule('searing', 'ALWAYS', 0, 'ALWAYS', 0);
+    case 'hellfire': // Allow enough time to finish the full channel.
+      return createTwoConditionRule('hellfire', 'FIGHT_TIME_GE', 15.0, 'ALWAYS', 0);
     case 'wrack': // Wrack: always
       return createTwoConditionRule('wrack', 'ALWAYS', 0, 'ALWAYS', 0);
     case 'siphon': // Siphon Life: missing siphon life + ttd > 12s
@@ -431,7 +435,7 @@ export function createDefaultIndividual(availableActions = APL_SYNTHESIS_ACTIONS
 
   const order = [
     'tap', 'nightfall', 'brand', 'decimateSearing', 'decimateSoulFire',
-    'curse', 'agony', 'corr', 'immo', 'conflag', 'siphon', 'shadowburn', 'wrack'
+    'curse', 'agony', 'corr', 'immo', 'conflag', 'siphon', 'shadowburn', 'wrack', 'hellfire'
   ];
 
   if (tf.incinerate) {
@@ -661,7 +665,7 @@ export function individualToConfig(ind, baseStatsConfig) {
 
   // Set rotation to match the dominant/first damage nuke in this APL priority order
   const activeSpells = ind.rules.filter(r => r.enabled).map(r => r.id);
-  const firstNuke = activeSpells.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack');
+  const firstNuke = activeSpells.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire');
   let rot = baseStatsConfig.rotation || 'shadow';
   if (firstNuke === 'incinerate') rot = 'fire';
   else if (firstNuke === 'searing') rot = 'searing';
@@ -695,7 +699,7 @@ export function getAPLMapElitesKey(ind) {
   const firstDot = activeIds.find(id => id === 'curse' || id === 'agony' || id === 'corr' || id === 'immo' || id === 'siphon') || 'none';
 
   // Feature 3: Primary filler
-  const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack') || 'bolt';
+  const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire') || 'bolt';
 
   // Feature 4: Tap position relative to filler
   const tapIdx = activeIds.indexOf('tap');
@@ -742,13 +746,15 @@ export function formatAPLName(ind) {
   if (activeIds.includes('nightfall')) tags.push('Nightfall');
   if (activeIds.includes('siphon')) tags.push('Siphon');
   if (activeIds.includes('wrack')) tags.push('Wrack');
+  if (activeIds.includes('hellfire')) tags.push('Hellfire');
   if (activeIds.includes('shadowburn')) tags.push('Sburn');
 
   let primary = 'Shadow Bolt';
-  const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack');
+  const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire');
   if (firstNuke === 'incinerate') primary = 'Incinerate';
   else if (firstNuke === 'searing') primary = 'Searing Pain';
   else if (firstNuke === 'wrack') primary = 'Wrack';
+  else if (firstNuke === 'hellfire') primary = 'Hellfire';
 
   const tagStr = tags.length > 0 ? tags.slice(0, 4).join('/') : 'Direct';
   return `${primary} (${tagStr} · ${active.length} Active Rules)`;
@@ -791,7 +797,10 @@ export async function runAPLGeneticSynthesis(baseStatsConfig, gaConfig, { signal
   const finalSims = gaConfig.finalSims || 2000;
 
   const talentFlags = baseStatsConfig?.talentFlags || {};
-  const availableActions = getAvailableActionsForSpec(talentFlags);
+  const selectedActions = Array.isArray(gaConfig.selectedActionIds) ? new Set(gaConfig.selectedActionIds) : null;
+  const availableActions = getAvailableActionsForSpec(talentFlags)
+    .filter(action => !selectedActions || selectedActions.has(action.id));
+  if (!availableActions.length) throw new Error('Select at least one spell available to the current build.');
 
   const mapElitesGrid = new Map();
   const evolutionHistory = [];
@@ -808,7 +817,9 @@ export async function runAPLGeneticSynthesis(baseStatsConfig, gaConfig, { signal
   }
 
   // 2. Fill remainder with randomized unique legal APL individuals
-  while (population.length < popSize) {
+  // Small selected pools can have fewer unique APLs than the requested population.
+  let seedAttempts = 0;
+  while (population.length < popSize && seedAttempts++ < popSize * 20) {
     const ind = createRandomAPLIndividual(rng, availableActions, talentFlags, lockConditions);
     const key = getAPLUniqueKey(ind);
     if (!uniqueAPLsSet.has(key)) {
@@ -824,7 +835,7 @@ export async function runAPLGeneticSynthesis(baseStatsConfig, gaConfig, { signal
 
   // Launch Generation 0 simulation on GPU
   const gen0Configs = population.map(ind => individualToConfig(ind, baseStatsConfig));
-  let currentSimPromise = runMultiSimulation(gen0Configs, { signal, iterations: screeningSims });
+  let currentSimPromise = runMultiSimulation(gen0Configs, { signal, iterations: screeningSims, detailedResults: false });
   let currentPool = population;
 
   // Prepare Generation 1 offspring on CPU concurrently
@@ -878,7 +889,7 @@ export async function runAPLGeneticSynthesis(baseStatsConfig, gaConfig, { signal
     totalSimsCount += activeBatch.pool.length * screeningSims;
 
     // Launch GPU simulation for activeBatch
-    currentSimPromise = runMultiSimulation(activeBatch.configs, { signal, iterations: screeningSims });
+    currentSimPromise = runMultiSimulation(activeBatch.configs, { signal, iterations: screeningSims, detailedResults: false });
 
     // Concurrently prepare next generation batch on CPU
     if (gen < generations) {
@@ -948,7 +959,7 @@ export async function runAPLGeneticSynthesis(baseStatsConfig, gaConfig, { signal
 
   if (finalCandidates.length > 0) {
     const finalConfigs = finalCandidates.map(c => individualToConfig(c, baseStatsConfig));
-    const finalSimRes = await runMultiSimulation(finalConfigs, { signal, iterations: finalSims });
+    const finalSimRes = await runMultiSimulation(finalConfigs, { signal, iterations: finalSims, detailedResults: false });
 
     for (let i = 0; i < finalCandidates.length; i++) {
       finalCandidates[i].batch = finalSimRes.results[i];

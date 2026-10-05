@@ -945,7 +945,7 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
 
   // Launch Generation 0 simulation on GPU (Buffer A)
   const gen0Configs = population.map(ind => individualToConfig(ind, baseStatsConfig));
-  let currentSimPromise = runMultiSimulation(gen0Configs, { signal, iterations: screeningSims });
+  let currentSimPromise = runMultiSimulation(gen0Configs, { signal, iterations: screeningSims, detailedResults: false });
   let currentPool = population;
 
   // Double Buffering: Overlap CPU generation of Gen 1 while GPU simulates Gen 0!
@@ -1000,7 +1000,7 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
     totalSimsCount += activeBatch.pool.length * screeningSims;
 
     // 1. Immediately launch GPU simulation on activeBatch
-    currentSimPromise = runMultiSimulation(activeBatch.configs, { signal, iterations: screeningSims });
+    currentSimPromise = runMultiSimulation(activeBatch.configs, { signal, iterations: screeningSims, detailedResults: false });
 
     // 2. Concurrently on CPU: prepare next generation's batch (Gen + 1) while GPU runs activeBatch
     if (gen < generations) {
@@ -1076,7 +1076,7 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
 
   if (finalCandidates.length > 0) {
     const finalConfigs = finalCandidates.map(ind => individualToConfig(ind, baseStatsConfig));
-    const finalSimRes = await runMultiSimulation(finalConfigs, { signal, iterations: finalSims });
+    const finalSimRes = await runMultiSimulation(finalConfigs, { signal, iterations: finalSims, detailedResults: false });
 
     for (let i = 0; i < finalCandidates.length; i++) {
       finalCandidates[i].batch = finalSimRes.results[i];

@@ -30,7 +30,7 @@ test('Command applies once to every pet attack and Gnome gains maximum mana', ()
 });
 
 test('damage sources have independent counters and fit the GPU result layout', () => {
-  for (const name of ['Bane of Doom', 'Soul Fire', 'Conflagrate', 'Shadowburn', 'Siphon Life', 'Wrack', 'Touch of the Grave']) {
+  for (const name of ['Bane of Doom', 'Soul Fire', 'Conflagrate', 'Shadowburn', 'Siphon Life', 'Wrack', 'Touch of the Grave', 'Hellfire']) {
     const i = SPELLS.indexOf(name);
     assert.ok(i >= 6);
     for (const key of ['damage', 'casts', 'hits', 'crits', 'misses']) assert.ok(`${key}${i}` in STATE);
@@ -38,3 +38,10 @@ test('damage sources have independent counters and fit the GPU result layout', (
   assert.equal(new Set(CPU_IDS).size, SPELLS.length);
   assert.ok(COMPACT_STRIPES * 16 >= COMPACT_WORDS);
 });
+
+ test('Hellfire uses Fire spell power regardless of the fallback rotation', () => {
+  for (const rotation of ['shadow', 'fire', 'searing', 'bolt']) {
+    const config = packed({ rotation, spellPower: 500, shadowPower: 200, firePower: 100 });
+    assert.equal(config.power + config.hellfirePowerOffset, 600);
+  }
+ });
