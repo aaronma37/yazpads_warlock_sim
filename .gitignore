@@ -49,3 +49,6 @@ Thumbs.db
 
 # Discord scraped data
 discord_data/
+
+# Local external-model correctness experiments
+local_comparison/

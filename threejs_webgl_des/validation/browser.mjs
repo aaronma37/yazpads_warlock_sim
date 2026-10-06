@@ -17,7 +17,7 @@ try{
  await page.addInitScript(()=>Object.defineProperty(navigator,'gpu',{get(){throw new Error('WebGPU is forbidden in this app');}}));
  await page.goto(process.env.APP_URL || 'http://127.0.0.1:8080');
  const report=await page.evaluate(async()=>{
-  const {runSimulation}=await import('./src/engine.js'),{compare}=await import('./validation/compare.js');
+  const {runSimulation,analyzeRegret,scanRegrets}=await import('./src/engine.js'),{compare}=await import('./validation/compare.js');
   const {cases}=await (await fetch('./validation/cpu-fixtures.json')).json();const checks=[];
   for(const fixture of cases){
    try{checks.push(compare(await runSimulation(fixture.config),fixture));}
@@ -44,6 +44,26 @@ try{
   try{await runSimulation({iterations:64},{batchSize:16,signal:controller.signal,onProgress:p=>{if(p.completed>=16)controller.abort();}});}
   catch(e){cancelled=e.name==='AbortError';}
   checks.push({name:'cancellation after a submitted batch',pass:cancelled});
+  const regret=await analyzeRegret({duration:10,iterations:2},{decision:0,samples:2});
+  const same=regret.rows.find(row=>row.action===regret.policyAction);
+  checks.push({name:'regret same-action replay and illegal alternatives',pass:same?.deltaDps===0&&same?.ci95===0&&!regret.rows.some(row=>row.action===10)});
+  try{await analyzeRegret({duration:10,iterations:2},{decision:10000,samples:2});checks.push({name:'missing regret decision rejection',pass:false});}
+  catch(e){checks.push({name:'missing regret decision rejection',pass:e.message.includes('does not occur')});}
+  const scan=await scanRegrets({duration:10,iterations:2},{samples:128});
+  checks.push({name:'all-decision regret scan with supported top five',pass:scan.totalDecisions>1&&scan.items.length<=5&&new Set(scan.items.map(item=>item.decision)).size===scan.items.length&&scan.items.every(item=>item.lower>0)});
+  const splitScan=await scanRegrets({duration:10,iterations:2},{samples:128,batchSize:1027});
+  checks.push({name:'parallel regret batch/row invariance',pass:JSON.stringify(scan.items)===JSON.stringify(splitScan.items)&&scan.comparisons===splitScan.comparisons&&scan.totalDecisions===splitScan.totalDecisions});
+  checks.push({name:'regret uses large batches across decisions and actions',pass:scan.timing.draws<splitScan.timing.draws&&scan.timing.rollouts===splitScan.timing.rollouts});
+  const lastDecision=await analyzeRegret({duration:10,iterations:2},{decision:scan.totalDecisions-1,samples:2});
+  checks.push({name:'scan discovery includes the last real decision',pass:lastDecision.decision===scan.totalDecisions-1});
+  try{await analyzeRegret({duration:10,iterations:2},{decision:scan.totalDecisions,samples:2});checks.push({name:'scan discovery stops at fight end',pass:false});}
+  catch(e){checks.push({name:'scan discovery stops at fight end',pass:e.message.includes('does not occur')});}
+  const scanController=new AbortController();let scanCancelled=false;
+  try{await scanRegrets({duration:10,iterations:2},{samples:128,signal:scanController.signal,onProgress:p=>{if(p.phase.startsWith('Scanning decisions')&&p.completed>=1)scanController.abort();}});}
+  catch(e){scanCancelled=e.name==='AbortError';}
+  checks.push({name:'all-decision scan cancellation',pass:scanCancelled});
+  const afterRegret=await runSimulation(input,{batchSize:16,trace:false});
+  checks.push({name:'diagnostics restore simulation material and uniforms',pass:JSON.stringify(a.states)===JSON.stringify(afterRegret.states)});
   const {checkAccounting}=await import('./validation/accounting.js');
   checks.push(...await checkAccounting());
   return {checks,timing:a.timing,userAgent:navigator.userAgent};

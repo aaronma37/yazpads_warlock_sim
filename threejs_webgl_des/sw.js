@@ -1,4 +1,4 @@
-const CACHE_NAME = 'warlock-sim-v11';
+const CACHE_NAME = 'warlock-sim-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,8 @@ const ASSETS = [
   './assets/icons/Spell_Fire_Incinerate.png',
   './src/apl_fallback_view.js',
   './src/engine.js',
+  './src/regret.js',
+  './src/regret_view.js',
   './src/kernel.js',
   './src/model.js',
   './src/talents.js',

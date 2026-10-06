@@ -1,3 +1,4 @@
+import { REGRET_FRAGMENT, REGRET_ACTIONS, decodeRegretResults, scanDecisionRegrets } from './regret.js';
 import { WebGLRenderer, WebGLRenderTarget, RawShaderMaterial, BufferGeometry, BufferAttribute,
   Mesh, Scene, Camera, GLSL3, RGBAIntegerFormat, UnsignedIntType, NearestFilter, NoBlending, DataTexture } from 'three';
 import { COMPACT_STRIPES, validate, packConfig, decodeStates, STATE_WORDS, TRACE_CAPACITY, SPELLS, CONFIG, CONFIG_WORDS } from './model.js';
@@ -55,7 +56,7 @@ export async function preloadShader() {
 
 export function disposeEngine(){
  if(running)throw new Error('Cannot dispose an active simulation.');
- if(engine){engine.material.dispose();engine.fastMaterial.dispose();engine.geometry.dispose();engine.renderer.dispose();engine.renderer.forceContextLoss();engine=null;}
+ if(engine){engine.regretMaterial?.dispose();engine.material.dispose();engine.fastMaterial.dispose();engine.geometry.dispose();engine.renderer.dispose();engine.renderer.forceContextLoss();engine=null;}
 }
 
 function target(width,height){
@@ -528,4 +529,103 @@ export async function runSimulation(input,{signal,onProgress=()=>{},batchSize=52
    timing:{elapsedMs,executeMs,decodeMs,summaryMs,compileMs,diagnosticMs,draws,capacity},
    adapter:e.gl.getParameter(e.gl.RENDERER),engine:'Three.js 0.180.0 / WebGL2 GLSL ES 3.00 DES',scope:'single-target-core-v1'};
  }finally{rt?.dispose();diagnostic?.dispose();traceTarget?.dispose();engine?.renderer.setRenderTarget(null);running=false;}
+}
+
+// One diagnostic session owns the renderer; lanes span decisions, actions, and samples.
+async function withRegretSession(input,{signal,onProgress=()=>{},batchSize=65536},work){
+ const config=validate(input);
+ if(!Number.isInteger(batchSize)||batchSize<1||batchSize>1048576)throw new Error('Batch size must be 1–1048576.');
+ if(running)throw new Error('A simulation is already running.');
+ checkAbort(signal);
+ const e=acquire(),previous=e.mesh.material;
+ running=true;let rt,jobTex;
+ const timing={draws:0,rollouts:0,batchSize};
+ try{
+  jobTex=new DataTexture(new Uint32Array(4),1,1,RGBAIntegerFormat,UnsignedIntType);jobTex.needsUpdate=true;
+  if(!e.regretMaterial){
+   const uniforms={...e.uniforms,regretJobTex:{value:jobTex},regretSamples:{value:1},continuationSeed:{value:0}};
+   e.regretMaterial=new RawShaderMaterial({glslVersion:GLSL3,vertexShader:VERTEX,fragmentShader:REGRET_FRAGMENT,uniforms,depthTest:false,depthWrite:false,blending:NoBlending});
+  }
+  const material=e.regretMaterial,uniforms=material.uniforms;
+  uniforms.regretJobTex.value=jobTex;e.mesh.material=material;
+  e.uniforms.configWords.value=packConfig(config);e.uniforms.numConfigs.value=1;
+  e.uniforms.seed.value=config.seed;e.uniforms.eventBudget.value=config.duration*32+1024;
+  onProgress({phase:'Compiling regret diagnostics',completed:0,total:1});
+  if(!e.regretCompiled){await e.renderer.compileAsync(e.scene,e.camera);if(e.error)throw e.error;e.regretCompiled=true;}
+  checkAbort(signal);
+  const maxTexSize=e.gl.getParameter(e.gl.MAX_TEXTURE_SIZE);
+  function resize(total){
+   const capacity=Math.min(batchSize,total),width=Math.min(maxTexSize,1024,capacity),height=Math.ceil(capacity/width);
+   if(height>maxTexSize)throw new Error('Regret batch exceeds maximum texture height.');
+   if(!rt||rt.width!==width||rt.height!==height){rt?.dispose();rt=target(width,height);}
+   return capacity;
+  }
+  async function draw(mode,count=1,offset=0){
+   const outputs=await drawRead(e,rt,count,rt.width,mode,offset,signal);timing.draws++;
+   if(mode===4)timing.rollouts+=count;
+   return outputs;
+  }
+  async function countDecisions(){
+   resize(1);const outputs=await draw(5);
+   if(outputs[0][1]!==1||!outputs[1][2])throw new Error('Decision discovery failed; incomplete results rejected.');
+   return outputs[1][2];
+  }
+  async function evaluateMany(decisions,samples,continuationSeed,notify=()=>{}){
+   if(!decisions.length)return [];
+   const texWidth=Math.ceil(decisions.length/4);
+   if(texWidth>maxTexSize)throw new Error('Too many regret decisions for the job texture.');
+   const jobs=new Uint32Array(texWidth*4);jobs.set(decisions);
+   jobTex.dispose();jobTex=new DataTexture(jobs,texWidth,1,RGBAIntegerFormat,UnsignedIntType);
+   jobTex.minFilter=NearestFilter;jobTex.magFilter=NearestFilter;jobTex.generateMipmaps=false;jobTex.needsUpdate=true;
+   uniforms.regretJobTex.value=jobTex;uniforms.regretSamples.value=samples;uniforms.continuationSeed.value=continuationSeed;
+   const metadata=new Array(decisions.length),inspectCapacity=resize(decisions.length);
+   // All decision prefixes are inspected together, also across 2D row boundaries.
+   for(let first=0;first<decisions.length;first+=inspectCapacity){
+    const count=Math.min(inspectCapacity,decisions.length-first),outputs=await draw(3,count,first);
+    const floats=new Float32Array(outputs[1].buffer);
+    for(let lane=0;lane<count;lane++){
+     const p=lane*4;
+     if(outputs[0][p+1]!==8||!outputs[0][p+2])throw new Error('That decision does not occur in the first fight.');
+     metadata[first+lane]={time:outputs[0][p+3]/1e6,mana:floats[p+1],policyAction:outputs[1][p]};
+    }
+    await yieldUI();checkAbort(signal);
+   }
+   const totalJobs=decisions.length*REGRET_ACTIONS.length*samples,capacity=resize(totalJobs);
+   const totals=new Float32Array(totalJobs),unavailable=new Uint8Array(decisions.length*REGRET_ACTIONS.length);
+   for(let first=0;first<totalJobs;first+=capacity){
+    const count=Math.min(capacity,totalJobs-first),outputs=await draw(4,count,first);
+    const floats=new Float32Array(outputs[0].buffer);
+    for(let lane=0;lane<count;lane++){
+     const p=lane*4,status=outputs[0][p+1],globalLane=first+lane;
+     if(status===9){
+      if(globalLane%(REGRET_ACTIONS.length*samples)<samples)throw new Error('Policy baseline was rejected.');
+      unavailable[Math.floor(globalLane/samples)]=1;continue;
+     }
+     if(status!==1||!outputs[0][p+2]||!Number.isFinite(floats[p]))throw new Error('Regret rollout failed; incomplete results rejected.');
+     totals[globalLane]=floats[p];
+    }
+    notify(first+count,totalJobs);await yieldUI();checkAbort(signal);
+   }
+   return decodeRegretResults(decisions,samples,config.duration,metadata,totals,unavailable);
+  }
+  const result=await work({countDecisions,evaluateMany});
+  return {...result,timing};
+ }finally{
+  rt?.dispose();jobTex?.dispose();e.mesh.material=previous;e.renderer.setRenderTarget(null);running=false;
+ }
+}
+
+export async function analyzeRegret(input,{decision=0,samples=256,signal,onProgress=()=>{},batchSize=65536}={}){
+ if(!Number.isInteger(decision)||decision<0||decision>10000)throw new Error('Decision must be 0–10000.');
+ if(!Number.isInteger(samples)||samples<2||samples>4096)throw new Error('Samples must be 2–4096.');
+ return withRegretSession(input,{signal,onProgress,batchSize},async({evaluateMany})=>(await evaluateMany([decision],samples,0x9e3779b9,
+  (completed,total)=>onProgress({phase:'Comparing actions',completed,total})))[0]);
+}
+
+export async function scanRegrets(input,{samples=256,signal,onProgress=()=>{},batchSize=65536}={}){
+ if(!Number.isInteger(samples)||samples<128||samples>4096)throw new Error('Confirmation samples must be 128–4096.');
+ const started=performance.now();
+ return withRegretSession(input,{signal,onProgress,batchSize},async session=>({
+  ...await scanDecisionRegrets(session,samples,onProgress),elapsedMs:performance.now()-started,
+ }));
 }

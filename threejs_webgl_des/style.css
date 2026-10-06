@@ -2283,3 +2283,22 @@ footer {
 .apl-fallback-preview { display: block; flex-basis: 100%; white-space: normal; margin-top: 0.3rem; }
 
 .selected-preset-breakdown { padding: 0.85rem; }
+
+.action-regret { margin-bottom: .75rem; }
+.regret-results { margin-top: .65rem; color: var(--text-parchment); font-size: .8rem; }
+.regret-table-scroll { overflow-x: auto; }
+.regret-table { width: 100%; border-collapse: collapse; }
+.regret-table th { padding: .4rem .5rem; text-align: left; color: var(--text-gold); font-size: .7rem; font-weight: 600; border-bottom: 1px solid #3d3428; }
+.regret-table td { padding: .55rem .5rem; border-bottom: 1px solid #282436; vertical-align: middle; }
+.regret-table tbody tr:hover { background: #ffffff04; }
+.regret-table th:last-child { text-align: right; }
+.regret-cast-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.regret-ranked-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; min-width: 10rem; }
+.regret-action-icon { display: inline-flex; padding: 0; width: 32px; height: 32px; flex: 0 0 32px; overflow: hidden; border: 1px solid #514638; border-radius: 3px; background: #111016; cursor: help; }
+.regret-action-icon img { width: 100%; height: 100%; object-fit: cover; }
+.regret-action-icon.is-gain { border-color: #588762; }
+.regret-action-icon.is-loss { border-color: #94564d; }
+.regret-action-icon.is-chosen { border-color: #b59a61; }
+.regret-action-icon.is-best { box-shadow: 0 0 0 1px #a4c077; }
+.regret-action-icon:hover, .regret-action-icon:focus-visible { outline: 2px solid #ddc588; outline-offset: 2px; }
+.regret-max-gain { text-align: right; color: #99cc9a; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }

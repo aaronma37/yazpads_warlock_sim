@@ -1,6 +1,7 @@
+import { renderRegretResults } from './regret_view.js';
 import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
-import { runSimulation, preloadShader } from './engine.js';
+import { scanRegrets, runSimulation, preloadShader } from './engine.js';
 import { compare } from '../validation/compare.js';
 import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
@@ -691,6 +692,7 @@ function busy(active) {
     topProgContainer.style.display = 'none';
   }
   if ($('export')) $('export').disabled = active || !currentResult;
+  $('regret-run').disabled = active;
 }
 
 function progress(p) {
@@ -753,6 +755,9 @@ $('export')?.addEventListener('click', () => {
 });
 
 function render(result) {
+  $('regret-panel').hidden = result.detailedResults === false;
+  $('regret-output').textContent = '';
+  $('regret-output').hidden = true;
   const { summary: s, timing: t, config: c } = result;
   $('mean').textContent = format(s.mean, 1);
   $('confidence').textContent = s.count > 1 ? `± ${format(s.ci95, 2)} · 95% CI` : 'One fight';
@@ -1280,3 +1285,16 @@ if (capable) {
     setTimeout(() => preloadShader(), 50);
   }
 }
+
+$('regret-run').addEventListener('click', async () => {
+ if(!currentResult||currentResult.detailedResults===false)return;
+ controller=new AbortController();busy(true);
+ const output=$('regret-output');output.hidden=false;output.textContent='Scanning actions…';
+ try {
+  const result=await scanRegrets(currentResult.config,{signal:controller.signal,onProgress:progress});
+  currentResult.regret=result;
+  renderRegretResults(output,result);
+  setStatus('Regret scan complete.');
+ } catch(error){output.textContent=error.message;setStatus(error.name==='AbortError'?'Regret scan cancelled.':'Regret scan failed.');}
+ finally{busy(false);controller=null;}
+});
