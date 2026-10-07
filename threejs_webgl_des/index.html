@@ -758,6 +758,11 @@
               <span style="font-size: 0.75rem; color: var(--text-parchment);">End Exploration:</span>
               <input class="wow-input" type="number" id="ga-min-explore" value="0.15" step="0.05" min="0" max="1" style="width: 75px;">
             </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <label class="wow-checkbox-label" style="font-size: 0.75rem;">
+                <input type="checkbox" id="ga-apl-lock-conditions" checked> Lock APL Conditions
+              </label>
+            </div>
             <span style="font-size: 0.72rem; color: var(--text-dim);">Controls random talent exploration vs surrogate guided swaps. Pets and rotations evolve independently.</span>
           </div>
         </div>
@@ -791,6 +796,13 @@
             <div style="display: flex; flex-direction: column; gap: 2px;">
               <span style="font-size: 0.72rem; color: var(--text-parchment);">Locked Pet / DS:</span>
               <select class="wow-select" id="ga-locked-pet-ds" style="width: 180px;"></select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span style="font-size: 0.72rem; color: var(--text-parchment);">APL Strategy:</span>
+              <select class="wow-select" id="ga-apl-mode" style="width: 195px;">
+                <option value="coevolve" selected>Co-Evolve APL with Spec</option>
+                <option value="static">Static Heuristic Template</option>
+              </select>
             </div>
           </div>
         </div>

@@ -180,6 +180,8 @@ export function readGAConfig() {
   const finalSims = Number(document.getElementById('ga-final-sims')?.value || 2000);
   const seedPresets = document.getElementById('ga-seed-presets')?.checked ?? true;
   const optRace = document.getElementById('ga-optimize-race')?.checked ?? true;
+  const aplMode = document.getElementById('ga-apl-mode')?.value || 'coevolve';
+  const lockConditions = document.getElementById('ga-apl-lock-conditions')?.checked ?? true;
 
   const t1 = Number(document.getElementById('ga-req-talent-1')?.value || -1);
   const t2 = Number(document.getElementById('ga-req-talent-2')?.value || -1);
@@ -205,6 +207,8 @@ export function readGAConfig() {
     finalSims: Math.max(50, finalSims),
     seedPresets,
     optimizeRace: forcedRace !== 'ALL' ? false : optRace,
+    aplMode,
+    lockConditions,
     requiredTalents: reqTalents,
     forcedRace,
     forcedRotation,
@@ -516,12 +520,29 @@ export function renderGALeaderboard() {
     else tdRank.innerHTML = `<span style="color: #94a3b8;">#${cand.rank}</span>`;
     tr.appendChild(tdRank);
 
-    // 2. Spec Name & Archetype
+    // 2. Spec Name (X/Y/Z) & APL Chain Icons Preview (Inline)
+    let chainIconsHtml = '';
+    if (cand.apl && Array.isArray(cand.apl.rules)) {
+      const activeRules = cand.apl.rules.filter(r => r.enabled);
+      if (activeRules.length > 0) {
+        chainIconsHtml = `
+          <div class="priority-chain-preview" style="display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; vertical-align: middle;">
+            ${activeRules.map(r => {
+              const spellName = r.spell || getSpellNameForAPL(r.action);
+              const iconKey = getIconForSpell(spellName);
+              const iconSrc = r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+              return `<img src="./assets/icons/${iconSrc}" width="16" height="16" alt="${spellName}" title="${spellName}: ${r.condition || 'Always'}" style="border-radius:2px; border:1px solid #382c44; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
+            }).join('')}
+          </div>
+        `;
+      }
+    }
+
     const tdName = document.createElement('td');
     tdName.innerHTML = `
-      <div style="display: flex; flex-direction: column;">
-        <span class="spec-name-link" style="color: var(--text-gold); font-weight: 700; cursor: pointer; font-size: 0.85rem;">${cand.name}</span>
-        <span style="font-size: 0.72rem; color: var(--text-dim);">${cand.category || 'Hybrid Peak'}</span>
+      <div style="display: flex; align-items: center; flex-wrap: nowrap;">
+        <span class="spec-name-link" style="color: var(--text-gold); font-weight: 700; cursor: pointer; font-size: 0.92rem; font-family: var(--font-mono); white-space: nowrap;">${cand.name}</span>
+        ${chainIconsHtml}
       </div>
     `;
     tdName.querySelector('.spec-name-link')?.addEventListener('click', (e) => {
@@ -628,14 +649,34 @@ export function renderSelectedCandidateDetails(cand) {
   const netGain = meanDps - gen0Mean;
   const netGainPct = (netGain / Math.max(1, gen0Mean)) * 100;
 
+  let detailChainIconsHtml = '';
+  if (cand.apl && Array.isArray(cand.apl.rules)) {
+    const activeRules = cand.apl.rules.filter(r => r.enabled);
+    if (activeRules.length > 0) {
+      detailChainIconsHtml = `
+        <div class="priority-chain-preview" style="display: inline-flex; align-items: center; gap: 3px; vertical-align: middle;">
+          ${activeRules.map(r => {
+            const spellName = r.spell || getSpellNameForAPL(r.action);
+            const iconKey = getIconForSpell(spellName);
+            const iconSrc = r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+            return `<img src="./assets/icons/${iconSrc}" width="18" height="18" alt="${spellName}" title="${spellName}: ${r.condition || 'Always'}" style="border-radius:2px; border:1px solid #382c44; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
+          }).join('')}
+        </div>
+      `;
+    }
+  }
+
   container.innerHTML = `
     <!-- TOP HEADER -->
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #332a40; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <img src="./assets/icons/${RACE_ICONS[cand.race] || 'Achievement_Character_Human_Male.png'}" width="32" height="32" alt="${cand.race}" style="border-radius:4px; border:1px solid #ffd100;">
         <div>
-          <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-gold);">${cand.name}</div>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">${cand.category} · ${a} Aff / ${d} Demo / ${x} Destro · ${cand.race}</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.15rem; font-weight: 700; color: var(--text-gold); font-family: var(--font-mono);">${cand.name}</span>
+            ${detailChainIconsHtml}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${a} Aff / ${d} Demo / ${x} Destro · ${cand.race}</div>
         </div>
       </div>
       <div style="display: flex; gap: 0.5rem;">
@@ -804,6 +845,33 @@ function renderTalentList(treeMap = {}) {
 }
 
 function renderAPLRows(cand) {
+  if (cand.apl && Array.isArray(cand.apl.rules) && cand.apl.rules.length > 0) {
+    const activeRules = cand.apl.rules.filter(r => r.enabled);
+    const activeIds = activeRules.map(r => r.id);
+    const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire') || 'bolt';
+    const fallbackRot = firstNuke === 'incinerate' ? 'fire' : firstNuke === 'searing' ? 'searing' : 'shadow';
+
+    return activeRules.map((r, i) => {
+      const spellName = r.spell || getSpellNameForAPL(r.action);
+      const iconKey = getIconForSpell(spellName);
+      const iconSrc = r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+      const condSummary = r.condition || getConditionSummary(r);
+      return `
+        <tr>
+          <td style="color: var(--text-dim); text-align: center; font-weight: 700;">#${i + 1}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="./assets/icons/${iconSrc}" width="20" height="20" alt="${spellName}" style="border-radius:3px; border:1px solid #4a3e2e; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
+              <span style="color: #67e8f9; font-weight: 600;">${spellName}</span>
+            </div>
+          </td>
+          <td style="color: var(--text-parchment);">${condSummary}</td>
+          <td style="text-align: center; color: #4ade80; font-weight: 700;">ACTIVE</td>
+        </tr>
+      `;
+    }).join('') + fallbackRow(fallbackRot);
+  }
+
   const { aplRules, shaderRotation } = getPolicyAPLAndActions(cand.individual || cand);
   if (aplRules.length === 0) return fallbackRow(shaderRotation);
 
@@ -813,15 +881,15 @@ function renderAPLRows(cand) {
     const condSummary = getConditionSummary(r);
     return `
       <tr>
-        <td style="color: var(--text-dim);">#${i + 1}</td>
+        <td style="color: var(--text-dim); text-align: center; font-weight: 700;">#${i + 1}</td>
         <td>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <img src="./assets/icons/${SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png'}" width="16" height="16" alt="${spellName}">
-            <span style="color: #67e8f9;">${spellName}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <img src="./assets/icons/${SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png'}" width="20" height="20" alt="${spellName}" style="border-radius:3px; border:1px solid #4a3e2e; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
+            <span style="color: #67e8f9; font-weight: 600;">${spellName}</span>
           </div>
         </td>
         <td style="color: var(--text-parchment);">${condSummary}</td>
-        <td style="text-align: center; color: #4ade80;">ACTIVE</td>
+        <td style="text-align: center; color: #4ade80; font-weight: 700;">ACTIVE</td>
       </tr>
     `;
   }).join('') + fallbackRow(shaderRotation);

@@ -1089,7 +1089,11 @@ function applyCandidateBuild(cand) {
     if ($('talent-preset-select')) $('talent-preset-select').value = '';
 
     // 5. Load APL Rotation tailored to this evolved candidate spec
-    setAPLPreset(cand.name, cand.talents, cand.rotation, cand.sacSuccubus || sac === 'succubus');
+    if (cand.apl && Array.isArray(cand.apl.rules) && cand.apl.rules.length > 0) {
+      applySynthesizedAPL(cand.apl.rules);
+    } else {
+      setAPLPreset(cand.name, cand.talents, cand.rotation, cand.sacSuccubus || sac === 'succubus');
+    }
 
     // 6. Update Summary Views
     updateCombatStatsSummary();

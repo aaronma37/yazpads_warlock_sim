@@ -5,6 +5,18 @@ import { getTalentFlagsFromRanks } from './talents.js';
 import { buildFightConfig } from './config_builder.js';
 import { APL_ACTION, APL_COND, MAX_APL_RULES } from './model.js';
 import { getPresetPetAndSac } from './presets.js';
+import {
+  createDefaultIndividual as createDefaultAPLIndividual,
+  createRandomAPLIndividual,
+  repairAPLIndividual,
+  crossoverAPLIndividuals,
+  mutateAPLIndividual,
+  individualToBytecodeRules,
+  getAvailableActionsForSpec,
+  getAPLUniqueKey,
+  formatAPLName,
+  APL_SYNTHESIS_ACTIONS
+} from './apl_genetic_optimizer.js';
 
 export const TOTAL_TALENT_NODES = 52;
 export const AFFLICTION_NODE_COUNT = 17;
@@ -126,6 +138,18 @@ class FastRNG {
   }
   nextDouble() {
     return this.nextU64() / 4294967296;
+  }
+  nextInt(min, max) {
+    return min + Math.floor(this.nextDouble() * (max - min + 1));
+  }
+  nextFloat(min, max) {
+    return min + this.nextDouble() * (max - min);
+  }
+  nextGaussian(mean = 0, stdev = 1) {
+    const u1 = Math.max(1e-9, this.nextDouble());
+    const u2 = this.nextDouble();
+    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    return mean + z * stdev;
   }
 }
 
@@ -470,6 +494,14 @@ export function enforceConstraints(ind, config, rng) {
   if (config.forcedRotation && config.forcedRotation !== 'ALL') {
     ind.rotation = config.forcedRotation;
   }
+
+  // Enforce APL validity against active talents
+  if (ind.apl && Array.isArray(ind.apl.rules)) {
+    const tObj = TalentGraph.toTalentsObject(ind.talents);
+    const tf = getTalentFlagsFromRanks(tObj);
+    const availableActions = getAvailableActionsForSpec(tf);
+    repairAPLIndividual(ind.apl, rng, availableActions, tf, config.lockConditions ?? true);
+  }
 }
 
 // Generate Priority APL rules and actionIds based on policy and talents
@@ -594,7 +626,23 @@ export function getPolicyAPLAndActions(ind) {
 export function individualToConfig(ind, baseStatsConfig) {
   const talentsObj = TalentGraph.toTalentsObject(ind.talents);
   const tf = getTalentFlagsFromRanks(talentsObj);
-  const { shaderRotation, actionIds, aplRules } = getPolicyAPLAndActions(ind);
+
+  let shaderRotation, actionIds, aplRules;
+  if (ind.apl && Array.isArray(ind.apl.rules) && ind.apl.rules.length > 0) {
+    aplRules = individualToBytecodeRules(ind.apl);
+    const activeSpells = ind.apl.rules.filter(r => r.enabled).map(r => r.id);
+    actionIds = activeSpells;
+
+    const firstNuke = activeSpells.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire');
+    if (firstNuke === 'incinerate') shaderRotation = 'fire';
+    else if (firstNuke === 'searing') shaderRotation = 'searing';
+    else shaderRotation = 'shadow';
+  } else {
+    const pol = getPolicyAPLAndActions(ind);
+    shaderRotation = pol.shaderRotation;
+    actionIds = pol.actionIds;
+    aplRules = pol.aplRules;
+  }
 
   const base = {
     ...baseStatsConfig,
@@ -643,48 +691,12 @@ export function individualToConfig(ind, baseStatsConfig) {
   });
 }
 
-// Format Human-Readable Spec Name Matching Desktop App
+// Format Spec Name strictly as X/Y/Z (Affliction / Demonology / Destruction)
 export function formatBuildName(ind) {
   const a = TalentGraph.countTreePoints(ind.talents, 0);
   const d = TalentGraph.countTreePoints(ind.talents, 1);
   const x = TalentGraph.countTreePoints(ind.talents, 2);
-
-  const tObj = TalentGraph.toTalentsObject(ind.talents);
-  const aff = tObj.affliction || {};
-  const demo = tObj.demonology || {};
-  const destro = tObj.destruction || {};
-
-  const tags = [];
-  if (aff.wrack > 0) tags.push('Wrack');
-  else if (aff.shadow_mastery > 0) tags.push('SM');
-  else if (aff.siphon_life > 0) tags.push('SL');
-  else if (aff.nightfall > 0) tags.push('NF');
-  else if (a >= 20) tags.push('Aff');
-
-  if (demo.demonic_pact > 0) tags.push('DP');
-  else if (demo.master_demonologist > 0) tags.push('MD');
-  else if (demo.soul_link > 0) tags.push('Soul Link');
-  else if (demo.demonic_sacrifice > 0 && demo.decimation > 0) tags.push('DS/Deci');
-  else if (demo.demonic_sacrifice > 0) tags.push('DS');
-  else if (demo.decimation > 0) tags.push('Deci');
-  else if (d >= 20) tags.push('Demo');
-
-  if (destro.incinerate > 0) tags.push('Incin');
-  else if (destro.shadow_and_flame > 0) tags.push('S&F');
-  else if (destro.conflagrate > 0) tags.push('Conflag');
-  else if (destro.ruin > 0) tags.push('Ruin');
-  else if (destro.shadowburn > 0) tags.push('Sburn');
-  else if (x >= 20) tags.push('Destro');
-
-  let tagStr = tags.join('/');
-  if (!tagStr) {
-    if (x >= a && x >= d) tagStr = 'Destro';
-    else if (a >= d && a >= x) tagStr = 'Aff';
-    else tagStr = 'Demo';
-  }
-
-  const raceFormatted = ind.race ? (ind.race.charAt(0) + ind.race.slice(1).toLowerCase()) : '';
-  return `${a}/${d}/${x} ${tagStr} ${raceFormatted}`.trim();
+  return `${a}/${d}/${x}`;
 }
 
 // MAP-Elites Quality-Diversity Key
@@ -698,20 +710,32 @@ export function getMapElitesKey(ind) {
   const petIdx = ind.pet === 'none' ? 0 : ind.pet === 'imp' ? 1 : 2;
   const sacIdx = ind.sacImp ? 1 : ind.sacSuccubus ? 2 : 0;
   const p = petIdx * 3 + sacIdx;
-  const rotIdx = Math.max(0, ROTATION_CHOICES.indexOf(ind.rotation));
+  
+  let rotIdx = Math.max(0, ROTATION_CHOICES.indexOf(ind.rotation));
+  if (ind.apl && Array.isArray(ind.apl.rules)) {
+    const activeSpells = ind.apl.rules.filter(r => r.enabled).map(r => r.id);
+    const firstNuke = activeSpells.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire') || 'bolt';
+    rotIdx = firstNuke === 'incinerate' ? 1 : firstNuke === 'searing' ? 3 : 0;
+  }
 
   return `${u}_${v}_${p}_${rotIdx}`;
 }
 
 export function createRandomIndividual(rng, config) {
   const pm = PET_MODES[rng.nextU64() % PET_MODES.length];
+  const talents = TalentGraph.generateRandomValid(rng);
+  const tObj = TalentGraph.toTalentsObject(talents);
+  const tf = getTalentFlagsFromRanks(tObj);
+  const availableActions = getAvailableActionsForSpec(tf);
+
   const ind = {
-    talents: TalentGraph.generateRandomValid(rng),
+    talents,
     race: config.forcedRace && config.forcedRace !== 'ALL' ? config.forcedRace : RACES[rng.nextU64() % RACES.length],
     rotation: config.forcedRotation && config.forcedRotation !== 'ALL' ? config.forcedRotation : ROTATION_CHOICES[rng.nextU64() % ROTATION_CHOICES.length],
     pet: pm.pet,
     sacImp: pm.imp,
     sacSuccubus: pm.succ,
+    apl: config.aplMode !== 'static' ? createRandomAPLIndividual(rng, availableActions, tf, config.lockConditions ?? true) : null,
     fitness: 0,
     batch: null
   };
@@ -722,22 +746,41 @@ export function createRandomIndividual(rng, config) {
 
 export function crossoverIndividuals(p1, p2, rng, config) {
   const useP1Pet = rng.nextU64() % 2 === 0;
+  const childTalents = new Uint8Array(TOTAL_TALENT_NODES);
+  for (let i = 0; i < TOTAL_TALENT_NODES; i++) {
+    childTalents[i] = rng.nextU64() % 2 === 0 ? p1.talents[i] : p2.talents[i];
+  }
+  TalentGraph.repair(childTalents, rng);
+
+  const tObj = TalentGraph.toTalentsObject(childTalents);
+  const tf = getTalentFlagsFromRanks(tObj);
+  const availableActions = getAvailableActionsForSpec(tf);
+
+  let childApl = null;
+  if (config.aplMode !== 'static') {
+    if (p1.apl && p2.apl) {
+      childApl = crossoverAPLIndividuals(p1.apl, p2.apl, rng, availableActions, tf, config.lockConditions ?? true);
+    } else if (p1.apl || p2.apl) {
+      const src = p1.apl || p2.apl;
+      childApl = { rules: src.rules.map(r => ({ ...r })), fitness: 0, batch: null };
+      repairAPLIndividual(childApl, rng, availableActions, tf, config.lockConditions ?? true);
+    } else {
+      childApl = createRandomAPLIndividual(rng, availableActions, tf, config.lockConditions ?? true);
+    }
+  }
+
   const child = {
-    talents: new Uint8Array(TOTAL_TALENT_NODES),
+    talents: childTalents,
     race: rng.nextU64() % 2 === 0 ? p1.race : p2.race,
     rotation: rng.nextU64() % 2 === 0 ? p1.rotation : p2.rotation,
     pet: useP1Pet ? p1.pet : p2.pet,
     sacImp: useP1Pet ? p1.sacImp : p2.sacImp,
     sacSuccubus: useP1Pet ? p1.sacSuccubus : p2.sacSuccubus,
+    apl: childApl,
     fitness: 0,
     batch: null
   };
 
-  for (let i = 0; i < TOTAL_TALENT_NODES; i++) {
-    child.talents[i] = rng.nextU64() % 2 === 0 ? p1.talents[i] : p2.talents[i];
-  }
-
-  TalentGraph.repair(child.talents, rng);
   enforceConstraints(child, config, rng);
   return child;
 }
@@ -776,6 +819,21 @@ export function mutateIndividual(ind, rng, config) {
   }
 
   enforceConstraints(ind, config, rng);
+
+  // APL Mutation & Repair
+  if (config.aplMode !== 'static') {
+    const tObj = TalentGraph.toTalentsObject(ind.talents);
+    const tf = getTalentFlagsFromRanks(tObj);
+    const availableActions = getAvailableActionsForSpec(tf);
+
+    if (!ind.apl) {
+      ind.apl = createRandomAPLIndividual(rng, availableActions, tf, config.lockConditions ?? true);
+    } else {
+      repairAPLIndividual(ind.apl, rng, availableActions, tf, config.lockConditions ?? true);
+      mutateAPLIndividual(ind.apl, rng, config, tf);
+      repairAPLIndividual(ind.apl, rng, availableActions, tf, config.lockConditions ?? true);
+    }
+  }
 }
 
 // Convert simulated result object to standard CandidateResult representation
@@ -799,6 +857,13 @@ export function createCandidateResult(ind, rank = 1) {
   const firePct = (fireDmg / totalDmg) * 100;
   const petPct = (petDmg / totalDmg) * 100;
 
+  let aplRules = [];
+  if (ind.apl && Array.isArray(ind.apl.rules)) {
+    aplRules = individualToBytecodeRules(ind.apl);
+  } else if (ind.batch?.config?.aplRules) {
+    aplRules = ind.batch.config.aplRules;
+  }
+
   return {
     rank,
     name: formatBuildName(ind),
@@ -818,6 +883,8 @@ export function createCandidateResult(ind, rank = 1) {
     pet_pct: petPct,
     talents: TalentGraph.toTalentsObject(ind.talents),
     talentsVector: Array.from(ind.talents),
+    apl: ind.apl ? { rules: ind.apl.rules.map(r => ({ ...r })) } : null,
+    aplRules,
     summary: sum,
     states: ind.batch?.states || [],
     individual: ind
@@ -826,7 +893,8 @@ export function createCandidateResult(ind, rank = 1) {
 
 // Generate unique individual key for duplicate prevention
 export function getIndUniqueKey(ind) {
-  return `${ind.race}_${ind.rotation}_${ind.pet}_${ind.sacImp ? 1 : 0}_${ind.sacSuccubus ? 1 : 0}_${Array.from(ind.talents).join(',')}`;
+  const aplKey = (ind.apl && Array.isArray(ind.apl.rules)) ? `_${getAPLUniqueKey(ind.apl)}` : '';
+  return `${ind.race}_${ind.rotation}_${ind.pet}_${ind.sacImp ? 1 : 0}_${ind.sacSuccubus ? 1 : 0}_${Array.from(ind.talents).join(',')}${aplKey}`;
 }
 
 export function generateUniqueRandomIndividual(rng, config, seenConfigsSet, maxAttempts = 20) {
@@ -913,13 +981,24 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
       else if (isIncinerate) initialRotation = 'FIRE_DESTRO';
       else if (isBrand) initialRotation = 'DP_AF_SHADOW';
 
+      const talentsVector = TalentGraph.fromTalentsObject(p.talents);
+      const tObj = TalentGraph.toTalentsObject(talentsVector);
+      const tf = getTalentFlagsFromRanks(tObj);
+      const availableActions = getAvailableActionsForSpec(tf);
+
+      let presetApl = null;
+      if (gaConfig.aplMode !== 'static') {
+        presetApl = createDefaultAPLIndividual(availableActions, tf);
+      }
+
       const ind = {
-        talents: TalentGraph.fromTalentsObject(p.talents),
+        talents: talentsVector,
         race: (gaConfig.forcedRace && gaConfig.forcedRace !== 'ALL') ? gaConfig.forcedRace : (p.race?.toUpperCase() || 'HUMAN'),
         rotation: initialRotation,
         pet: p.pet || presetPet || 'none',
         sacImp: p.sac === 'imp' || presetSac === 'imp',
         sacSuccubus: p.sac === 'succubus' || presetSac === 'succubus',
+        apl: presetApl,
         fitness: 0,
         batch: null
       };
@@ -966,7 +1045,11 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
     currentPool[i].batch = res;
     const key = getMapElitesKey(currentPool[i]);
     if (!mapElitesGrid.has(key) || currentPool[i].fitness > mapElitesGrid.get(key).fitness) {
-      mapElitesGrid.set(key, { ...currentPool[i], talents: new Uint8Array(currentPool[i].talents) });
+      mapElitesGrid.set(key, {
+        ...currentPool[i],
+        talents: new Uint8Array(currentPool[i].talents),
+        apl: currentPool[i].apl ? { rules: currentPool[i].apl.rules.map(r => ({ ...r })) } : null
+      });
     }
   }
 
@@ -1021,7 +1104,11 @@ export async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { s
       activeBatch.pool[i].batch = res;
       const key = getMapElitesKey(activeBatch.pool[i]);
       if (!mapElitesGrid.has(key) || activeBatch.pool[i].fitness > mapElitesGrid.get(key).fitness) {
-        mapElitesGrid.set(key, { ...activeBatch.pool[i], talents: new Uint8Array(activeBatch.pool[i].talents) });
+        mapElitesGrid.set(key, {
+          ...activeBatch.pool[i],
+          talents: new Uint8Array(activeBatch.pool[i].talents),
+          apl: activeBatch.pool[i].apl ? { rules: activeBatch.pool[i].apl.rules.map(r => ({ ...r })) } : null
+        });
       }
     }
 
