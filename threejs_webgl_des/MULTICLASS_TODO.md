@@ -1,6 +1,129 @@
 # Three.js WebGL: Support for Additional Character Classes
 
-Status: proposed goal and implementation checklist. No class expansion is implemented by this document.
+Status: incremental Warlock preparation implemented; additional classes remain planned. Work resumed on 2026-10-07 after the user reported that performance looks good.
+
+## Resume here
+
+Presentation metadata, the class registry, and the Warlock simulation contract are in place. The app and preset view use direct references resolved once at startup. Simulation implementations, shader generation, packed data, batching, and genetic algorithm loops have not changed during these extractions.
+
+Performance preservation is a primary requirement. Continue in small, separately reviewable steps. The user already has a performance baseline; use it for comparison before further refactoring.
+
+### Performance checkpoint
+
+- [ ] Locate the user's existing baseline and record its workloads, hardware/browser, settings, and acceptable regression threshold here.
+- [ ] Compare representative fast and detailed runs using the same builds, seeds, iterations, and batch sizes as the baseline.
+- [ ] Compare a representative genetic algorithm workload, including candidate throughput and total search time.
+- [ ] Record shader compile, packing, execution, and readback timings where available; distinguish initial startup from warmed runs.
+- [ ] Compare simulation output and confirm the existing layout, startup, and offline loading still behave correctly in the browser.
+- [ ] Investigate any regression before making another simulation or search refactor.
+
+Latest validation: syntax/diff checks and direct-reference contract checks passed. The existing Node suite passed 23 of 25 tests. The two known failures are `Command applies once to every pet attack and Gnome gains maximum mana` and `regret diagnostics do not change simulation shaders`; both also reproduced before these refactors. Browser appearance and throughput have not been measured for these changes. These checks do not establish full CPU parity.
+
+The user accepted current performance on 2026-10-07 and authorized the next extraction. Baseline workload/hardware/settings and browser correctness details above remain unrecorded; this acceptance is not a measured benchmark report.
+
+### Completed: incremental Warlock search-rule extraction
+
+- [x] Inventory class assumptions in `src/genetic_optimizer.js` and `src/apl_genetic_optimizer.js`: legal actions, talent constraints, mutation ranges, initialization, crossover, and repair rules.
+- [x] Extract talent definitions and the unchanged `TalentGraph` behind `registry.search.talents` in `src/classes/warlock_search.js`. Keep existing optimizer exports compatible.
+- [x] Resolve talent rules once at optimizer module startup using direct references; retain candidate representation, seed schedule, and evaluation loop.
+- [x] Check generated/crossed/repaired talent legality and exact fixed-seed parity against the pre-extraction implementation (1,000 candidates and final RNG state match).
+- [x] User confirmed browser search throughput remains good after the talent extraction (2026-10-07).
+- [x] Extract pet choice metadata, forced pet/sacrifice requirements, and required-talent repair into `registry.search.pets`; preserve direct references and existing exports.
+- [x] Compare 4,500 pet/talent repairs with the pre-extraction implementation; candidates and final RNG state match exactly. Test all forced pet modes and sacrifice/pact prerequisites.
+- [ ] Record browser search throughput after the pet, race/rotation, policy APL, synthesis metadata, encoding, initialization/repair, crossover/mutation, build-operation, candidate-conversion, identity, preset-seeding, and result extractions. The user authorized continuing with race/rotation extraction; no new throughput measurement was supplied.
+- [x] Extract Warlock race/rotation choices, labels, and locked-choice enforcement into `registry.search.choices`; preserve ordering and existing exports.
+- [x] Compare 7,000 static-APL mutation/enforcement cases against the pre-extraction implementation; candidates and final RNG state match exactly.
+- [x] Extract handcrafted Warlock policy APL construction into `src/classes/warlock_policy_apl.js` through `registry.search.policyAPL.build`; retain the existing optimizer candidate API and talent resolution.
+- [x] Compare all 5,120 rotation/talent-flag combinations (including rotation fallback cases); exact shader rotation, action ordering, and bytecode rules match the pre-extraction implementation.
+- [x] Extract synthesized APL action metadata, spell IDs, condition types/ranges, and talent-gated action/condition eligibility into `src/classes/warlock_apl_search.js` through `registry.search.apl`; preserve direct references and public exports.
+- [x] Compare metadata and eligibility for all 256 relevant talent-flag combinations plus missing/null flags; 516 generated APLs, bytecode outputs, and final RNG states match exactly with locked and unlocked conditions.
+- [x] Extract condition creation, two-condition rule creation, handcrafted per-action rules, and individual-to-bytecode encoding through `registry.search.apl`; preserve public optimizer exports and legacy single-condition compatibility.
+- [x] Compare 12,474 two-condition cases and every handcrafted action against the original, plus 516 generated APLs/bytecode/RNG states; all match exactly.
+- [x] Extract APL default/random initialization, random condition helpers, and action repair through `registry.search.apl`; preserve public exports, ordering, and RNG calls.
+- [x] Compare 256 defaults and 512 initialization/repair/crossover/mutation sequences against the pre-extraction implementation; candidates, bytecode, and final RNG states match exactly.
+- [x] Extract synthesized APL crossover and mutation through `registry.search.apl`; preserve public exports, RNG order, candidate representation, and evaluation loops.
+- [x] Compare 512 initialization/repair/crossover/mutation sequences against the pre-extraction implementation; exact candidate, bytecode, and RNG parity. Test 2,000 mutation steps for eligible permutations/conditions, locked rules, and unchanged parents, plus small-population behavior.
+- [x] Extract build initialization, full constraint enforcement, talent/APL crossover, and mutation into `src/classes/warlock_build_search.js`. Bind the talent resolver once through `registry.search.createBuildSearch`, avoiding a talent-UI/registry dependency cycle; retain public exports and evaluation loops.
+- [x] Compare 3,200 generation/crossover/mutation sequences using the real talent resolver across static/evolved APLs, condition locks, pet modes, race/rotation locks, explicit talent requirements, and missing-parent APL branches; exact candidate and RNG parity.
+- [x] Extract build/APL candidate-to-config conversion and build-policy resolution into `src/classes/warlock_candidate_config.js` via `registry.search.createCandidateConfig`; bind dependencies once and retain public exports.
+- [x] Compare 1,200 build and 1,000 APL configurations against the original; exact configuration parity across race baselines, candidate races, policies, custom APLs, disabled actions, and channel fallbacks.
+- [x] Audit remaining class assumptions in diversity/deduplication keys, build/result labels, and preset search seeding.
+- [x] Extract build names and build/APL diversity/deduplication keys into `src/classes/warlock_search_identity.js` through `registry.search.identity`; retain public exports and exact key semantics. Compare 7,200 candidate cases with the original.
+- [x] Extract preset-to-build-candidate conversion into `src/classes/warlock_search_presets.js` through `registry.search.createPresetCandidate`; bind talent/pet resolution and enforcement once, retain optimizer ordering, deduplication, half-population limit, and RNG schedule.
+- [x] Compare 1,464 preset conversions using repository presets and inference edge cases; exact candidate/RNG parity across APL modes, condition locks, and forced selections. APL-only default seeding already uses the class-owned initializer.
+- [x] Extract build/APL result payload construction, Warlock classification, and APL naming into `src/classes/warlock_search_results.js` through `registry.search.results`; retain public exports and payload/reference semantics.
+- [x] Compare 1,000 build and 1,000 APL results/names with the original; exact payload parity.
+- [x] Define v1 logical candidate/evaluation/result shapes and legacy Warlock migration in [MULTICLASS_CONTRACTS.md](MULTICLASS_CONTRACTS.md). Design only; runtime adapters and migration are not implemented.
+- [ ] Pure saved-envelope identity/version validation completed in `src/contracts/saved_build.js`; next is staged legacy logical/resolved migration. Preserve current transport and runtime formats until integration is verified.
+- [ ] Recheck browser correctness and throughput for the completed search-rule extractions before broader contract integration.
+
+Search-rule inventory:
+
+- **Talent rules (extracted):** 52-node ordering, rank caps, prerequisites, row gates, 51-point budget, legal donors/receivers, generation, repair, and object/vector conversion. Both optimizers share the registry-owned graph; existing exports remain available.
+- **Pet rules (extracted):** pet choice lists, forced pet/sacrifice requirements, required-talent repair (including explicit user requirements), and talent-dependent active-pet/sacrifice enforcement. Mutation donor protection retains its existing behavior; forced requirements are restored by enforcement afterward.
+- **Race/rotation choices (extracted):** race and rotation lists, rotation labels, and locked-choice enforcement. Resolved once at optimizer startup; unlocked-choice and ALL behavior remain unchanged.
+- **Policy APL (extracted):** handcrafted rotation policies, action ordering, talent gates, and bytecode rules. The class builder takes rotation and resolved talent flags; the optimizer retains candidate-to-talent conversion. No UI, engine, or shader dependencies are introduced by the policy builder.
+- **Build operations (extracted):** initialization, constraint orchestration, talent crossover/repair, race/rotation/pet inheritance and mutation, and APL generation/crossover/mutation orchestration. Real talent conversion is injected once at optimizer startup. Existing mutation donor/receiver behavior is unchanged.
+- **Candidate conversion (extracted):** build and APL candidate-to-config conversion, race baseline normalization, talent effects, pet/sacrifice resolution, first-enabled-nuke rotation inference, policy fallback, and bytecode forwarding. The two existing channel fallback behaviors remain distinct.
+- **Search identity (extracted):** build names and build/APL diversity/deduplication keys, including talent tree bins, pet/sacrifice bins, active filler priority, and tap position. Existing key precision and omitted fields are unchanged; these keys are not a new universal cache contract.
+- **Preset seeding (extracted):** rotation/name inference, talent-vector conversion, race/pet/sacrifice selection, talent-gated default APL initialization, and enforcement before optimizer deduplication. The existing preset pet/sacrifice resolver is injected once; population ordering and limits remain shared.
+- **Search results (extracted):** build categories, APL names/tags, damage shares, and existing result payload construction. The two existing payload shapes remain distinct pending common result-contract design.
+- **Build search integration (remaining):** common candidate/result boundaries and runtime class selection; talent flag and preset pet/sacrifice resolution still use existing resolvers bound at startup.
+- **APL metadata/eligibility (extracted):** action/spell IDs, talent-gated legal actions, valid condition lists, and parameter ranges. The synthesis optimizer resolves registry-owned references once at startup and preserves its public exports.
+- **APL encoding/handcrafted rules (extracted):** condition parameter cleanup, condition text and target IDs, two-condition combination, per-action handcrafted rules, and bytecode conversion including legacy rules. Existing clamps and fallback behavior are preserved.
+- **APL initialization/repair (extracted):** default action order, random action permutation, random condition sampling, duplicate/unavailable action removal, and missing-action insertion. Unlocked repair preserves existing rule objects/conditions; locked repair reinstates handcrafted rules.
+- **APL crossover/mutation (extracted):** permutation crossover, condition type mutation, parameter jitter, action swap/insertion, and NEVER toggles. The optimizer uses direct class-owned references; population selection, evaluation, and seed scheduling remain unchanged.
+- **APL search integration (remaining):** common candidate/result boundaries and runtime class selection. Default APL seeding uses the class-owned initializer.
+- **Preset/result audit:** build preset seeding infers Warlock rotations from names and explicit rotation strings, resolves pet/sacrifice via presets, converts three talent trees, and initializes talent-gated APLs before enforcement/deduplication. Build result classification assumes three Warlock trees and pet/school output; APL names map Warlock action IDs to tags and fillers. Preset ordering, population limits, and selection/evaluation mechanics stay shared.
+- **Shared search mechanics to preserve:** population/elite selection, RNG call order and seed schedule, candidate identity, evaluation batching, progress/cancellation, and fitness/result mapping. The current search contract is deliberately partial; it does not yet enable another class.
+
+Extraction validation: all twenty-four search-rule tests pass, including legal donor/receiver moves, malformed-rank repair, forced pet prerequisites, unforced pet repair, locked race/rotation choices, resource/filler safeguards, talent-gated policy priority, synthesis action eligibility, proc-condition eligibility, clause encoding, legacy bytecode conversion, handcrafted action safeguards, initialization, action repair, crossover/mutation legality, small-population behavior, build operations with forced selections/parent preservation, race normalization, candidate conversion fallbacks, search identity, diversity fallback behavior, preset inference/enforcement, build result accounting, and APL result naming. The full Node suite including five saved-envelope, four legacy-mapping, and three Warlock normalization tests passes 85/87 tests with the same two previously recorded failures. Syntax and diff checks pass. The user confirmed throughput after the talent extraction; throughput/offline loading have not been remeasured after the pet, race/rotation, policy APL, synthesis metadata, encoding, initialization/repair, crossover/mutation, build-operation, candidate-conversion, identity, preset-seeding, and result extractions. The service worker caches the search module and advances to v32 and caches the policy and synthesis metadata modules.
+
+Defer packed-format changes, generic shader state, additional classes, and broad candidate conversion until these checkpoints are complete. The first additional class and specialization remain undecided.
+
+### Next: integrate versioned boundaries incrementally
+
+Envelope validation checks identity, version, kind, and required identity containers only. Class payload correctness and resolved packing/simulation version compatibility remain later adapter responsibilities. No browser import/export path or service-worker cache changes are needed for this standalone module yet.
+
+- [x] Audit existing UI build strings, resolved-config imports, simulation exports, and seed/completion handling before defining the contracts.
+- [x] Document candidate identity, class-scoped APL payloads, common fitness status, and failure/null-objective behavior.
+- [x] Document separate logical/resolved saved envelopes and migration without double-applying talent, race, gear, or buff effects.
+- [ ] Complete the browser checkpoint before broad runtime integration.
+- [x] Implement/test pure envelope identity/version validation in `src/contracts/saved_build.js`; reject unknown versions/classes/kinds, missing versioned identities, and class mismatches. Preserve source payloads, including frozen input. Not yet connected to UI import/export.
+- [x] Implement pure legacy classification and staged mapping in `src/contracts/legacy_build.js`; preserve resolved precedence, copy source inputs, separate UI encounter/run settings, and reject malformed containers/unknown formats. Four tests cover JSON round trips, inference precedence, and immutable inputs.
+- [x] Implement initial class-owned import normalization in `src/classes/warlock_import.js`, deferred via `registry.loadImports`: direct-stat defaults, stat/encounter validation, talent caps/prerequisites/point budget, race/pet/sacrifice legality, and text/policy APL validation. Resolved inputs use existing validation directly; no effects are reapplied. Three tests cover immutable/idempotent normalization and invalid explicit inputs.
+- [x] Add pure equipped-item resolution in `src/classes/warlock_equipment.js`: validate IDs/slots, reuse current enchant/set arithmetic, ignore saved equipped-stat snapshots, and require supplied item data. All four repository gear presets match existing arithmetic.
+- [x] Validate saved buff keys against the actual combat-form fields and require boolean selections. Three additional tests cover equipment normalization/idempotence, invalid gear, and buff keys.
+- [x] Resolve combat-form buffs/racial stats in `src/classes/warlock_import_buffs.js`; 500 combinations match current app arithmetic with sacrifice reserved for the class builder.
+- [x] Validate rules-form APL IDs/conditions and produce simulation configs through `resolveWarlockImport`, deferred via `registry.loadImportResolver`; text/policy/rules inputs use existing compilers/builders, resolved imports bypass effects. Three tests cover effect ordering, idempotence, and final resolution.
+- [x] Add pure decoded build I/O in `src/contracts/build_io.js`, dispatching through the registry import resolver. Verify legacy/v1 logical JSON/base64 round trips for direct/equipped, text/policy/rules inputs with exact config and packed-word equality; verify legacy resolved round trips without reconstruction/effect duplication.
+- [x] Fix numeric-action injection in rules-form APLs by rebuilding canonical rules from names/conditions. Reject empty/multiline conditions and malformed resolved bytecode IDs/parameters/flags. Four new tests pass.
+- [x] Register conservative packing/simulation source fingerprints in `src/classes/warlock_versions.js`; enable exact-match versioned resolved imports/exports through pure build I/O. Three tests check source fingerprints, packed-word round trips, and mismatch rejection. Legacy resolved formats remain supported.
+- [x] User reported browser appearance looks good before UI import/export integration; throughput remains unconfirmed for recent changes.
+- [x] Integrate async staged import/export into `src/app.js`: validate before UI setters, export v1 logical/resolved builds, await import before closing the modal, and preserve legacy JSON/base64 decoding. Four tests exercise the actual app import function with instrumented UI setters.
+- [x] User confirmed integrated browser import/export looks fine. This is user-reported flow validation, not automated offline coverage or a throughput measurement.
+- [x] Add standalone common evaluation/request/result wrapper in `src/contracts/evaluation.js`: unique identities, fixed-class validation, class resolution outside native batching, existing seeds/settings, finite completed fitness, and audited standard error from native sample sd. Four tests verify native settings/order/fitness, invalid requests, incomplete rejection, and runner cancellation.
+- [x] Connect APL finalist evaluation through `src/contracts/native_evaluation.js`, bound once at startup. Pass exact config/options references to the native runner, preserve native result payloads, and read common finite fitness only after completion checks. Screening/generation evaluation remains direct.
+- [x] Verify exact config/options forwarding, seeds/packed words/order, runner errors, and incomplete-result rejection. Instrumented actual APL search produces identical submitted batches/final output for locked/unlocked conditions, with exactly one adapter call per search.
+- [x] User reported APL finalist-adapter throughput looks good; record as user-reported performance acceptance, not an automated GPU comparison.
+- [x] Adapt build-search finalist evaluation through the same native adapter; preserve exact native batches/results, and read fitness only from completed common results.
+- [x] Instrumented actual build searches (static APL, evolved locked/unlocked conditions) match submitted batches, rankings, and full final output with exactly one finalist adapter call.
+- [x] User reported build-finalist throughput looks good.
+- [x] Route APL initial screening and generation batches through the shared native adapter; use completed common objective values for fitness while retaining native batch payloads and double buffering.
+- [x] Instrumented APL searches across two generations preserve submitted batches and complete output for locked/unlocked conditions; initial, generation, and finalist stages all use the boundary.
+- [x] Migrate build initial screening and generation batches through the shared native adapter; read completed common fitness while retaining native payloads, seed schedules, and double buffering.
+- [x] Instrumented two-generation build searches preserve batches, rankings, and final outputs for static/evolved locked/unlocked APLs.
+- [x] User confirmed throughput remains good after all-stage evaluation integration. Automated GPU/offline validation remains pending.
+- [x] Add versioned class capabilities (features, modes, objectives, seed schedules) and cached per-class simulation resolution in `src/classes/capabilities.js` / `runtime.js`. Gate common evaluation/imports and resolve startup simulation through the runtime. Three tests cover per-class concurrent caching, retries, identity mismatch, and unsupported capabilities.
+- [x] Replace optimizer direct engine dependencies with class-bound implementations in `src/search/`; public search wrappers accept explicit `classId`, capability-check, and resolve simulation/search dependencies once per search. Preserve startup Warlock helper exports and native loops.
+- [x] Verify orchestration parity after factory binding, independent class-rule/runner instances, and rejection of unsupported explicit class identities. Both public facades load; two binding tests pass.
+- [ ] Next: audit and specify the remaining UI/APL/gear/buff/result class assumptions and stable class-switch state rules before adding a class selector.
+- [ ] Audit class-specific UI/APL/gear/buff/result assumptions before runtime class selection and a second shader.
+- [ ] Confirm throughput and offline behavior; run a real GPU wrapper-vs-native comparison before broader evaluation integration.
+- [x] Implement/test legacy format classification and immutable staged mapping, including JSON round trips and malformed containers. Full class normalization and export/import round trips remain pending.
+- [ ] Introduce common evaluation/result wrappers outside hot loops and verify effective seeds, packed words, candidate ordering, and fitness.
+
+Current limits: the optimizer still selects Warlock at startup, current saved/exported formats have no integrated class/schema migration; a standalone pure envelope validator is implemented, and current result shapes remain distinct. The multi-config runner uses the first config's seed with a zero-seed fallback; preserve this behavior until a separately verified seed contract is integrated. The new v1 design does not claim runtime support or a completed generic search descriptor.
 
 ## Goal
 
@@ -43,7 +166,7 @@ Within each class, generate both variants from one class-owned implementation wi
 
 ### Common input shape for genetic algorithms
 
-Use a versioned logical candidate shape across classes. Proposed fields are `schemaVersion`, `classId`, `encounter`, `stats`, `equipment`, `buffs`, `talents`, `apl`, and `classOptions`. Run settings such as seeds, iterations, and output mode belong to a common evaluation request. Final field names and migration details are an implementation task.
+The v1 design in [MULTICLASS_CONTRACTS.md](MULTICLASS_CONTRACTS.md) specifies `schemaVersion`, `classId`, `candidateId`, `encounter`, `stats`, `equipment`, `buffs`, `talents`, `apl`, and `classOptions`. Seeds, iterations, objective, and output mode belong to a common evaluation request. These shapes and migration rules are documented but not yet implemented.
 
 Keep the outer structure and evaluation API consistent while letting each class define valid stat keys, talent trees, action IDs, predicates, and class options. A class validates and resolves a candidate into its own packed GPU configuration. Packed layouts may differ by class; the common contract is at the candidate and runner boundaries.
 
@@ -61,7 +184,7 @@ Evaluate populations in fast mode, then reevaluate selected finalists in detaile
 - [x] Consume that metadata from the existing application shell, talent view, and preset view while retaining panel locations and current data.
 - [x] Include the module in the service worker cache and advance the cache version.
 
-This extraction leaves simulation configuration, shader source, packing, GPU execution, APL rules, and genetic algorithm implementation unchanged. Individual talent icons/descriptions remain in `data/talents.json`; the module owns the data reference. Static HTML retains initial Warlock labels as startup fallback. Class selection and the broader class module contract remain future steps.
+This extraction leaves simulation configuration, shader source, packing, GPU execution, APL rules, and genetic algorithm implementation unchanged. Individual talent icons/descriptions remain in `data/talents.json`; the module owns the data reference. Static HTML retains initial Warlock labels as startup fallback. Runtime class switching and the complete class module contract remain future steps.
 
 ### Incremental preparation: presentation registry
 
@@ -69,7 +192,15 @@ This extraction leaves simulation configuration, shader source, packing, GPU exe
 - [x] Resolve the default class once in `src/classes/active_class.js` and share that presentation reference across the app, talent view, and preset view.
 - [x] Cache the registry and selection modules for offline loading.
 
-This registry currently covers presentation only. It adds no lookup to simulation or candidate evaluation loops. Runtime class switching, additional classes, and simulation module contracts remain future steps.
+The registry resolves presentation and provides deferred simulation loading. It adds no lookup to simulation or candidate evaluation loops. Runtime class switching and additional classes remain future steps.
+
+### Incremental preparation: Warlock simulation contract
+
+- [x] Expose direct references to the existing config builder, validator, packers, full-state decoder, shader sources, layout metadata, runner, summary, and diagnostic/lifecycle functions in `src/classes/warlock_simulation.js`.
+- [x] Resolve that contract once through `src/classes/active_simulation.js`; use its function references in the application and preset view.
+- [x] Cache the simulation contract, selection module, and config builder for offline loading.
+
+The existing engine retains its compact/fast decoders, GPU resource ownership, and batching. Shader generation, packed configuration, and function implementations are unchanged. Genetic algorithms retain their current direct engine imports until the search-space extraction. Presentation-only consumers do not load the simulation contract or Three.js. Browser throughput still needs comparison against the user's performance baseline before further simulation refactoring.
 
 ### 1. Define scope and capture the baseline
 
@@ -82,7 +213,8 @@ This registry currently covers presentation only. It adds no lookup to simulatio
 ### 2. Establish class modules and configuration ownership
 
 - [ ] Define and document the class module contract and class registry.
-- [ ] Define the common candidate/evaluation/result shapes and class-specific search-space descriptors.
+- [x] Document v1 common candidate/evaluation/result shapes and legacy migration (design only).
+- [ ] Define class-specific declarative search-space descriptors and integrate the common boundaries.
 - [ ] Move existing Warlock definitions behind a Warlock module incrementally.
 - [ ] Add class ID and schema version to saved builds, presets, and exported results.
 - [ ] Treat legacy builds without a class ID as Warlock; document migration and reject unsupported versions or classes clearly.
@@ -138,3 +270,42 @@ This registry currently covers presentation only. It adds no lookup to simulatio
 This preparation is complete when Warlock and one additional class work through the same stable layout, each has separate class-owned shaders with equivalent fast and detailed behavior, both can use the common genetic algorithm evaluation contract, legacy Warlock builds still load, and results are validated within documented scope and tolerances. Adding another class should have a documented extension path with no need to rewrite the shared interface or GPU runner.
 
 Full support for every class, every specialization, healing/tanking metrics, and multi-target simulation require separate scope decisions. The initial milestone is a validated path for adding classes to the existing damage simulator.
+
+Legacy migration progress: staged mapping is implemented but not connected to UI import/export. Sparse UI payloads retain missing defaults and `apl: null` until class normalization; legacy rotation modes remain in class options rather than becoming GA policy IDs. Resolved imports retain their original configs without invented packing/simulation versions. Combat validation, equipment-mode translation, full round-trip export, and browser integration remain pending. No new service-worker asset is needed until these standalone modules enter the browser dependency graph.
+
+Import normalization scope: implemented for direct-stat, level-63 single-target staged builds with text/policy APLs; equipment mode imports explicitly reject pending gear resolution. Buff values must be boolean, but buff names/effects are not yet validated or applied. Rules-form APLs and full evaluation/export resolution remain pending. Defaults preserve supplied direct stats and allow legal talent allocations below 51 points. Missing APL uses a class-owned shadow policy; no UI defaults are silently repaired. The service-worker cache advances to v33 and includes the deferred Warlock import module. Browser import/export remains unchanged.
+
+Equipment/buff progress: staged equipped imports now resolve with an explicitly supplied item database; direct imports retain supplied stats while validating any saved items. Current enchants and Bloodvine/Nemesis bonuses match the existing gear path; slot checks support second ring/trinket slots. Haste remains unsupported. Buff names now follow the saved combat-form schema (not the unrelated selector IDs), but effects are not yet applied. Import output still requires final buff/race/APL resolution before evaluation. UI gear and simulation code remain unchanged; cache v34 includes the equipment module.
+
+Import effect/resolution progress: buff/racial effects and text/policy/rules APL resolution are implemented outside the UI path; cache v35 includes the effects module. Logical resolution produces a model-validated config while resolved inputs skip effects. Existing `buildFightConfig` multiplier behavior is preserved, including its replacement of supplied school multipliers; this extraction does not establish buff-mechanics correctness/CPU parity. Full versioned export/import round trips, stricter semantic edge cases and resolved-version compatibility remain pending before browser integration.
+
+Round-trip checkpoint: four build-I/O tests pass; whole Node suite is 69/71 with the two known failures. Pure legacy/v1 logical exports reimport to identical configs and GPU packed words, including equipped snapshots, explicit zero stats, disabled rules, and canonical action IDs. Input payloads remain unchanged. Unknown versioned resolved compatibility rejects before class loading; no packing/simulation IDs are fabricated. Current browser import/export remains unchanged, browser correctness/throughput and complete semantic coverage are not established, and mechanics parity remains separate. Cache v36 refreshes the import-rule fixes.
+
+Resolved-version checkpoint: `exportResolvedBuild` emits v1 envelopes with registry-owned packing/simulation IDs; exact-match imports validate directly without reapplying effects. Fingerprints cover model/layout and model/kernel/config-builder sources and require compatibility review when those sources change; they do not certify CPU parity or support older resolved versions automatically. Full suite: 72/74, same two known failures. Browser checkpoint could not run in this environment: no Playwright package or browser executable is installed. UI import/export remains unchanged. Cache v37 includes the registry version metadata. Next: provision browser validation and integrate pure build I/O with UI staging/failure-before-mutation tests.
+
+UI integration checkpoint: editable text/rules inputs stage/validate fully before applying panel data, clear old buff selections, retain exact resolved config until a subsequent edit, and retain the logical envelope for reexport. Legacy/v1 resolved inputs and named policy APLs use resolved mode; policy bytecode is not converted into editable text. Successful imports invalidate the stored simulation result. The duplicate export-button handler was removed so a click produces one versioned build download. Legacy `haste: 0` is accepted/removed during normalization; nonzero haste still rejects. Cache v38 includes all new build-I/O modules and item data. Tests are 76/78 with the same known failures; instrumented setter tests are not a real browser check. Throughput and the newly integrated browser flow remain pending.
+
+Evaluation boundary progress: common wrapper implemented and tested with an injected native runner; real GPU and optimizer integration remain pending. It initially accepts one supported class per request and resolves logical inputs outside native GPU loops. Native runner exceptions/cancellation still reject the whole request. Successful results require exact requested completed sample count and finite totals/mean; incomplete results have null fitness. Native `summary.sd` is sample standard deviation, so uncertainty is typed standard error `sd/sqrt(n)` only for n>1. Seed audit: multi-config runner uses the first seed with `0 -> 42` fallback, and shader uses lane modulo iterations for each multi-config candidate; wrapper preserves this by sending one seed to all configs and retaining native execution. No optimizer candidate conversions or loops have changed in this step.
+
+Native finalist adapter checkpoint: APL search uses the common result mapping only for finalists and retains legacy native batch results for existing display/accounting. Stable IDs are local to the finalist request, fixed to the active class. Already-resolved candidates are not migrated/rebuilt or cloned; seeds and options pass through exactly. Per-sample completion validation adds a CPU scan to finalist results; measure its throughput cost before expanding. Four tests pass, including instrumented native-vs-adapter search parity. Real GPU comparison/performance remains pending; cache v39 includes both evaluation modules.
+
+Build finalist adapter checkpoint: both APL and build optimizers now evaluate finalists through the shared native boundary; initial screening and generation batches still use direct native calls. Candidate configs/seeds/options and existing result payloads remain unchanged. Five native adapter tests pass, including native-vs-adapter orchestration parity for both optimizers. APL throughput was accepted by the user; build-finalist throughput and real GPU comparisons remain pending. Cache v40 refreshes the changed optimizer.
+
+## Current readiness landscape
+
+- **Implemented foundation:** Warlock class registry/presentation/simulation references; class-owned search rules; logical/resolved build migration, validation and UI import/export; source-version compatibility; common evaluation/result boundary.
+- **Evaluation integration:** Both APL and build search use common fitness for initial screening, generations, and finalists. Native candidate representation, configs, GPU packing, seeds, selection, and double buffering remain unchanged. Latest suite: 90/92 with the same two known failures.
+- **Before runtime additional-class integration:** select runtime class dependencies rather than startup Warlock references, define capabilities/search descriptors, and audit class assumptions in APL tools, gear/buffs, UI controls, and result presentation.
+- **Dispatch/UI:** add class selection with stable panels, class-specific legal data/actions, class-owned fast/detailed shader dispatch/cache, and class-aware result mappings. Mixed-class batching can remain deferred for initial fixed-class searches; the broader roadmap still tracks it.
+- **Second class:** choose class/spec/ruleset/mechanics, audit data and CPU oracle, then implement scoped mechanics and presets through the established boundaries. Data/scope auditing can start now; end-to-end runtime support still requires the integration above.
+- **Validation remaining:** real GPU parity/timing, throughput for newly wrapped screening/generation batches, offline loading, legacy/browser flows, and new-class CPU/fast-detailed comparisons. User browser/import-export and finalist throughput reports are recorded; they do not replace these broader checks.
+
+Next immediate step: confirm all-stage adapter throughput, then audit/introduce runtime class dispatch and capabilities. Build-search screening/generation migration is complete. Cache v41 refreshes APL evaluation integration.
+
+All-stage evaluation checkpoint: both optimizers now submit every evaluation batch through the common native boundary and consume only completed finite common objectives. Native payload references, candidate configs, GPU packing, seeds, batching, RNG call order, population selection, and double buffering remain preserved in instrumented comparisons. Suite now passes 90/92 with the two known failures. Latest all-stage throughput, real GPU parity, and offline checks remain pending. Cache v42 refreshes build evaluation integration.
+
+Capabilities/runtime checkpoint: Warlock capabilities explicitly advertise existing interfaces without claiming full CPU parity. Runtime loading caches by class ID, shares concurrent loads, validates class identity/function/shader contracts, and evicts failed loads for retry. `active_simulation` and logical evaluation use this resolver; common requests/imports are capability-gated. Tests use synthetic classes to prove isolation without adding a real second class. UI class switching and optimizer per-search class dependency selection are still unimplemented. User accepted all-stage throughput before this checkpoint; cache v43 includes runtime/capability modules. Full suite: 90/92, the same two known failures.
+
+Optimizer binding checkpoint: both search implementations now take explicit class-module/simulation dependencies and contain no direct Warlock engine imports. Public run wrappers resolve capability-checked class runtime/dependencies once before starting; defaults still use startup Warlock. Existing helper exports remain startup-class references for compatibility. Build talent/preset resolvers come from class-owned deferred dependencies; their current implementations still delegate to existing Warlock modules. Two binding tests plus existing orchestration parity checks pass; suite 90/92, same known failures. This does not add UI class switching or a second class. Cache v44 includes the factory modules and dependency loader.
+
+Dependency follow-up: preset pet/sacrifice inference moved unchanged into `warlock_preset_options.js` and reexported from presets. Search dependency loading no longer pulls the presentation/simulation preset view into optimizer helper imports.

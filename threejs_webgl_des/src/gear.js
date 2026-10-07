@@ -53,6 +53,8 @@ export function setGearMode(mode) {
   }
 }
 
+export function getEquipmentDatabase() { return itemDb; }
+
 export function getGearMode() {
   return gearMode;
 }

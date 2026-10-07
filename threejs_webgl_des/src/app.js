@@ -1,13 +1,15 @@
+import { WARLOCK_IMPORT_BUFF_KEYS } from './classes/warlock_import.js';
+import { prepareUIBuildImport } from './contracts/ui_build.js';
+import { exportLogicalBuild, exportResolvedBuild } from './contracts/build_io.js';
 import { CLASS_PRESENTATION } from './classes/active_class.js';
+import { CLASS_SIMULATION } from './classes/active_simulation.js';
 import { renderRegretResults } from './regret_view.js';
 import { DEFAULTS, SPELLS } from './model.js';
-import { buildFightConfig } from './config_builder.js';
-import { scanRegrets, runSimulation, preloadShader } from './engine.js';
 import { compare } from '../validation/compare.js';
 import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags, getTalentsObject } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
 import { initPresets, getPresets, getPresetPetAndSac, runBatchPresetSimulation, renderPresetsLeaderboard } from './presets.js';
-import { initGear, setGearMode, calculateEquippedStats, getEquippedGear, setEquippedGear, getGearMode } from './gear.js';
+import { initGear, getEquipmentDatabase, setGearMode, calculateEquippedStats, getEquippedGear, setEquippedGear, getGearMode } from './gear.js';
 import { refreshAPLFallback, initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL, setAPLFromText, formatAPLToText } from './apl.js';
 import { initTooltips, showTooltip, hideTooltip } from './tooltips.js';
 import { initConstrainedSearchView, readGAConfig, updateGALiveView, setGAExecutionResults } from './constrained_search_view.js';
@@ -15,6 +17,7 @@ import { runConstrainedGeneticSearch } from './genetic_optimizer.js';
 import { initAPLSynthesisView, readAPLGAConfig, updateAPLGALiveView, setAPLGAExecutionResults } from './apl_synthesis_view.js';
 import { runAPLGeneticSynthesis } from './apl_genetic_optimizer.js';
 
+const { buildFightConfig, scanRegrets, runSimulation, preloadShader } = CLASS_SIMULATION;
 const $ = id => document.getElementById(id);
 
 // Populate the existing shell without changing panel structure or navigation.
@@ -34,6 +37,7 @@ const form = $('setup-form');
 const format = (n, d = 0) => n.toLocaleString(undefined, { maximumFractionDigits: d });
 let currentResult = null, controller = null;
 let importedConfig = null;
+let importedLogicalBuild = null;
 
 // Service Worker Registration for PWA / Offline support
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -517,7 +521,7 @@ function updateCombatStatsSummary() {
 // BUILD EXPORT / IMPORT STRING SYSTEM
 // ============================================================================
 
-export function getExportPayload() {
+function getLegacyExportPayload() {
   const directStats = {
     spellPower: Number($('in-spellPower')?.value || 500),
     shadowPower: Number($('in-shadowPower')?.value || 0),
@@ -575,6 +579,13 @@ export function getExportPayload() {
   };
 }
 
+export async function getExportPayload() {
+  const options = { itemDatabase: getEquipmentDatabase() };
+  if (importedConfig && importedLogicalBuild) return exportLogicalBuild(importedLogicalBuild, options);
+  if (importedConfig) return exportResolvedBuild({ resolvedConfig: importedConfig }, options);
+  return exportLogicalBuild(getLegacyExportPayload(), options);
+}
+
 export function encodeBuildString(payload) {
   const jsonStr = JSON.stringify(payload);
   return btoa(unescape(encodeURIComponent(jsonStr)));
@@ -589,16 +600,19 @@ export function decodeBuildString(str) {
   return JSON.parse(decodeURIComponent(escape(atob(trimmed))));
 }
 
-export function applyImportedBuild(payload) {
-  if (!payload || typeof payload !== 'object') throw new Error('Invalid build payload.');
-
-  // Check if it's a legacy or raw resolved config
-  if (payload.resolvedConfig || payload.config || (payload.duration && payload.iterations && payload.spellPower !== undefined && !payload.talents && !payload.stats)) {
-    const resolved = payload.resolvedConfig || payload.config || payload;
-    importedConfig = buildFightConfig({ resolvedConfig: resolved });
-    setStatus('Imported low-level resolved config. Ready to simulate.');
+export async function applyImportedBuild(input) {
+  if (controller) throw new Error('Wait for the active simulation to finish before importing.');
+  const prepared = await prepareUIBuildImport(input, { itemDatabase: getEquipmentDatabase() });
+  if (controller) throw new Error('Wait for the active simulation to finish before importing.');
+  if (prepared.kind === 'resolved-config') {
+    importedConfig = prepared.config;
+    importedLogicalBuild = null;
+    currentResult = null;
+    setStatus('Imported resolved configuration. Ready to simulate.');
     return;
   }
+  const payload = prepared.payload;
+  if (!payload || typeof payload !== 'object') throw new Error('Invalid build payload.');
 
   // High-fidelity UI Build import
   if (payload.race) setRace(payload.race);
@@ -630,6 +644,10 @@ export function applyImportedBuild(payload) {
     applyTalentsObject(payload.talents, updateCombatStatsSummary);
   }
 
+  for (const key of WARLOCK_IMPORT_BUFF_KEYS) {
+    const el = form.elements.namedItem(key);
+    if (el && el.type === 'checkbox') el.checked = false;
+  }
   if (payload.buffs && typeof payload.buffs === 'object') {
     for (const [key, val] of Object.entries(payload.buffs)) {
       const el = form.elements.namedItem(key);
@@ -656,11 +674,11 @@ export function applyImportedBuild(payload) {
     if ($('detailed-results') && payload.sim.detailedResults !== undefined) $('detailed-results').checked = !!payload.sim.detailedResults;
   }
 
-  if (payload.aplText) {
-    setAPLFromText(payload.aplText);
-  }
+  applySynthesizedAPL(prepared.rules);
 
-  importedConfig = null;
+  importedConfig = prepared.config;
+  importedLogicalBuild = prepared.logicalBuild;
+  currentResult = null;
   updateCombatStatsSummary();
   setStatus('Build configuration imported successfully!');
 }
@@ -685,7 +703,7 @@ function setupBuildExportImportModal() {
   function openModal(tab = 'export') {
     if (!modal) return;
     modal.style.display = 'flex';
-    switchModalTab(tab);
+    switchModalTab(tab).catch(err => setStatus(`Export error: ${err.message}`, true));
   }
 
   function closeModal() {
@@ -693,14 +711,14 @@ function setupBuildExportImportModal() {
     modal.style.display = 'none';
   }
 
-  function switchModalTab(tab) {
+  async function switchModalTab(tab) {
     if (tab === 'export') {
       btnTabExport?.classList.add('active');
       btnTabImport?.classList.remove('active');
       if (paneExport) paneExport.style.display = 'block';
       if (paneImport) paneImport.style.display = 'none';
       if (exportTextarea) {
-        const payload = getExportPayload();
+        const payload = await getExportPayload();
         exportTextarea.value = encodeBuildString(payload);
         exportTextarea.select();
       }
@@ -724,7 +742,7 @@ function setupBuildExportImportModal() {
   btnOpenImport?.addEventListener('click', () => openModal('import'));
   btnCloseModal?.addEventListener('click', closeModal);
   btnCloseFooter?.addEventListener('click', closeModal);
-  btnTabExport?.addEventListener('click', () => switchModalTab('export'));
+  btnTabExport?.addEventListener('click', () => { switchModalTab('export').catch(err => setStatus(`Export error: ${err.message}`, true)); });
   btnTabImport?.addEventListener('click', () => switchModalTab('import'));
 
   modal?.addEventListener('click', (e) => {
@@ -740,8 +758,9 @@ function setupBuildExportImportModal() {
     });
   });
 
-  btnDownloadJson?.addEventListener('click', () => {
-    const payload = getExportPayload();
+  btnDownloadJson?.addEventListener('click', async () => {
+    try {
+    const payload = await getExportPayload();
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
@@ -749,13 +768,14 @@ function setupBuildExportImportModal() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    } catch (err) { setStatus(`Export error: ${err.message}`, true); }
   });
 
-  btnApplyImport?.addEventListener('click', () => {
+  btnApplyImport?.addEventListener('click', async () => {
     if (!importTextarea) return;
     try {
       const decoded = decodeBuildString(importTextarea.value);
-      applyImportedBuild(decoded);
+      await applyImportedBuild(decoded);
       closeModal();
     } catch (err) {
       if (importError) {
@@ -766,12 +786,14 @@ function setupBuildExportImportModal() {
   });
 
   // Quick Copy button in Current Config panel
-  $('btn-copy-build')?.addEventListener('click', () => {
-    const payload = getExportPayload();
+  $('btn-copy-build')?.addEventListener('click', async () => {
+    try {
+    const payload = await getExportPayload();
     const str = encodeBuildString(payload);
     navigator.clipboard.writeText(str).then(() => {
       setStatus('Build string copied to clipboard!');
     });
+    } catch (err) { setStatus(`Export error: ${err.message}`, true); }
   });
 
   // Quick Load button in Current Config panel
@@ -780,8 +802,9 @@ function setupBuildExportImportModal() {
   });
 
   // Export JSON button in stats action bar
-  $('export')?.addEventListener('click', () => {
-    const payload = getExportPayload();
+  $('export')?.addEventListener('click', async () => {
+    try {
+    const payload = await getExportPayload();
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
@@ -789,6 +812,7 @@ function setupBuildExportImportModal() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+    } catch (err) { setStatus(`Export error: ${err.message}`, true); }
   });
 }
 
@@ -938,15 +962,7 @@ $('cancel')?.addEventListener('click', () => {
   setStatus('Cancelling after the current GPU batch…');
 });
 
-$('export')?.addEventListener('click', () => {
-  if (!currentResult) return;
-  const blob = new Blob([JSON.stringify(currentResult, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url;
-  a.download = `warlock-des-seed-${currentResult.config.seed}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-});
+
 
 function render(result) {
   $('regret-panel').hidden = result.detailedResults === false;

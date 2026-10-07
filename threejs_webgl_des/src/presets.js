@@ -1,14 +1,17 @@
+import { getPresetPetAndSac } from './classes/warlock_preset_options.js';
+export { getPresetPetAndSac };
 import { CLASS_PRESENTATION } from './classes/active_class.js';
+import { CLASS_SIMULATION } from './classes/active_simulation.js';
 // Standard Meta Presets Comparison Dashboard & Batch Execution Engine
 //
 // NOTE: This is a simulation results table. Presets strictly define inputs
 // (talents x gear/stats x APL x race). No preset DPS or stat weight values are
 // prefilled or hardcoded into the table. All output columns (Mean DPS, damage split,
 // stat weights) are strictly populated via live GPU simulation when clicking "Simulate Specs".
-import { runSimulation, runMultiSimulation } from './engine.js';
 import { getTalentFlagsFromRanks } from './talents.js';
-import { buildFightConfig } from './config_builder.js';
 import { generateAPLForPreset, compileAPLToBytecode, parseAPLText } from './apl.js';
+
+const { runSimulation, runMultiSimulation, buildFightConfig } = CLASS_SIMULATION;
 
 let presetsData = [];
 let selectedPreset = null;
@@ -124,50 +127,6 @@ export function getSpecAPLRules(p) {
     presetAPL = generateAPLForPreset(p?.name || '', p?.talents, p?.rotation, sac === 'succubus');
   }
   return Array.isArray(presetAPL) ? presetAPL.filter(r => r.enabled !== false) : [];
-}
-
-export function getPresetPetAndSac(p) {
-  if (p && p.pet !== undefined && p.sac !== undefined) {
-    return { pet: p.pet, sac: p.sac };
-  }
-  const name = (p?.name || '').toLowerCase();
-  const demoTalents = p?.talents?.demonology || {};
-  const demoPoints = Object.values(demoTalents).reduce((a, b) => a + (Number(b) || 0), 0);
-  const isDPSpec = demoPoints >= 31 || (demoTalents.demonic_pact > 0) || name.includes('dp') || name.includes('demonic pact');
-
-  let pet = 'none';
-  let sac = 'none';
-
-  if (isDPSpec) {
-    // DP specs (31 Demonology) use BOTH Pet AND Demonic Sacrifice:
-    // In this sim version: Sac Succubus = +15% Fire Dmg, Sac Imp = +15% Shadow Dmg.
-    // DP Fire has Pet Imp + DS Succubus (+15% Fire).
-    // DP Shadow has Pet Succubus + DS Imp (+15% Shadow).
-    if (name.includes('fire') || name.includes('incinerate') || name.includes('searing')) {
-      sac = 'succubus';
-      pet = 'imp';
-    } else {
-      sac = 'imp';
-      pet = 'succubus';
-    }
-  } else if (demoTalents.demonic_sacrifice > 0 || name.includes('ds-') || name.includes('ds/') || name.includes('ds+')) {
-    // Pure Demonic Sacrifice specs (pet sacrificed, no active pet)
-    pet = 'none';
-    if (name.includes('ds-succ') || name.includes('ds+succ') || name.includes('ds succ') || name.includes('fire') || name.includes('incinerate') || name.includes('searing')) {
-      sac = 'succubus';
-    } else {
-      sac = 'imp';
-    }
-  } else {
-    // Standard pet specs without sacrifice
-    sac = 'none';
-    if (name.includes('succubus') || name.includes('lash')) {
-      pet = 'succubus';
-    } else {
-      pet = 'imp';
-    }
-  }
-  return { pet, sac };
 }
 
 function getSpecPetIcons(p) {
