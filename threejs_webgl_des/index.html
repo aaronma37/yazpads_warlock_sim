@@ -72,7 +72,7 @@
                         <img src="./assets/icons/Achievement_Character_Human_Male.png" alt="Human"> Human (+5% Spirit)
                       </button>
                       <button type="button" class="picker-opt-btn" data-race="ORC">
-                        <img src="./assets/icons/Achievement_Character_Orc_Male.png" alt="Orc"> Orc (Blood Fury, +5% Pet)
+                        <img src="./assets/icons/Achievement_Character_Orc_Male.png" alt="Orc"> Orc (Blood Fury)
                       </button>
                       <button type="button" class="picker-opt-btn" data-race="UNDEAD">
                         <img src="./assets/icons/Achievement_Character_Undead_Male.png" alt="Undead"> Undead (WotF)
@@ -501,7 +501,6 @@
               <section class="wow-panel" style="margin-top: 0.75rem;">
                 <div class="wow-panel-header">
                   <span>Combat Stats Summary</span>
-                  <span style="font-size: 0.72rem; color: var(--text-dim);">Live Multipliers & Attributes</span>
                 </div>
                 <div class="stats-summary-grid" style="margin-top: 0.5rem;">
                   <div class="stat-metric"><span>Shadow SP:</span><strong id="sum-shadow-sp">500</strong></div>
@@ -517,10 +516,12 @@
                   <div class="stat-metric"><span>Shadow Mult:</span><strong id="sum-shadow-mult">1.00x</strong></div>
                   <div class="stat-metric"><span>Fire Mult:</span><strong id="sum-fire-mult">1.00x</strong></div>
                 </div>
-                <div class="build-action-buttons" style="margin-top: 0.65rem;">
-                  <button type="button" class="wow-button wow-btn-small" id="btn-copy-build">Copy Build</button>
-                  <button type="button" class="wow-button wow-btn-small" id="btn-load-build">Load Build</button>
-                  <button type="button" class="wow-button wow-btn-small" id="export" disabled>Export JSON</button>
+                <div class="build-action-buttons" style="margin-top: 0.65rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                  <button type="button" class="wow-button wow-btn-small" id="btn-open-export-modal" title="Open Export String Dialog">Export String</button>
+                  <button type="button" class="wow-button wow-btn-small" id="btn-open-import-modal" title="Open Import String Dialog">Import String</button>
+                  <button type="button" class="wow-button wow-btn-small" id="btn-copy-build" title="Quick copy encoded build string to clipboard">Copy Build</button>
+                  <button type="button" class="wow-button wow-btn-small" id="btn-load-build" title="Quick import build string">Load Build</button>
+                  <button type="button" class="wow-button wow-btn-small" id="export" title="Download configuration as JSON file">Export JSON</button>
                 </div>
               </section>
             </div>
@@ -1177,6 +1178,52 @@
       <div class="modal-footer">
         <button type="button" class="wow-button wow-btn-small" id="btn-cancel-apl-cond">Cancel</button>
         <button type="button" class="wow-button wow-btn-small" id="btn-save-apl-cond">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP MODAL FOR BUILD EXPORT / IMPORT STRING -->
+  <div id="build-export-import-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog" style="max-width: 600px; width: 90%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <img src="./assets/icons/Spell_Shadow_BurningSpirit.png" width="24" height="24" alt="Export/Import" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'" style="border-radius:2px; border:1px solid #ffd100;">
+          <h3 id="build-modal-title">Export / Import Build Configuration</h3>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-build-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="mode-toggle-group" style="margin-bottom: 0.75rem;">
+          <button type="button" class="wow-button wow-btn-small active" id="btn-modal-tab-export">Export String</button>
+          <button type="button" class="wow-button wow-btn-small" id="btn-modal-tab-import">Import String</button>
+        </div>
+
+        <!-- Export Pane -->
+        <div id="modal-export-pane">
+          <p style="font-size: 0.78rem; color: var(--text-parchment); margin-bottom: 0.4rem;">
+            Copy this encoded build string to share or save your complete setup (Race, Pet, DS, Talents, Gear/Stats, Buffs, Sim Options, APL):
+          </p>
+          <textarea id="export-string-textarea" class="wow-input" rows="8" readonly spellcheck="false" style="font-family: monospace; font-size: 0.72rem; word-break: break-all; resize: vertical; width: 100%;"></textarea>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button type="button" class="wow-button wow-btn-small" id="btn-modal-copy-string">📋 Copy String</button>
+            <button type="button" class="wow-button wow-btn-small" id="btn-modal-download-json">💾 Download JSON</button>
+          </div>
+        </div>
+
+        <!-- Import Pane -->
+        <div id="modal-import-pane" style="display: none;">
+          <p style="font-size: 0.78rem; color: var(--text-parchment); margin-bottom: 0.4rem;">
+            Paste a copied build string or simulation JSON to restore all talents, stats, buffs, and APL:
+          </p>
+          <textarea id="import-string-textarea" class="wow-input" rows="8" spellcheck="false" placeholder="Paste Base64 build string or JSON here..." style="font-family: monospace; font-size: 0.72rem; resize: vertical; width: 100%;"></textarea>
+          <div id="import-error-msg" role="alert" style="display: none; color: #f87171; font-size: 0.75rem; margin-top: 0.35rem;"></div>
+          <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button type="button" class="wow-button wow-btn-small" id="btn-modal-apply-import">✓ Apply &amp; Load Build</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="wow-button wow-btn-small" id="btn-modal-close-footer">Close</button>
       </div>
     </div>
   </div>

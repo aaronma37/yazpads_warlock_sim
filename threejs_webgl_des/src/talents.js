@@ -46,6 +46,22 @@ export function resetTalents(onTalentChange) {
   if (cb) cb(getSimTalentFlags());
 }
 
+export function getTalentsObject() {
+  const result = { affliction: {}, demonology: {}, destruction: {} };
+  if (!talentData) return result;
+  for (const [key, rank] of Object.entries(currentAllocation)) {
+    const [tIdx, talIdx] = key.split('_').map(Number);
+    const tree = talentData.trees[tIdx];
+    const talent = tree?.talents[talIdx];
+    if (tree && talent && rank > 0) {
+      const treeKey = tree.name.toLowerCase();
+      const talKey = talent.name.toLowerCase().replace(/[\s\'-]/g, '_');
+      result[treeKey][talKey] = rank;
+    }
+  }
+  return result;
+}
+
 export function resetTreeTalents(treeIdx, onTalentChange) {
   for (const key of Object.keys(currentAllocation)) {
     const [tIdx] = key.split('_').map(Number);
@@ -141,7 +157,15 @@ export function getTalentFlagsFromRanks(talentTreeRanks = {}) {
   const soulLink = demo('soul link') > 0;
   const improvedShadowBolt = destro('improved shadow bolt');
   const sacRank = demo('demonic sacrifice');
+  const aftermath = destro('aftermath');
+  const cataclysm = destro('cataclysm');
+  const cataclysmCostMult = cataclysm === 3 ? 0.90 : cataclysm === 2 ? 0.94 : cataclysm === 1 ? 0.97 : 1.0;
   const affBonus = agonizingFlames >= 3 ? 0.10 : agonizingFlames === 2 ? 0.07 : agonizingFlames === 1 ? 0.03 : 0;
+
+  const improvedAgony = aff('improved bane of agony') || aff('improved curse of agony');
+  const amplifyCurse = aff('amplify curse') > 0;
+  const felVitality = demo('fel vitality');
+  const demonicPact = demo('demonic pact') > 0;
 
   return {
     // Direct flags and rank-scaled values consumed by the current DES shader.
@@ -150,6 +174,13 @@ export function getTalentFlagsFromRanks(talentTreeRanks = {}) {
     suppressionHit: aff('suppression'),
     instantCorruption: improvedCorruption >= 5,
     improvedCorruptionBonus: improvedCorruption >= 5 ? 0.10 : improvedCorruption * 0.02,
+    improvedAgony: improvedAgony > 0,
+    improvedAgonyRank: improvedAgony,
+    improvedAgonyBonus: improvedAgony * 0.05,
+    amplifyCurse,
+    felVitality: felVitality > 0,
+    felVitalityRank: felVitality,
+    felVitalityBonus: felVitality * 0.05,
     maledictionBonus: aff('malediction') * 0.01,
     improvedDrainsBonus: improvedDrains >= 3 ? 0.20 : improvedDrains === 2 ? 0.13 : improvedDrains === 1 ? 0.07 : 0,
     malevolence: aff('malevolence'),
@@ -169,12 +200,19 @@ export function getTalentFlagsFromRanks(talentTreeRanks = {}) {
     demonicBrandRank: demo('demonic brand'),
     demonicEnergies: demo('demonic energies'),
     demonicKnowledge: demo('demonic knowledge'),
+    demonicPact,
     masterDemo,
     soulLink,
     sacRank,
     conflagrate: destro('conflagrate') > 0,
     incinerate: destro('incinerate') > 0,
     wrack: aff('wrack') > 0,
+    aftermath: aftermath > 0,
+    aftermathRank: aftermath,
+    aftermathBonus: aftermath * 0.10,
+    cataclysm: cataclysm > 0,
+    cataclysmRank: cataclysm,
+    cataclysmCostMult,
     afBonus: affBonus,
     fnbCrit: [0, 8, 17, 25][destro('fire and brimstone')] || 0,
     snfChance: destro('shadow and flame') * 0.20,

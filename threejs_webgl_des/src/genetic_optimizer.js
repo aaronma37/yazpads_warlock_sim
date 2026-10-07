@@ -673,13 +673,6 @@ export function individualToConfig(ind, baseStatsConfig) {
     base.spirit = unscaledSpirit;
   }
 
-  // Orc racial: Command (+5% Pet Damage)
-  if (ind.race === 'ORC') {
-    tf.petFireboltMult = (tf.petFireboltMult || 1.0) * 1.05;
-    tf.petMeleeMult = (tf.petMeleeMult || 1.0) * 1.05;
-    tf.petLashMult = (tf.petLashMult || 1.0) * 1.05;
-  }
-
   return buildFightConfig({
     base,
     talent: tf,

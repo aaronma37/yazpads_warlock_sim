@@ -11,6 +11,7 @@ import {
   TalentGraph
 } from './genetic_optimizer.js';
 import { showTooltip, hideTooltip } from './tooltips.js';
+import { getAPLUnreachableFlags } from './apl_rules.js';
 import { SPELLS } from './model.js';
 
 const SPELL_ICONS = {
@@ -850,49 +851,68 @@ function renderAPLRows(cand) {
     const activeIds = activeRules.map(r => r.id);
     const firstNuke = activeIds.find(id => id === 'incinerate' || id === 'searing' || id === 'bolt' || id === 'wrack' || id === 'hellfire') || 'bolt';
     const fallbackRot = firstNuke === 'incinerate' ? 'fire' : firstNuke === 'searing' ? 'searing' : 'shadow';
+    const unreachableFlags = getAPLUnreachableFlags(activeRules);
+    const hasUnconditionalFiller = unreachableFlags.some(flag => flag === true);
 
     return activeRules.map((r, i) => {
+      const isUnreachable = unreachableFlags[i];
       const spellName = r.spell || getSpellNameForAPL(r.action);
       const iconKey = getIconForSpell(spellName);
       const iconSrc = r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
       const condSummary = r.condition || getConditionSummary(r);
+      const prioColor = isUnreachable ? '#71717a' : 'var(--text-dim)';
+      const nameColor = isUnreachable ? '#71717a' : '#67e8f9';
+      const condColor = isUnreachable ? '#64748b' : 'var(--text-parchment)';
+      const statusText = isUnreachable ? '<span style="color: #71717a; font-weight: 700;">UNREACHABLE</span>' : '<span style="color: #4ade80; font-weight: 700;">ACTIVE</span>';
+      const rowStyle = isUnreachable ? 'opacity: 0.45; filter: grayscale(85%);' : '';
       return `
-        <tr>
-          <td style="color: var(--text-dim); text-align: center; font-weight: 700;">#${i + 1}</td>
+        <tr style="${rowStyle}">
+          <td style="color: ${prioColor}; text-align: center; font-weight: 700;">#${i + 1}</td>
           <td>
             <div style="display: flex; align-items: center; gap: 8px;">
               <img src="./assets/icons/${iconSrc}" width="20" height="20" alt="${spellName}" style="border-radius:3px; border:1px solid #4a3e2e; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-              <span style="color: #67e8f9; font-weight: 600;">${spellName}</span>
+              <span style="color: ${nameColor}; font-weight: 600;">${spellName}</span>
+              ${isUnreachable ? '<span class="apl-unreachable-tag">Unreachable</span>' : ''}
             </div>
           </td>
-          <td style="color: var(--text-parchment);">${condSummary}</td>
-          <td style="text-align: center; color: #4ade80; font-weight: 700;">ACTIVE</td>
+          <td style="color: ${condColor};">${condSummary}</td>
+          <td style="text-align: center;">${statusText}</td>
         </tr>
       `;
-    }).join('') + fallbackRow(fallbackRot);
+    }).join('') + fallbackRow(fallbackRot, 4, hasUnconditionalFiller);
   }
 
   const { aplRules, shaderRotation } = getPolicyAPLAndActions(cand.individual || cand);
   if (aplRules.length === 0) return fallbackRow(shaderRotation);
 
+  const unreachableFlags = getAPLUnreachableFlags(aplRules);
+  const hasUnconditionalFiller = unreachableFlags.some(flag => flag === true);
+
   return aplRules.map((r, i) => {
+    const isUnreachable = unreachableFlags[i];
     const spellName = getSpellNameForAPL(r.action);
     const iconKey = getIconForSpell(spellName);
     const condSummary = getConditionSummary(r);
+    const prioColor = isUnreachable ? '#71717a' : 'var(--text-dim)';
+    const nameColor = isUnreachable ? '#71717a' : '#67e8f9';
+    const condColor = isUnreachable ? '#64748b' : 'var(--text-parchment)';
+    const statusText = isUnreachable ? '<span style="color: #71717a; font-weight: 700;">UNREACHABLE</span>' : '<span style="color: #4ade80; font-weight: 700;">ACTIVE</span>';
+    const rowStyle = isUnreachable ? 'opacity: 0.45; filter: grayscale(85%);' : '';
     return `
-      <tr>
-        <td style="color: var(--text-dim); text-align: center; font-weight: 700;">#${i + 1}</td>
+      <tr style="${rowStyle}">
+        <td style="color: ${prioColor}; text-align: center; font-weight: 700;">#${i + 1}</td>
         <td>
           <div style="display: flex; align-items: center; gap: 8px;">
             <img src="./assets/icons/${SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png'}" width="20" height="20" alt="${spellName}" style="border-radius:3px; border:1px solid #4a3e2e; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-            <span style="color: #67e8f9; font-weight: 600;">${spellName}</span>
+            <span style="color: ${nameColor}; font-weight: 600;">${spellName}</span>
+            ${isUnreachable ? '<span class="apl-unreachable-tag">Unreachable</span>' : ''}
           </div>
         </td>
-        <td style="color: var(--text-parchment);">${condSummary}</td>
-        <td style="text-align: center; color: #4ade80; font-weight: 700;">ACTIVE</td>
+        <td style="color: ${condColor};">${condSummary}</td>
+        <td style="text-align: center;">${statusText}</td>
       </tr>
     `;
-  }).join('') + fallbackRow(shaderRotation);
+  }).join('') + fallbackRow(shaderRotation, 4, hasUnconditionalFiller);
 }
 
 function renderSpellBreakdownRows(cand) {

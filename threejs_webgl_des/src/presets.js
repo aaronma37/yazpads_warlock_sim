@@ -7,7 +7,7 @@
 import { runSimulation, runMultiSimulation } from './engine.js';
 import { getTalentFlagsFromRanks } from './talents.js';
 import { buildFightConfig } from './config_builder.js';
-import { generateAPLForPreset, compileAPLToBytecode } from './apl.js';
+import { generateAPLForPreset, compileAPLToBytecode, parseAPLText } from './apl.js';
 
 let presetsData = [];
 let selectedPreset = null;
@@ -34,6 +34,12 @@ const SPELL_ICONS = {
   HELLFIRE: 'Spell_Fire_Incinerate.png',
   DRAIN_HOPE: 'ability_deathknight_hemorrhagicfever.png',
   NIGHTFALL: 'Spell_Shadow_Twilight.png',
+  SHADOWBURN: 'Spell_Shadow_ScourgeBuild.png',
+  WRACK: 'ability_deathknight_hemorrhagicfever.png',
+  DECIMATESEARING: 'Spell_Fire_SoulBurn.png',
+  DECIMATESOULFIRE: 'Spell_Fire_Fireball.png',
+  DECIMATION_SEARING_PAIN: 'Spell_Fire_SoulBurn.png',
+  DECIMATION_SOUL_FIRE: 'Spell_Fire_Fireball.png',
   PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
   IMP_FIREBOLT: 'Spell_Fire_FireBolt.png',
   PET_LASH_OF_PAIN: 'Spell_Shadow_Curse.png',
@@ -139,29 +145,35 @@ export function getFilteredPresets() {
   return fallback;
 }
 
-// Generate Priority APL icon chain for each spec preset
-function getSpecAPLChain(p) {
-  const name = p.name.toLowerCase();
-  const chain = ['LIFE_TAP'];
-  
-  if (name.includes('brand')) {
-    chain.push('DEMONIC_BRAND');
+// Resolve authentic APL rules for each spec preset
+export function getSpecAPLRules(p) {
+  const { sac } = getPresetPetAndSac(p);
+  let presetAPL;
+  if (p?.aplText) {
+    try {
+      presetAPL = parseAPLText(p.aplText);
+    } catch {
+      presetAPL = null;
+    }
   }
-  if (name.includes('searing pain') || name.includes('dp fire') || name.includes('dp_fire')) {
-    chain.push('BANE_OF_DOOM', 'BANE_OF_AGONY', 'CORRUPTION', 'IMMOLATE', 'SEARING_PAIN');
-  } else if (name.includes('incinerate')) {
-    chain.push('IMMOLATE', 'INCINERATE', 'CONFLAGRATE');
-  } else if (name.includes('aff') || name.includes('corruption')) {
-    chain.push('CORRUPTION', 'BANE_OF_AGONY', 'SHADOW_BOLT');
-  } else {
-    chain.push('CORRUPTION', 'SHADOW_BOLT');
+  if (!presetAPL && p?.apl && Array.isArray(p.apl.rules) && p.apl.rules.length > 0) {
+    presetAPL = p.apl.rules;
   }
-  return chain;
+  if (!presetAPL && Array.isArray(p?.apl) && p.apl.length > 0) {
+    presetAPL = p.apl;
+  }
+  if (!presetAPL) {
+    presetAPL = generateAPLForPreset(p?.name || '', p?.talents, p?.rotation, sac === 'succubus');
+  }
+  return Array.isArray(presetAPL) ? presetAPL.filter(r => r.enabled !== false) : [];
 }
 
 export function getPresetPetAndSac(p) {
-  const name = (p.name || '').toLowerCase();
-  const demoTalents = p.talents?.demonology || {};
+  if (p && p.pet !== undefined && p.sac !== undefined) {
+    return { pet: p.pet, sac: p.sac };
+  }
+  const name = (p?.name || '').toLowerCase();
+  const demoTalents = p?.talents?.demonology || {};
   const demoPoints = Object.values(demoTalents).reduce((a, b) => a + (Number(b) || 0), 0);
   const isDPSpec = demoPoints >= 31 || (demoTalents.demonic_pact > 0) || name.includes('dp') || name.includes('demonic pact');
 
@@ -293,7 +305,7 @@ export function renderPresetsLeaderboard(onSelectPreset) {
     const rankNum = idx + 1;
     const raceIcon = RACE_ICONS[p.race] || RACE_ICONS.Human;
     const { pet, sac } = getSpecPetIcons(p);
-    const aplChain = getSpecAPLChain(p);
+    const aplRules = getSpecAPLRules(p);
     const split = getSpecDamageSplit(p);
     const weights = getSpecStatWeights(p);
     const talentDist = getPresetTalentDistribution(p);
@@ -301,9 +313,12 @@ export function renderPresetsLeaderboard(onSelectPreset) {
     // Strip leading x/y/z and trailing (Race) suffix from spec name
     const cleanSpecName = p.name.replace(/^\s*\d+\s*\/\s*\d+\s*\/\s*\d+\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
 
-    const aplIconsHtml = aplChain.map(s => {
-      const icon = SPELL_ICONS[s] || 'Spell_Shadow_ShadowBolt.png';
-      return `<img src="./assets/icons/${icon}" class="apl-mini-icon" alt="${s}" title="${s.replace(/_/g, ' ')}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
+    const aplIconsHtml = aplRules.map(r => {
+      const spellName = r.spell || r.id || 'Spell';
+      const iconKey = (r.id || '').toUpperCase().replace(/[\s-]/g, '_');
+      const icon = r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+      const cond = r.condition || r.rawCond || 'Active';
+      return `<img src="./assets/icons/${icon}" class="apl-mini-icon" alt="${spellName}" title="${spellName}: ${cond}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
     }).join('');
 
     const petHtml = pet ? `<img src="./assets/icons/${SPELL_ICONS[pet]}" class="pet-mini-icon" alt="Pet" title="Pet: ${pet.replace('PET_', '')}">` : '<span style="color:#666;">--</span>';
@@ -606,7 +621,14 @@ export async function runBatchPresetSimulation(signal, onProgress, onSelectPrese
       rot = 'bolt';
     }
 
-    const presetAPL = generateAPLForPreset(p.name, p.talents);
+    let presetAPL;
+    if (p.aplText) {
+      presetAPL = parseAPLText(p.aplText);
+    } else if (p.apl && Array.isArray(p.apl.rules) && p.apl.rules.length > 0) {
+      presetAPL = p.apl.rules;
+    } else {
+      presetAPL = generateAPLForPreset(p.name, p.talents, p.rotation, sac === 'succubus');
+    }
     const aplRules = compileAPLToBytecode(presetAPL);
     const actions = new Set(presetAPL.filter(r => r.enabled).map(r => r.id));
 

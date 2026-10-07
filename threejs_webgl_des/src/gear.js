@@ -53,6 +53,32 @@ export function setGearMode(mode) {
   }
 }
 
+export function getGearMode() {
+  return gearMode;
+}
+
+export function getEquippedGear() {
+  const result = {};
+  for (const [slot, item] of Object.entries(activeGear)) {
+    if (item && item.id) result[slot] = item.id;
+  }
+  return result;
+}
+
+export function setEquippedGear(gearMap) {
+  if (!itemDb || !itemDb.items) return;
+  activeGear = {};
+  if (gearMap && typeof gearMap === 'object') {
+    for (const [slot, itemId] of Object.entries(gearMap)) {
+      const item = itemDb.items.find(it => it.id === itemId);
+      if (item) activeGear[slot] = item;
+    }
+  }
+  renderPaperdoll();
+  const stats = calculateEquippedStats();
+  window.dispatchEvent(new CustomEvent('gear-updated', { detail: stats }));
+}
+
 export function loadBiSPreset(presetKey, triggerCallback = true) {
   const preset = itemDb.presets?.[presetKey];
   if (!preset) return;

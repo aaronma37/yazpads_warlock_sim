@@ -3216,7 +3216,7 @@
   },
   {
     "id": 106,
-    "name": "2/31/18 DP Fire - Searing Pain (Human)",
+    "name": "2/31/18 DP/Ruin Fire Brand (Human)",
     "race": "Human",
     "talents": {
       "affliction": {
@@ -3224,32 +3224,37 @@
         "improved_corruption": 1
       },
       "demonology": {
+        "improved_health_funnel": 1,
         "improved_imp": 3,
-        "demonic_embrace": 2,
+        "demonic_embrace": 1,
         "unholy_power": 5,
-        "fel_vitality": 3,
+        "demonic_aegis": 1,
+        "fel_vitality": 2,
         "demonic_energies": 2,
         "demonic_sacrifice": 1,
+        "master_summoner": 1,
         "decimation": 2,
-        "demonic_brand": 3,
+        "demonic_brand": 2,
         "soul_link": 1,
         "demonic_knowledge": 3,
         "master_demonologist": 5,
         "demonic_pact": 1
       },
       "destruction": {
+        "improved_shadow_bolt": 5,
         "bane": 5,
-        "cataclysm": 3,
-        "aftermath": 2,
         "ruin": 5,
         "agonizing_flames": 3
       }
     },
-    "rotation": "Demonology Fire - Searing Pain + Decimation"
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "pet": "imp",
+    "sac": "succubus",
+    "aplText": "decimate_soul_fire if decimation.active\nbane_of_doom if target_ttd >= 61s\nsearing_pain if target_hp <= 12%\ndemonic_brand if debuff.demonic_brand_missing\nimmolate if dot_remains(\"Immolate\") <= 1.6s\ncorruption if dot_remains(\"Corruption\") <= 2.1s\nlife_tap if mana_remaining <= 41%\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0"
   },
   {
     "id": 107,
-    "name": "2/31/18 DP Fire - Searing Pain (Orc)",
+    "name": "2/31/18 DP/Ruin Fire Brand (Orc)",
     "race": "Orc",
     "talents": {
       "affliction": {
@@ -3257,32 +3262,37 @@
         "improved_corruption": 1
       },
       "demonology": {
+        "improved_health_funnel": 1,
         "improved_imp": 3,
-        "demonic_embrace": 2,
+        "demonic_embrace": 1,
         "unholy_power": 5,
-        "fel_vitality": 3,
+        "demonic_aegis": 1,
+        "fel_vitality": 2,
         "demonic_energies": 2,
         "demonic_sacrifice": 1,
+        "master_summoner": 1,
         "decimation": 2,
-        "demonic_brand": 3,
+        "demonic_brand": 2,
         "soul_link": 1,
         "demonic_knowledge": 3,
         "master_demonologist": 5,
         "demonic_pact": 1
       },
       "destruction": {
+        "improved_shadow_bolt": 5,
         "bane": 5,
-        "cataclysm": 3,
-        "aftermath": 2,
         "ruin": 5,
         "agonizing_flames": 3
       }
     },
-    "rotation": "Demonology Fire - Searing Pain + Decimation"
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "pet": "imp",
+    "sac": "succubus",
+    "aplText": "decimate_soul_fire if decimation.active\nbane_of_doom if target_ttd >= 61s\nsearing_pain if target_hp <= 12%\ndemonic_brand if debuff.demonic_brand_missing\nimmolate if dot_remains(\"Immolate\") <= 1.6s\ncorruption if dot_remains(\"Corruption\") <= 2.1s\nlife_tap if mana_remaining <= 41%\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0"
   },
   {
     "id": 108,
-    "name": "2/31/18 DP Fire - Searing Pain (Undead)",
+    "name": "2/31/18 DP/Ruin Fire Brand (Undead)",
     "race": "Undead",
     "talents": {
       "affliction": {
@@ -3290,32 +3300,37 @@
         "improved_corruption": 1
       },
       "demonology": {
+        "improved_health_funnel": 1,
         "improved_imp": 3,
-        "demonic_embrace": 2,
+        "demonic_embrace": 1,
         "unholy_power": 5,
-        "fel_vitality": 3,
+        "demonic_aegis": 1,
+        "fel_vitality": 2,
         "demonic_energies": 2,
         "demonic_sacrifice": 1,
+        "master_summoner": 1,
         "decimation": 2,
-        "demonic_brand": 3,
+        "demonic_brand": 2,
         "soul_link": 1,
         "demonic_knowledge": 3,
         "master_demonologist": 5,
         "demonic_pact": 1
       },
       "destruction": {
+        "improved_shadow_bolt": 5,
         "bane": 5,
-        "cataclysm": 3,
-        "aftermath": 2,
         "ruin": 5,
         "agonizing_flames": 3
       }
     },
-    "rotation": "Demonology Fire - Searing Pain + Decimation"
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "pet": "imp",
+    "sac": "succubus",
+    "aplText": "decimate_soul_fire if decimation.active\nbane_of_doom if target_ttd >= 61s\nsearing_pain if target_hp <= 12%\ndemonic_brand if debuff.demonic_brand_missing\nimmolate if dot_remains(\"Immolate\") <= 1.6s\ncorruption if dot_remains(\"Corruption\") <= 2.1s\nlife_tap if mana_remaining <= 41%\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0"
   },
   {
     "id": 109,
-    "name": "2/31/18 DP Fire - Searing Pain (Troll)",
+    "name": "2/31/18 DP/Ruin Fire Brand (Troll)",
     "race": "Troll",
     "talents": {
       "affliction": {
@@ -3323,32 +3338,37 @@
         "improved_corruption": 1
       },
       "demonology": {
+        "improved_health_funnel": 1,
         "improved_imp": 3,
-        "demonic_embrace": 2,
+        "demonic_embrace": 1,
         "unholy_power": 5,
-        "fel_vitality": 3,
+        "demonic_aegis": 1,
+        "fel_vitality": 2,
         "demonic_energies": 2,
         "demonic_sacrifice": 1,
+        "master_summoner": 1,
         "decimation": 2,
-        "demonic_brand": 3,
+        "demonic_brand": 2,
         "soul_link": 1,
         "demonic_knowledge": 3,
         "master_demonologist": 5,
         "demonic_pact": 1
       },
       "destruction": {
+        "improved_shadow_bolt": 5,
         "bane": 5,
-        "cataclysm": 3,
-        "aftermath": 2,
         "ruin": 5,
         "agonizing_flames": 3
       }
     },
-    "rotation": "Demonology Fire - Searing Pain + Decimation"
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "pet": "imp",
+    "sac": "succubus",
+    "aplText": "decimate_soul_fire if decimation.active\nbane_of_doom if target_ttd >= 61s\nsearing_pain if target_hp <= 12%\ndemonic_brand if debuff.demonic_brand_missing\nimmolate if dot_remains(\"Immolate\") <= 1.6s\ncorruption if dot_remains(\"Corruption\") <= 2.1s\nlife_tap if mana_remaining <= 41%\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0"
   },
   {
     "id": 110,
-    "name": "2/31/18 DP Fire - Searing Pain (Gnome)",
+    "name": "2/31/18 DP/Ruin Fire Brand (Gnome)",
     "race": "Gnome",
     "talents": {
       "affliction": {
@@ -3356,11 +3376,51 @@
         "improved_corruption": 1
       },
       "demonology": {
+        "improved_health_funnel": 1,
         "improved_imp": 3,
-        "demonic_embrace": 2,
+        "demonic_embrace": 1,
         "unholy_power": 5,
-        "fel_vitality": 3,
+        "demonic_aegis": 1,
+        "fel_vitality": 2,
         "demonic_energies": 2,
+        "demonic_sacrifice": 1,
+        "master_summoner": 1,
+        "decimation": 2,
+        "demonic_brand": 2,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "pet": "imp",
+    "sac": "succubus",
+    "aplText": "decimate_soul_fire if decimation.active\nbane_of_doom if target_ttd >= 61s\nsearing_pain if target_hp <= 12%\ndemonic_brand if debuff.demonic_brand_missing\nimmolate if dot_remains(\"Immolate\") <= 1.6s\ncorruption if dot_remains(\"Corruption\") <= 2.1s\nlife_tap if mana_remaining <= 41%\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0"
+  },
+  {
+    "id": 111,
+    "name": "2/31/18 DP/Ruin Shadow Brand (Human)",
+    "race": "Human",
+    "pet": "succubus",
+    "sac": "imp",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 3,
+        "unholy_power": 5,
+        "improved_voidwalker": 2,
+        "improved_sayaad": 3,
         "demonic_sacrifice": 1,
         "decimation": 2,
         "demonic_brand": 3,
@@ -3370,13 +3430,153 @@
         "demonic_pact": 1
       },
       "destruction": {
+        "improved_shadow_bolt": 5,
         "bane": 5,
-        "cataclysm": 3,
-        "aftermath": 2,
         "ruin": 5,
         "agonizing_flames": 3
       }
     },
-    "rotation": "Demonology Fire - Searing Pain + Decimation"
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "aplText": "bane_of_doom if target_ttd >= 60 && !target.has_debuff(\"Bane of Doom\")\ndemonic_brand if debuff.demonic_brand_missing\ncorruption if target_ttd >= 12 && target.debuff_remains(\"Corruption\") <= 0\nimmolate if target_ttd >= 12 && target.debuff_remains(\"Immolate\") <= 0\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0\nshadow_bolt\ndecimate_soul_fire if decimation.active\ndecimate_searing if target_hp_pct <= 35 && decimation.inactive\nhellfire if target_ttd >= 15s\nlife_tap if mana_remaining <= 20%\nsearing_pain"
+  },
+  {
+    "id": 112,
+    "name": "2/31/18 DP/Ruin Shadow Brand (Orc)",
+    "race": "Orc",
+    "pet": "succubus",
+    "sac": "imp",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 3,
+        "unholy_power": 5,
+        "improved_voidwalker": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "aplText": "bane_of_doom if target_ttd >= 60 && !target.has_debuff(\"Bane of Doom\")\ndemonic_brand if debuff.demonic_brand_missing\ncorruption if target_ttd >= 12 && target.debuff_remains(\"Corruption\") <= 0\nimmolate if target_ttd >= 12 && target.debuff_remains(\"Immolate\") <= 0\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0\nshadow_bolt\ndecimate_soul_fire if decimation.active\ndecimate_searing if target_hp_pct <= 35 && decimation.inactive\nhellfire if target_ttd >= 15s\nlife_tap if mana_remaining <= 20%\nsearing_pain"
+  },
+  {
+    "id": 113,
+    "name": "2/31/18 DP/Ruin Shadow Brand (Undead)",
+    "race": "Undead",
+    "pet": "succubus",
+    "sac": "imp",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 3,
+        "unholy_power": 5,
+        "improved_voidwalker": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "aplText": "bane_of_doom if target_ttd >= 60 && !target.has_debuff(\"Bane of Doom\")\ndemonic_brand if debuff.demonic_brand_missing\ncorruption if target_ttd >= 12 && target.debuff_remains(\"Corruption\") <= 0\nimmolate if target_ttd >= 12 && target.debuff_remains(\"Immolate\") <= 0\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0\nshadow_bolt\ndecimate_soul_fire if decimation.active\ndecimate_searing if target_hp_pct <= 35 && decimation.inactive\nhellfire if target_ttd >= 15s\nlife_tap if mana_remaining <= 20%\nsearing_pain"
+  },
+  {
+    "id": 114,
+    "name": "2/31/18 DP/Ruin Shadow Brand (Troll)",
+    "race": "Troll",
+    "pet": "succubus",
+    "sac": "imp",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 3,
+        "unholy_power": 5,
+        "improved_voidwalker": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "aplText": "bane_of_doom if target_ttd >= 60 && !target.has_debuff(\"Bane of Doom\")\ndemonic_brand if debuff.demonic_brand_missing\ncorruption if target_ttd >= 12 && target.debuff_remains(\"Corruption\") <= 0\nimmolate if target_ttd >= 12 && target.debuff_remains(\"Immolate\") <= 0\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0\nshadow_bolt\ndecimate_soul_fire if decimation.active\ndecimate_searing if target_hp_pct <= 35 && decimation.inactive\nhellfire if target_ttd >= 15s\nlife_tap if mana_remaining <= 20%\nsearing_pain"
+  },
+  {
+    "id": 115,
+    "name": "2/31/18 DP/Ruin Shadow Brand (Gnome)",
+    "race": "Gnome",
+    "pet": "succubus",
+    "sac": "imp",
+    "talents": {
+      "affliction": {
+        "improved_life_tap": 1,
+        "improved_corruption": 1
+      },
+      "demonology": {
+        "improved_imp": 2,
+        "demonic_embrace": 3,
+        "unholy_power": 5,
+        "improved_voidwalker": 2,
+        "improved_sayaad": 3,
+        "demonic_sacrifice": 1,
+        "decimation": 2,
+        "demonic_brand": 3,
+        "soul_link": 1,
+        "demonic_knowledge": 3,
+        "master_demonologist": 5,
+        "demonic_pact": 1
+      },
+      "destruction": {
+        "improved_shadow_bolt": 5,
+        "bane": 5,
+        "ruin": 5,
+        "agonizing_flames": 3
+      }
+    },
+    "rotation": "Demonology Fire - Searing Pain + Decimation",
+    "aplText": "bane_of_doom if target_ttd >= 60 && !target.has_debuff(\"Bane of Doom\")\ndemonic_brand if debuff.demonic_brand_missing\ncorruption if target_ttd >= 12 && target.debuff_remains(\"Corruption\") <= 0\nimmolate if target_ttd >= 12 && target.debuff_remains(\"Immolate\") <= 0\nbane_of_agony if !target.has_debuff(\"Bane of Doom\") && target.debuff_remains(\"Bane of Agony\") <= 0\nshadow_bolt\ndecimate_soul_fire if decimation.active\ndecimate_searing if target_hp_pct <= 35 && decimation.inactive\nhellfire if target_ttd >= 15s\nlife_tap if mana_remaining <= 20%\nsearing_pain"
   }
 ]

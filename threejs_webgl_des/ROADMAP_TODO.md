@@ -2,6 +2,8 @@
 
 This roadmap outlines the plan for migrating the native desktop/WASM simulation features into a modern, responsive, mobile-friendly Three.js WebGL web application deployable on **GitHub Pages**.
 
+Additional character class support is tracked in [Multi-Class Goal & TODO](MULTICLASS_TODO.md), including class modules, UI and GPU boundaries, saved-build compatibility, and validation of a first additional class.
+
 ---
 
 ## 🎯 High-Level Objectives

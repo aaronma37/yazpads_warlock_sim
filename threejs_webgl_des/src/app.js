@@ -3,11 +3,11 @@ import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
 import { scanRegrets, runSimulation, preloadShader } from './engine.js';
 import { compare } from '../validation/compare.js';
-import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags } from './talents.js';
+import { initTalents, applyTalentsObject, applyTalentPreset, resetTalents, getSimTalentFlags, getTalentsObject } from './talents.js';
 import { initBuffs, getActiveBuffStats } from './buffs.js';
 import { initPresets, getPresets, getPresetPetAndSac, runBatchPresetSimulation, renderPresetsLeaderboard } from './presets.js';
-import { initGear, setGearMode, calculateEquippedStats } from './gear.js';
-import { refreshAPLFallback, initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL } from './apl.js';
+import { initGear, setGearMode, calculateEquippedStats, getEquippedGear, setEquippedGear, getGearMode } from './gear.js';
+import { refreshAPLFallback, initAPL, setAPLPreset, getActiveAPL, getActiveBytecodeRules, applySynthesizedAPL, setAPLFromText, formatAPLToText } from './apl.js';
 import { initTooltips, showTooltip, hideTooltip } from './tooltips.js';
 import { initConstrainedSearchView, readGAConfig, updateGALiveView, setGAExecutionResults } from './constrained_search_view.js';
 import { runConstrainedGeneticSearch } from './genetic_optimizer.js';
@@ -96,7 +96,7 @@ const RACE_ICONS_DATA = {
     icon: './assets/icons/Achievement_Character_Orc_Male.png',
     traits: [
       { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+10% Spell Power)', desc: 'Increases base spell power by 10% for 15 sec. 120 sec cooldown; aligned with Bane of Doom when available.' },
-      { name: 'Command', icon: 'Ability_Warrior_WarCry.png', title: 'Command (+5% Pet Damage)', desc: 'Damage dealt by Warlock and Hunter pets increased by 5%.' }
+      { name: 'Hardiness', icon: 'Spell_Shadow_AntiShadow.png', title: 'Hardiness (+25% Stun Resist)', desc: 'Chance to resist Stun effects increased by an additional 25%.' }
     ]
   },
   UNDEAD: {
@@ -544,33 +544,286 @@ function updateCombatStatsSummary() {
   }
 }
 
-// Copy build string
-$('btn-copy-build')?.addEventListener('click', () => {
-  const config = readForm();
-  const str = btoa(JSON.stringify(config));
-  navigator.clipboard.writeText(str).then(() => {
-    setStatus('Build string copied to clipboard!');
-  });
-});
+// ============================================================================
+// BUILD EXPORT / IMPORT STRING SYSTEM
+// ============================================================================
 
-// Import a copied build string or an exported result JSON. Both carry the
-// resolved simulation config and enter the same validated builder boundary.
-$('btn-load-build')?.addEventListener('click', () => {
-  const source = window.prompt('Paste a copied build string or exported simulation JSON:');
-  if (!source) return;
-  try {
-    let payload;
-    const trimmed = source.trim();
-    if (trimmed.startsWith('{')) payload = JSON.parse(trimmed);
-    else payload = JSON.parse(decodeURIComponent(escape(atob(trimmed))));
-    const resolved = payload.config || payload;
-    importedConfig = buildFightConfig({ resolvedConfig: resolved });
-    setStatus('Imported resolved config. Submit to simulate it; edit a control to return to the current form build.');
-  } catch (error) {
-    importedConfig = null;
-    setStatus(`Could not import build: ${error.message}`, true);
+export function getExportPayload() {
+  const directStats = {
+    spellPower: Number($('in-spellPower')?.value || 500),
+    shadowPower: Number($('in-shadowPower')?.value || 0),
+    firePower: Number($('in-firePower')?.value || 0),
+    hit: Number($('in-hit')?.value || 12),
+    crit: Number($('in-crit')?.value || 15),
+    haste: Number($('in-haste')?.value || 0),
+    intellect: Number($('in-intellect')?.value || 200),
+    stamina: Number($('in-stamina')?.value || 220),
+    spirit: Number($('in-spirit')?.value || 100),
+    mp5: Number($('in-mp5')?.value || 20),
+  };
+
+  const buffFields = [
+    'flaskSupremePower', 'greaterArcaneElixir', 'shadowPowerElixir', 'greaterFirepowerElixir',
+    'wizardOil', 'magebloodElixir', 'nightfinSoup', 'arcaneIntellect', 'markOfTheWild',
+    'blessingOfKings', 'blessingOfWisdom', 'manaSpringTotem', 'dragonslayer', 'songflower',
+    'warchiefsBlessing', 'spiritOfZandalar', 'saygesFortune', 'curseOfShadow', 'curseOfElements',
+    'shadowWeaving', 'improvedScorch', 'nightfallProcDebuff'
+  ];
+  const buffs = {};
+  buffFields.forEach(f => {
+    const el = form.elements.namedItem(f);
+    if (el) buffs[f] = !!el.checked;
+  });
+
+  return {
+    version: 1,
+    app: 'Classic WoW Warlock DES Simulator',
+    race: activeRace,
+    pet: activePet,
+    ds: activeDS,
+    rotation: activeRotation,
+    gearMode: getGearMode(),
+    stats: directStats,
+    gear: getEquippedGear(),
+    talents: getTalentsObject(),
+    buffs,
+    target: {
+      level: Number($('target-level')?.value || 63),
+      racialPolicy: $('racial-policy')?.value || 'execute',
+      targetIsBeast: !!form.elements.namedItem('targetIsBeast')?.checked,
+      bossArmor: Number($('in-boss-armor')?.value || 3731),
+      resistance: Number($('in-resistance')?.value || 0),
+      targetHP: Number(form.elements.namedItem('targetHP')?.value || 1000000),
+      targetCount: Number(form.elements.namedItem('targetCount')?.value || 1),
+    },
+    sim: {
+      iterations: Number(form.elements.namedItem('iterations')?.value || 4096),
+      duration: Number(form.elements.namedItem('duration')?.value || 180),
+      distance: Number(form.elements.namedItem('distance')?.value || 30),
+      detailedResults: $('detailed-results') ? !!$('detailed-results').checked : true,
+    },
+    aplText: formatAPLToText(getActiveAPL())
+  };
+}
+
+export function encodeBuildString(payload) {
+  const jsonStr = JSON.stringify(payload);
+  return btoa(unescape(encodeURIComponent(jsonStr)));
+}
+
+export function decodeBuildString(str) {
+  const trimmed = String(str || '').trim();
+  if (!trimmed) throw new Error('Build string is empty.');
+  if (trimmed.startsWith('{')) {
+    return JSON.parse(trimmed);
   }
-});
+  return JSON.parse(decodeURIComponent(escape(atob(trimmed))));
+}
+
+export function applyImportedBuild(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('Invalid build payload.');
+
+  // Check if it's a legacy or raw resolved config
+  if (payload.resolvedConfig || payload.config || (payload.duration && payload.iterations && payload.spellPower !== undefined && !payload.talents && !payload.stats)) {
+    const resolved = payload.resolvedConfig || payload.config || payload;
+    importedConfig = buildFightConfig({ resolvedConfig: resolved });
+    setStatus('Imported low-level resolved config. Ready to simulate.');
+    return;
+  }
+
+  // High-fidelity UI Build import
+  if (payload.race) setRace(payload.race);
+  if (payload.pet) setPet(payload.pet);
+  if (payload.ds) setDS(payload.ds);
+  if (payload.rotation) setRotation(payload.rotation);
+
+  if (payload.stats) {
+    if ($('in-spellPower') && payload.stats.spellPower !== undefined) $('in-spellPower').value = payload.stats.spellPower;
+    if ($('in-shadowPower') && payload.stats.shadowPower !== undefined) $('in-shadowPower').value = payload.stats.shadowPower;
+    if ($('in-firePower') && payload.stats.firePower !== undefined) $('in-firePower').value = payload.stats.firePower;
+    if ($('in-hit') && payload.stats.hit !== undefined) $('in-hit').value = payload.stats.hit;
+    if ($('in-crit') && payload.stats.crit !== undefined) $('in-crit').value = payload.stats.crit;
+    if ($('in-haste') && payload.stats.haste !== undefined) $('in-haste').value = payload.stats.haste;
+    if ($('in-intellect') && payload.stats.intellect !== undefined) $('in-intellect').value = payload.stats.intellect;
+    if ($('in-stamina') && payload.stats.stamina !== undefined) $('in-stamina').value = payload.stats.stamina;
+    if ($('in-spirit') && payload.stats.spirit !== undefined) $('in-spirit').value = payload.stats.spirit;
+    if ($('in-mp5') && payload.stats.mp5 !== undefined) $('in-mp5').value = payload.stats.mp5;
+  }
+
+  if (payload.gearMode) {
+    setGearMode(payload.gearMode);
+  }
+  if (payload.gear) {
+    setEquippedGear(payload.gear);
+  }
+
+  if (payload.talents) {
+    applyTalentsObject(payload.talents, updateCombatStatsSummary);
+  }
+
+  if (payload.buffs && typeof payload.buffs === 'object') {
+    for (const [key, val] of Object.entries(payload.buffs)) {
+      const el = form.elements.namedItem(key);
+      if (el && el.type === 'checkbox') {
+        el.checked = !!val;
+      }
+    }
+  }
+
+  if (payload.target) {
+    if ($('target-level') && payload.target.level !== undefined) $('target-level').value = payload.target.level;
+    if ($('racial-policy') && payload.target.racialPolicy !== undefined) $('racial-policy').value = payload.target.racialPolicy;
+    if (form.elements.namedItem('targetIsBeast') && payload.target.targetIsBeast !== undefined) form.elements.namedItem('targetIsBeast').checked = !!payload.target.targetIsBeast;
+    if ($('in-boss-armor') && payload.target.bossArmor !== undefined) $('in-boss-armor').value = payload.target.bossArmor;
+    if ($('in-resistance') && payload.target.resistance !== undefined) $('in-resistance').value = payload.target.resistance;
+    if (form.elements.namedItem('targetHP') && payload.target.targetHP !== undefined) form.elements.namedItem('targetHP').value = payload.target.targetHP;
+    if (form.elements.namedItem('targetCount') && payload.target.targetCount !== undefined) form.elements.namedItem('targetCount').value = payload.target.targetCount;
+  }
+
+  if (payload.sim) {
+    if (form.elements.namedItem('iterations') && payload.sim.iterations !== undefined) form.elements.namedItem('iterations').value = payload.sim.iterations;
+    if (form.elements.namedItem('duration') && payload.sim.duration !== undefined) form.elements.namedItem('duration').value = payload.sim.duration;
+    if (form.elements.namedItem('distance') && payload.sim.distance !== undefined) form.elements.namedItem('distance').value = payload.sim.distance;
+    if ($('detailed-results') && payload.sim.detailedResults !== undefined) $('detailed-results').checked = !!payload.sim.detailedResults;
+  }
+
+  if (payload.aplText) {
+    setAPLFromText(payload.aplText);
+  }
+
+  importedConfig = null;
+  updateCombatStatsSummary();
+  setStatus('Build configuration imported successfully!');
+}
+
+function setupBuildExportImportModal() {
+  const modal = $('build-export-import-modal');
+  const btnOpenExport = $('btn-open-export-modal');
+  const btnOpenImport = $('btn-open-import-modal');
+  const btnCloseModal = $('btn-close-build-modal');
+  const btnCloseFooter = $('btn-modal-close-footer');
+  const btnTabExport = $('btn-modal-tab-export');
+  const btnTabImport = $('btn-modal-tab-import');
+  const paneExport = $('modal-export-pane');
+  const paneImport = $('modal-import-pane');
+  const exportTextarea = $('export-string-textarea');
+  const importTextarea = $('import-string-textarea');
+  const importError = $('import-error-msg');
+  const btnCopyModal = $('btn-modal-copy-string');
+  const btnDownloadJson = $('btn-modal-download-json');
+  const btnApplyImport = $('btn-modal-apply-import');
+
+  function openModal(tab = 'export') {
+    if (!modal) return;
+    modal.style.display = 'flex';
+    switchModalTab(tab);
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.style.display = 'none';
+  }
+
+  function switchModalTab(tab) {
+    if (tab === 'export') {
+      btnTabExport?.classList.add('active');
+      btnTabImport?.classList.remove('active');
+      if (paneExport) paneExport.style.display = 'block';
+      if (paneImport) paneImport.style.display = 'none';
+      if (exportTextarea) {
+        const payload = getExportPayload();
+        exportTextarea.value = encodeBuildString(payload);
+        exportTextarea.select();
+      }
+    } else {
+      btnTabImport?.classList.add('active');
+      btnTabExport?.classList.remove('active');
+      if (paneExport) paneExport.style.display = 'none';
+      if (paneImport) paneImport.style.display = 'block';
+      if (importError) {
+        importError.textContent = '';
+        importError.style.display = 'none';
+      }
+      if (importTextarea) {
+        importTextarea.value = '';
+        importTextarea.focus();
+      }
+    }
+  }
+
+  btnOpenExport?.addEventListener('click', () => openModal('export'));
+  btnOpenImport?.addEventListener('click', () => openModal('import'));
+  btnCloseModal?.addEventListener('click', closeModal);
+  btnCloseFooter?.addEventListener('click', closeModal);
+  btnTabExport?.addEventListener('click', () => switchModalTab('export'));
+  btnTabImport?.addEventListener('click', () => switchModalTab('import'));
+
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  btnCopyModal?.addEventListener('click', () => {
+    if (!exportTextarea) return;
+    navigator.clipboard.writeText(exportTextarea.value).then(() => {
+      btnCopyModal.textContent = '✓ Copied!';
+      setTimeout(() => { btnCopyModal.textContent = '📋 Copy String'; }, 2000);
+      setStatus('Build string copied to clipboard!');
+    });
+  });
+
+  btnDownloadJson?.addEventListener('click', () => {
+    const payload = getExportPayload();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `warlock_build_${activeRace.toLowerCase()}_${activeRotation}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+
+  btnApplyImport?.addEventListener('click', () => {
+    if (!importTextarea) return;
+    try {
+      const decoded = decodeBuildString(importTextarea.value);
+      applyImportedBuild(decoded);
+      closeModal();
+    } catch (err) {
+      if (importError) {
+        importError.textContent = `Import error: ${err.message}`;
+        importError.style.display = 'block';
+      }
+    }
+  });
+
+  // Quick Copy button in Current Config panel
+  $('btn-copy-build')?.addEventListener('click', () => {
+    const payload = getExportPayload();
+    const str = encodeBuildString(payload);
+    navigator.clipboard.writeText(str).then(() => {
+      setStatus('Build string copied to clipboard!');
+    });
+  });
+
+  // Quick Load button in Current Config panel
+  $('btn-load-build')?.addEventListener('click', () => {
+    openModal('import');
+  });
+
+  // Export JSON button in stats action bar
+  $('export')?.addEventListener('click', () => {
+    const payload = getExportPayload();
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `warlock_build_${activeRace.toLowerCase()}_${activeRotation}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+}
+
+setupBuildExportImportModal();
 
 form.addEventListener('input', () => { importedConfig = null; updateCombatStatsSummary(); });
 form.addEventListener('change', () => { importedConfig = null; updateCombatStatsSummary(); });
@@ -873,7 +1126,14 @@ export function loadFullPreset(preset) {
   setRotation(rot);
 
   // 5. Load APL Rotation tailored to this preset
-  setAPLPreset(preset.name, preset.talents);
+  if (preset.aplText) {
+    setAPLFromText(preset.aplText);
+  } else if (preset.apl && Array.isArray(preset.apl.rules) && preset.apl.rules.length > 0) {
+    applySynthesizedAPL(preset.apl.rules);
+  } else {
+    const { sac } = getPresetPetAndSac(preset);
+    setAPLPreset(preset.name, preset.talents, preset.rotation, preset.sacSuccubus || sac === 'succubus');
+  }
 
   // 6. Update Summary Views (preserves user's current configuration stats)
   updateCombatStatsSummary();
@@ -978,7 +1238,7 @@ initGear((gearStats) => {
   updateCombatStatsSummary();
 });
 
-initPresets((selectedPreset) => {
+const presetsReady = initPresets((selectedPreset) => {
   loadFullPreset(selectedPreset);
   // Switch to Current Configuration tab
   switchTab('btn-current-build');
@@ -1279,7 +1539,7 @@ initTooltips();
 setupInteractiveSlots();
 updateRacialsDisplay();
 updateCombatStatsSummary();
-populateTalentPresetsDropdown();
+presetsReady.then(populateTalentPresetsDropdown);
 
 // Preload & compile WebGL2 shader asynchronously in the background on page load
 if (capable) {

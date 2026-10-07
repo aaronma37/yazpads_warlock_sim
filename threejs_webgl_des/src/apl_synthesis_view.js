@@ -11,7 +11,7 @@ import {
   formatAPLName
 } from './apl_genetic_optimizer.js';
 import { showTooltip, hideTooltip } from './tooltips.js';
-import { getEnabledAPLRules } from './apl_rules.js';
+import { getEnabledAPLRules, getAPLUnreachableFlags } from './apl_rules.js';
 import { SPELLS } from './model.js';
 
 let currentAPLCandidates = [];
@@ -323,30 +323,45 @@ export function renderSelectedAPLCandidateDetails(cand) {
 
   // Show every enabled rule; availability is evaluated by the simulator.
   const effectiveRules = getEffectiveRules(cand.rules || []);
+  const unreachableFlags = getAPLUnreachableFlags(effectiveRules);
   const rulesHtml = effectiveRules.map((r, idx) => {
+    const isUnreachable = unreachableFlags[idx];
+    const codeColor = isUnreachable ? '#64748b' : '#6ee7b7';
+    const code2Color = isUnreachable ? '#64748b' : '#93c5fd';
     let statusBadge = '';
     if (r.condKey2 && r.condKey2 !== 'ALWAYS' && r.condition2 && r.condition2 !== 'Always') {
-      statusBadge = `<code style="color: #6ee7b7; font-size: 0.75rem;">${escapeHtml(r.condition1)}</code> <span style="color: var(--text-gold); font-size: 0.7rem; margin: 0 3px; font-weight: 700;">&</span> <code style="color: #93c5fd; font-size: 0.75rem;">${escapeHtml(r.condition2)}</code>`;
+      statusBadge = `<code style="color: ${codeColor}; font-size: 0.75rem;">${escapeHtml(r.condition1)}</code> <span style="color: ${isUnreachable ? '#64748b' : 'var(--text-gold)'}; font-size: 0.7rem; margin: 0 3px; font-weight: 700;">&</span> <code style="color: ${code2Color}; font-size: 0.75rem;">${escapeHtml(r.condition2)}</code>`;
     } else {
-      statusBadge = `<code style="color: #6ee7b7; font-size: 0.75rem;">${escapeHtml(r.condition1 || r.condition)}</code>`;
+      statusBadge = `<code style="color: ${codeColor}; font-size: 0.75rem;">${escapeHtml(r.condition1 || r.condition)}</code>`;
     }
 
+    const rowStyle = isUnreachable
+      ? 'background: #14121a; opacity: 0.45; filter: grayscale(85%);'
+      : 'background: #14121a;';
+    const prioColor = isUnreachable ? '#71717a' : 'var(--text-gold)';
+    const nameColor = isUnreachable ? '#71717a' : 'var(--text-parchment)';
+    const unreachableTag = isUnreachable ? '<span class="apl-unreachable-tag">Unreachable</span>' : '';
+    const statusIcon = isUnreachable
+      ? '<span style="font-size: 0.62rem; color: #71717a; font-weight: 700; text-transform: uppercase;">Unreachable</span>'
+      : '<span style="font-size: 0.75rem; color: #4ade80;">●</span>';
+
     return `
-      <tr class="apl-row" style="background: #14121a;">
-        <td style="width: 32px; text-align: center; color: var(--text-gold); font-weight: 700; font-size: 0.75rem;">#${idx + 1}</td>
+      <tr class="apl-row ${isUnreachable ? 'unreachable-row' : ''}" style="${rowStyle}" ${isUnreachable ? 'title="Unreachable: This action will never execute because an earlier unconditional action always fires."' : ''}>
+        <td style="width: 32px; text-align: center; color: ${prioColor}; font-weight: 700; font-size: 0.75rem;">#${idx + 1}</td>
         <td style="width: 175px;">
           <div class="apl-spell-cell">
             <img src="./assets/icons/${r.icon}" alt="${r.spell}" class="apl-spell-icon" style="width:20px; height:20px;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-            <span class="apl-spell-name" style="font-size: 0.8rem; font-weight: 700; color: var(--text-parchment);">${r.spell}</span>
+            <span class="apl-spell-name" style="font-size: 0.8rem; font-weight: 700; color: ${nameColor};">${r.spell}</span>
+            ${unreachableTag}
           </div>
         </td>
         <td>
-          <div class="apl-condition-badge" style="padding: 2px 6px;">
+          <div class="apl-condition-badge" style="padding: 2px 6px; ${isUnreachable ? 'border-color: #27272a; background: #100f16;' : ''}">
             ${statusBadge}
           </div>
         </td>
         <td style="width: 50px; text-align: center;">
-          <span style="font-size: 0.75rem; color: #4ade80;">●</span>
+          ${statusIcon}
         </td>
       </tr>
     `;

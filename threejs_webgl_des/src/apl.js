@@ -1,4 +1,4 @@
-import { isAPLRuleEnabled } from './apl_rules.js';
+import { isAPLRuleEnabled, isAPLRuleBlocking, getAPLUnreachableFlags } from './apl_rules.js';
 import { fallbackRow } from './apl_fallback_view.js';
 // Authentic Action Priority List (APL) Engine & Interactive Manager
 import { APL_ACTION, APL_COND } from './model.js';
@@ -115,7 +115,8 @@ export function refreshAPLFallback() {
   const tbody = document.getElementById('apl-table-body');
   if (tbody) {
     tbody.querySelector('.apl-fallback-row')?.remove();
-    tbody.insertAdjacentHTML('beforeend', fallbackRow(fallbackRotationGetter(), 5));
+    const hasUnconditionalFiller = currentAPL.some(r => isAPLRuleEnabled(r) && isAPLRuleBlocking(r));
+    tbody.insertAdjacentHTML('beforeend', fallbackRow(fallbackRotationGetter(), 5, hasUnconditionalFiller));
   }
 }
 
@@ -610,6 +611,24 @@ function setupEditBoxEvents() {
   box.addEventListener('change', handleInput);
 }
 
+export function setAPLFromText(text) {
+  const parsed = parseAPLText(text);
+  currentAPL = parsed;
+  const box = document.getElementById('apl-edit-box');
+  const errorEl = document.getElementById('apl-text-error');
+  if (box) {
+    box.value = formatAPLToText(currentAPL);
+    box.classList.remove('input-invalid');
+  }
+  if (errorEl) {
+    errorEl.textContent = '';
+    errorEl.style.display = 'none';
+  }
+  renderAPLTable();
+  if (onChangeCallback) onChangeCallback(currentAPL);
+  return currentAPL;
+}
+
 export function renderAPLUI() {
   const box = document.getElementById('apl-edit-box');
   const errorEl = document.getElementById('apl-text-error');
@@ -629,11 +648,19 @@ export function renderAPLTable() {
   if (!tbody) return;
 
   tbody.innerHTML = '';
+  const unreachableFlags = getAPLUnreachableFlags(currentAPL);
   currentAPL.forEach((entry, idx) => {
+    const isEnabled = isAPLRuleEnabled(entry);
+    const isUnreachable = unreachableFlags[idx];
     const tr = document.createElement('tr');
-    tr.className = `apl-row ${entry.enabled ? '' : 'disabled-row'}`;
+    tr.className = `apl-row ${isEnabled ? '' : 'disabled-row'} ${isUnreachable ? 'unreachable-row' : ''}`;
     tr.draggable = true;
     tr.dataset.index = idx;
+    if (isUnreachable) {
+      tr.setAttribute('title', 'Unreachable: This action will never execute because an earlier unconditional action always fires.');
+    }
+
+    const unreachableTag = isUnreachable ? '<span class="apl-unreachable-tag">Unreachable</span>' : '';
 
     tr.innerHTML = `
       <td class="apl-col-reorder">
@@ -649,10 +676,11 @@ export function renderAPLTable() {
         <div class="apl-spell-cell">
           <img src="./assets/icons/${entry.icon}" alt="${entry.spell}" class="apl-spell-icon" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
           <span class="apl-spell-name">${entry.spell}</span>
+          ${unreachableTag}
         </div>
       </td>
       <td class="apl-col-condition">
-        <div class="apl-condition-badge" title="Right-click or click ↗ to edit condition">
+        <div class="apl-condition-badge" title="${isUnreachable ? 'Unreachable action' : 'Right-click or click ↗ to edit condition'}">
           <code>${escapeHtml(entry.condition || entry.rawCond || 'Always')}</code>
         </div>
       </td>
