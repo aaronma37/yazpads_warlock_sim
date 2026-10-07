@@ -204,35 +204,74 @@
                 </div>
               </section>
 
-              <!-- Combat Decision Policy & APL Table -->
+              <!-- Action priority list (APL) -->
               <section class="wow-panel">
                 <div class="wow-panel-header">
-                  <span>Combat Decision Policy</span>
+                  <span>Action priority list (APL)</span>
                   <span style="font-size: 0.75rem; color: var(--text-gold);">Customizable APL</span>
                 </div>
                 
-                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                  <span style="font-size: 0.78rem; color: var(--text-parchment); font-weight: 700;">Action Priority List:</span>
-                  <span style="font-size: 0.7rem; color: var(--text-dim);">Drag rows or click ↗ to edit</span>
+                <div style="margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;">
+                  <span style="font-size: 0.78rem; color: var(--text-parchment); font-weight: 700;">Priority Order:</span>
+                  <span style="font-size: 0.7rem; color: var(--text-dim);">&lt;action&gt; [if &lt;condition&gt;]</span>
                 </div>
 
-                <!-- APL Priority Table -->
-                <div class="apl-table-container">
-                  <table class="apl-table">
-                    <thead>
-                      <tr>
-                        <th style="width: 28px;"></th>
-                        <th style="width: 32px;">#</th>
-                        <th style="width: 110px;">Spell</th>
-                        <th>Condition Rule</th>
-                        <th style="width: 48px; text-align: right;">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="apl-table-body">
-                      <!-- Rendered dynamically by apl.js -->
-                    </tbody>
-                  </table>
+                <!-- APL Edit Box -->
+                <div class="apl-edit-container">
+                  <textarea id="apl-edit-box" class="apl-edit-box" rows="12" spellcheck="false" placeholder="shadow_bolt if mana_remaining > 40%&#10;life_tap if mana_remaining < 20%&#10;shadow_bolt"></textarea>
+                  <div id="apl-text-error" class="apl-text-error" style="display: none;"></div>
                 </div>
+
+                <!-- Reference Cheatsheet: Actions & Conditions -->
+                <details class="wow-accordion apl-reference-accordion" id="apl-reference-details">
+                  <summary class="apl-reference-summary">Available Actions &amp; Conditions</summary>
+                  <div class="accordion-body apl-reference-body">
+                    <div class="apl-ref-section">
+                      <div class="apl-ref-section-title">Actions (<span style="color:#ffd100;">&lt;action_name&gt;</span>)</div>
+                      <table class="apl-ref-table">
+                        <tbody>
+                          <tr><td><code>shadow_bolt</code></td><td>Shadow Bolt (Filler)</td></tr>
+                          <tr><td><code>life_tap</code></td><td>Life Tap</td></tr>
+                          <tr><td><code>bane_of_doom</code></td><td>Bane of Doom</td></tr>
+                          <tr><td><code>bane_of_agony</code></td><td>Bane of Agony</td></tr>
+                          <tr><td><code>corruption</code></td><td>Corruption</td></tr>
+                          <tr><td><code>immolate</code></td><td>Immolate</td></tr>
+                          <tr><td><code>conflagrate</code></td><td>Conflagrate</td></tr>
+                          <tr><td><code>nightfall</code></td><td>Nightfall: Shadow Bolt</td></tr>
+                          <tr><td><code>searing_pain</code></td><td>Searing Pain (Filler)</td></tr>
+                          <tr><td><code>incinerate</code></td><td>Incinerate (Filler)</td></tr>
+                          <tr><td><code>shadowburn</code></td><td>Shadowburn</td></tr>
+                          <tr><td><code>siphon_life</code></td><td>Siphon Life</td></tr>
+                          <tr><td><code>wrack</code></td><td>Wrack</td></tr>
+                          <tr><td><code>demonic_brand</code></td><td>Demonic Brand</td></tr>
+                          <tr><td><code>decimate_searing</code></td><td>Decimation: Searing Pain</td></tr>
+                          <tr><td><code>decimate_soul_fire</code></td><td>Decimation: Soul Fire</td></tr>
+                          <tr><td><code>hellfire</code></td><td>Hellfire</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div class="apl-ref-section">
+                      <div class="apl-ref-section-title">Conditions (<span style="color:#a3e635;">if &lt;condition&gt;</span>)</div>
+                      <table class="apl-ref-table">
+                        <tbody>
+                          <tr><td><code class="apl-ref-code">mana_remaining &gt; 40%</code></td><td>Mana threshold (<code style="color:#ffd100;">&gt;</code>, <code style="color:#ffd100;">&lt;</code>, <code style="color:#ffd100;">&gt;=</code>, <code style="color:#ffd100;">&lt;=</code>)</td></tr>
+                          <tr><td><code class="apl-ref-code">target_hp &lt;= 35%</code></td><td>Target HP execute threshold</td></tr>
+                          <tr><td><code class="apl-ref-code">target_ttd &gt;= 60s</code></td><td>Time to Die threshold</td></tr>
+                          <tr><td><code class="apl-ref-code">buff.shadow_trance</code></td><td>Shadow Trance proc active</td></tr>
+                          <tr><td><code class="apl-ref-code">buff.isb</code></td><td>Improved Shadow Bolt active</td></tr>
+                          <tr><td><code class="apl-ref-code">decimation.active</code></td><td>Decimation buff active</td></tr>
+                          <tr><td><code class="apl-ref-code">decimation.inactive</code></td><td>Decimation buff inactive</td></tr>
+                          <tr><td><code class="apl-ref-code">debuff.demonic_brand_missing</code></td><td>Demonic Brand missing</td></tr>
+                          <tr><td><code class="apl-ref-code">dot_remains &lt;= 0</code></td><td>Action's DoT expired / missing</td></tr>
+                          <tr><td><code class="apl-ref-code">dot_remains("Immolate") &lt; 6s</code></td><td>Named DoT remaining duration</td></tr>
+                          <tr><td><code class="apl-ref-code">condA &amp;&amp; condB</code></td><td>Combine multiple conditions</td></tr>
+                          <tr><td><em>(none)</em></td><td>Unconditional (Always cast when ready)</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </details>
 
                 <!-- Multi-Target Policy Options -->
                 <div style="margin-top: 0.55rem; padding-top: 0.45rem; border-top: 1px solid #2d2636;">

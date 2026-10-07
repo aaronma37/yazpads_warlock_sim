@@ -1,8 +1,88 @@
 import { isAPLRuleEnabled } from './apl_rules.js';
 import { fallbackRow } from './apl_fallback_view.js';
 // Authentic Action Priority List (APL) Engine & Interactive Manager
-// Matches desktop ImGui simulator APL table with drag-and-drop, up/down reordering, condition editing, and presets.
 import { APL_ACTION, APL_COND } from './model.js';
+
+export const ACTION_INFO = {
+  tap: { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, defaultCond: 'mana_pct <= 25' },
+  nightfall: { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, defaultCond: 'buff.shadow_trance' },
+  brand: { id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, defaultCond: 'debuff.demonic_brand_missing' },
+  decimateSearing: { id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.DECIMATION_SEARING_PAIN, defaultCond: 'decimation.inactive' },
+  decimateSoulFire: { id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', action: APL_ACTION.DECIMATION_SOUL_FIRE, defaultCond: 'decimation.active' },
+  curse: { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', action: APL_ACTION.CURSE_OF_DOOM, defaultCond: 'target_ttd >= 60' },
+  agony: { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', action: APL_ACTION.CURSE_OF_AGONY, defaultCond: 'target.debuff_remains("Bane of Agony") <= 0' },
+  corr: { id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', action: APL_ACTION.CORRUPTION, defaultCond: 'target.debuff_remains("Corruption") <= 0' },
+  immo: { id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', action: APL_ACTION.IMMOLATE, defaultCond: 'target.debuff_remains("Immolate") <= 0' },
+  conflag: { id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', action: APL_ACTION.CONFLAGRATE, defaultCond: 'true' },
+  shadowburn: { id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', action: APL_ACTION.SHADOWBURN, defaultCond: 'true' },
+  incinerate: { id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', action: APL_ACTION.INCINERATE_FILLER, defaultCond: 'true' },
+  searing: { id: 'searing', spell: 'Searing Pain', icon: 'Spell_Fire_SoulBurn.png', action: APL_ACTION.SEARING_PAIN_FILLER, defaultCond: 'true' },
+  drain: { id: 'drain', spell: 'Drain Soul', icon: 'ability_deathknight_hemorrhagicfever.png', action: APL_ACTION.DRAIN_SOUL_FILLER, defaultCond: 'true' },
+  siphon: { id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', action: APL_ACTION.SIPHON_LIFE, defaultCond: 'target.debuff_remains("Siphon Life") <= 0' },
+  wrack: { id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', action: APL_ACTION.DRAIN_HOPE, defaultCond: 'true' },
+  hellfire: { id: 'hellfire', spell: 'Hellfire', icon: 'Spell_Fire_Incinerate.png', action: APL_ACTION.HELLFIRE, defaultCond: 'true' },
+  bolt: { id: 'bolt', spell: 'Shadow Bolt', icon: 'Spell_Shadow_ShadowBolt.png', action: APL_ACTION.SHADOW_BOLT_FILLER, defaultCond: 'true' },
+};
+
+export const CANONICAL_ACTION_NAMES = {
+  curse: 'bane_of_doom',
+  agony: 'bane_of_agony',
+  bolt: 'shadow_bolt',
+  searing: 'searing_pain',
+  tap: 'life_tap',
+  corr: 'corruption',
+  immo: 'immolate',
+  conflag: 'conflagrate',
+  shadowburn: 'shadowburn',
+  incinerate: 'incinerate',
+  nightfall: 'nightfall',
+  drain: 'drain_soul',
+  siphon: 'siphon_life',
+  wrack: 'wrack',
+  hellfire: 'hellfire',
+  brand: 'demonic_brand',
+  decimateSearing: 'decimate_searing',
+  decimateSoulFire: 'decimate_soul_fire',
+};
+
+export const ACTION_ALIASES = {
+  // Shadow Bolt
+  shadow_bolt: 'bolt', shadowbolt: 'bolt', 'shadow bolt': 'bolt', bolt: 'bolt',
+  // Life Tap
+  life_tap: 'tap', lifetap: 'tap', 'life tap': 'tap', tap: 'tap',
+  // Bane of Doom
+  bane_of_doom: 'curse', 'bane of doom': 'curse', curse_of_doom: 'curse', 'curse of doom': 'curse', doom: 'curse', curse: 'curse',
+  // Bane of Agony
+  bane_of_agony: 'agony', 'bane of agony': 'agony', curse_of_agony: 'agony', 'curse of agony': 'agony', agony: 'agony',
+  // Searing Pain
+  searing_pain: 'searing', 'searing pain': 'searing', searing: 'searing',
+  // Corruption
+  corruption: 'corr', corr: 'corr',
+  // Immolate
+  immolate: 'immo', immo: 'immo',
+  // Conflagrate
+  conflagrate: 'conflag', conflag: 'conflag',
+  // Shadowburn
+  shadowburn: 'shadowburn',
+  // Incinerate
+  incinerate: 'incinerate',
+  // Nightfall
+  nightfall: 'nightfall', 'nightfall: shadow bolt': 'nightfall', nightfall_bolt: 'nightfall', 'nightfall shadow bolt': 'nightfall', 'nightfall shadowbolt': 'nightfall',
+  // Siphon Life
+  siphon_life: 'siphon', 'siphon life': 'siphon', siphon: 'siphon',
+  // Wrack
+  wrack: 'wrack',
+  // Drain Soul
+  drain_soul: 'drain', 'drain soul': 'drain', drain: 'drain',
+  // Demonic Brand
+  demonic_brand: 'brand', 'demonic brand': 'brand', brand: 'brand', demonic_brand_refresher: 'brand', 'demonic brand refresher': 'brand',
+  // Decimation Searing Pain
+  decimate_searing: 'decimateSearing', 'decimate searing': 'decimateSearing', decimate_searing_pain: 'decimateSearing', 'decimation: searing pain': 'decimateSearing', 'decimation searing pain': 'decimateSearing', decimatesearing: 'decimateSearing',
+  // Decimation Soul Fire
+  decimate_soul_fire: 'decimateSoulFire', 'decimate soul fire': 'decimateSoulFire', decimate_soulfire: 'decimateSoulFire', 'decimation: soul fire': 'decimateSoulFire', 'decimation soul fire': 'decimateSoulFire', decimatesoulfire: 'decimateSoulFire',
+  // Hellfire
+  hellfire: 'hellfire',
+};
 
 export const DEFAULT_APL = [
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana < 20%', rawCond: 'mana_pct < 20', enabled: true },
@@ -33,9 +113,10 @@ let fallbackRotationGetter = () => 'shadow';
 
 export function refreshAPLFallback() {
   const tbody = document.getElementById('apl-table-body');
-  if (!tbody) return;
-  tbody.querySelector('.apl-fallback-row')?.remove();
-  tbody.insertAdjacentHTML('beforeend', fallbackRow(fallbackRotationGetter(), 5));
+  if (tbody) {
+    tbody.querySelector('.apl-fallback-row')?.remove();
+    tbody.insertAdjacentHTML('beforeend', fallbackRow(fallbackRotationGetter(), 5));
+  }
 }
 
 export function applySynthesizedAPL(rules) {
@@ -67,8 +148,185 @@ export function applySynthesizedAPL(rules) {
       targetSpell2: r.targetSpell2
     };
   });
-  renderAPLTable();
+  renderAPLUI();
   if (onChangeCallback) onChangeCallback(currentAPL);
+}
+
+export function normalizeConditionForAction(rawInput, actionId) {
+  let raw = String(rawInput ?? '').trim();
+  if (!raw || raw === 'true' || raw === 'always' || raw === '1') return 'true';
+  if (raw === 'false' || raw === 'never' || raw === '0') return 'false';
+
+  // Handle boolean and (case insensitive)
+  if (/\s+(?:and|&&)\s+/i.test(raw)) {
+    const parts = raw.split(/\s+(?:and|&&)\s+/i);
+    return parts.map(p => normalizeConditionForAction(p, actionId)).join(' && ');
+  }
+
+  // Mana conditions: mana_remaining > 40%, mana_pct <= 25, mana < 20%
+  let m = raw.match(/^(?:mana_remaining|mana_pct|mana|mana_percent)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*%?$/i);
+  if (m) {
+    const op = m[1] === '==' ? '<=' : m[1];
+    return `mana_pct ${op} ${m[2]}`;
+  }
+
+  // Target HP conditions: target_hp < 35%, target_hp_pct <= 35, hp < 35%
+  m = raw.match(/^(?:target_hp|target_hp_pct|target_health|target_health_pct|hp)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*%?$/i);
+  if (m) {
+    const op = m[1] === '==' ? '<=' : m[1];
+    return `target_hp_pct ${op} ${m[2]}`;
+  }
+
+  // Fight time / TTD conditions: target_ttd >= 60s, ttd >= 60, target_ttdie >= 60
+  m = raw.match(/^(?:target_ttd|target_ttdie|ttd|ttdie)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*s?$/i);
+  if (m) {
+    const op = m[1] === '==' ? '>=' : m[1];
+    return `target_ttd ${op} ${m[2]}`;
+  }
+
+  // Buff / Proc conditions
+  if (/^(?:buff\.)?shadow_trance(?:\s*active)?$/i.test(raw) || /^shadow\s+trance\s+active$/i.test(raw)) {
+    return 'buff.shadow_trance';
+  }
+  if (/^(?:buff\.)?isb(?:\s*active)?$/i.test(raw)) {
+    return 'buff.isb';
+  }
+
+  // Decimation conditions
+  if (/^decimation\.inactive$/i.test(raw) || /^decimation\s+inactive$/i.test(raw) || /^!buff\.decimation$/i.test(raw)) {
+    return 'decimation.inactive';
+  }
+  if (/^decimation\.active$/i.test(raw) || /^decimation\s+active$/i.test(raw) || /^buff\.decimation$/i.test(raw)) {
+    return 'decimation.active';
+  }
+
+  // Demonic Brand missing
+  if (/^(?:debuff\.)?demonic_brand_missing$/i.test(raw) || /^brand\s+missing$/i.test(raw) || /^demonic\s+brand\s+missing$/i.test(raw)) {
+    return 'debuff.demonic_brand_missing';
+  }
+
+  // DoT remains / expired
+  m = raw.match(/^(?:target\.)?debuff_remains\(\s*["']([^"']+)["']\s*\)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*s?$/i);
+  if (m) {
+    const op = m[2] === '==' ? '<=' : m[2];
+    return `target.debuff_remains("${m[1]}") ${op} ${m[3]}`;
+  }
+
+  m = raw.match(/^(?:dot_remains|dot_remaining|debuff_remains)\(\s*["']([^"']+)["']\s*\)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*s?$/i);
+  if (m) {
+    const op = m[2] === '==' ? '<=' : m[2];
+    return `target.debuff_remains("${m[1]}") ${op} ${m[3]}`;
+  }
+
+  m = raw.match(/^(?:dot_remains|dot_remaining|dot_rem|remains|remaining)\s*(<=|<|>=|>|==)\s*(\d+(?:\.\d+)?)\s*s?$/i);
+  if (m) {
+    const op = m[1] === '==' ? '<=' : m[1];
+    const spellName = actionId === 'immo' ? 'Immolate' : actionId === 'corr' ? 'Corruption' : actionId === 'agony' ? 'Bane of Agony' : actionId === 'siphon' ? 'Siphon Life' : 'Corruption';
+    return `target.debuff_remains("${spellName}") ${op} ${m[2]}`;
+  }
+
+  if (/^dot\s+expired$/i.test(raw) || /^missing\s+dot$/i.test(raw) || /^dot\s+down$/i.test(raw)) {
+    const spellName = actionId === 'immo' ? 'Immolate' : actionId === 'corr' ? 'Corruption' : actionId === 'agony' ? 'Bane of Agony' : actionId === 'siphon' ? 'Siphon Life' : 'Corruption';
+    return `target.debuff_remains("${spellName}") <= 0`;
+  }
+
+  if (/^immolate\s*remaining\s*(<=|<)\s*(\d+(?:\.\d+)?)\s*s?$/i.test(raw) || /^immolate_remains\s*(<=|<)\s*(\d+(?:\.\d+)?)\s*s?$/i.test(raw)) {
+    const matchRem = raw.match(/\d+(?:\.\d+)?/);
+    return `target.debuff_remains("Immolate") < ${matchRem ? matchRem[0] : '6'}`;
+  }
+
+  return raw;
+}
+
+export function parseAPLLine(line, lineNum = 1) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) {
+    return null;
+  }
+
+  let actionStr = '';
+  let condStr = 'true';
+
+  const ifMatch = trimmed.match(/^([^#]+?)\s+(?:if|when)\s+(.+)$/i);
+  if (ifMatch) {
+    actionStr = ifMatch[1].trim();
+    condStr = ifMatch[2].trim();
+  } else {
+    actionStr = trimmed.replace(/\s+#.*$/, '').trim();
+  }
+
+  const normActionKey = actionStr.toLowerCase().replace(/[\s\-_:]+/g, ' ');
+  const cleanKey = actionStr.toLowerCase().replace(/[\s\-_:]+/g, '');
+  const mappedId = ACTION_ALIASES[normActionKey] || ACTION_ALIASES[cleanKey] || ACTION_ALIASES[actionStr.toLowerCase()];
+
+  if (!mappedId || !ACTION_INFO[mappedId]) {
+    throw new Error(`Line ${lineNum}: Unknown action '${actionStr}'. Supported actions: bolt, tap, nightfall, corr, immo, conflag, shadowburn, incinerate, searing, drain, siphon, wrack, hellfire, curse, agony, brand, decimateSearing, decimateSoulFire`);
+  }
+
+  const info = ACTION_INFO[mappedId];
+  const normalizedCond = normalizeConditionForAction(condStr, mappedId);
+
+  const entry = {
+    id: mappedId,
+    spell: info.spell,
+    icon: info.icon,
+    condition: condStr === 'true' ? 'Always' : condStr,
+    rawCond: normalizedCond,
+    enabled: normalizedCond !== 'false',
+    action: info.action,
+  };
+
+  // Validate compilation immediately to catch any malformed condition
+  try {
+    compileAPLToBytecode([entry]);
+  } catch (err) {
+    throw new Error(`Line ${lineNum} (${info.spell}): ${err.message}`);
+  }
+
+  return entry;
+}
+
+export function parseAPLText(text) {
+  if (typeof text !== 'string') return [];
+  const lines = text.split('\n');
+  const rules = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const entry = parseAPLLine(lines[i], i + 1);
+    if (entry) {
+      rules.push(entry);
+    }
+  }
+
+  if (rules.length === 0) {
+    throw new Error('APL must contain at least one valid action rule.');
+  }
+
+  return rules;
+}
+
+export function formatAPLEntry(entry) {
+  const actionName = CANONICAL_ACTION_NAMES[entry.id] || entry.id;
+  const raw = String(entry.rawCond || 'true').trim();
+  if (!raw || raw === 'true' || raw === 'always' || entry.condition === 'Always') {
+    return actionName;
+  }
+
+  let formatted = raw
+    .replace(/^mana_pct\s*(<=|<|>=|>)\s*(\d+(?:\.\d+)?)$/, (_, op, val) => `mana_remaining ${op} ${val}%`)
+    .replace(/^target_hp_pct\s*(<=|<|>=|>)\s*(\d+(?:\.\d+)?)$/, (_, op, val) => `target_hp ${op} ${val}%`)
+    .replace(/^target_ttd\s*(>=|>)\s*(\d+(?:\.\d+)?)$/, (_, op, val) => `target_ttd ${op} ${val}s`)
+    .replace(/^target\.debuff_remains\(\s*["']([^"']+)["']\s*\)\s*(<=|<)\s*0(?:\.0+)?$/, 'dot_remains <= 0')
+    .replace(/^target\.debuff_remains\(\s*["']([^"']+)["']\s*\)\s*(<=|<)\s*(\d+(?:\.\d+)?)$/, (_, spell, op, val) => `dot_remains("${spell}") ${op} ${val}s`);
+
+  return `${actionName} if ${formatted}`;
+}
+
+export function formatAPLToText(aplList = currentAPL) {
+  return (aplList || [])
+    .filter(rule => isAPLRuleEnabled(rule))
+    .map(formatAPLEntry)
+    .join('\n');
 }
 
 export function compileAPLToBytecode(aplList = currentAPL) {
@@ -207,7 +465,8 @@ export function getActiveBytecodeRules() {
 export function initAPL(onAPLChange, getFallbackRotation = () => 'shadow') {
   fallbackRotationGetter = getFallbackRotation;
   onChangeCallback = onAPLChange;
-  renderAPLTable();
+  renderAPLUI();
+  setupEditBoxEvents();
   setupConditionModal();
   setupMultiDotToggle();
 }
@@ -236,8 +495,6 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   const isSearing = rot === 'dp_af_fire' || rot === 'searing' || name.includes('searing') || name.includes('dp fire') || name.includes('dp_fire');
   const isFire = isIncinerate || isSearing || rot.includes('fire') || name.includes('fire');
   const hasConflag = hasTalent('destruction', 'conflagrate');
-  // Search results have generated point-split names instead of descriptive
-  // preset names, so determine talent actions from their ranks directly.
   const hasShadowburn = hasTalent('destruction', 'shadowburn');
   const hasSiphon = hasTalent('affliction', 'siphon_life');
   const hasWrack = hasTalent('affliction', 'wrack');
@@ -246,7 +503,6 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   const noBane = name.includes('no bane');
 
   if (isSearing && isDecimate) {
-    // Dedicated DP_RUIN_FIRE APL
     return [
       { id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 57s', rawCond: 'target_ttd >= 57', enabled: true },
       { id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Remains <= 2.5s', rawCond: 'target.debuff_remains("Bane of Agony") <= 2.5', enabled: true },
@@ -260,12 +516,9 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     ];
   }
 
-  // Standard Canonical Priority APL
   const list = [];
-  // 1. Life Tap threshold
   list.push({ id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana <= 25%', rawCond: 'mana_pct <= 25', enabled: true });
 
-  // 2. Decimation execute triggers
   if (isDecimate) {
     if (isFire || name.includes('shadow and flame shadow - decimate')) {
       list.push({ id: 'decimateSearing', spell: 'Decimation: Searing Pain', icon: 'Spell_Fire_SoulBurn.png', condition: 'Target HP <= 35%, buff inactive', rawCond: 'decimation.inactive', enabled: true });
@@ -273,12 +526,10 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     list.push({ id: 'decimateSoulFire', spell: 'Decimation: Soul Fire', icon: 'Spell_Fire_Fireball.png', condition: 'Target HP <= 35%, buff active', rawCond: 'decimation.active', enabled: true });
   }
 
-  // 3. Demonic Brand
   if (isBrand) {
     list.push({ id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: true });
   }
 
-  // 4. Immolate & Conflagrate
   const hasImmo = isFire || (hasConflag && hasTalent('destruction', 'shadow_and_flame'));
   if (hasImmo) {
     list.push({ id: 'immo', spell: 'Immolate', icon: 'Spell_Fire_Immolation.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Immolate") <= 0', enabled: true });
@@ -287,23 +538,19 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     list.push({ id: 'conflag', spell: 'Conflagrate', icon: 'Spell_Fire_Fireball.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
 
-  // 5. Nightfall
   if (hasNightfall) {
     list.push({ id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', condition: 'Shadow Trance active', rawCond: 'buff.shadow_trance', enabled: true });
   }
 
-  // 6. Corruption
   if (!noCorruption) {
     list.push({ id: 'corr', spell: 'Corruption', icon: 'Spell_Shadow_AbominationExplosion.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Corruption") <= 0', enabled: true });
   }
 
-  // 7. Curses: Doom & Agony
   if (!noBane) {
     list.push({ id: 'curse', spell: 'Bane of Doom', icon: 'Spell_Shadow_AuraOfDarkness.png', condition: 'Target TTDie >= 60s', rawCond: 'target_ttd >= 60', enabled: true });
     list.push({ id: 'agony', spell: 'Bane of Agony', icon: 'Spell_Shadow_CurseOfSargeras.png', condition: 'DoT Expired', rawCond: 'target.debuff_remains("Bane of Agony") <= 0', enabled: true });
   }
 
-  // 8. Siphon Life & Wrack
   if (hasSiphon) {
     list.push({ id: 'siphon', spell: 'Siphon Life', icon: 'Spell_Shadow_Requiem.png', condition: 'DoT Remains <= 0s', rawCond: 'target.debuff_remains("Siphon Life") <= 0', enabled: true });
   }
@@ -311,14 +558,12 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
     list.push({ id: 'wrack', spell: 'Wrack', icon: 'ability_deathknight_hemorrhagicfever.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
 
-  // 9. Shadowburn
   if (hasShadowburn) {
     list.push({ id: 'shadowburn', spell: 'Shadowburn', icon: 'Spell_Shadow_ScourgeBuild.png', condition: 'Always when available', rawCond: 'true', enabled: true });
   }
 
   list.push({ id: 'hellfire', spell: 'Hellfire', icon: 'Spell_Fire_Incinerate.png', condition: 'Always', rawCond: 'true', enabled: false });
 
-  // 10. Primary Spells
   if (isIncinerate) {
     list.push({ id: 'incinerate', spell: 'Incinerate', icon: 'Spell_Fire_Burnout.png', condition: 'Always', rawCond: 'true', enabled: true });
   } else if (isSearing) {
@@ -332,8 +577,51 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
 
 export function setAPLPreset(presetName, talentsObj = null, rotationChoice = null, isSacSuccubus = false) {
   currentAPL = generateAPLForPreset(presetName, talentsObj, rotationChoice, isSacSuccubus);
-  renderAPLTable();
+  renderAPLUI();
   if (onChangeCallback) onChangeCallback(currentAPL);
+}
+
+function setupEditBoxEvents() {
+  const box = document.getElementById('apl-edit-box');
+  const errorEl = document.getElementById('apl-text-error');
+  if (!box) return;
+
+  const handleInput = () => {
+    try {
+      const parsed = parseAPLText(box.value);
+      currentAPL = parsed;
+      if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.style.display = 'none';
+      }
+      box.classList.remove('input-invalid');
+      renderAPLTable();
+      if (onChangeCallback) onChangeCallback(currentAPL);
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = 'block';
+      }
+      box.classList.add('input-invalid');
+    }
+  };
+
+  box.addEventListener('input', handleInput);
+  box.addEventListener('change', handleInput);
+}
+
+export function renderAPLUI() {
+  const box = document.getElementById('apl-edit-box');
+  const errorEl = document.getElementById('apl-text-error');
+  if (box && document.activeElement !== box) {
+    box.value = formatAPLToText(currentAPL);
+    box.classList.remove('input-invalid');
+    if (errorEl) {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+    }
+  }
+  renderAPLTable();
 }
 
 export function renderAPLTable() {
@@ -365,7 +653,7 @@ export function renderAPLTable() {
       </td>
       <td class="apl-col-condition">
         <div class="apl-condition-badge" title="Right-click or click ↗ to edit condition">
-          <code>${escapeHtml(entry.condition)}</code>
+          <code>${escapeHtml(entry.condition || entry.rawCond || 'Always')}</code>
         </div>
       </td>
       <td class="apl-col-actions">
@@ -376,7 +664,6 @@ export function renderAPLTable() {
       </td>
     `;
 
-    // Reorder Click Handlers
     tr.querySelector('.up-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
       moveAPLEntry(idx, idx - 1);
@@ -387,27 +674,23 @@ export function renderAPLTable() {
       moveAPLEntry(idx, idx + 1);
     });
 
-    // Edit Condition Button
     tr.querySelector('.edit-cond-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
       openConditionEditor(idx);
     });
 
-    // Toggle Enable/Disable
     tr.querySelector('.toggle-btn')?.addEventListener('click', (e) => {
       e.stopPropagation();
       currentAPL[idx].enabled = !currentAPL[idx].enabled;
-      renderAPLTable();
+      renderAPLUI();
       if (onChangeCallback) onChangeCallback(currentAPL);
     });
 
-    // Right-Click row to edit conditions
     tr.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       openConditionEditor(idx);
     });
 
-    // Drag-and-Drop Handlers
     tr.addEventListener('dragstart', (e) => {
       dragSourceIndex = idx;
       tr.classList.add('dragging');
@@ -453,7 +736,7 @@ function moveAPLEntry(fromIdx, toIdx) {
   if (fromIdx < 0 || fromIdx >= currentAPL.length || toIdx < 0 || toIdx >= currentAPL.length) return;
   const [removed] = currentAPL.splice(fromIdx, 1);
   currentAPL.splice(toIdx, 0, removed);
-  renderAPLTable();
+  renderAPLUI();
   if (onChangeCallback) onChangeCallback(currentAPL);
 }
 
@@ -486,7 +769,6 @@ export function updateAPLCondition(index, label, rawCond) {
   const entry = currentAPL[index];
   if (!entry) throw new Error('APL action does not exist.');
   const updated = { ...entry, condition: label ?? entry.condition, rawCond: rawCond ?? entry.rawCond };
-  // Remove synthesized condition metadata so the edited expression becomes authoritative.
   if (String(updated.rawCond ?? '').trim() !== String(entry.rawCond ?? '').trim()) {
     for (const key of ['cond', 'param', 'targetSpell', 'cond1', 'param1', 'targetSpell1',
       'cond2', 'param2', 'targetSpell2', 'condKey', 'condKey1', 'condKey2', 'condition1', 'condition2']) {
@@ -495,7 +777,7 @@ export function updateAPLCondition(index, label, rawCond) {
   }
   compileAPLToBytecode([{ ...updated, enabled: true }]);
   currentAPL[index] = updated;
-  renderAPLTable();
+  renderAPLUI();
   if (onChangeCallback) onChangeCallback(currentAPL);
 }
 
@@ -540,3 +822,4 @@ function setupMultiDotToggle() {
 function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+

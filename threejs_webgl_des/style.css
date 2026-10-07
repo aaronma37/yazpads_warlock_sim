@@ -805,6 +805,124 @@ input[type="checkbox"]:checked::after {
   margin-bottom: 0.2rem;
 }
 
+/* Action Priority List (APL) Edit Box & Container */
+.apl-edit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.apl-edit-box {
+  width: 100%;
+  min-height: 180px;
+  background: #0d0c11;
+  border: 1px solid #3d3428;
+  border-radius: 3px;
+  color: #c9b380;
+  font-family: var(--font-mono, 'Consolas', 'Courier New', monospace);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 0.45rem 0.6rem;
+  resize: vertical;
+  tab-size: 2;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.apl-edit-box:focus {
+  border-color: #ffd100;
+  box-shadow: 0 0 5px rgba(255, 209, 0, 0.25);
+}
+
+.apl-edit-box.input-invalid {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 5px rgba(248, 113, 113, 0.3) !important;
+}
+
+.apl-text-error {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 2px;
+  line-height: 1.3;
+}
+
+/* APL Reference Cheatsheet Accordion */
+.apl-reference-accordion {
+  border: 1px solid #332a20;
+  background: #0f0d14;
+  margin-top: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.apl-reference-summary {
+  font-size: 0.76rem !important;
+  padding: 0.35rem 0.55rem !important;
+  background: #16141d !important;
+  color: #c9b380 !important;
+}
+
+.apl-reference-body {
+  padding: 0.45rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--text-parchment);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.apl-ref-section-title {
+  color: var(--text-gold);
+  font-weight: 700;
+  font-size: 0.72rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid #2d2636;
+  padding-bottom: 0.15rem;
+  font-family: var(--font-serif);
+}
+
+.apl-ref-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.apl-ref-table td {
+  padding: 2px 4px;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.apl-ref-table td:first-child {
+  width: 32%;
+  white-space: nowrap;
+}
+
+.apl-ref-table td:first-child code {
+  color: #ffd100;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.apl-ref-table td:last-child {
+  color: #a8a2b5;
+  font-size: 0.7rem;
+}
+
+.apl-ref-code {
+  color: #a3e635 !important;
+  background: #181522;
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+}
+
 /* Decision Policy & APL Table */
 .apl-table-container {
   border: 1px solid #3d3428;
