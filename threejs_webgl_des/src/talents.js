@@ -1,3 +1,4 @@
+import { CLASS_PRESENTATION } from './classes/active_class.js';
 // Interactive 3-tree Warlock Talent System (Flicker-Free DOM Architecture with Authentic Tooltips)
 import { showTooltip, hideTooltip } from './tooltips.js';
 
@@ -9,7 +10,7 @@ let activeTalentChangeCallback = null;
 export async function initTalents(onTalentChange) {
   try {
     if (onTalentChange) activeTalentChangeCallback = onTalentChange;
-    const res = await fetch(new URL('../data/talents.json', import.meta.url));
+    const res = await fetch(CLASS_PRESENTATION.talentDataUrl);
     if (!res.ok) throw new Error('Could not load talent data.');
     talentData = await res.json();
     buildTalentTreesDOM(activeTalentChangeCallback);
@@ -244,6 +245,8 @@ function buildTalentTreesDOM(onTalentChange) {
       const treeCard = document.createElement('div');
       const treeClass = tree.name.toLowerCase();
       treeCard.className = `talent-tree-panel ${treeClass}`;
+      const background = CLASS_PRESENTATION.talentBackgrounds[treeClass];
+      if (background) treeCard.style.setProperty('--talent-background', `url("${background}")`);
 
       const header = document.createElement('div');
       header.className = 'tree-header';
@@ -277,10 +280,10 @@ function buildTalentTreesDOM(onTalentChange) {
             node.dataset.row = r;
             node.dataset.max = talent.max;
 
-            const iconFile = talent.icon ? `${talent.icon}.png` : 'Spell_Shadow_DeathCoil.png';
+            const iconFile = talent.icon ? `${talent.icon}.png` : CLASS_PRESENTATION.talentDefaultIcon;
             node.innerHTML = `
               <div class="talent-icon-frame">
-                <img src="./assets/icons/${iconFile}" alt="${talent.name}" onerror="this.src='./assets/icons/spell_shadow_burningspirit.png'">
+                <img src="./assets/icons/${iconFile}" alt="${talent.name}" onerror="this.src='./assets/icons/${CLASS_PRESENTATION.talentFallbackIcon}'">
               </div>
               <span class="talent-rank-badge">0/${talent.max}</span>
             `;

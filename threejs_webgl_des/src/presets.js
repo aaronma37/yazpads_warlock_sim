@@ -1,3 +1,4 @@
+import { CLASS_PRESENTATION } from './classes/active_class.js';
 // Standard Meta Presets Comparison Dashboard & Batch Execution Engine
 //
 // NOTE: This is a simulation results table. Presets strictly define inputs
@@ -15,52 +16,9 @@ let selectedPresetResult = null;
 let activePresetCallback = null;
 let activeRaceGetter = null;
 
-const SPELL_ICONS = {
-  LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
-  CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',
-  IMMOLATE: 'Spell_Fire_Immolation.png',
-  SEARING_PAIN: 'Spell_Fire_SoulBurn.png',
-  SHADOW_BOLT: 'Spell_Shadow_ShadowBolt.png',
-  CONFLAGRATE: 'Spell_Fire_Fireball.png',
-  INCINERATE: 'Spell_Fire_Burnout.png',
-  DRAIN_SOUL: 'Spell_Shadow_Haunting.png',
-  SIPHON_LIFE: 'Spell_Shadow_Requiem.png',
-  AMPLIFY_CURSE: 'Spell_Shadow_Contagion.png',
-  CURSE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
-  CURSE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
-  BANE_OF_AGONY: 'Spell_Shadow_CurseOfSargeras.png',
-  BANE_OF_DOOM: 'Spell_Shadow_AuraOfDarkness.png',
-  DEMONIC_BRAND: 'ability_demonhunter_chaoticimprint_fire.png',
-  HELLFIRE: 'Spell_Fire_Incinerate.png',
-  DRAIN_HOPE: 'ability_deathknight_hemorrhagicfever.png',
-  NIGHTFALL: 'Spell_Shadow_Twilight.png',
-  SHADOWBURN: 'Spell_Shadow_ScourgeBuild.png',
-  WRACK: 'ability_deathknight_hemorrhagicfever.png',
-  DECIMATESEARING: 'Spell_Fire_SoulBurn.png',
-  DECIMATESOULFIRE: 'Spell_Fire_Fireball.png',
-  DECIMATION_SEARING_PAIN: 'Spell_Fire_SoulBurn.png',
-  DECIMATION_SOUL_FIRE: 'Spell_Fire_Fireball.png',
-  PET_FIREBOLT: 'Spell_Fire_FireBolt.png',
-  IMP_FIREBOLT: 'Spell_Fire_FireBolt.png',
-  PET_LASH_OF_PAIN: 'Spell_Shadow_Curse.png',
-  SUCCUBUS_LASH_OF_PAIN: 'Spell_Shadow_Curse.png',
-  PET_MELEE: 'Ability_MeleeDamage.png',
-  SUCCUBUS_MELEE: 'Ability_MeleeDamage.png',
-  MELEE: 'Ability_MeleeDamage.png',
-  PET_IMP: 'Spell_Shadow_SummonImp.png',
-  PET_SUCCUBUS: 'Spell_Shadow_SummonSuccubus.png',
-  SAC_IMP: 'Spell_Shadow_SummonImp.png',
-  SAC_SUCCUBUS: 'Spell_Shadow_SummonSuccubus.png',
-  SACRIFICE: 'Spell_Shadow_RitualOfSacrifice.png'
-};
+const SPELL_ICONS = CLASS_PRESENTATION.presetSpellIcons;
 
-const RACE_ICONS = {
-  Human: 'Achievement_Character_Human_Male.png',
-  Orc: 'Achievement_Character_Orc_Male.png',
-  Undead: 'Achievement_Character_Undead_Male.png',
-  Troll: 'Achievement_Character_Troll_Male.png',
-  Gnome: 'Achievement_Character_Gnome_Male.png'
-};
+const RACE_ICONS = CLASS_PRESENTATION.presetRaceIcons;
 
 export function setActiveRaceGetter(fn) {
   activeRaceGetter = fn;
@@ -70,7 +28,7 @@ export async function initPresets(onSelectPreset, raceGetter) {
   try {
     activePresetCallback = onSelectPreset;
     if (raceGetter) activeRaceGetter = raceGetter;
-    const res = await fetch(new URL('../data/presets.json', import.meta.url));
+    const res = await fetch(CLASS_PRESENTATION.presetDataUrl);
     if (!res.ok) throw new Error('Could not load presets.');
     presetsData = await res.json();
     presetsData.forEach(p => {

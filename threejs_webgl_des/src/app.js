@@ -1,3 +1,4 @@
+import { CLASS_PRESENTATION } from './classes/active_class.js';
 import { renderRegretResults } from './regret_view.js';
 import { DEFAULTS, SPELLS } from './model.js';
 import { buildFightConfig } from './config_builder.js';
@@ -15,6 +16,20 @@ import { initAPLSynthesisView, readAPLGAConfig, updateAPLGALiveView, setAPLGAExe
 import { runAPLGeneticSynthesis } from './apl_genetic_optimizer.js';
 
 const $ = id => document.getElementById(id);
+
+// Populate the existing shell without changing panel structure or navigation.
+document.title = CLASS_PRESENTATION.pageTitle;
+const brandTitle = document.querySelector('.brand-title');
+if (brandTitle) brandTitle.textContent = CLASS_PRESENTATION.brandTitle;
+const classButton = $(`btn-class-${CLASS_PRESENTATION.id}`);
+if (classButton) {
+  classButton.title = CLASS_PRESENTATION.activeButtonTitle;
+  const icon = classButton.querySelector('img');
+  if (icon) {
+    icon.src = CLASS_PRESENTATION.icon;
+    icon.alt = CLASS_PRESENTATION.label;
+  }
+}
 const form = $('setup-form');
 const format = (n, d = 0) => n.toLocaleString(undefined, { maximumFractionDigits: d });
 let currentResult = null, controller = null;
@@ -84,57 +99,11 @@ tabs.forEach(({ btn }) => {
 });
 
 // Race / Pet / DS Interactive Popover Pickers
-const RACE_ICONS_DATA = {
-  HUMAN: {
-    icon: './assets/icons/Achievement_Character_Human_Male.png',
-    traits: [
-      { name: 'The Human Spirit', icon: 'Spell_Holy_MagicalSentry.png', title: 'The Human Spirit (+5% Spirit)', desc: 'Spirit increased by 5%.' },
-      { name: 'Perception', icon: 'Spell_Holy_MindVision.png', title: 'Perception (Stealth Detect)', desc: 'Dramatically increases stealth detection for 20 sec.' }
-    ]
-  },
-  ORC: {
-    icon: './assets/icons/Achievement_Character_Orc_Male.png',
-    traits: [
-      { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+10% Spell Power)', desc: 'Increases base spell power by 10% for 15 sec. 120 sec cooldown; aligned with Bane of Doom when available.' },
-      { name: 'Hardiness', icon: 'Spell_Shadow_AntiShadow.png', title: 'Hardiness (+25% Stun Resist)', desc: 'Chance to resist Stun effects increased by an additional 25%.' }
-    ]
-  },
-  UNDEAD: {
-    icon: './assets/icons/Achievement_Character_Undead_Male.png',
-    traits: [
-      { name: 'Will of the Forsaken', icon: 'Spell_Shadow_RaiseDead.png', title: 'Will of the Forsaken (Charm/Fear/Sleep Immunity)', desc: 'Provides immunity to Charm, Fear, and Sleep effects for 5 sec.' },
-      { name: 'Touch of the Grave', icon: 'Spell_Shadow_ChillTouch.png', title: 'Touch of the Grave', desc: 'Spell casts have a 10% chance to deal 5% of maximum health as damage. 1 sec cooldown.' },
-      { name: 'Cannibalize', icon: 'Spell_Shadow_Cannibalize.png', title: 'Cannibalize', desc: 'When activated, regenerates 7% of total health every 2 sec for 10 sec.' }
-    ]
-  },
-  TROLL: {
-    icon: './assets/icons/Achievement_Character_Troll_Male.png',
-    traits: [
-      { name: 'Berserking', icon: 'Racial_Troll_Berserk.png', title: 'Berserking (+10% Haste)', desc: 'Increases casting speed by 10% for 10 sec. 180 sec cooldown.' },
-      { name: 'Beast Slaying', icon: 'Ability_Hunter_BeastSoothe.png', title: 'Beast Slaying (+5% vs Beasts)', desc: 'Damage dealt versus Beasts increased by 5%.' }
-    ]
-  },
-  GNOME: {
-    icon: './assets/icons/Achievement_Character_Gnome_Male.png',
-    traits: [
-      { name: 'Expansive Mind', icon: 'Spell_Nature_EnchantWater.png', title: 'Expansive Mind (+5% Intellect)', desc: 'Intellect increased by 5%.' },
-      { name: 'Eureka!', icon: 'Spell_Nature_EnchantWater.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells. 120 sec cooldown; aligned with Bane of Doom when available.' },
-      { name: 'Escape Artist', icon: 'Spell_Holy_Silence.png', title: 'Escape Artist', desc: 'Escape the effects of any immobilization or movement speed reduction.' }
-    ]
-  }
-};
+const RACE_ICONS_DATA = CLASS_PRESENTATION.raceDetails;
 
-const PET_ICONS_DATA = {
-  imp: './assets/icons/Spell_Shadow_SummonImp.png',
-  succubus: './assets/icons/Spell_Shadow_SummonSuccubus.png',
-  none: null
-};
+const PET_ICONS_DATA = CLASS_PRESENTATION.petIcons;
 
-const DS_ICONS_DATA = {
-  succubus: './assets/icons/Spell_Shadow_SummonSuccubus.png',
-  imp: './assets/icons/Spell_Shadow_SummonImp.png',
-  none: null
-};
+const DS_ICONS_DATA = CLASS_PRESENTATION.sacrificeIcons;
 
 let activeRace = 'HUMAN';
 let activePet = 'imp';
@@ -309,7 +278,7 @@ function updateRacialsDisplay() {
         title: t.name,
         subtitle: 'Racial Passive / Ability',
         desc: t.desc,
-        footer: `Active for ${activeRace.charAt(0) + activeRace.slice(1).toLowerCase()} Warlock.`
+        footer: `Active for ${activeRace.charAt(0) + activeRace.slice(1).toLowerCase()} ${CLASS_PRESENTATION.label}.`
       });
     });
     badge.addEventListener('mousemove', (e) => {
@@ -317,7 +286,7 @@ function updateRacialsDisplay() {
         title: t.name,
         subtitle: 'Racial Passive / Ability',
         desc: t.desc,
-        footer: `Active for ${activeRace.charAt(0) + activeRace.slice(1).toLowerCase()} Warlock.`
+        footer: `Active for ${activeRace.charAt(0) + activeRace.slice(1).toLowerCase()} ${CLASS_PRESENTATION.label}.`
       });
     });
     badge.addEventListener('mouseleave', () => hideTooltip());
@@ -897,35 +866,7 @@ function setTopStatus(type, data) {
   }
 }
 
-const SPELL_ICONS_MAP = {
-  'Shadow Bolt': 'Spell_Shadow_ShadowBolt.png',
-  'Corruption': 'Spell_Shadow_AbominationExplosion.png',
-  'Bane of Doom': 'spell_shadow_auraofdarkness.png',
-  'Soul Fire': 'spell_fire_fireball02.png',
-  'Conflagrate': 'Spell_Fire_Fireball.png',
-  'Shadowburn': 'Spell_Shadow_ScourgeBuild.png',
-  'Siphon Life': 'Spell_Shadow_Requiem.png',
-  'Touch of the Grave': 'spell_shadow_chilltouch.png',
-  'Bane of Agony': 'Spell_Shadow_CurseOfSargeras.png',
-  'Immolate': 'Spell_Fire_Immolation.png',
-  'Incinerate': 'Spell_Fire_Burnout.png',
-  'Searing Pain': 'Spell_Fire_SoulBurn.png',
-  'Succubus Melee': 'Ability_MeleeDamage.png',
-  'Melee (Pet)': 'Ability_MeleeDamage.png',
-  'Pet Melee': 'Ability_MeleeDamage.png',
-  'Melee': 'Ability_MeleeDamage.png',
-  'Succubus Lash of Pain': 'Spell_Shadow_Curse.png',
-  'Lash of Pain (Pet)': 'Spell_Shadow_Curse.png',
-  'Imp Firebolt': 'Spell_Fire_FireBolt.png',
-  'Firebolt (Pet)': 'Spell_Fire_FireBolt.png',
-  'Demonic Brand': 'ability_demonhunter_chaoticimprint_fire.png',
-  'Hellfire': 'Spell_Fire_Incinerate.png',
-  'Wrack': 'ability_deathknight_hemorrhagicfever.png',
-  'Pet': 'Spell_Shadow_SummonImp.png',
-  'Imp': 'Spell_Shadow_SummonImp.png',
-  'Succubus': 'Spell_Shadow_SummonSuccubus.png',
-  'Life Tap': 'Spell_Shadow_BurningSpirit.png'
-};
+const SPELL_ICONS_MAP = CLASS_PRESENTATION.resultSpellIcons;
 
 function busy(active) {
   if ($('inputs')) $('inputs').disabled = active;

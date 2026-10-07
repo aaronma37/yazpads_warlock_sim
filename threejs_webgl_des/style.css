@@ -1930,16 +1930,9 @@ input[type="checkbox"]:checked::after {
   box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.9);
 }
 
-.talent-tree-panel.affliction {
-  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/affliction_bg.png');
-}
-
-.talent-tree-panel.demonology {
-  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/demonology_bg.png');
-}
-
-.talent-tree-panel.destruction {
-  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('./assets/backgrounds/destruction_bg.png');
+/* Class assets are supplied by the presentation module; framing stays shared. */
+.talent-tree-panel {
+  background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), var(--talent-background, none);
 }
 
 .tree-header {
