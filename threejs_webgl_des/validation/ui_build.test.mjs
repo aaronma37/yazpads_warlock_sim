@@ -40,7 +40,7 @@ test('actual app accepts legacy and versioned resolved imports without touching 
  const saved=await exportResolvedBuild({race:'GNOME',stats:{intellect:200},aplText:'Shadow Bolt'});
  for(const payload of [saved,{resolvedConfig:saved.resolvedConfig}]) {
   const h=harness();await h.context.apply(payload);
-  assert.equal(h.context.importedConfig.intellect,210);
+  assert.equal(h.context.importedConfig.intellect,200);
   assert.equal(h.calls.length,1);assert.equal(h.calls[0][0],'status');
   assert.equal(h.nodes.size,0);assert.equal(h.fields.size,0);
  }
@@ -50,4 +50,14 @@ test('policy imports retain exact simulation configs through resolved mode',asyn
  const prepared=await prepareUIBuildImport(saved);
  assert.equal(prepared.kind,'resolved-config');
  assert.ok(prepared.config.aplRules.length);
+});
+
+
+test('editable imports restore sword selection and old builds use the sword default', async () => {
+ const h=harness();
+ await h.context.apply({race:'HUMAN',stats:{swordEquipped:true},aplText:'Shadow Bolt'});
+ assert.equal(h.nodes.get('in-swordEquipped').checked,true);
+ assert.equal(h.context.importedConfig.swordEquipped,true);
+ await h.context.apply({race:'HUMAN',stats:{},aplText:'Shadow Bolt'});
+ assert.equal(h.nodes.get('in-swordEquipped').checked,true);
 });

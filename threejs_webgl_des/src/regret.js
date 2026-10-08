@@ -11,6 +11,13 @@ let execution = FRAGMENT.slice(start, end).replaceAll('return;', 'return true;')
 execution = execution.replaceAll('else{tap();return true;}', 'else{if(strict)return false;chosenAction=1u;tap();return true;}');
 // A configured filler remains executable even when its maintenance toggle is off.
 execution = execution.replace('if(c.incinerate!=0u)', 'if(c.incinerate!=0u||(strict&&c.filler==4u))');
+// Derive a side-effect-free availability probe from the same action branches.
+// Spend blocks include the complete action through its return; cast/tap helpers
+// are leaf operations. This keeps the probe in sync with production checks.
+const availability = execution
+ .replace(/(?:s\.trance=0u;)?spend\([\s\S]*?return true;/g, 'return true;')
+ .replace(/(?:chosenAction=1u;)?(?:tap|beginCast|castDoom|castConflagrate|castShadowburn)\([^)]*\);return true;/g, 'return true;')
+ .replace('activateEureka();', ';');
 const helpers = `
 uniform highp usampler2D regretJobTex;
 uniform uint regretSamples;
@@ -24,7 +31,19 @@ bool executeDiagnostic(uint action, bool strict){
 ${execution}
  return false;
 }
+bool diagnosticAvailable(uint action){
+ bool strict=false;
+${availability}
+ return false;
+}
 bool takeAction(uint action){
+ // Replay off-GCD Eureka rows before forcing the next actual spell choice.
+ if(action==20u){executeDiagnostic(action,false);return false;}
+ if(mode==4u&&reached&&decisionCount==targetDecision+1u&&forcedAction!=0u){
+  if(!diagnosticAvailable(action))return false;
+  if(!executeDiagnostic(forcedAction,true))s.done=9u;
+  return true;
+ }
  chosenAction=(action==5u||action==13u)?3u:(action==14u||action==15u)?16u:action;
  if(executeDiagnostic(action,false))return true;
  return false;
@@ -41,7 +60,10 @@ shader = shader.replace(' checkTrinket();checkRacial();', `
   }
  }
  checkTrinket();checkRacial();
- if(mode==4u&&reached&&decisionCount==targetDecision+1u&&forcedAction!=0u){if(!executeDiagnostic(forcedAction,true))s.done=9u;return;} `);
+ `);
+shader = shader.replace(' // Fallback', `
+ if(mode==4u&&reached&&decisionCount==targetDecision+1u&&forcedAction!=0u){if(!executeDiagnostic(forcedAction,true))s.done=9u;return;}
+ // Fallback`);
 // Diagnostic lanes span a 2D grid; job indices remain global across batches.
 shader = shader.replace('lane=x;stripe=0u;', 'lane=mode>=3u?y*gridWidth+x:x;stripe=0u;');
 shader = shader.replace('if(lane>=count&&mode==0u)return;', 'if(lane>=count&&(mode==0u||mode>=3u))return;');
@@ -60,7 +82,7 @@ shader = shader.replace(' uint globalLane=offset+lane;', `
  }
 `);
 shader = shader.replace('seedRandom(mode==2u?0u:(numConfigs>1u?fightInCfg:globalLane));', 'seedRandom(0u);');
-shader = shader.replace('if(c.race==3u&&s.eurekaCharges==1u&&playerManaPct<70.0){tap();return;}', 'if(c.race==3u&&s.eurekaCharges==1u&&playerManaPct<70.0){chosenAction=1u;tap();return;}');
+shader = shader.replace('if(c.race==3u&&!eurekaInAPL()&&s.eurekaCharges==1u&&playerManaPct<70.0){tap();return;}', 'if(c.race==3u&&!eurekaInAPL()&&s.eurekaCharges==1u&&playerManaPct<70.0){chosenAction=1u;tap();return;}');
 shader = shader.replace('if(s.mana>=cost(c.filler)){beginCast(c.filler);return;}\n tap();', 'if(s.mana>=cost(c.filler)){chosenAction=c.filler==4u?12u:c.filler==5u?3u:16u;beginCast(c.filler);return;}\n chosenAction=1u;tap();');
 shader = shader.replace('if(s.done!=0u)break;advance();', 'if(s.done!=0u||(mode==3u&&reached))break;advance();');
 shader = shader.replace('if(mode!=2u&&s.done==0u)s.done=6u;', 'if(mode==3u&&reached)s.done=8u;else if(mode!=2u&&s.done==0u)s.done=6u;');

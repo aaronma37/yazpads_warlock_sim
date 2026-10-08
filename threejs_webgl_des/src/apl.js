@@ -4,6 +4,7 @@ import { fallbackRow } from './apl_fallback_view.js';
 import { APL_ACTION, APL_COND } from './model.js';
 
 export const ACTION_INFO = {
+  eureka: { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', action: APL_ACTION.EUREKA, defaultCond: 'true' },
   tap: { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, defaultCond: 'mana_pct <= 25' },
   nightfall: { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, defaultCond: 'buff.shadow_trance' },
   brand: { id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, defaultCond: 'debuff.demonic_brand_missing' },
@@ -25,6 +26,7 @@ export const ACTION_INFO = {
 };
 
 export const CANONICAL_ACTION_NAMES = {
+  eureka: 'eureka',
   curse: 'bane_of_doom',
   agony: 'bane_of_agony',
   bolt: 'shadow_bolt',
@@ -46,6 +48,7 @@ export const CANONICAL_ACTION_NAMES = {
 };
 
 export const ACTION_ALIASES = {
+  eureka: 'eureka', 'eureka!': 'eureka',
   // Shadow Bolt
   shadow_bolt: 'bolt', shadowbolt: 'bolt', 'shadow bolt': 'bolt', bolt: 'bolt',
   // Life Tap
@@ -85,6 +88,7 @@ export const ACTION_ALIASES = {
 };
 
 export const DEFAULT_APL = [
+  { ...ACTION_INFO.eureka, condition: 'On cooldown (Gnome only)', rawCond: 'true', enabled: true },
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana < 20%', rawCond: 'mana_pct < 20', enabled: true },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', condition: 'Shadow Trance active', rawCond: 'buff.shadow_trance', enabled: true },
   { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'ability_demonhunter_chaoticimprint_fire.png', condition: 'Brand missing', rawCond: 'debuff.demonic_brand_missing', enabled: false },
@@ -128,7 +132,7 @@ export function applySynthesizedAPL(rules) {
     return {
       id: r.id,
       spell: r.spell,
-      icon: r.icon,
+      icon: r.id === 'eureka' ? ACTION_INFO.eureka.icon : r.icon,
       condition: r.condition,
       condition1: r.condition1,
       condKey: r.condKey,
@@ -261,7 +265,7 @@ export function parseAPLLine(line, lineNum = 1) {
   const mappedId = ACTION_ALIASES[normActionKey] || ACTION_ALIASES[cleanKey] || ACTION_ALIASES[actionStr.toLowerCase()];
 
   if (!mappedId || !ACTION_INFO[mappedId]) {
-    throw new Error(`Line ${lineNum}: Unknown action '${actionStr}'. Supported actions: bolt, tap, nightfall, corr, immo, conflag, shadowburn, incinerate, searing, drain, siphon, wrack, hellfire, curse, agony, brand, decimateSearing, decimateSoulFire`);
+    throw new Error(`Line ${lineNum}: Unknown action '${actionStr}'. Supported actions: eureka, bolt, tap, nightfall, corr, immo, conflag, shadowburn, incinerate, searing, drain, siphon, wrack, hellfire, curse, agony, brand, decimateSearing, decimateSoulFire`);
   }
 
   const info = ACTION_INFO[mappedId];
@@ -332,6 +336,7 @@ export function formatAPLToText(aplList = currentAPL) {
 
 export function compileAPLToBytecode(aplList = currentAPL) {
   const mapAction = {
+    eureka: APL_ACTION.EUREKA,
     tap: APL_ACTION.LIFE_TAP,
     nightfall: APL_ACTION.NIGHTFALL_SHADOW_BOLT,
     brand: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN,
@@ -476,7 +481,7 @@ export function getActiveAPL() {
   return currentAPL;
 }
 
-export function generateAPLForPreset(presetName = '', talentsObj = null, rotationChoice = null, isSacSuccubus = false) {
+function generateSpellAPLForPreset(presetName = '', talentsObj = null, rotationChoice = null, isSacSuccubus = false) {
   const name = (presetName || '').toLowerCase();
   const rot = (rotationChoice || '').toLowerCase();
   
@@ -574,6 +579,10 @@ export function generateAPLForPreset(presetName = '', talentsObj = null, rotatio
   }
 
   return list;
+}
+
+export function generateAPLForPreset(...args) {
+  return [{ ...ACTION_INFO.eureka, condition: 'On cooldown (Gnome only)', rawCond: 'true', enabled: true }, ...generateSpellAPLForPreset(...args)];
 }
 
 export function setAPLPreset(presetName, talentsObj = null, rotationChoice = null, isSacSuccubus = false) {

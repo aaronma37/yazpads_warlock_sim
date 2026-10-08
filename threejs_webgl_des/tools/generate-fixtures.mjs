@@ -39,7 +39,7 @@ const fields = ['seed','duration','rotation','spellPower','intellect','spirit','
   'immolate','instantCorruption','nightfall','isb','ruin','improvedTap',
   'sacImp','sacSucc','masterDemo','petChoice',
   'trinketSP','trinketDuration','trinketCD','shadowMultiplier','fireMultiplier'];
-const cases = definitions.map(([name, changes])=>({name,config:validate({...DEFAULTS,...changes,iterations:1})}));
+const cases = definitions.map(([name, changes])=>({name,config:validate({...DEFAULTS,swordEquipped:true,...changes,iterations:1})}));
 const input = cases.map(({config})=>fields.map(k=>typeof config[k]==='boolean'?+config[k]:config[k]).join(' ')).join('\n')+'\n';
 const run = spawnSync(executable, [], {input,encoding:'utf8',maxBuffer:32*1024*1024});
 if (run.status !== 0) throw new Error(run.stderr || String(run.error));

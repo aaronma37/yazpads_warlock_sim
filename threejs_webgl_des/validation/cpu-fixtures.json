@@ -13,6 +13,7 @@
     {
       "name": "shadow baseline",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -1235,6 +1236,7 @@
     {
       "name": "seed zero",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 0,
@@ -2481,6 +2483,7 @@
     {
       "name": "largest seed",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 4294967295,
@@ -3679,6 +3682,7 @@
     {
       "name": "bolt only",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -4117,6 +4121,7 @@
     {
       "name": "charged ISB",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -5339,6 +5344,7 @@
     {
       "name": "no ISB",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -6561,6 +6567,7 @@
     {
       "name": "no Nightfall",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -7795,6 +7802,7 @@
     {
       "name": "hardcast Corruption",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -8969,6 +8977,7 @@
     {
       "name": "book ranks",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -10203,6 +10212,7 @@
     {
       "name": "positive resistance",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -11443,6 +11453,7 @@
     {
       "name": "partial disabled",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -12665,6 +12676,7 @@
     {
       "name": "negative resistance",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -13887,6 +13899,7 @@
     {
       "name": "piercing disabled",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -15109,6 +15122,7 @@
     {
       "name": "no travel",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -16349,6 +16363,7 @@
     {
       "name": "overlapping missiles",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -17565,6 +17580,7 @@
     {
       "name": "fire",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -18398,6 +18414,7 @@
     {
       "name": "fire with shadow dots",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -19978,6 +19995,7 @@
     {
       "name": "searing",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -20997,6 +21015,7 @@
     {
       "name": "fire resists",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -22625,6 +22644,7 @@
     {
       "name": "low mana",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -23835,6 +23855,7 @@
     {
       "name": "all taps",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -23930,6 +23951,7 @@
     {
       "name": "no improved tap",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -25140,6 +25162,7 @@
     {
       "name": "no ruin",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -26362,6 +26385,7 @@
     {
       "name": "guaranteed crits",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -27584,6 +27608,7 @@
     {
       "name": "hit cap",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -28836,6 +28861,7 @@
     {
       "name": "zero spell power",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -30058,6 +30084,7 @@
     {
       "name": "one second cutoff",
       "config": {
+        "swordEquipped": true,
         "duration": 1,
         "iterations": 1,
         "seed": 42,
@@ -30165,6 +30192,7 @@
     {
       "name": "cast cutoff",
       "config": {
+        "swordEquipped": true,
         "duration": 3,
         "iterations": 1,
         "seed": 42,
@@ -30279,6 +30307,7 @@
     {
       "name": "regen and end tie",
       "config": {
+        "swordEquipped": true,
         "duration": 5,
         "iterations": 1,
         "seed": 42,
@@ -30410,6 +30439,7 @@
     {
       "name": "dot and end tie",
       "config": {
+        "swordEquipped": true,
         "duration": 24,
         "iterations": 1,
         "seed": 42,
@@ -30690,6 +30720,7 @@
     {
       "name": "long fight",
       "config": {
+        "swordEquipped": true,
         "duration": 1800,
         "iterations": 1,
         "seed": 42,
@@ -41704,6 +41735,7 @@
     {
       "name": "no dots",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -42142,6 +42174,7 @@
     {
       "name": "demonic sacrifice succubus",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -43364,6 +43397,7 @@
     {
       "name": "demonic sacrifice imp fire",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -44944,6 +44978,7 @@
     {
       "name": "master demonologist shadow",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -46166,6 +46201,7 @@
     {
       "name": "master demonologist fire",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -47746,6 +47782,7 @@
     {
       "name": "shadow mastery 5/5",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -48968,6 +49005,7 @@
     {
       "name": "fire emberstorm 5/5",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -50548,6 +50586,7 @@
     {
       "name": "active trinket 175 SP",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 42,
@@ -51788,6 +51827,7 @@
     {
       "name": "shadow seed 1",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 1,
@@ -53028,6 +53068,7 @@
     {
       "name": "shadow seed 7",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 7,
@@ -54256,6 +54297,7 @@
     {
       "name": "shadow seed 1337",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 1337,
@@ -55478,6 +55520,7 @@
     {
       "name": "shadow seed 9001",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 9001,
@@ -56718,6 +56761,7 @@
     {
       "name": "shadow seed 43",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 43,
@@ -57946,6 +57990,7 @@
     {
       "name": "shadow seed 44",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 44,
@@ -59192,6 +59237,7 @@
     {
       "name": "shadow seed 45",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 45,
@@ -60402,6 +60448,7 @@
     {
       "name": "shadow seed 46",
       "config": {
+        "swordEquipped": true,
         "duration": 180,
         "iterations": 1,
         "seed": 46,

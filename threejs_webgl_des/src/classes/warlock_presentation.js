@@ -5,6 +5,8 @@ const raceDetails = {
     icon: './assets/icons/Achievement_Character_Human_Male.png',
     traits: [
       { name: 'The Human Spirit', icon: 'Spell_Holy_MagicalSentry.png', title: 'The Human Spirit (+5% Spirit)', desc: 'Spirit increased by 5%.' },
+      { name: 'Sword Specialization', icon: 'INV_Sword_04.png', title: 'Sword Specialization (+2% Spell Crit)', desc: 'Increases spell and ability critical strike chance by 2% while a sword is equipped. Sword equipped defaults on in Direct Stats; exclude the bonus from the Spell Crit input.' },
+      { name: 'Will to Survive', icon: 'SPELL_HOLY_DISPELMAGIC.png', title: 'Will to Survive', desc: 'Removes all Stun effects. 180 sec cooldown. Utility only; not simulated in this damage encounter.' },
       { name: 'Perception', icon: 'Spell_Holy_MindVision.png', title: 'Perception (Stealth Detect)', desc: 'Dramatically increases stealth detection for 20 sec.' }
     ]
   },
@@ -33,8 +35,8 @@ const raceDetails = {
   GNOME: {
     icon: './assets/icons/Achievement_Character_Gnome_Male.png',
     traits: [
-      { name: 'Expansive Mind', icon: 'Spell_Nature_EnchantWater.png', title: 'Expansive Mind (+5% Intellect)', desc: 'Intellect increased by 5%.' },
-      { name: 'Eureka!', icon: 'Spell_Nature_EnchantWater.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells. 120 sec cooldown; aligned with Bane of Doom when available.' },
+      { name: 'Expansive Mind', icon: 'INV_Enchant_EssenceEternalLarge.png', title: 'Expansive Mind (+5% Maximum Mana)', desc: 'Maximum Mana increased by 5%. Does not increase Intellect or spell crit.' },
+      { name: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells, including their periodic damage. 120 sec cooldown. An Eureka APL row controls activation; older APLs without one use automatic racial timing.' },
       { name: 'Escape Artist', icon: 'Spell_Holy_Silence.png', title: 'Escape Artist', desc: 'Escape the effects of any immobilization or movement speed reduction.' }
     ]
   }
@@ -83,6 +85,7 @@ const resultSpellIcons = {
 };
 
 const presetSpellIcons = {
+  EUREKA: 'Spell_Arcane_MindMastery.png',
   LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
   CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',
   IMMOLATE: 'Spell_Fire_Immolation.png',

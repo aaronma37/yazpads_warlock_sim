@@ -23,10 +23,24 @@ test('versioned resolved exports reimport without reapplying buffs or racial sta
  assert.deepEqual(imported.config,original.config);
  assert.deepEqual(packConfig(imported.config),packConfig(original.config));
  assert.deepEqual(await exportResolvedBuild(envelope),envelope);
- assert.equal(imported.config.intellect,Math.round(231*1.05));
+ assert.equal(imported.config.intellect,231);
 });
 test('each incompatible version and class identity is rejected before resolution',async()=>{
  const envelope=await exportResolvedBuild({stats:{}});
  for(const edit of [{packingVersion:'other'},{simulationVersion:'other'},{classId:'priest'},
   {schemaVersion:2}]) await assert.rejects(resolveSavedBuild({...envelope,...edit}));
+});
+
+test('Human sword selection survives import/export without doubling crit', async () => {
+ const input={race:'HUMAN',stats:{swordEquipped:true,spirit:100},aplText:'Shadow Bolt'};
+ const original=await resolveSavedBuild(input);
+ assert.equal(original.config.swordEquipped,true);
+ assert.equal(original.config.spirit,105);
+ const envelope=await exportResolvedBuild(input);
+ const imported=await resolveSavedBuild(JSON.parse(JSON.stringify(envelope)));
+ assert.deepEqual(packConfig(imported.config),packConfig(original.config));
+ const noSword=await resolveSavedBuild({...input,stats:{...input.stats,swordEquipped:false}});
+ const key=Object.keys((await import('../src/model.js')).CONFIG).indexOf('crit');
+ const crit=c=>new Float32Array(packConfig(c).buffer)[key];
+ assert.ok(Math.abs(crit(original.config)-crit(noSword.config)-0.02)<1e-7);
 });

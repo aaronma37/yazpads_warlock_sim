@@ -20,7 +20,7 @@ WebGL2 and four integer color attachments are required. **WebGPU can be absent o
 
 ## Supported contract
 
-- Level-60 Human, one level-63 target. Raw intellect/spirit are bonuses added to Human base stats; maximum mana is derived, not entered directly. Crit includes base crit, intellect, and the CPU's Human direct-stat sword bonus.
+- Level-60 Human, one level-63 target. Raw intellect/spirit are bonuses added to Human base stats; maximum mana is derived, not entered directly. Crit includes base crit and intellect. Human Sword Specialization adds two percentage points only when Sword equipped is checked in Direct Stats. Enter Spell Crit without that racial bonus; the sword selection is saved with the build. Human Spirit is applied by UI/import stat resolution.
 - Shadow Bolt, Corruption, Agony, Immolate, Incinerate, Searing Pain, and Life Tap.
 - Bane fixed at 5/5. Toggles for Improved Corruption 0/5 or 5/5, Nightfall 0/2 or 2/2, Improved Shadow Bolt 0/5 or 5/5, Ruin 0/5 or 5/5, and Improved Life Tap 0/2 or 2/2.
 - Cast completion, independent projectile impact, GCD readiness, periodic ticks, Nightfall expiry, and five-second mana regeneration are actual events.
@@ -110,3 +110,11 @@ The table shows up to five distinct decision states, with the chosen action icon
 A dedicated, lazily compiled diagnostic shader replays the first fight's original seed to each decision, switches to independent continuation RNG streams, executes one alternative action, then resumes the original APL and automatic racial/trinket behavior until the original fight end. Each alternative shares continuation seeds with a policy baseline; changing actions can shift RNG consumption, so paired seeds do not guarantee matching crits or procs. Forcing the recorded policy action must exactly reproduce baseline damage on every sample, otherwise the evaluation is rejected. Normal detailed and fast simulation shaders are unchanged. Diagnostics pack decision × alternative × continuation sample into GPU lanes and use 2D batches of up to 65,536 rollouts by default. A stage reads back once per batch, rather than once per alternative. Inspection prefixes are batched too. The `batchSize` API option supports 1–1,048,576 lanes, bounded by device texture limits; changing batch size preserves sample seeds and results. Returned `timing` includes draw count, rollout count, and requested batch size. Completion/error checks and cancellation between batches are preserved.
 
 DPS differences divide final damage differences by the full configured fight duration. This evaluates states from the first fight, not regret averaged over different fight prefixes. Prefixes are replayed rather than restored from snapshots; long fights can therefore make full scans expensive. Alternatives include spells enabled by the current configuration, Life Tap, and fillers; waits, cast cancellation, and alternative off-GCD policies are excluded. The single-decision `analyzeRegret` API remains available for developer diagnostics.
+
+## Gnome racial inputs
+
+Expansive Mind increases maximum mana by 5%; it does not increase intellect or crit. Sword equipped defaults on and grants a bonus only to Humans.
+
+Eureka is an off-GCD APL action (`eureka`, also accepts `Eureka!`). Default/preset APLs expose it near the top. An explicit Eureka row controls activation through its conditions and the 120-second cooldown; a disabled row prevents automatic activation. Non-Gnomes skip it. Older/custom APLs without an Eureka row retain automatic racial timing.
+
+This app intentionally retains Eureka damage boosts for the next three empowered spell casts, including snapshotted DoT damage, per the requested simulation rules. This differs from Blizzard's October 1 Forever beta notes excluding periodic effects. Existing DoTs are not dynamically amplified simply because charges are available.

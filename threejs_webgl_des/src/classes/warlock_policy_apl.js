@@ -17,6 +17,8 @@ export function buildPolicyAPL(rotation, talentFlags) {
 
   // Rule 0: Life Tap resource safeguard
   addRule(APL_ACTION.LIFE_TAP, APL_COND.MANA_LE, 25.0);
+  actions.add('eureka');
+  addRule(APL_ACTION.EUREKA);
 
   if (rot === 'FIRE_DESTRO' || rot === 'INCINERATE_DECIMATION') {
     shaderRotation = 'fire';

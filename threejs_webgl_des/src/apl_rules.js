@@ -1,5 +1,13 @@
 import { APL_ACTION, APL_COND } from './model.js';
 
+// Display-only filtering: preserve the executable APL and its saved rules.
+export function getRaceVisibleAPLRules(rules = [], race) {
+  if (String(race || '').toUpperCase() === 'GNOME') return rules;
+  return rules.filter(rule => rule.action !== APL_ACTION.EUREKA &&
+    !/^eureka!?$/i.test(String(rule.id || '').trim()) &&
+    !/^eureka!?$/i.test(String(rule.spell || '').trim()));
+}
+
 // Availability checks (cooldowns, procs, mana and talents) happen in the shader.
 // An Always condition alone does not make later enabled rules unreachable if the spell has a cooldown or dot duration.
 export function isAPLRuleEnabled(rule) {

@@ -25,6 +25,7 @@ export const APL_ACTION = Object.freeze({
   SIPHON_LIFE: 17,
   DRAIN_HOPE: 18,
   HELLFIRE: 19,
+  EUREKA: 20,
 });
 
 export const APL_COND = Object.freeze({
@@ -57,7 +58,7 @@ export const APL_COND = Object.freeze({
 export const MAX_APL_RULES = 32;
 
 export const DEFAULTS = Object.freeze({
-  race: 'HUMAN', racialPolicy: 'execute', targetIsBeast: false, maxHealth: 0, duration: 180, iterations: 4096, seed: 42, rotation: 'shadow',
+  race: 'HUMAN', swordEquipped: true, racialPolicy: 'execute', targetIsBeast: false, maxHealth: 0, duration: 180, iterations: 4096, seed: 42, rotation: 'shadow',
   spellPower: 500, shadowPower: 0, firePower: 0, intellect: 200, stamina: 220, spirit: 100, hit: 12, crit: 15, mp5: 20,
   distance: 30, resistance: 0, penetration: 0, tapThreshold: 25, bossArmor: 3731,
   book: false, charges: false, partialResists: true, piercing: true,
@@ -303,8 +304,9 @@ export function packConfig(input) {
   const petChoiceMap = { none: 0, imp: 1, succubus: 2 };
   const rawRules = Array.isArray(c.aplRules) && c.aplRules.length > 0 ? c.aplRules : buildDefaultAPLRules(c);
 
-  const baseCrit = (1.7 + int / 60.6 + c.crit + 2) / 100;
-  const shadowCrit = (1.7 + int / 60.6 + c.crit + 2 + (c.malevolence || 0)) / 100;
+  const swordCrit = c.race === 'HUMAN' && c.swordEquipped ? 2 : 0;
+  const baseCrit = (1.7 + int / 60.6 + c.crit + swordCrit) / 100;
+  const shadowCrit = (1.7 + int / 60.6 + c.crit + swordCrit + (c.malevolence || 0)) / 100;
 
   const impCorrRanks = c.improvedCorruptionBonus > 0 ? Math.round(c.improvedCorruptionBonus / 0.02) : (c.instantCorruption ? 5 : 0);
   const corrCastTime = Math.max(0, 2.0 - 0.4 * impCorrRanks);

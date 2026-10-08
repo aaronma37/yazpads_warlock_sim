@@ -197,7 +197,7 @@ export function renderAPLGALeaderboard() {
     // Action priority chain preview (effective rules without truncation)
     const effectiveRules = getEffectiveRules(cand.rules);
     const chainIcons = effectiveRules.map(r => `
-      <img src="./assets/icons/${r.icon}" alt="${r.spell}" title="${r.spell}: ${r.condition}" class="prio-chain-icon" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
+      <img src="./assets/icons/${r.id === 'eureka' ? getSpellIcon('Eureka!') : r.icon}" alt="${r.spell}" title="${r.spell}: ${r.condition}" class="prio-chain-icon" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
     `).join('');
 
     // Damage Split calculation
@@ -350,7 +350,7 @@ export function renderSelectedAPLCandidateDetails(cand) {
         <td style="width: 32px; text-align: center; color: ${prioColor}; font-weight: 700; font-size: 0.75rem;">#${idx + 1}</td>
         <td style="width: 175px;">
           <div class="apl-spell-cell">
-            <img src="./assets/icons/${r.icon}" alt="${r.spell}" class="apl-spell-icon" style="width:20px; height:20px;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
+            <img src="./assets/icons/${r.id === 'eureka' ? getSpellIcon('Eureka!') : r.icon}" alt="${r.spell}" class="apl-spell-icon" style="width:20px; height:20px;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
             <span class="apl-spell-name" style="font-size: 0.8rem; font-weight: 700; color: ${nameColor};">${r.spell}</span>
             ${unreachableTag}
           </div>
@@ -593,6 +593,7 @@ export function exportAPLGASpecs() {
 
 function getSpellIcon(spellName) {
   const name = String(spellName).toLowerCase();
+  if (name.includes('eureka')) return 'Spell_Arcane_MindMastery.png';
   if (name.includes('shadow bolt')) return 'Spell_Shadow_ShadowBolt.png';
   if (name.includes('corruption')) return 'Spell_Shadow_AbominationExplosion.png';
   if (name.includes('immolate')) return 'Spell_Fire_Immolation.png';

@@ -397,7 +397,6 @@ function getEffectiveBuffsAndStats() {
   let finalSpirit = (baseSpirit + addedSpirit) * statMultiplier;
 
   // Racial modifiers
-  if (activeRace === 'GNOME') finalInt *= 1.05;
   if (activeRace === 'HUMAN') finalSpirit *= 1.05;
 
   finalInt = Math.round(finalInt);
@@ -524,6 +523,7 @@ function updateCombatStatsSummary() {
 
 function getLegacyExportPayload() {
   const directStats = {
+    swordEquipped: !!$('in-swordEquipped')?.checked,
     spellPower: Number($('in-spellPower')?.value || 500),
     shadowPower: Number($('in-shadowPower')?.value || 0),
     firePower: Number($('in-firePower')?.value || 0),
@@ -622,6 +622,7 @@ export async function applyImportedBuild(input) {
   if (payload.rotation) setRotation(payload.rotation);
 
   if (payload.stats) {
+    if ($('in-swordEquipped')) $('in-swordEquipped').checked = payload.stats.swordEquipped ?? true;
     if ($('in-spellPower') && payload.stats.spellPower !== undefined) $('in-spellPower').value = payload.stats.spellPower;
     if ($('in-shadowPower') && payload.stats.shadowPower !== undefined) $('in-shadowPower').value = payload.stats.shadowPower;
     if ($('in-firePower') && payload.stats.firePower !== undefined) $('in-firePower').value = payload.stats.firePower;
@@ -1108,6 +1109,7 @@ function getActiveStatsConfig() {
     racialPolicy: form.elements.namedItem('racialPolicy')?.value || 'execute',
     targetIsBeast: !!form.elements.namedItem('targetIsBeast')?.checked,
     race: activeRace,
+    swordEquipped: !!$('in-swordEquipped')?.checked,
     maxHealth: eff.maxHealth,
     spellPower: eff.spellPower,
     shadowPower: eff.shadowPower,

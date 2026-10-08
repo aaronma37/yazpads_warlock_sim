@@ -6,7 +6,7 @@ import { DEFAULTS, validate, MAX_APL_RULES, APL_ACTION, APL_COND } from '../mode
 import { parseAPLText, compileAPLToBytecode, ACTION_INFO } from '../apl.js';
 import { getTalentFlagsFromRanks } from '../talents.js';
 
-const statKeys = ['spellPower', 'shadowPower', 'firePower', 'intellect', 'stamina', 'spirit', 'hit', 'crit', 'mp5', 'penetration'];
+const statKeys = ['swordEquipped', 'spellPower', 'shadowPower', 'firePower', 'intellect', 'stamina', 'spirit', 'hit', 'crit', 'mp5', 'penetration'];
 export const WARLOCK_IMPORT_BUFF_KEYS = Object.freeze(['flaskSupremePower', 'greaterArcaneElixir', 'shadowPowerElixir', 'greaterFirepowerElixir', 'wizardOil', 'magebloodElixir', 'nightfinSoup', 'arcaneIntellect', 'markOfTheWild', 'blessingOfKings', 'blessingOfWisdom', 'manaSpringTotem', 'dragonslayer', 'songflower', 'warchiefsBlessing', 'spiritOfZandalar', 'saygesFortune', 'curseOfShadow', 'curseOfElements', 'shadowWeaving', 'improvedScorch', 'nightfallProcDebuff']);
 const trees = ['affliction', 'demonology', 'destruction'];
 function record(value, name) {
@@ -62,7 +62,7 @@ export function normalizeWarlockImport(staged, { itemDatabase } = {}) {
   if (!['direct', 'equipped'].includes(c.equipment.mode)) throw new Error('Unsupported equipment mode.');
   if (c.equipment.mode === 'equipped' || Object.keys(c.equipment.items).length) {
     const equipped = resolveWarlockEquipment(c.equipment.items, itemDatabase);
-    if (c.equipment.mode === 'equipped') c.stats = equipped;
+    if (c.equipment.mode === 'equipped') c.stats = { ...equipped, swordEquipped: c.stats.swordEquipped };
   }
   keys(c.talents, trees, 'talent tree');
   c.talents = { affliction: {}, demonology: {}, destruction: {}, ...c.talents };

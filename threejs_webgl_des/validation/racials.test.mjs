@@ -45,3 +45,17 @@ test('damage sources have independent counters and fit the GPU result layout', (
     assert.equal(config.power + config.hellfirePowerOffset, 600);
   }
  });
+
+test('Sword Specialization grants two crit points only to Humans wielding a sword', () => {
+  const base = { intellect: 200, crit: 15, malevolence: 3 };
+  const neutral = packed({ ...base, race: 'HUMAN', swordEquipped: false });
+  for (const race of ['HUMAN', 'ORC', 'TROLL', 'GNOME', 'UNDEAD']) {
+    for (const swordEquipped of [false, true]) {
+      const config = packed({ ...base, race, swordEquipped });
+      const bonus = race === 'HUMAN' && swordEquipped ? 0.02 : 0;
+      for (const key of ['crit', 'fireCrit', 'shadowCrit']) assert.ok(Math.abs(config[key] - neutral[key] - bonus) < 1e-7);
+    }
+  }
+  assert.equal(validate({}).swordEquipped, true);
+  assert.throws(() => validate({ swordEquipped: 'true' }));
+});

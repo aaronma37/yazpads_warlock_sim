@@ -51,7 +51,6 @@ export function resolveWarlockBuffEffects(stats, buffs, race, target) {
   let finalSpirit = (baseSpirit + addedSpirit) * statMultiplier;
 
   // Racial modifiers
-  if (activeRace === 'GNOME') finalInt *= 1.05;
   if (activeRace === 'HUMAN') finalSpirit *= 1.05;
 
   finalInt = Math.round(finalInt);

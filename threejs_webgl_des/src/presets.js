@@ -10,6 +10,7 @@ import { CLASS_SIMULATION } from './classes/active_simulation.js';
 // stat weights) are strictly populated via live GPU simulation when clicking "Simulate Specs".
 import { getTalentFlagsFromRanks } from './talents.js';
 import { generateAPLForPreset, compileAPLToBytecode, parseAPLText } from './apl.js';
+import { getRaceVisibleAPLRules } from './apl_rules.js';
 
 const { runSimulation, runMultiSimulation, buildFightConfig } = CLASS_SIMULATION;
 
@@ -124,7 +125,7 @@ export function getSpecAPLRules(p) {
   if (!presetAPL) {
     presetAPL = generateAPLForPreset(p?.name || '', p?.talents, p?.rotation, sac === 'succubus');
   }
-  return Array.isArray(presetAPL) ? presetAPL.filter(r => r.enabled !== false) : [];
+  return Array.isArray(presetAPL) ? getRaceVisibleAPLRules(presetAPL, p?.race).filter(r => r.enabled !== false) : [];
 }
 
 function getSpecPetIcons(p) {

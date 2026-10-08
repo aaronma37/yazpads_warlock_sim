@@ -433,6 +433,11 @@ input[type="number"] {
   user-select: none;
 }
 
+.sword-equipped-label {
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 /* Authentic WoW Classic Checkbox */
 input[type="checkbox"] {
   appearance: none;

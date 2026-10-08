@@ -8,7 +8,7 @@ test('buffs and racial effects preserve order, rounding, school bonuses, and res
   arcaneIntellect:true,markOfTheWild:true,blessingOfKings:true,spiritOfZandalar:true,
   flaskSupremePower:true,shadowPowerElixir:true,curseOfShadow:true,warchiefsBlessing:true},target:{resistance:50}};
  const before=structuredClone(input),result=resolve(input);
- assert.equal(result.effectiveStats.intellect,Math.round((200+31+12)*1.1*1.15*1.05));
+ assert.equal(result.effectiveStats.intellect,Math.round((200+31+12)*1.1*1.15));
  assert.equal(result.effectiveStats.spellPower,650);
  assert.equal(result.effectiveStats.shadowPower,40);
  assert.equal(result.effectiveStats.resistance,0);
@@ -27,7 +27,7 @@ test('resolved imports bypass buff/racial reapplication',()=>{
 const { resolveWarlockImport } = await import('../src/classes/warlock_import.js');
 test('final resolution produces validated text/rules configs and skips resolved effects',()=>{
  const text=resolveWarlockImport(migrateLegacyBuild({race:'GNOME',stats:{intellect:200},aplText:'Shadow Bolt'}));
- assert.equal(text.config.intellect,210);
+ assert.equal(text.config.intellect,200);
  assert.equal(text.config.aplRules.length,1);
  const rule={id:'bolt',rawCond:'true',enabled:true};
  const staged=migrateLegacyBuild({stats:{intellect:200}});

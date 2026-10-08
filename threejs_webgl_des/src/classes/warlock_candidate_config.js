@@ -42,28 +42,14 @@ function individualToConfig(ind, baseStatsConfig) {
     tapThreshold: baseStatsConfig.tapThreshold !== undefined ? baseStatsConfig.tapThreshold : 25
   };
   const baseRace = (base.race || 'HUMAN').toUpperCase();
-  delete base.race;
+  base.race = ind.race;
 
   // Un-apply baseline race stats if needed so all candidates start from neutral baseline
   let unscaledInt = base.intellect;
   let unscaledSpirit = base.spirit;
-  if (baseRace === 'GNOME') {
-    unscaledInt = Math.round(unscaledInt / 1.05);
-  } else if (baseRace === 'HUMAN') {
-    unscaledSpirit = Math.round(unscaledSpirit / 1.05);
-  }
-
-  // Apply candidate's race modifiers
-  if (ind.race === 'GNOME') {
-    base.intellect = Math.round(unscaledInt * 1.05);
-    base.spirit = unscaledSpirit;
-  } else if (ind.race === 'HUMAN') {
-    base.intellect = unscaledInt;
-    base.spirit = Math.round(unscaledSpirit * 1.05);
-  } else {
-    base.intellect = unscaledInt;
-    base.spirit = unscaledSpirit;
-  }
+  if (baseRace === 'HUMAN') unscaledSpirit = Math.round(unscaledSpirit / 1.05);
+  base.intellect = unscaledInt;
+  base.spirit = ind.race === 'HUMAN' ? Math.round(unscaledSpirit * 1.05) : unscaledSpirit;
 
   return buildFightConfig({
     base,

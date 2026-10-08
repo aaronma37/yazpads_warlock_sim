@@ -142,16 +142,16 @@ test('policy APL gates talent actions and preserves execute and affliction prior
   assert.ok(!fire.actionIds.includes('conflag'));
   assert.ok(!fire.aplRules.some(r => r.action === APL_ACTION.DECIMATION_SOUL_FIRE));
   const execute = buildPolicyAPL('INCINERATE_DECIMATION', { decimation: true, incinerate: true });
-  assert.equal(execute.aplRules[1].action, APL_ACTION.DECIMATION_SEARING_PAIN);
-  assert.equal(execute.aplRules[2].action, APL_ACTION.DECIMATION_SOUL_FIRE);
+  assert.equal(execute.aplRules[2].action, APL_ACTION.DECIMATION_SEARING_PAIN);
+  assert.equal(execute.aplRules[3].action, APL_ACTION.DECIMATION_SOUL_FIRE);
   assert.equal(execute.aplRules.at(-1).action, APL_ACTION.INCINERATE_FILLER);
   const affliction = buildPolicyAPL('DEEP_AFFLICTION', { nightfall: true, wrack: true, siphonLife: true });
-  assert.equal(affliction.aplRules[1].action, APL_ACTION.NIGHTFALL_SHADOW_BOLT);
-  assert.equal(affliction.aplRules[2].action, APL_ACTION.DRAIN_HOPE);
+  assert.equal(affliction.aplRules[2].action, APL_ACTION.NIGHTFALL_SHADOW_BOLT);
+  assert.equal(affliction.aplRules[3].action, APL_ACTION.DRAIN_HOPE);
   assert.ok(affliction.actionIds.includes('siphon'));
   const pactFire = buildPolicyAPL('DP_AF_FIRE', { demonicBrand: true });
   assert.equal(pactFire.shaderRotation, 'searing');
-  assert.equal(pactFire.aplRules[1].param, 57);
+  assert.equal(pactFire.aplRules[2].param, 57);
   assert.ok(pactFire.aplRules.some(r => r.action === APL_ACTION.DEMONIC_BRAND_SEARING_PAIN));
 });
 
@@ -379,10 +379,12 @@ const candidateConfig = getClassModule('warlock').search.createCandidateConfig(g
 test('build conversion preserves race normalization and leaves candidates and base stats unchanged', () => {
   const ind = { talents: new Uint8Array(nodeCount), race: 'GNOME', rotation: 'SHADOW_DESTRO',
     pet: 'none', sacImp: false, sacSuccubus: false, apl: null };
-  const base = { race: 'HUMAN', intellect: 300, spirit: 210 };
+  const base = { race: 'HUMAN', swordEquipped: true, intellect: 300, spirit: 210 };
   const saved = JSON.stringify([ind, base]);
   const result = candidateConfig.buildToConfig(ind, base);
-  assert.equal(result.intellect, 315);
+  assert.equal(result.race, 'GNOME');
+  assert.equal(result.swordEquipped, true);
+  assert.equal(result.intellect, 300);
   assert.equal(result.spirit, 200);
   assert.equal(result.rotation, 'shadow');
   assert.equal(result.tapThreshold, 25);

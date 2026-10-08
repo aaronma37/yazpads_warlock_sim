@@ -9,7 +9,7 @@ test('regret diagnostics do not change simulation shaders', () => {
  assert.ok(!FAST_FRAGMENT.includes('targetDecision'));
  assert.ok(REGRET_FRAGMENT.includes('uniform highp usampler2D regretJobTex'));
  // Frozen pre-feature shader output: catches accidental changes to the fast path.
- assert.equal(createHash('sha256').update(FAST_FRAGMENT).digest('hex'), '6d939ed98a10f9e9668bbc748f9867355c3d3a72103b9d74593ba472cb115174');
+ assert.equal(createHash('sha256').update(FAST_FRAGMENT).digest('hex'), 'c555acfe5b197ef9f03062349ac11fb7984a088dfa7233169df1b0b60d54b44f');
 });
 
 test('paired differences use full fight duration and uncertainty of differences', () => {

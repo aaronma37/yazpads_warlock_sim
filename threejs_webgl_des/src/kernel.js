@@ -158,7 +158,13 @@ void spend(uint spell){
  if(s.eurekaCharges>0u)s.eurekaCharges--;
  if(c.race==4u&&s.now>=s.graveReady&&random01()<0.10){s.graveReady=s.now+1000000u;damage(12u,c.maxHealth*0.05,false);}
 }
+bool eurekaInAPL(){
+ for(uint r=0u;r<numAplRules;r++)if((aplHeaders0[r]&0xFFu)==20u)return true;
+ return false;
+}
+void activateEureka(){s.racialReady=s.now+120000000u;s.eurekaCharges=3u;}
 void checkRacial(){
+ if(c.race==3u&&eurekaInAPL())return;
  if(s.now<s.racialReady)return;
  bool execute=float(s.now)>=float(c.end)*0.65;
  uint cooldown=c.race==2u?180000000u:120000000u;
@@ -406,7 +412,7 @@ void decide(){
  float targetHpPct=max(0.0,(1.0-fightProgress)*100.0);
  float playerManaPct=(s.mana/c.maxMana)*100.0;
  // C++ uses the final Eureka charge to prepare mana before resuming damage casts.
- if(c.race==3u&&s.eurekaCharges==1u&&playerManaPct<70.0){tap();return;}
+ if(c.race==3u&&!eurekaInAPL()&&s.eurekaCharges==1u&&playerManaPct<70.0){tap();return;}
 
  for(uint r=0u;r<numAplRules;r++){
   uint header0=aplHeaders0[r];
@@ -428,7 +434,9 @@ void decide(){
   if(!evalCond(cond2,param2,targetSpell2,playerManaPct,targetHpPct))continue;
 
   // Execute Action
-  if(action==1u){ // LIFE_TAP
+  if(action==20u){ // Eureka is off-GCD; continue evaluating spells in this decision.
+   if(c.race==3u&&s.now>=s.racialReady&&s.eurekaCharges==0u)activateEureka();
+  }else if(action==1u){ // LIFE_TAP
    tap();return;
   }else if(action==2u){ // NIGHTFALL_SHADOW_BOLT
    if(s.trance!=0u){

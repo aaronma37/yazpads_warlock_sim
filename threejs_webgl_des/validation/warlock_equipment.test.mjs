@@ -9,7 +9,7 @@ test('equipped imports derive stats independently of saved display snapshots', (
  const gear = database.presets.p6.items;
  const staged = migrateLegacyBuild({ gearMode: 'equipped', gear, stats: { intellect: 999 } });
  const result = normalizeWarlockImport(staged, { itemDatabase: database });
- assert.deepEqual(result.candidate.stats, resolveWarlockEquipment(gear, database));
+ assert.deepEqual(result.candidate.stats, { ...resolveWarlockEquipment(gear, database), swordEquipped: true });
  assert.notEqual(result.candidate.stats.intellect, 999);
  assert.deepEqual(normalizeWarlockImport(result, { itemDatabase: database }), result);
  assert.equal(staged.candidate.stats.intellect, 999);
