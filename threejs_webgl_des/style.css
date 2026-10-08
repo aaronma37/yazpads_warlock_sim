@@ -818,6 +818,36 @@ input[type="checkbox"]:checked::after {
   margin-bottom: 0.35rem;
 }
 
+.apl-editor {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.apl-line-numbers {
+  flex: 0 0 auto;
+  overflow: hidden;
+  height: 180px;
+  white-space: pre;
+  text-align: right;
+  user-select: none;
+  color: #82745b;
+  background: #15121a;
+  border: 1px solid #3d3428;
+  border-right: 0;
+  border-radius: 3px 0 0 3px;
+  font-family: var(--font-mono, 'Consolas', 'Courier New', monospace);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  padding: 0.45rem 0.6rem;
+  box-sizing: border-box;
+}
+
+.apl-editor .apl-edit-box {
+  min-width: 0;
+  border-radius: 0 3px 3px 0;
+}
+
 .apl-edit-box {
   width: 100%;
   min-height: 180px;

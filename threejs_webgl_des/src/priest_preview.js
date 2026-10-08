@@ -140,6 +140,7 @@ export function initPriestPreview({ tabs, switchTab, canSwitch, createPanel = cr
             const badge = build.querySelector('#priest-preview-talents-summary-badge');
             badge.textContent = '14 / 0 / 37 (0 remaining)';
             const apl = build.querySelector('#priest-preview-apl-edit-box');
+            build.querySelector('.apl-line-numbers')?.remove();
             apl.value = 'shadow_word_pain\nmind_blast\nshadow_word_death\nmind_flay'; apl.placeholder = ''; apl.readOnly = true;
             // Remove Warlock-specific reference and multi-target policy content.
             const aplPanel = apl.closest('section');

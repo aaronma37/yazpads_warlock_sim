@@ -219,7 +219,10 @@
 
                 <!-- APL Edit Box -->
                 <div class="apl-edit-container">
-                  <textarea id="apl-edit-box" class="apl-edit-box" rows="12" spellcheck="false" placeholder="shadow_bolt if mana_remaining > 40%&#10;life_tap if mana_remaining < 20%&#10;shadow_bolt"></textarea>
+                  <div class="apl-editor">
+                    <div class="apl-line-numbers" aria-hidden="true">1</div>
+                    <textarea id="apl-edit-box" class="apl-edit-box" rows="12" wrap="off" spellcheck="false" placeholder="shadow_bolt if mana_remaining > 40%&#10;life_tap if mana_remaining < 20%&#10;shadow_bolt"></textarea>
+                  </div>
                   <div id="apl-text-error" class="apl-text-error" style="display: none;"></div>
                 </div>
 

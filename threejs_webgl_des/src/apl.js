@@ -601,12 +601,22 @@ export function setAPLPreset(presetName, talentsObj = null, rotationChoice = nul
   if (onChangeCallback) onChangeCallback(currentAPL);
 }
 
+function updateLineNumbers(box) {
+  const gutter = box?.parentElement?.querySelector('.apl-line-numbers');
+  if (!gutter) return;
+  const count = box.value.split('\n').length;
+  gutter.textContent = Array.from({ length: count }, (_, index) => index + 1).join('\n');
+  gutter.style.height = `${box.offsetHeight}px`;
+  gutter.scrollTop = box.scrollTop;
+}
+
 function setupEditBoxEvents() {
   const box = document.getElementById('apl-edit-box');
   const errorEl = document.getElementById('apl-text-error');
   if (!box) return;
 
   const handleInput = () => {
+    updateLineNumbers(box);
     try {
       const parsed = parseAPLText(box.value);
       currentAPL = parsed;
@@ -628,6 +638,11 @@ function setupEditBoxEvents() {
 
   box.addEventListener('input', handleInput);
   box.addEventListener('change', handleInput);
+  box.addEventListener('scroll', () => updateLineNumbers(box));
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => updateLineNumbers(box)).observe(box);
+  }
+  updateLineNumbers(box);
 }
 
 export function setAPLFromText(text) {
@@ -637,6 +652,7 @@ export function setAPLFromText(text) {
   const errorEl = document.getElementById('apl-text-error');
   if (box) {
     box.value = formatAPLToText(currentAPL);
+    updateLineNumbers(box);
     box.classList.remove('input-invalid');
   }
   if (errorEl) {
@@ -653,6 +669,7 @@ export function renderAPLUI() {
   const errorEl = document.getElementById('apl-text-error');
   if (box && document.activeElement !== box) {
     box.value = formatAPLToText(currentAPL);
+    updateLineNumbers(box);
     box.classList.remove('input-invalid');
     if (errorEl) {
       errorEl.textContent = '';
