@@ -2,7 +2,7 @@
   "Undead": [
     [
       "Dark Sacrifice",
-      "Cannibalize 1600 of your own Health over 15 sec to gain 1600 Mana.",
+      "Converts 1600 Health into 1600 + 100% of Spirit mana over 15 sec.",
       "spell_holy_powerinfusion_shadow",
       {
         "build": "1.60.1.69876",
@@ -13,13 +13,48 @@
             "classes": [
               "Priest"
             ],
-            "description": "Cannibalize 1600 of your own Health over 15 sec to gain 1600 Mana.",
+            "description": "Converts 1600 Health into 1600 + 100% of Spirit mana over 15 sec.",
             "icon": "spell_holy_powerinfusion_shadow",
             "passive": false,
             "cost": "Instant; 10 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=1277328",
+            "manaRestored": 1600,
+            "spiritCoefficient": 1,
+            "tickIntervalSeconds": 3,
+            "ticks": 5,
+            "healthCost": 1600,
+            "cooldownSeconds": 600
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
+      }
+    ],
+    [
+      "Touch of Weakness",
+      "The next melee attack on the caster will cause 56 Shadow damage and reduce the attacker's melee attack power by the attacker by 204 for 2 min.",
+      "spell_shadow_deadofnight",
+      {
+        "source": "forever-client",
+        "variants": [
+          {
+            "spellId": 19266,
+            "classes": [
+              "Priest"
+            ],
+            "description": "The next melee attack on the caster will cause 56 Shadow damage and reduce the attacker's melee attack power by the attacker by 204 for 2 min.",
+            "icon": "spell_shadow_deadofnight",
+            "passive": false,
+            "cost": "195 Mana",
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19266",
+            "triggeredSpellId": 19254,
+            "spellPowerCoefficient": 0.107,
+            "damage": 56,
+            "attackPowerReduction": 204
+          }
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ],
@@ -41,14 +76,22 @@
             "icon": "spell_holy_chastise",
             "passive": false,
             "cost": "225 Mana; 20 yd range; Instant; 2 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=1277335",
+            "damageMin": 272,
+            "damageMax": 306,
+            "spellPowerCoefficient": 0.143,
+            "cooldownSeconds": 120,
+            "rangeYards": 20,
+            "targetType": "Humanoid"
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ],
     [
       "Desperate Prayer",
-      "Instantly heals the caster for 1285 to 1513.",
+      "Instantly heals the caster for 1318 to 1546.",
       "spell_holy_restoration",
       {
         "build": "1.60.1.69876",
@@ -59,13 +102,19 @@
             "classes": [
               "Priest"
             ],
-            "description": "Instantly heals the caster for 1285 to 1513.",
+            "description": "Instantly heals the caster for 1318 to 1546.",
             "icon": "spell_holy_restoration",
             "passive": false,
             "cost": "Instant; 10 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19243",
+            "healMin": 1318,
+            "healMax": 1546,
+            "healingPowerCoefficient": 0.429,
+            "cooldownSeconds": 600
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ],
@@ -87,14 +136,16 @@
             "icon": "ability_paladin_blindinglight2",
             "passive": false,
             "cost": "3% base Mana; 0.5 sec cast; 2 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=1277455"
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ],
     [
       "Contingency Plan",
-      "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing ? damage and begin healing for ? Health over 15 sec. A target may be affected by only one Contingency Plan.",
+      "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing 926 damage and begin healing for 670 Health over 15 sec. A target may be affected by only one Contingency Plan.",
       "ability_priest_soulwarding",
       {
         "build": "1.60.1.69876",
@@ -105,20 +156,29 @@
             "classes": [
               "Priest"
             ],
-            "description": "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing ? damage and begin healing for ? Health over 15 sec. A target may be affected by only one Contingency Plan.",
+            "description": "Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing 926 damage and begin healing for 670 Health over 15 sec. A target may be affected by only one Contingency Plan.",
             "icon": "ability_priest_soulwarding",
             "passive": false,
             "cost": "30 yd range; Instant; 10 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=1277640",
+            "absorb": 926,
+            "healing": 670,
+            "healDurationSeconds": 15,
+            "wardDurationSeconds": 30,
+            "healthThreshold": 0.35,
+            "cooldownSeconds": 600,
+            "scalingStatus": "Server-side; coefficients unavailable in client data"
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ],
   "Human": [
     [
       "Divine Grace",
-      "Instantly heals a friendly target below 50% Health for 1285 to 1513 and removes Weakened Soul from that target. Cannot be cast on self.",
+      "Instantly heals a friendly target below 50% Health for 1318 to 1546 and removes Weakened Soul from that target. Cannot be cast on self.",
       "ability_priest_savinggrace",
       {
         "build": "1.60.1.69876",
@@ -129,13 +189,19 @@
             "classes": [
               "Priest"
             ],
-            "description": "Instantly heals a friendly target below 50% Health for 1285 to 1513 and removes Weakened Soul from that target. Cannot be cast on self.",
+            "description": "Instantly heals a friendly target below 50% Health for 1318 to 1546 and removes Weakened Soul from that target. Cannot be cast on self.",
             "icon": "ability_priest_savinggrace",
             "passive": false,
             "cost": "40 yd range; Instant; 10 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=1277378",
+            "healMin": 1318,
+            "healMax": 1546,
+            "healingPowerCoefficient": 0.429,
+            "cooldownSeconds": 600
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ],
     [
@@ -155,9 +221,15 @@
             "icon": "spell_shadow_ritualofsacrifice",
             "passive": false,
             "cost": "230 Mana; Instant; 3 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19275",
+            "manaBurn": 105,
+            "damagePerManaBurned": 1,
+            "cooldownSeconds": 180,
+            "durationSeconds": 15
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ],
@@ -179,9 +251,42 @@
             "icon": "spell_nature_lightningshield",
             "passive": false,
             "cost": "250 Mana; Instant",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19312",
+            "damage": 96,
+            "spellPowerCoefficient": 0.267,
+            "charges": 3,
+            "procIntervalSeconds": 3.5,
+            "notes": "Current tooltip says 96; older aura says 116 and trigger is server-side. Simulator follows current tooltip."
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
+      }
+    ],
+    [
+      "Hex of Weakness",
+      "Weakens the target enemy, reducing melee attack power by 204 and reducing the effectiveness of any healing by 20%. Lasts 2 min",
+      "spell_shadow_fingerofdeath",
+      {
+        "source": "forever-client",
+        "variants": [
+          {
+            "spellId": 19285,
+            "classes": [
+              "Priest"
+            ],
+            "description": "Weakens the target enemy, reducing melee attack power by 204 and reducing the effectiveness of any healing by 20%. Lasts 2 min",
+            "icon": "spell_shadow_fingerofdeath",
+            "passive": false,
+            "cost": "240 Mana",
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19285",
+            "attackPowerReduction": 204,
+            "healingReduction": 0.2,
+            "durationSeconds": 120
+          }
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ],
@@ -203,9 +308,11 @@
             "icon": "spell_holy_elunesgrace",
             "passive": false,
             "cost": "3% base Mana; Instant; 5 min cooldown",
-            "reqText": null
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=2651"
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ],
     [
@@ -213,8 +320,7 @@
       "Rains starshards down on the enemy target's head, causing 1800 Arcane damage over 6 sec.",
       "spell_arcane_starfire",
       {
-        "build": "1.60.1.69876",
-        "source": "client",
+        "source": "foreverdb",
         "variants": [
           {
             "spellId": 19305,
@@ -224,10 +330,18 @@
             "description": "Rains starshards down on the enemy target's head, causing 1800 Arcane damage over 6 sec.",
             "icon": "spell_arcane_starfire",
             "passive": false,
-            "cost": "350 Mana; 30 yd range; Channeled; 30 sec cooldown",
-            "reqText": null
+            "cost": "350 Mana; 30 yd range; Instant; 30 sec cooldown",
+            "reqText": null,
+            "sourceUrl": "https://www.wowhead.com/forever/spell=19305",
+            "school": "Arcane",
+            "durationSeconds": 6,
+            "tickIntervalSeconds": 1,
+            "tickDamage": 300,
+            "spellPowerCoefficientPerTick": 0.167,
+            "requiredLevel": 58
           }
-        ]
+        ],
+        "verifiedDate": "2026-10-07"
       }
     ]
   ]

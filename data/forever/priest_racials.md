@@ -1,16 +1,24 @@
 # WoW Classic Forever - Priest Racial Spells & Abilities Reference
 Source: https://hyjal.cc/racials
-Build: 1.60.1.69876
+Original import: build 1.60.1.69876; racial spell details verified 2026-10-07.
+Updated simulation coverage and source links: [Priest racials](../../threejs_webgl_des/PRIEST_RACIALS.md).
+Devouring Plague and Fear Ward are shared spells for all Priest races.
 
 ---
 
 ## 1. Undead
+### **Touch of Weakness**
+- **Spell / triggered effect**: 19266 / 19254
+- **Cost**: 195 Mana | Instant
+- **Damage**: 56 + 0.107 × Shadow spell power on the next incoming melee hit.
+- **Debuff**: -204 melee attack power for 2 min.
+
 ### **Dark Sacrifice**
 - **Spell ID**: 1277328
 - **Icon**: `spell_holy_powerinfusion_shadow`
 - **Cost**: Instant
 - **Cooldown**: 10 min cooldown
-- **Tooltip**: Cannibalize 1600 of your own Health over 15 sec to gain 1600 Mana.
+- **Tooltip**: Cannibalize 1600 of your own Health over 15 sec to gain 1600 (+100% of Spirit) Mana.
 
 *(Also gains: Will of the Forsaken, Cannibalize, Touch of the Grave - 10% chance to drain up to 5% Max HP, Underwater Breathing)*
 
@@ -29,9 +37,9 @@ Build: 1.60.1.69876
 - **Icon**: `spell_holy_restoration`
 - **Cost**: Instant
 - **Cooldown**: 10 min cooldown
-- **Tooltip**: Instantly heals the caster for 1285 to 1513.
+- **Tooltip**: Instantly heals the caster for 1318 to 1546.
 
-*(Also gains: Stoneform - +10% Armor, Bleed/Poison/Disease immune for 8s, Mace Specialization, Find Treasure)*
+*(Also gains: Stoneform - +10% Armor, Bleed/Poison/Disease immune for 8s, Mace Specialization - +1% spell crit with a mace, Big Game Hunter - +5% damage to Beasts, Find Treasure)*
 
 ---
 
@@ -48,9 +56,9 @@ Build: 1.60.1.69876
 - **Icon**: `ability_priest_soulwarding`
 - **Cost**: 30 yd range | Instant
 - **Cooldown**: 10 min cooldown
-- **Tooltip**: Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing ? damage and begin healing for ? Health over 15 sec. A target may be affected by only one Contingency Plan.
+- **Tooltip**: Place a Holy ward on an ally for 30 sec. The next time this ally takes damage dropping their Health below 35%, they will gain a shield absorbing 926 damage and begin healing for 670 Health over 15 sec. A target may be affected by only one Contingency Plan.
 
-*(Also gains: Expansive Mind - +5% Mana, Escape Artist, Engineering Specialization)*
+*(Also gains: Expansive Mind - +5% Mana, Eureka! - 3 non-periodic spell charges in 15 sec; +10% damage/healing and -10% mana on a 2 min cooldown, Escape Artist, Engineering Specialization)*
 
 ---
 
@@ -60,7 +68,7 @@ Build: 1.60.1.69876
 - **Icon**: `ability_priest_savinggrace`
 - **Cost**: 40 yd range | Instant
 - **Cooldown**: 10 min cooldown
-- **Tooltip**: Instantly heals a friendly target below 50% Health for 1285 to 1513 and removes Weakened Soul from that target. Cannot be cast on self.
+- **Tooltip**: Instantly heals a friendly target below 50% Health for 1318 to 1546 and removes Weakened Soul from that target. Cannot be cast on self.
 
 ### **Feedback**
 - **Spell ID**: 19275
@@ -74,6 +82,11 @@ Build: 1.60.1.69876
 ---
 
 ## 5. Troll
+### **Hex of Weakness**
+- **Spell ID**: 19285
+- **Cost**: 240 Mana | 30 yd | Instant
+- **Debuff**: -204 melee attack power and -20% healing received for 2 min.
+
 ### **Shadowguard**
 - **Spell ID**: 19312
 - **Icon**: `spell_nature_lightningshield`
@@ -81,15 +94,18 @@ Build: 1.60.1.69876
 - **Cooldown**: None (Buff)
 - **Tooltip**: The caster is surrounded by shadows. When a spell, melee or ranged attack hits the caster, the attacker will be struck for 96 Shadow damage. Attackers can only be damaged once every few seconds. This damage causes no threat. 3 charges. Lasts 10 min.
 
-*(Also gains: Berserking - +10% Haste for 10s, Beast Slaying - +5% vs Beasts, Regeneration)*
+*(Also gains: Berserking - +10% Haste for 10s on a 3 min cooldown, Beast Slaying - +5% vs Beasts, Regeneration)*
 
 ---
 
 ## 6. Night Elf
 ### **Starshards**
+- **Updated source**: https://foreverdb.net/spell/19305
+- **Required level / rank**: 58 / 7
+- **Ticks**: six Arcane ticks, every 1 sec; 300 + 0.167 × spell power per tick (1.002 total coefficient).
 - **Spell ID**: 19305
 - **Icon**: `spell_arcane_starfire`
-- **Cost**: 350 Mana | 30 yd range | Channeled
+- **Cost**: 350 Mana | 30 yd range | Instant
 - **Cooldown**: 30 sec cooldown
 - **Tooltip**: Rains starshards down on the enemy target's head, causing 1800 Arcane damage over 6 sec.
 
@@ -100,4 +116,4 @@ Build: 1.60.1.69876
 - **Cooldown**: 5 min cooldown
 - **Tooltip**: Reduces the chance you'll be hit by melee and ranged attacks by 50% for 15 sec or until you are missed 3 times.
 
-*(Also gains: Shadowmeld, Quickness - +1% Dodge, Wisp Spirit)*
+*(Also gains: Elune's Light - +10% crit for 15 sec on a 3 min cooldown, Shadowmeld, Quickness - +1% Dodge, Wisp Spirit)*

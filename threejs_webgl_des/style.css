@@ -2454,3 +2454,19 @@ footer {
 .regret-action-icon.is-best { box-shadow: 0 0 0 1px #a4c077; }
 .regret-action-icon:hover, .regret-action-icon:focus-visible { outline: 2px solid #ddc588; outline-offset: 2px; }
 .regret-max-gain { text-align: right; color: #99cc9a; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Both classes use the original configuration panel structure and styles. */
+.priest-preview .talent-node { cursor: help; }
+.priest-preview .talent-node:focus { outline: 2px solid var(--text-gold); outline-offset: 4px; }
+
+.priest-search-talent-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; padding: .75rem; }
+.priest-search-talent-summary ul { padding-left: 1.2rem; color: var(--text-parchment); font-size: .8rem; }
+@media (max-width: 760px) { .priest-search-talent-summary { grid-template-columns: 1fr; } }
+
+.split-seg.arcane { background: #9272d9; }
+.split-seg.holy { background: #d6b85b; }
+
+.priest-racial-encounter { grid-column: 1 / -1; }
+.priest-racial-encounter .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 12px; }
+.priest-racial-encounter .stat-field { display: flex; flex-direction: column; gap: 5px; }
+.priest-racial-encounter p { margin: 12px; color: #cbd5e1; font-size: 0.85rem; }

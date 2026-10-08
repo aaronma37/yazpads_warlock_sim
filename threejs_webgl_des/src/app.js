@@ -1,3 +1,4 @@
+import { initPriestPreview } from './priest_preview.js';
 import { WARLOCK_IMPORT_BUFF_KEYS } from './classes/warlock_import.js';
 import { prepareUIBuildImport } from './contracts/ui_build.js';
 import { exportLogicalBuild, exportResolvedBuild } from './contracts/build_io.js';
@@ -1519,3 +1520,5 @@ $('regret-run').addEventListener('click', async () => {
  } catch(error){output.textContent=error.message;setStatus(error.name==='AbortError'?'Regret scan cancelled.':'Regret scan failed.');}
  finally{busy(false);controller=null;}
 });
+
+initPriestPreview({ tabs, switchTab, canSimulate: () => capable, canSwitch: () => !controller && !gaController && !aplGaController });

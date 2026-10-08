@@ -83,54 +83,7 @@ target_link_libraries(warlock_sim PRIVATE
 )
 
 if (EMSCRIPTEN)
-    set_target_properties(warlock_sim PROPERTIES
-        OUTPUT_NAME "index"
-        SUFFIX ".html"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs"
-    )
-    target_link_options(warlock_sim PRIVATE
-        -O3
-        -pthread
-        -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
-        -sPTHREAD_POOL_SIZE_STRICT=0
-        -sUSE_GLFW=3
-        -sWASM=1
-        -sINITIAL_MEMORY=512MB
-        -sSTACK_SIZE=2MB
-        -sALLOW_MEMORY_GROWTH=1
-        -sMAX_WEBGL_VERSION=2
-        --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets_web@/assets
-        --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/web_shell.html
-    )
-    target_compile_options(warlock_sim PRIVATE -pthread)
-
-    # Browser build of the actual C++ parity pipeline. Its WebGPU calls are
-    # bridged to navigator.gpu in native_gpu.cpp and require Asyncify while
-    # the browser completes GPU submissions and result readback.
-    add_executable(webgpu_parity_pipeline_web
-        src/sim/webgpu/parity_pipeline_main.cpp
-        ${SIM_SOURCES}
-    )
-    set_target_properties(webgpu_parity_pipeline_web PROPERTIES
-        OUTPUT_NAME "pipeline"
-        SUFFIX ".js"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/webgpu"
-    )
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/sim/webgpu/pipeline.html
-        ${CMAKE_CURRENT_SOURCE_DIR}/docs/webgpu/pipeline.html
-        COPYONLY
-    )
-    target_link_options(webgpu_parity_pipeline_web PRIVATE
-        -O3
-        -sASYNCIFY
-        -sALLOW_MEMORY_GROWTH=1
-        -sINITIAL_MEMORY=512MB
-        -sFILESYSTEM=1
-        -sINVOKE_RUN=0
-        -sEXIT_RUNTIME=1
-        -sEXPORTED_RUNTIME_METHODS=ccall,FS
-    )
+    message(FATAL_ERROR "Legacy WASM browser apps have been retired. Use threejs_webgl_des instead.")
 else()
     set_target_properties(warlock_sim PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"

@@ -1,20 +1,14 @@
 # Installation
 
-## Experimental WebGPU simulator
+## Browser simulator
 
-A browser experiment compares event-driven GPU simulation with 1/10/50 ms fixed
-steps in batches of 10,000 fights. It implements a restricted Warlock combat slice
-and retains the existing CPU simulator as an independent reference. See the
-[measured results, supported mechanics, and run instructions](docs/research/webgpu.md).
-Build the standalone demo with `./scripts/build_webgpu.sh`.
+The only browser app is `threejs_webgl_des/`, which is also the only directory
+published by the GitHub Pages workflow. Run `./scripts/serve_web.sh` to serve it
+locally, then open `http://localhost:8080`.
 
-The full C++ parity pipeline also runs in a browser through WebGPU. Build the
-WASM app with `./scripts/build_desktop_wasm.sh`, then serve `docs/` over
-localhost or HTTPS and open `webgpu/pipeline.html`. Choose **Spec presets** to
-run the browser equivalent of `./bin/webgpu_parity_pipeline --presets`; it
-executes both the C++ CPU reference and WebGPU kernel and lets you download the
-JSON and Markdown reports. The browser build uses Asyncify to wait for GPU
-completion and readback.
+The legacy CPU WASM app, WebGPU demo/parity pages, and earlier Three.js prototype
+HTML entry points have been removed. Their browser build commands are retired;
+the native C++ simulator and WebGPU research code remain available.
 
 ## Training recurrent policies on CPU
 

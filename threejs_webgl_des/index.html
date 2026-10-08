@@ -18,7 +18,7 @@
         <button type="button" class="class-icon-btn active" id="btn-class-warlock" title="Warlock (Active)">
           <img src="./assets/icons/Class_Warlock.png" alt="Warlock">
         </button>
-        <button type="button" class="class-icon-btn disabled" id="btn-class-priest" title="Priest (Disabled)">
+        <button type="button" class="class-icon-btn disabled" id="btn-class-priest" title="Priest is experimental and temporarily unavailable" disabled>
           <img src="./assets/icons/Class_Priest.png" alt="Priest">
         </button>
       </div>
@@ -53,7 +53,7 @@
     <div id="tab-current-build" class="tab-pane" role="tabpanel" hidden>
       <form id="setup-form">
         <fieldset id="inputs" style="border:none; padding:0; margin:0;">
-          <div class="current-build-grid">
+          <div class="current-build-grid" data-shared-panel="current-configuration">
             
             <!-- COLUMN 1: RACE/PET/DS SLOTS, DIRECT STATS & APL PRIORITY LIST (~360px) -->
             <div class="build-col-armory">
@@ -158,7 +158,7 @@
                 </div>
 
                 <!-- Direct Stats View -->
-                <div id="direct-stats-view">
+                <div id="direct-stats-view" data-shared-panel="direct-stats">
                   <div class="direct-stats-grid">
                     <div class="stat-field">
                       <label>Spell Power</label>
@@ -430,7 +430,7 @@
               </details>
 
               <!-- 5. Target Configuration Accordion -->
-              <details class="wow-accordion">
+              <details class="wow-accordion" data-shared-panel="target">
                 <summary>Target Configuration</summary>
                 <div class="accordion-body">
                   <div class="direct-stats-grid">
@@ -529,7 +529,7 @@
             <!-- COLUMN 3: SIM CONFIGURATION & SIMULATION RESULTS (RIGHT COLUMN) -->
             <div class="build-col-sim">
               <!-- 1. Sim Configuration Subpanel -->
-              <div class="sim-subpanel">
+              <div class="sim-subpanel" data-shared-panel="simulation">
                 <div class="sim-subpanel-title">Sim Configuration</div>
                 <div class="sim-fields-grid">
                   <div class="stat-field">

@@ -4,8 +4,9 @@ import { mapEvaluationResults } from './evaluation.js';
 
 // Transitional adapter for already-resolved configs. Bind once per search/module;
 // do not migrate optimizer candidates or copy/reapply config effects.
-export function createNativeEvaluator({ classId, runBatch }) {
-  requireClassCapability(getClassModule(classId), 'batchSimulation');
+export function createNativeEvaluator({ classId, classModule = getClassModule(classId), runBatch }) {
+  if (classModule.id !== classId) throw new Error('Native evaluator class identity mismatch.');
+  requireClassCapability(classModule, 'batchSimulation');
   return async function evaluateNative(configs, options = {}, { requestId, candidateIds } = {}) {
     if (typeof requestId !== 'string' || !requestId.trim()) throw new Error('Native evaluation requires requestId.');
     if (!Array.isArray(configs) || !configs.length || !Array.isArray(candidateIds) || candidateIds.length !== configs.length) throw new Error('Native candidate/config count mismatch.');

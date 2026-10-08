@@ -8,13 +8,14 @@ export function createBuildOptimizer({ classModule, simulation, dependencies = {
   const createDefaultAPLIndividual = classModule.search.apl.createDefault;
   const getAvailableActionsForSpec = classModule.search.apl.availableActions;
   const individualToBytecodeRules = classModule.search.apl.encodeIndividual;
+  const cloneAPL = classModule.search.apl.cloneIndividual ?? (apl => apl ? { rules: apl.rules.map(r => ({ ...r })) } : null);
 // Genetic Algorithm Constrained Spec Search Engine for Classic WoW Warlock DES
 // Seamlessly operates in tandem with WebGL2 multi-config GPU shader simulation
 
 // Resolve once at module startup; candidate loops retain direct class-owned references.
 const activeClass = classModule;
 const searchRules = activeClass.search;
-const evaluateBatch = createNativeEvaluator({ classId: activeClass.id, runBatch: runMultiSimulation });
+const evaluateBatch = createNativeEvaluator({ classId: activeClass.id, classModule: activeClass, runBatch: runMultiSimulation });
 const { createCandidateResult } = searchRules.results;
 const { formatBuildName, getMapElitesKey, getIndUniqueKey } = searchRules.identity;
 const { enforceConstraints, createRandomIndividual, crossoverIndividuals, mutateIndividual } =
@@ -176,7 +177,7 @@ async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { signal, 
       mapElitesGrid.set(key, {
         ...currentPool[i],
         talents: new Uint8Array(currentPool[i].talents),
-        apl: currentPool[i].apl ? { rules: currentPool[i].apl.rules.map(r => ({ ...r })) } : null
+        apl: cloneAPL(currentPool[i].apl)
       });
     }
   }
@@ -237,7 +238,7 @@ async function runConstrainedGeneticSearch(baseStatsConfig, gaConfig, { signal, 
         mapElitesGrid.set(key, {
           ...activeBatch.pool[i],
           talents: new Uint8Array(activeBatch.pool[i].talents),
-          apl: activeBatch.pool[i].apl ? { rules: activeBatch.pool[i].apl.rules.map(r => ({ ...r })) } : null
+          apl: cloneAPL(activeBatch.pool[i].apl)
         });
       }
     }

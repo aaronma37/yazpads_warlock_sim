@@ -1,0 +1,107 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync,mkdtempSync,readFileSync,writeFileSync,rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { PRIEST_RACES,PRIEST_RACIALS,RACE_ICONS } from '../src/priest/racials.js';
+import { packConfig,validate,decodeState,STATE_WORDS,COMPACT_STRIPES,FAST_STATE } from '../src/priest/model.js';
+import { VERTEX,FRAGMENT,FAST_FRAGMENT } from '../src/priest/kernel.js';
+import { resolvePriestUIBuild } from '../src/priest/ui_config.js';
+import { packPriestAPL,formatPriestPolicy } from '../src/priest/policy.js';
+const data=JSON.parse(readFileSync(new URL('../data/priest_preview.json',import.meta.url)));
+const stats={spellPower:500,shadowPower:100,holyPower:50,hit:12,crit:15,intellect:200,stamina:200,spirit:100,mp5:20};
+const build=race=>resolvePriestUIBuild({stats,sim:{duration:30,iterations:2},preset:{...data.presets.find(p=>p.id==='shadow_core'),race},trees:data.trees});
+test('All six races expose two class spells, real icons and shared Devouring Plague',()=>{
+ assert.equal(PRIEST_RACES.length,6);
+ for(const race of PRIEST_RACES){
+  const b=build(race);assert.equal(b.config.race,PRIEST_RACES.indexOf(race));assert.equal(b.config.plagueEnabled,1);
+  assert.equal(b.config.starshardsEnabled,race==='NIGHT_ELF'?1:0);
+  assert.ok(existsSync(new URL(`../assets/icons/${RACE_ICONS[race]}`,import.meta.url)));
+  for(const spell of PRIEST_RACIALS[race])assert.ok(existsSync(new URL(`../assets/icons/${spell.icon}`,import.meta.url)),spell.name);
+  assert.match(formatPriestPolicy({race}),/devouring_plague/);
+ }
+ assert.equal(build('GNOME').config.maxMana,build('DWARF').config.maxMana*1.05);
+ assert.equal(build('HUMAN').config.spirit,105);assert.equal(build('GNOME').config.spirit,100);
+ for(const invalid of [{race:6},{race:1.1},{incomingAttackInterval:.0001},{incomingAttackType:4},{targetIsHumanoid:2},{graveProcInterval:-1}])assert.throws(()=>validate(invalid));
+});
+function unpack(outputs,lane,detailed){
+ const words=new Uint32Array(detailed?STATE_WORDS:8);
+ for(let i=0;i<words.length;i++)words[i]=outputs[Math.floor(i%16/4)][(Math.floor(i/16)*2+lane)*4+i%4];
+ return decodeState(words,detailed);
+}
+test('Actual GPU racial spell mechanics, conditional triggers and fast/detailed parity',t=>{
+ const dir=mkdtempSync(join(tmpdir(),'priest-racials-'));const cases=[],labels=[];
+ const add=(name,config)=>{labels.push(name);for(const detailed of [true,false])cases.push({mode:detailed?'detailed':'fast',configWords:Array.from(packConfig({duration:12,rotation:'idle',racialsEnabled:1,manaPerTick:0,spiritManaPerTick:0,hitChance:1,holyHitChance:1,critChance:0,holyCritChance:0,...config})),width:2,height:detailed?COMPACT_STRIPES:1,uniforms:{numConfigs:1,fightsPerConfig:2,seed:42,offset:0,count:2,gridWidth:2,eventBudget:65536}});};
+ add('chastise',{race:3,rotation:'chastise-only',targetIsHumanoid:1,holySpellPower:500,duration:121});
+ add('nonhumanoid',{race:3,rotation:'chastise-only'});
+ add('chastise-range',{race:3,rotation:'chastise-only',targetIsHumanoid:1,targetDistance:20.01});
+ add('chastise-miss',{race:3,rotation:'chastise-only',targetIsHumanoid:1,holyHitChance:0});
+ add('eureka-flay',{race:4,rotation:'flay-only',duration:3});
+ add('base-flay',{race:4,racialsEnabled:0,rotation:'flay-only',duration:3});
+ add('eureka-pain',{race:4,rotation:'pain-only',duration:18});
+ add('base-pain',{race:4,racialsEnabled:0,rotation:'pain-only',duration:18});
+ add('berserking',{race:5,rotation:'flay-only',duration:3.7});
+ add('troll-beast',{race:5,rotation:'flay-only',duration:3,targetIsBeast:1});
+ add('dwarf-beast',{race:3,rotation:'flay-only',duration:3,targetIsBeast:1});
+ add('elunes-light',{race:2,rotation:'blast-only',duration:15});
+ add('guard-no-incoming',{race:5});
+ add('guard',{race:5,incomingAttackInterval:1,incomingDamage:1,maxMana:250});
+ add('feedback',{race:0,incomingAttackType:3,incomingAttackInterval:2,incomingDamage:1,targetMana:220});
+ add('feedback-nomana',{race:0,incomingAttackType:3,incomingAttackInterval:2,incomingDamage:1});
+ add('weakness',{race:1,incomingAttackInterval:2,incomingDamage:100,maxMana:195});
+ add('weakness-spell',{race:1,incomingAttackType:3,incomingAttackInterval:2,incomingDamage:100,maxMana:195});
+ add('hex',{race:5,incomingAttackInterval:2,incomingDamage:100,enemyHealingPerTick:100,maxMana:490});
+ add('sacrifice',{race:1,rotation:'death-only',duration:95,maxMana:2000,spirit:100});
+ add('sacrifice-health',{race:1,rotation:'death-only',duration:95,maxMana:2000,maxHealth:1600});
+ add('prayer',{race:3,maxHealth:5000,initialHealthRatio:.4,duration:1,healingPower:500});
+ add('prayer-form',{race:3,maxHealth:5000,initialHealthRatio:.4,duration:1,healingPower:500,shadowformEnabled:1});
+ add('divine-grace',{race:0,allyInitialHealthRatio:.4,allyWeakenedSoul:15,duration:1,healingPower:500});
+ add('divine-self',{race:0,initialHealthRatio:.4,duration:1});
+ add('divine-range',{race:0,allyInitialHealthRatio:.4,allyDistance:40.1,duration:1});
+ add('contingency',{race:4,allyAttackInterval:2,allyIncomingDamage:900,duration:12});
+ add('contingency-range',{race:4,allyAttackInterval:2,allyIncomingDamage:900,allyDistance:30.1,duration:12});
+ add('contingency-lethal',{race:4,allyAttackInterval:2,allyIncomingDamage:5000,duration:6});
+ add('grace-defense',{race:2,incomingAttackInterval:.2,incomingDamage:100,duration:6});
+ add('grace-spell',{race:2,incomingAttackType:3,incomingAttackInterval:.2,incomingDamage:100,duration:6});
+ add('flash',{race:4,initialHealthRatio:.4,incomingAttackInterval:.5,incomingDamage:10,targetControlImmune:0,duration:4});
+ add('flash-immune',{race:4,initialHealthRatio:.4,incomingAttackInterval:.5,incomingDamage:10,targetControlImmune:1,duration:4});
+ add('grave',{race:1,rotation:'death-only',duration:1800,spellPower:0,maxMana:100000,maxHealth:5000});
+ add('grave-pain',{race:1,rotation:'pain-only',duration:18,maxMana:100000,maxHealth:5000});
+ add('mace',{race:3,rotation:'chastise-only',targetIsHumanoid:1,weaponIsMace:1,holyCritChance:.99});
+ add('chastise-apl',{race:3,rotation:'mixed',targetIsHumanoid:1,aplEnabled:1,...packPriestAPL([{spell:12,healthMax:100,manaMin:0,enabled:true}])});
+ try{
+  const path=join(dir,'manifest.json');writeFileSync(path,JSON.stringify({vertex:'#version 300 es\n'+VERTEX,detailed:'#version 300 es\n'+FRAGMENT,fast:'#version 300 es\n'+FAST_FRAGMENT,cases}));
+  const run=spawnSync('python3',[fileURLToPath(new URL('./headless_gles.py',import.meta.url)),path],{encoding:'utf8',timeout:180000,maxBuffer:8*1024*1024});
+  assert.equal(run.status,0,run.stderr||String(run.error));const {outputs,renderer}=JSON.parse(run.stdout);t.diagnostic(renderer);
+  const results=Object.fromEntries(labels.map((name,i)=>[name,unpack(outputs[i*2],0,true)]));
+  for(let i=0;i<labels.length;i++)for(let lane=0;lane<2;lane++){const a=unpack(outputs[i*2],lane,true),b=unpack(outputs[i*2+1],lane,false);for(const key of Object.keys(FAST_STATE))assert.equal(a[key],b[key],`${labels[i]} ${key}`);}
+  if(process.env.PRIEST_RACIAL_OUTPUT)writeFileSync(process.env.PRIEST_RACIAL_OUTPUT,JSON.stringify(results,null,2));
+  const r=name=>results[name];
+  assert.equal(r('chastise').casts12,2);assert.equal(r('chastise').manaSpent,450);assert.ok(r('chastise').damage12>2*(272+500*.143)&&r('chastise').damage12<2*(306+500*.143));
+  assert.ok(Math.abs(r('chastise').threat-r('chastise').damage12*.1)<.001);
+  for(const name of ['nonhumanoid','chastise-range'])assert.equal(r(name).casts12,0);
+  assert.equal(r('chastise-miss').misses12,1);assert.equal(r('chastise-miss').damage12,0);
+  assert.ok(Math.abs(r('eureka-flay').damage1/r('base-flay').damage1-1.1)<1e-6);assert.equal(r('eureka-flay').manaSpent,184.5);
+  assert.equal(r('eureka-pain').damage0,r('base-pain').damage0);assert.equal(r('eureka-pain').manaSpent,470);
+  assert.equal(r('berserking').casts1,2);assert.equal(r('berserking').hits1,4);assert.equal(r('berserking').berserkingUses,1);
+  for(const name of ['troll-beast','dwarf-beast'])assert.ok(Math.abs(r(name).damage1/r('base-flay').damage1-1.05)<1e-6);
+  assert.equal(r('elunes-light').elunesLightUses,1);
+  assert.equal(r('guard-no-incoming').casts13,0);assert.equal(r('guard').casts13,1);assert.equal(r('guard').hits13,3);assert.equal(r('guard').threat,0);
+  assert.ok(Math.abs(r('guard').damage13-3*(96+500*.267))<.01);
+  assert.equal(r('feedback').targetManaBurned,220);assert.equal(r('feedback').damage14,220);assert.equal(r('feedback').casts14,1);assert.equal(r('feedback-nomana').casts14,0);
+  assert.equal(r('weakness').casts15,1);assert.equal(r('weakness').hits15,1);assert.ok(Math.abs(r('weakness').damage15-(56+500*.107))<.01);assert.ok(r('weakness').damagePrevented>0);assert.equal(r('weakness-spell').casts15,0);
+  assert.equal(r('hex').casts16,1);assert.ok(r('hex').enemyHealingPrevented>0);
+  assert.equal(r('sacrifice').casts17,1);assert.equal(r('sacrifice').healthSpent,1600);assert.ok(Math.abs(r('sacrifice').darkSacrificeMana-1700)<.01);
+  assert.equal(r('sacrifice-health').casts17,0);
+  assert.equal(r('prayer').casts18,1);assert.ok(r('prayer').healing18>=1318+500*.429);assert.equal(r('prayer-form').casts18,0);
+  assert.equal(r('divine-grace').casts19,1);assert.ok(r('divine-grace').healing19>0);assert.equal(r('divine-grace').allyWeakenedSoulRemainingMs,0);
+  for(const name of ['divine-self','divine-range'])assert.equal(r(name).casts19,0);
+  assert.equal(r('contingency').casts20,1);assert.equal(r('contingency').hits20,1);assert.ok(r('contingency').absorbed>0);assert.ok(r('contingency').healing20>0);assert.equal(r('contingency-range').casts20,0);assert.equal(r('contingency-lethal').hits20,0);
+  assert.equal(r('grace-defense').casts22,1);assert.equal(r('grace-spell').casts22,0);
+  assert.equal(r('flash').casts21,1);assert.ok(r('flash').damageTaken<r('flash-immune').damageTaken);assert.equal(r('flash-immune').casts21,0);
+  assert.ok(r('grave').casts23>0);assert.equal(r('grave').damage23,r('grave').casts23*250);assert.ok(r('grave').casts23<=r('grave').casts3);assert.ok(r('grave-pain').casts23<=r('grave-pain').casts0);assert.equal(r('grave-pain').casts0,1);
+  assert.equal(r('mace').crits12,1);assert.equal(r('chastise-apl').casts12,1);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});

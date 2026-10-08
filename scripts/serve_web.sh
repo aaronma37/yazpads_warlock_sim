@@ -3,14 +3,14 @@ set -euo pipefail
 
 PORT="${1:-8080}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCS_DIR="$(cd "${SCRIPT_DIR}/../docs" && pwd)"
+WEB_DIR="$(cd "${SCRIPT_DIR}/../threejs_webgl_des" && pwd)"
 
 echo "=========================================================="
 echo "  WoW Forever Simulator Local Web Server"
 echo "=========================================================="
-echo "Serving: ${DOCS_DIR}"
+echo "Serving: ${WEB_DIR}"
 echo ""
-echo "  🖥️ WebAssembly ImGui Simulator: http://localhost:${PORT}/index.html"
+echo "  Three.js WebGL Simulator: http://localhost:${PORT}/index.html"
 echo ""
 echo "Press Ctrl+C to stop the server."
 echo "=========================================================="
@@ -20,4 +20,4 @@ if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
     (sleep 0.8 && xdg-open "http://localhost:${PORT}/index.html" >/dev/null 2>&1) &
 fi
 
-python3 -m http.server --directory "${DOCS_DIR}" "${PORT}"
+python3 -m http.server --directory "${WEB_DIR}" "${PORT}"
