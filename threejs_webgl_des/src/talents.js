@@ -1,4 +1,4 @@
-import { CLASS_PRESENTATION } from './classes/active_class.js';
+import { ACTIVE_CLASS, CLASS_PRESENTATION } from './classes/active_class.js';
 // Interactive 3-tree Warlock Talent System (Flicker-Free DOM Architecture with Authentic Tooltips)
 import { showTooltip, hideTooltip } from './tooltips.js';
 
@@ -38,6 +38,23 @@ export function getPointsPerTree() {
 
 export function getTotalPoints() {
   return Object.values(currentAllocation).reduce((sum, r) => sum + r, 0);
+}
+
+// Use the same row and prerequisite rules as build imports and spec search.
+export function canChangeTalentPoint(treeIdx, talentIdx, delta) {
+  if (!talentData || ![1, -1].includes(delta)) return false;
+  const { graph, definitions, pointBudget } = ACTIVE_CLASS.search.talents;
+  const talent = talentData.trees[treeIdx]?.talents[talentIdx];
+  const nodeIdx = definitions.findIndex(node => node.tree === treeIdx && node.name === talent?.name);
+  if (nodeIdx < 0) return false;
+  const ranks = definitions.map(node => {
+    const index = talentData.trees[node.tree]?.talents.findIndex(t => t.name === node.name);
+    return currentAllocation[`${node.tree}_${index}`] || 0;
+  });
+  if (delta > 0) {
+    return getTotalPoints() < pointBudget && graph.getValidReceivers(ranks).includes(nodeIdx);
+  }
+  return graph.getValidDonors(ranks).includes(nodeIdx);
 }
 
 export function resetTalents(onTalentChange) {
@@ -302,14 +319,8 @@ function buildTalentTreesDOM(onTalentChange) {
             // Left click = allocate point
             node.addEventListener('click', (e) => {
               e.preventDefault();
-              const pointsPerTree = getPointsPerTree();
-              const reqPoints = (r - 1) * 5;
-              const isUnlocked = pointsPerTree[tIdx] >= reqPoints;
               const currentRank = currentAllocation[rankKey] || 0;
-              const totalPoints = getTotalPoints();
-
-              if (!isUnlocked && currentRank === 0) return;
-              if (totalPoints >= 51 && currentRank === 0) return;
+              if (!canChangeTalentPoint(tIdx, talIdx, 1)) return;
               if (currentRank < talent.max) {
                 currentAllocation[rankKey] = currentRank + 1;
                 updateTalentsView(onTalentChange);
@@ -322,7 +333,7 @@ function buildTalentTreesDOM(onTalentChange) {
             node.addEventListener('contextmenu', (e) => {
               e.preventDefault();
               const currentRank = currentAllocation[rankKey] || 0;
-              if (currentRank > 0) {
+              if (currentRank > 0 && canChangeTalentPoint(tIdx, talIdx, -1)) {
                 currentAllocation[rankKey] = currentRank - 1;
                 if (currentAllocation[rankKey] === 0) delete currentAllocation[rankKey];
                 updateTalentsView(onTalentChange);
@@ -349,9 +360,8 @@ function buildTalentTreesDOM(onTalentChange) {
 
 function renderTalentTooltip(e, tIdx, talIdx, row, talent, rankKey, treeName) {
   const currentRank = currentAllocation[rankKey] || 0;
-  const pointsPerTree = getPointsPerTree();
   const reqPoints = (row - 1) * 5;
-  const isUnlocked = pointsPerTree[tIdx] >= reqPoints;
+  const isUnlocked = canChangeTalentPoint(tIdx, talIdx, 1);
 
   const title = talent.name;
   const subtitle = `Rank ${currentRank} / ${talent.max}`;
@@ -368,14 +378,17 @@ function renderTalentTooltip(e, tIdx, talIdx, row, talent, rankKey, treeName) {
     desc = talent.desc[0] || '';
   }
 
-  let footer = '';
-  if (!isUnlocked && currentRank === 0) {
-    footer = `<span style="color:#ef4444;">Requires ${reqPoints} points in ${treeName} Talents</span>`;
-  } else if (currentRank === talent.max) {
-    footer = `<span style="color:#4ade80;">Right-click to unlearn.</span>`;
-  } else {
-    footer = `<span style="color:#4ade80;">Left-click to learn.<br>Right-click to unlearn.</span>`;
+  const instructions = [];
+  if (currentRank < talent.max) {
+    if (isUnlocked) instructions.push('Left-click to learn.');
+    else instructions.push(`<span style="color:#ef4444;">Requires ${reqPoints} points in earlier rows, all prerequisite talents, and an available talent point.</span>`);
   }
+  if (currentRank > 0) {
+    instructions.push(canChangeTalentPoint(tIdx, talIdx, -1)
+      ? 'Right-click to unlearn.'
+      : '<span style="color:#ef4444;">Unlearn dependent talents first; this point is required by other talents.</span>');
+  }
+  const footer = instructions.join('<br>');
 
   showTooltip(e, { title, subtitle, desc, nextRankDesc, footer });
 }
@@ -417,8 +430,7 @@ export function updateTalentsView(onTalentChange) {
     if (!talent) return;
 
     const currentRank = currentAllocation[rankKey] || 0;
-    const reqPoints = (Number(node.dataset.row) - 1) * 5;
-    const isUnlocked = pointsPerTree[tIdx] >= reqPoints;
+    const isUnlocked = canChangeTalentPoint(tIdx, talIdx, 1);
     const isMax = currentRank === talent.max;
     const isActive = currentRank > 0;
 
