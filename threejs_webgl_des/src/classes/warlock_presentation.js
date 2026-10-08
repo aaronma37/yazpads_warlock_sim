@@ -13,7 +13,7 @@ const raceDetails = {
   ORC: {
     icon: './assets/icons/Achievement_Character_Orc_Male.png',
     traits: [
-      { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+10% Spell Power)', desc: 'Increases base spell power by 10% for 15 sec. 120 sec cooldown; aligned with Bane of Doom when available.' },
+      { name: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', title: 'Blood Fury (+10% Spell Power)', desc: 'Increases base spell power by 10% for 15 sec. 120 sec cooldown. A Blood Fury APL row controls activation; older APLs without one use automatic racial timing.' },
       { name: 'Hardiness', icon: 'Spell_Shadow_AntiShadow.png', title: 'Hardiness (+25% Stun Resist)', desc: 'Chance to resist Stun effects increased by an additional 25%.' }
     ]
   },
@@ -28,7 +28,7 @@ const raceDetails = {
   TROLL: {
     icon: './assets/icons/Achievement_Character_Troll_Male.png',
     traits: [
-      { name: 'Berserking', icon: 'Racial_Troll_Berserk.png', title: 'Berserking (+10% Haste)', desc: 'Increases casting speed by 10% for 10 sec. 180 sec cooldown.' },
+      { name: 'Berserking', icon: 'Racial_Troll_Berserk.png', title: 'Berserking (+10% Haste)', desc: 'Increases casting speed by 10% for 10 sec. 180 sec cooldown. A Berserking APL row controls activation; older APLs without one use automatic racial timing.' },
       { name: 'Beast Slaying', icon: 'Ability_Hunter_BeastSoothe.png', title: 'Beast Slaying (+5% vs Beasts)', desc: 'Damage dealt versus Beasts increased by 5%.' }
     ]
   },
@@ -85,6 +85,9 @@ const resultSpellIcons = {
 };
 
 const presetSpellIcons = {
+  BERSERKING: 'Racial_Troll_Berserk.png',
+  BLOOD_FURY: 'Racial_Orc_BerserkerStrength.png',
+  BLOODFURY: 'Racial_Orc_BerserkerStrength.png',
   EUREKA: 'Spell_Arcane_MindMastery.png',
   LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
   CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',

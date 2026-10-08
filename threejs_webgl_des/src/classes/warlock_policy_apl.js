@@ -19,6 +19,10 @@ export function buildPolicyAPL(rotation, talentFlags) {
   addRule(APL_ACTION.LIFE_TAP, APL_COND.MANA_LE, 25.0);
   actions.add('eureka');
   addRule(APL_ACTION.EUREKA);
+  actions.add('bloodFury');
+  addRule(APL_ACTION.BLOOD_FURY);
+  actions.add('berserking');
+  addRule(APL_ACTION.BERSERKING);
 
   if (rot === 'FIRE_DESTRO' || rot === 'INCINERATE_DECIMATION') {
     shaderRotation = 'fire';

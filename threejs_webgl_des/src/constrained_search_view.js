@@ -15,6 +15,8 @@ import { getAPLUnreachableFlags, getRaceVisibleAPLRules } from './apl_rules.js';
 import { SPELLS } from './model.js';
 
 const SPELL_ICONS = {
+  BERSERKING: 'Racial_Troll_Berserk.png',
+  BLOOD_FURY: 'Racial_Orc_BerserkerStrength.png',
   EUREKA: 'Spell_Arcane_MindMastery.png',
   LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
   CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',
@@ -532,7 +534,7 @@ export function renderGALeaderboard() {
             ${activeRules.map(r => {
               const spellName = r.spell || getSpellNameForAPL(r.action);
               const iconKey = getIconForSpell(spellName);
-              const iconSrc = iconKey === 'EUREKA' ? SPELL_ICONS.EUREKA : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+              const iconSrc = ['EUREKA', 'BLOOD_FURY', 'BERSERKING'].includes(iconKey) ? SPELL_ICONS[iconKey] : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
               return `<img src="./assets/icons/${iconSrc}" width="16" height="16" alt="${spellName}" title="${spellName}: ${r.condition || 'Always'}" style="border-radius:2px; border:1px solid #382c44; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
             }).join('')}
           </div>
@@ -646,7 +648,7 @@ export function renderSelectedCandidateDetails(cand) {
           ${activeRules.map(r => {
             const spellName = r.spell || getSpellNameForAPL(r.action);
             const iconKey = getIconForSpell(spellName);
-            const iconSrc = iconKey === 'EUREKA' ? SPELL_ICONS.EUREKA : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+            const iconSrc = ['EUREKA', 'BLOOD_FURY', 'BERSERKING'].includes(iconKey) ? SPELL_ICONS[iconKey] : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
             return `<img src="./assets/icons/${iconSrc}" width="18" height="18" alt="${spellName}" title="${spellName}: ${r.condition || 'Always'}" style="border-radius:2px; border:1px solid #382c44; display:block;" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">`;
           }).join('')}
         </div>
@@ -845,7 +847,7 @@ function renderAPLRows(cand) {
       const isUnreachable = unreachableFlags[i];
       const spellName = r.spell || getSpellNameForAPL(r.action);
       const iconKey = getIconForSpell(spellName);
-      const iconSrc = iconKey === 'EUREKA' ? SPELL_ICONS.EUREKA : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
+      const iconSrc = ['EUREKA', 'BLOOD_FURY', 'BERSERKING'].includes(iconKey) ? SPELL_ICONS[iconKey] : r.icon || SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
       const condSummary = r.condition || getConditionSummary(r);
       const prioColor = isUnreachable ? '#71717a' : 'var(--text-dim)';
       const nameColor = isUnreachable ? '#71717a' : '#67e8f9';
@@ -965,13 +967,17 @@ function getSpellNameForAPL(action) {
     16: 'Shadow Bolt',
     17: 'Siphon Life',
     18: 'Drain Hope / Wrack',
-    20: 'Eureka!'
+    20: 'Eureka!',
+    21: 'Blood Fury',
+    22: 'Berserking'
   };
   return map[action] || 'Action';
 }
 
 function getIconForSpell(name) {
   const clean = name.toUpperCase().replace(/[\s\/-]/g, '_');
+  if (clean.includes('BERSERKING')) return 'BERSERKING';
+  if (clean.includes('BLOOD_FURY')) return 'BLOOD_FURY';
   if (clean.includes('EUREKA')) return 'EUREKA';
   if (clean.includes('LIFE_TAP')) return 'LIFE_TAP';
   if (clean.includes('NIGHTFALL')) return 'NIGHTFALL';
@@ -990,6 +996,8 @@ function getIconForSpell(name) {
 }
 
 function getConditionSummary(rule) {
+  if (rule.action === 22) return 'Troll only; off GCD; cooldown ready';
+  if (rule.action === 21) return 'Orc only; off GCD; cooldown ready';
   if (rule.action === 20) return 'Gnome only; off GCD; cooldown ready';
   if (rule.action === 1) return `Emergency / Maintenance Tap (Mana <= ${rule.param || 25}%)`;
   if (rule.action === 2) return 'Shadow Trance proc active (Instant Cast)';

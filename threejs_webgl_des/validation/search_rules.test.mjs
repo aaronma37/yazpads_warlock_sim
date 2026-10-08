@@ -142,16 +142,16 @@ test('policy APL gates talent actions and preserves execute and affliction prior
   assert.ok(!fire.actionIds.includes('conflag'));
   assert.ok(!fire.aplRules.some(r => r.action === APL_ACTION.DECIMATION_SOUL_FIRE));
   const execute = buildPolicyAPL('INCINERATE_DECIMATION', { decimation: true, incinerate: true });
-  assert.equal(execute.aplRules[2].action, APL_ACTION.DECIMATION_SEARING_PAIN);
-  assert.equal(execute.aplRules[3].action, APL_ACTION.DECIMATION_SOUL_FIRE);
+  assert.equal(execute.aplRules[4].action, APL_ACTION.DECIMATION_SEARING_PAIN);
+  assert.equal(execute.aplRules[5].action, APL_ACTION.DECIMATION_SOUL_FIRE);
   assert.equal(execute.aplRules.at(-1).action, APL_ACTION.INCINERATE_FILLER);
   const affliction = buildPolicyAPL('DEEP_AFFLICTION', { nightfall: true, wrack: true, siphonLife: true });
-  assert.equal(affliction.aplRules[2].action, APL_ACTION.NIGHTFALL_SHADOW_BOLT);
-  assert.equal(affliction.aplRules[3].action, APL_ACTION.DRAIN_HOPE);
+  assert.equal(affliction.aplRules[4].action, APL_ACTION.NIGHTFALL_SHADOW_BOLT);
+  assert.equal(affliction.aplRules[5].action, APL_ACTION.DRAIN_HOPE);
   assert.ok(affliction.actionIds.includes('siphon'));
   const pactFire = buildPolicyAPL('DP_AF_FIRE', { demonicBrand: true });
   assert.equal(pactFire.shaderRotation, 'searing');
-  assert.equal(pactFire.aplRules[2].param, 57);
+  assert.equal(pactFire.aplRules[4].param, 57);
   assert.ok(pactFire.aplRules.some(r => r.action === APL_ACTION.DEMONIC_BRAND_SEARING_PAIN));
 });
 

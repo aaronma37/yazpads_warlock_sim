@@ -3,6 +3,8 @@ import { APL_ACTION, APL_COND } from '../model.js';
 // Warlock synthesis metadata and eligibility. Ordering and parameter ranges are preserved.
 // Spell actions available to APL synthesis
 export const APL_SYNTHESIS_ACTIONS = [
+  { id: 'berserking', spell: 'Berserking', icon: 'Racial_Troll_Berserk.png', action: APL_ACTION.BERSERKING, category: 'Racial', defaultRaw: 'true' },
+  { id: 'bloodFury', spell: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', action: APL_ACTION.BLOOD_FURY, category: 'Racial', defaultRaw: 'true' },
   { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', action: APL_ACTION.EUREKA, category: 'Racial', defaultRaw: 'true' },
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, category: 'Resource', defaultRaw: 'mana_pct <= 20' },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, category: 'Proc', defaultRaw: 'buff.shadow_trance' },
@@ -62,6 +64,8 @@ export const CONDITION_TYPES = {
 
 // Authentic action condition sets (which conditions make sense for each action)
 export const ACTION_VALID_CONDITIONS = {
+  berserking: ['ALWAYS', 'NEVER', 'TARGET_HP_LE', 'TARGET_HP_LT', 'FIGHT_TIME_LE', 'MANA_GE', 'ISB_ACTIVE'],
+  bloodFury: ['ALWAYS', 'NEVER', 'TARGET_HP_LE', 'TARGET_HP_LT', 'FIGHT_TIME_LE', 'MANA_GE', 'ISB_ACTIVE'],
   eureka: ['ALWAYS', 'NEVER', 'TARGET_HP_LE', 'TARGET_HP_LT', 'FIGHT_TIME_LE', 'MANA_GE', 'DOT_REM_LE', 'ISB_ACTIVE'],
   tap: ['MANA_LE', 'MANA_LT', 'MANA_GE', 'ALWAYS', 'NEVER'],
   nightfall: ['SHADOW_TRANCE', 'ALWAYS', 'NEVER'],
@@ -406,7 +410,7 @@ export function createDefaultIndividual(availableActions = APL_SYNTHESIS_ACTIONS
   const tf = talentFlags || {};
 
   const order = [
-    'tap', 'eureka', 'nightfall', 'brand', 'decimateSearing', 'decimateSoulFire',
+    'tap', 'eureka', 'bloodFury', 'berserking', 'nightfall', 'brand', 'decimateSearing', 'decimateSoulFire',
     'curse', 'agony', 'corr', 'immo', 'conflag', 'siphon', 'shadowburn', 'wrack', 'hellfire'
   ];
 

@@ -26,6 +26,8 @@ export const APL_ACTION = Object.freeze({
   DRAIN_HOPE: 18,
   HELLFIRE: 19,
   EUREKA: 20,
+  BLOOD_FURY: 21,
+  BERSERKING: 22,
 });
 
 export const APL_COND = Object.freeze({

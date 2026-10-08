@@ -17,7 +17,9 @@ execution = execution.replace('if(c.incinerate!=0u)', 'if(c.incinerate!=0u||(str
 const availability = execution
  .replace(/(?:s\.trance=0u;)?spend\([\s\S]*?return true;/g, 'return true;')
  .replace(/(?:chosenAction=1u;)?(?:tap|beginCast|castDoom|castConflagrate|castShadowburn)\([^)]*\);return true;/g, 'return true;')
- .replace('activateEureka();', ';');
+ .replace('activateEureka();', ';')
+ .replace('activateBloodFury();', ';')
+ .replace('activateBerserking();', ';');
 const helpers = `
 uniform highp usampler2D regretJobTex;
 uniform uint regretSamples;
@@ -38,7 +40,7 @@ ${availability}
 }
 bool takeAction(uint action){
  // Replay off-GCD Eureka rows before forcing the next actual spell choice.
- if(action==20u){executeDiagnostic(action,false);return false;}
+ if(action==20u||action==21u||action==22u){executeDiagnostic(action,false);return false;}
  if(mode==4u&&reached&&decisionCount==targetDecision+1u&&forcedAction!=0u){
   if(!diagnosticAvailable(action))return false;
   if(!executeDiagnostic(forcedAction,true))s.done=9u;

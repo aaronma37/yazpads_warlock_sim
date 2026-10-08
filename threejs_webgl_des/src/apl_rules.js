@@ -2,10 +2,15 @@ import { APL_ACTION, APL_COND } from './model.js';
 
 // Display-only filtering: preserve the executable APL and its saved rules.
 export function getRaceVisibleAPLRules(rules = [], race) {
-  if (String(race || '').toUpperCase() === 'GNOME') return rules;
-  return rules.filter(rule => rule.action !== APL_ACTION.EUREKA &&
-    !/^eureka!?$/i.test(String(rule.id || '').trim()) &&
-    !/^eureka!?$/i.test(String(rule.spell || '').trim()));
+  const currentRace = String(race || '').toUpperCase();
+  return rules.filter(rule => {
+    const id = String(rule.id || '').trim();
+    const spell = String(rule.spell || '').trim();
+    if (rule.action === APL_ACTION.EUREKA || /^eureka!?$/i.test(id) || /^eureka!?$/i.test(spell)) return currentRace === 'GNOME';
+    if (rule.action === APL_ACTION.BLOOD_FURY || /^blood_?fury$/i.test(id) || /^blood fury$/i.test(spell)) return currentRace === 'ORC';
+    if (rule.action === APL_ACTION.BERSERKING || /^(?:berserking|beserking)$/i.test(id) || /^berserking$/i.test(spell)) return currentRace === 'TROLL';
+    return true;
+  });
 }
 
 // Availability checks (cooldowns, procs, mana and talents) happen in the shader.

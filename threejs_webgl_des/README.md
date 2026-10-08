@@ -118,3 +118,11 @@ Expansive Mind increases maximum mana by 5%; it does not increase intellect or c
 Eureka is an off-GCD APL action (`eureka`, also accepts `Eureka!`). Default/preset APLs expose it near the top. An explicit Eureka row controls activation through its conditions and the 120-second cooldown; a disabled row prevents automatic activation. Non-Gnomes skip it. Older/custom APLs without an Eureka row retain automatic racial timing.
 
 This app intentionally retains Eureka damage boosts for the next three empowered spell casts, including snapshotted DoT damage, per the requested simulation rules. This differs from Blizzard's October 1 Forever beta notes excluding periodic effects. Existing DoTs are not dynamically amplified simply because charges are available.
+
+## Orc Blood Fury APL
+
+`blood_fury` (also `Blood Fury` or `bloodFury`) is an off-GCD Orc action with a 120-second cooldown and a 15-second spell-power buff. Default and preset APLs activate it on cooldown. Move the row or add conditions to control timing; disabling a Blood Fury row suppresses automatic activation. APLs without a Blood Fury row retain the existing automatic racial policy. Search and standard spec displays show this action only for Orcs. The existing spell-power formula is unchanged.
+
+## Troll Berserking APL
+
+`berserking` is an off-GCD Troll action giving 10% casting speed for 10 seconds, with a 180-second cooldown. Default/preset APLs use it on cooldown. Reorder the row, add conditions, or disable it to control activation. An explicit row overrides automatic racial timing, including when disabled. Older APLs without this row retain automatic activation. Search and standard spec tables display Berserking only for Trolls. Existing haste/cast-time behavior is unchanged.

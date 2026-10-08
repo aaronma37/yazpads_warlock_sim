@@ -4,6 +4,8 @@ import { fallbackRow } from './apl_fallback_view.js';
 import { APL_ACTION, APL_COND } from './model.js';
 
 export const ACTION_INFO = {
+  berserking: { id: 'berserking', spell: 'Berserking', icon: 'Racial_Troll_Berserk.png', action: APL_ACTION.BERSERKING, defaultCond: 'true' },
+  bloodFury: { id: 'bloodFury', spell: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', action: APL_ACTION.BLOOD_FURY, defaultCond: 'true' },
   eureka: { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', action: APL_ACTION.EUREKA, defaultCond: 'true' },
   tap: { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, defaultCond: 'mana_pct <= 25' },
   nightfall: { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, defaultCond: 'buff.shadow_trance' },
@@ -26,6 +28,8 @@ export const ACTION_INFO = {
 };
 
 export const CANONICAL_ACTION_NAMES = {
+  berserking: 'berserking',
+  bloodFury: 'blood_fury',
   eureka: 'eureka',
   curse: 'bane_of_doom',
   agony: 'bane_of_agony',
@@ -48,6 +52,8 @@ export const CANONICAL_ACTION_NAMES = {
 };
 
 export const ACTION_ALIASES = {
+  berserking: 'berserking', beserking: 'berserking',
+  blood_fury: 'bloodFury', bloodfury: 'bloodFury', 'blood fury': 'bloodFury',
   eureka: 'eureka', 'eureka!': 'eureka',
   // Shadow Bolt
   shadow_bolt: 'bolt', shadowbolt: 'bolt', 'shadow bolt': 'bolt', bolt: 'bolt',
@@ -88,6 +94,8 @@ export const ACTION_ALIASES = {
 };
 
 export const DEFAULT_APL = [
+  { ...ACTION_INFO.berserking, condition: 'On cooldown (Troll only)', rawCond: 'true', enabled: true },
+  { ...ACTION_INFO.bloodFury, condition: 'On cooldown (Orc only)', rawCond: 'true', enabled: true },
   { ...ACTION_INFO.eureka, condition: 'On cooldown (Gnome only)', rawCond: 'true', enabled: true },
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', condition: 'Mana < 20%', rawCond: 'mana_pct < 20', enabled: true },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', condition: 'Shadow Trance active', rawCond: 'buff.shadow_trance', enabled: true },
@@ -132,7 +140,7 @@ export function applySynthesizedAPL(rules) {
     return {
       id: r.id,
       spell: r.spell,
-      icon: r.id === 'eureka' ? ACTION_INFO.eureka.icon : r.icon,
+      icon: ['eureka', 'bloodFury', 'berserking'].includes(r.id) ? ACTION_INFO[r.id].icon : r.icon,
       condition: r.condition,
       condition1: r.condition1,
       condKey: r.condKey,
@@ -265,7 +273,7 @@ export function parseAPLLine(line, lineNum = 1) {
   const mappedId = ACTION_ALIASES[normActionKey] || ACTION_ALIASES[cleanKey] || ACTION_ALIASES[actionStr.toLowerCase()];
 
   if (!mappedId || !ACTION_INFO[mappedId]) {
-    throw new Error(`Line ${lineNum}: Unknown action '${actionStr}'. Supported actions: eureka, bolt, tap, nightfall, corr, immo, conflag, shadowburn, incinerate, searing, drain, siphon, wrack, hellfire, curse, agony, brand, decimateSearing, decimateSoulFire`);
+    throw new Error(`Line ${lineNum}: Unknown action '${actionStr}'. Supported actions: berserking, blood_fury, eureka, bolt, tap, nightfall, corr, immo, conflag, shadowburn, incinerate, searing, drain, siphon, wrack, hellfire, curse, agony, brand, decimateSearing, decimateSoulFire`);
   }
 
   const info = ACTION_INFO[mappedId];
@@ -336,6 +344,8 @@ export function formatAPLToText(aplList = currentAPL) {
 
 export function compileAPLToBytecode(aplList = currentAPL) {
   const mapAction = {
+    berserking: APL_ACTION.BERSERKING,
+    bloodFury: APL_ACTION.BLOOD_FURY,
     eureka: APL_ACTION.EUREKA,
     tap: APL_ACTION.LIFE_TAP,
     nightfall: APL_ACTION.NIGHTFALL_SHADOW_BOLT,
@@ -582,7 +592,7 @@ function generateSpellAPLForPreset(presetName = '', talentsObj = null, rotationC
 }
 
 export function generateAPLForPreset(...args) {
-  return [{ ...ACTION_INFO.eureka, condition: 'On cooldown (Gnome only)', rawCond: 'true', enabled: true }, ...generateSpellAPLForPreset(...args)];
+  return [{ ...ACTION_INFO.berserking, condition: 'On cooldown (Troll only)', rawCond: 'true', enabled: true }, { ...ACTION_INFO.bloodFury, condition: 'On cooldown (Orc only)', rawCond: 'true', enabled: true }, { ...ACTION_INFO.eureka, condition: 'On cooldown (Gnome only)', rawCond: 'true', enabled: true }, ...generateSpellAPLForPreset(...args)];
 }
 
 export function setAPLPreset(presetName, talentsObj = null, rotationChoice = null, isSacSuccubus = false) {

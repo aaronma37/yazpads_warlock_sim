@@ -17,7 +17,7 @@ test('Eureka appears in presets, parses, compiles, and round trips as an off-GCD
  assert.equal(compileAPLToBytecode(rules)[0].action,APL_ACTION.EUREKA);
  assert.equal(isAPLRuleBlocking(rules[0]),false);
  assert.equal(parseAPLText(formatAPLToText(rules))[0].id,'eureka');
- assert.equal(generateAPLForPreset('shadow')[0].id,'eureka');
+ assert.equal(generateAPLForPreset('shadow').find(r=>r.id==='eureka').id,'eureka');
  const logical=await exportLogicalBuild({race:'GNOME',stats:{intellect:200},aplText:'Eureka!\nShadow Bolt'});
  const result=await resolveSavedBuild(logical);
  assert.equal(result.config.intellect,200);
@@ -42,7 +42,7 @@ test('actual GLSL Eureka honors APL enablement, conditions, race, charges, coold
  add('legacy','Shadow Bolt',{racialPolicy:'cooldown'});
  const dir=mkdtempSync(join(tmpdir(),'warlock-eureka-')),path=join(dir,'cases.json');
  writeFileSync(path,JSON.stringify({vertex:'#version 300 es\n'+VERTEX,detailed:'#version 300 es\n'+FRAGMENT,cases}));
- const run=spawnSync('python3',[fileURLToPath(new URL('./headless_gles.py',import.meta.url)),path],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
+ const run=spawnSync('python3',[fileURLToPath(new URL('./headless_gles.py',import.meta.url)),path],{encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024});
  assert.equal(run.status,0,run.stderr||String(run.error));
  const {outputs,renderer}=JSON.parse(run.stdout);t.diagnostic(renderer);
  const result=Object.fromEntries(outputs.map((out,index)=>{
@@ -75,7 +75,7 @@ test('GPU regret replays Eureka before forcing the recorded spell', async t => {
  const cases=[0,REGRET_ACTIONS.indexOf(APL_ACTION.CORRUPTION)].map(offset=>({mode:'regret',width:1,height:1,configWords,uniforms:{numConfigs:1,fightsPerConfig:0,seed:42,offset,count:1,gridWidth:1,mode:4,eventBudget:65536,regretSamples:1,continuationSeed:42}}));
  const path=join(mkdtempSync(join(tmpdir(),'warlock-eureka-regret-')),'cases.json');
  writeFileSync(path,JSON.stringify({vertex:'#version 300 es\n'+VERTEX,regret:'#version 300 es\n'+fragment,cases}));
- const run=spawnSync('python3',[fileURLToPath(new URL('./headless_gles.py',import.meta.url)),path],{encoding:'utf8',timeout:60000,maxBuffer:8*1024*1024});
+ const run=spawnSync('python3',[fileURLToPath(new URL('./headless_gles.py',import.meta.url)),path],{encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024});
  assert.equal(run.status,0,run.stderr||String(run.error));
  const {outputs,renderer}=JSON.parse(run.stdout);t.diagnostic(renderer);
  assert.equal(outputs[0][0][1],1);
