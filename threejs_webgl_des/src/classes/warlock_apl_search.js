@@ -5,7 +5,7 @@ import { APL_ACTION, APL_COND } from '../model.js';
 export const APL_SYNTHESIS_ACTIONS = [
   { id: 'berserking', spell: 'Berserking', icon: 'Racial_Troll_Berserk.png', action: APL_ACTION.BERSERKING, category: 'Racial', defaultRaw: 'true' },
   { id: 'bloodFury', spell: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', action: APL_ACTION.BLOOD_FURY, category: 'Racial', defaultRaw: 'true' },
-  { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', action: APL_ACTION.EUREKA, category: 'Racial', defaultRaw: 'true' },
+  { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Nature_WispSplode.png', action: APL_ACTION.EUREKA, category: 'Racial', defaultRaw: 'true' },
   { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, category: 'Resource', defaultRaw: 'mana_pct <= 20' },
   { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, category: 'Proc', defaultRaw: 'buff.shadow_trance' },
   { id: 'brand', spell: 'Demonic Brand Refresher', icon: 'ability_demonhunter_chaoticimprint_fire.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, category: 'Debuff', defaultRaw: 'debuff.demonic_brand_missing' },

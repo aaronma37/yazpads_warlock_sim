@@ -17,7 +17,7 @@ import { SPELLS } from './model.js';
 const SPELL_ICONS = {
   BERSERKING: 'Racial_Troll_Berserk.png',
   BLOOD_FURY: 'Racial_Orc_BerserkerStrength.png',
-  EUREKA: 'Spell_Arcane_MindMastery.png',
+  EUREKA: 'Spell_Nature_WispSplode.png',
   LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
   CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',
   IMMOLATE: 'Spell_Fire_Immolation.png',
@@ -169,11 +169,11 @@ function populateRaceDropdown() {
   if (!el) return;
   el.innerHTML = `
     <option value="ALL">[Any / Evolve]</option>
-    <option value="HUMAN">Human (+5% Spirit)</option>
-    <option value="ORC">Orc (Blood Fury, +5% Pet)</option>
-    <option value="UNDEAD">Undead (WotF)</option>
-    <option value="TROLL">Troll (Berserking)</option>
-    <option value="GNOME">Gnome (+5% Int)</option>
+    <option value="HUMAN">Human</option>
+    <option value="ORC">Orc</option>
+    <option value="UNDEAD">Undead</option>
+    <option value="TROLL">Troll</option>
+    <option value="GNOME">Gnome</option>
   `;
 }
 

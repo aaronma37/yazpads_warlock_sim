@@ -6,7 +6,7 @@ import { APL_ACTION, APL_COND } from './model.js';
 export const ACTION_INFO = {
   berserking: { id: 'berserking', spell: 'Berserking', icon: 'Racial_Troll_Berserk.png', action: APL_ACTION.BERSERKING, defaultCond: 'true' },
   bloodFury: { id: 'bloodFury', spell: 'Blood Fury', icon: 'Racial_Orc_BerserkerStrength.png', action: APL_ACTION.BLOOD_FURY, defaultCond: 'true' },
-  eureka: { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', action: APL_ACTION.EUREKA, defaultCond: 'true' },
+  eureka: { id: 'eureka', spell: 'Eureka!', icon: 'Spell_Nature_WispSplode.png', action: APL_ACTION.EUREKA, defaultCond: 'true' },
   tap: { id: 'tap', spell: 'Life Tap', icon: 'Spell_Shadow_BurningSpirit.png', action: APL_ACTION.LIFE_TAP, defaultCond: 'mana_pct <= 25' },
   nightfall: { id: 'nightfall', spell: 'Nightfall: Shadow Bolt', icon: 'Spell_Shadow_Twilight.png', action: APL_ACTION.NIGHTFALL_SHADOW_BOLT, defaultCond: 'buff.shadow_trance' },
   brand: { id: 'brand', spell: 'Demonic Brand', icon: 'ability_demonhunter_chaoticimprint_fire.png', action: APL_ACTION.DEMONIC_BRAND_SEARING_PAIN, defaultCond: 'debuff.demonic_brand_missing' },

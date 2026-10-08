@@ -5,9 +5,7 @@ const raceDetails = {
     icon: './assets/icons/Achievement_Character_Human_Male.png',
     traits: [
       { name: 'The Human Spirit', icon: 'Spell_Holy_MagicalSentry.png', title: 'The Human Spirit (+5% Spirit)', desc: 'Spirit increased by 5%.' },
-      { name: 'Sword Specialization', icon: 'INV_Sword_04.png', title: 'Sword Specialization (+2% Spell Crit)', desc: 'Increases spell and ability critical strike chance by 2% while a sword is equipped. Sword equipped defaults on in Direct Stats; exclude the bonus from the Spell Crit input.' },
-      { name: 'Will to Survive', icon: 'SPELL_HOLY_DISPELMAGIC.png', title: 'Will to Survive', desc: 'Removes all Stun effects. 180 sec cooldown. Utility only; not simulated in this damage encounter.' },
-      { name: 'Perception', icon: 'Spell_Holy_MindVision.png', title: 'Perception (Stealth Detect)', desc: 'Dramatically increases stealth detection for 20 sec.' }
+      { name: 'Sword Specialization', icon: 'INV_Sword_27.png', title: 'Sword Specialization (+2% Spell Crit)', desc: 'Increases spell and ability critical strike chance by 2% while a sword is equipped. Sword equipped defaults on in Direct Stats; exclude the bonus from the Spell Crit input.' }
     ]
   },
   ORC: {
@@ -21,8 +19,7 @@ const raceDetails = {
     icon: './assets/icons/Achievement_Character_Undead_Male.png',
     traits: [
       { name: 'Will of the Forsaken', icon: 'Spell_Shadow_RaiseDead.png', title: 'Will of the Forsaken (Charm/Fear/Sleep Immunity)', desc: 'Provides immunity to Charm, Fear, and Sleep effects for 5 sec.' },
-      { name: 'Touch of the Grave', icon: 'Spell_Shadow_ChillTouch.png', title: 'Touch of the Grave', desc: 'Spell casts have a 10% chance to deal 5% of maximum health as damage. 1 sec cooldown.' },
-      { name: 'Cannibalize', icon: 'Spell_Shadow_Cannibalize.png', title: 'Cannibalize', desc: 'When activated, regenerates 7% of total health every 2 sec for 10 sec.' }
+      { name: 'Touch of the Grave', icon: 'Spell_Shadow_LifeDrain02.png', title: 'Touch of the Grave', desc: 'Spell casts have a 10% chance to deal 5% of maximum health as damage. 1 sec cooldown.' }
     ]
   },
   TROLL: {
@@ -36,8 +33,7 @@ const raceDetails = {
     icon: './assets/icons/Achievement_Character_Gnome_Male.png',
     traits: [
       { name: 'Expansive Mind', icon: 'INV_Enchant_EssenceEternalLarge.png', title: 'Expansive Mind (+5% Maximum Mana)', desc: 'Maximum Mana increased by 5%. Does not increase Intellect or spell crit.' },
-      { name: 'Eureka!', icon: 'Spell_Arcane_MindMastery.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells, including their periodic damage. 120 sec cooldown. An Eureka APL row controls activation; older APLs without one use automatic racial timing.' },
-      { name: 'Escape Artist', icon: 'Spell_Holy_Silence.png', title: 'Escape Artist', desc: 'Escape the effects of any immobilization or movement speed reduction.' }
+      { name: 'Eureka!', icon: 'Spell_Nature_WispSplode.png', title: 'Eureka! (+10% Damage, -10% Mana)', desc: 'Empowers the next 3 spells, including their periodic damage. 120 sec cooldown. An Eureka APL row controls activation; older APLs without one use automatic racial timing.' }
     ]
   }
 };
@@ -62,7 +58,7 @@ const resultSpellIcons = {
   'Conflagrate': 'Spell_Fire_Fireball.png',
   'Shadowburn': 'Spell_Shadow_ScourgeBuild.png',
   'Siphon Life': 'Spell_Shadow_Requiem.png',
-  'Touch of the Grave': 'spell_shadow_chilltouch.png',
+  'Touch of the Grave': 'Spell_Shadow_LifeDrain02.png',
   'Bane of Agony': 'Spell_Shadow_CurseOfSargeras.png',
   'Immolate': 'Spell_Fire_Immolation.png',
   'Incinerate': 'Spell_Fire_Burnout.png',
@@ -88,7 +84,7 @@ const presetSpellIcons = {
   BERSERKING: 'Racial_Troll_Berserk.png',
   BLOOD_FURY: 'Racial_Orc_BerserkerStrength.png',
   BLOODFURY: 'Racial_Orc_BerserkerStrength.png',
-  EUREKA: 'Spell_Arcane_MindMastery.png',
+  EUREKA: 'Spell_Nature_WispSplode.png',
   LIFE_TAP: 'Spell_Shadow_BurningSpirit.png',
   CORRUPTION: 'Spell_Shadow_AbominationExplosion.png',
   IMMOLATE: 'Spell_Fire_Immolation.png',

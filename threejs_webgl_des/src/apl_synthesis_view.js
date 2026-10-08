@@ -595,7 +595,7 @@ function getSpellIcon(spellName) {
   const name = String(spellName).toLowerCase();
   if (name.includes('berserking')) return 'Racial_Troll_Berserk.png';
   if (name.includes('blood fury')) return 'Racial_Orc_BerserkerStrength.png';
-  if (name.includes('eureka')) return 'Spell_Arcane_MindMastery.png';
+  if (name.includes('eureka')) return 'Spell_Nature_WispSplode.png';
   if (name.includes('shadow bolt')) return 'Spell_Shadow_ShadowBolt.png';
   if (name.includes('corruption')) return 'Spell_Shadow_AbominationExplosion.png';
   if (name.includes('immolate')) return 'Spell_Fire_Immolation.png';
