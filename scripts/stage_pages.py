@@ -9,6 +9,22 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'threejs_webgl_des'
 
 
+def validate_runtime_files(destination):
+    """Reject missing literal module imports and URL-based runtime resources."""
+    missing = set()
+    for path in destination.rglob('*.js'):
+        text = path.read_text()
+        references = re.findall(
+            r'''(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\bnew\s+URL\s*\(\s*)["'](\.[^"']+)["']''',
+            text,
+        )
+        for reference in references:
+            if not (path.parent / reference).is_file():
+                missing.add(f'{path.relative_to(destination)}: {reference}')
+    if missing:
+        raise ValueError('Missing runtime dependencies:\n' + '\n'.join(sorted(missing)))
+
+
 def stage(destination):
     destination = destination.resolve()
     if destination.exists():
@@ -18,6 +34,10 @@ def stage(destination):
         shutil.copy2(SOURCE / name, destination / name)
     for name in ['src', 'data', 'vendor']:
         shutil.copytree(SOURCE / name, destination / name, symlinks=False)
+    # The app's Validate button uses these files at runtime.
+    (destination / 'validation').mkdir()
+    for name in ['compare.js', 'cpu-fixtures.json']:
+        shutil.copy2(SOURCE / 'validation' / name, destination / 'validation' / name)
     for path in (SOURCE / 'assets').iterdir():
         if path.name != 'icons':
             shutil.copytree(path, destination / 'assets' / path.name, symlinks=False)
@@ -41,6 +61,7 @@ def stage(destination):
         raise ValueError('Pages output exceeds the 1 GB site limit')
     if any(path.is_symlink() for path in destination.rglob('*')):
         raise ValueError('Pages output must not contain symlinks')
+    validate_runtime_files(destination)
     print(f'Staged {len(files)} files, {count} icons, {size / 1_000_000:.1f} MB at {destination}')
 
 
