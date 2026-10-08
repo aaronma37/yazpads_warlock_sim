@@ -251,6 +251,15 @@ export const CONFIG = {
   ...Object.fromEntries(Array.from({length: MAX_APL_RULES}, (_, i) => [`aplParam1_${i}`, 'f32'])),
 };
 
+export const UPTIME_EFFECTS = [
+  ['Corruption', 'corr'], ['Curse of Agony', 'agony'], ['Immolate', 'imm'],
+  ['Siphon Life', 'siphon'], ['Curse of Doom', 'doom'], ['Improved Shadow Bolt', 'isb'],
+  ['Nightfall', 'trance'], ['Trinket', 'trinket'], ['Racial buff', 'racial'],
+  ['Decimation', 'decimation'], ['Shadow and Flame (shadow)', 'snfShadow'], ['Shadow and Flame (fire)', 'snfFire'],
+];
+export const DETAIL_STATE = Object.fromEntries([
+  ...UPTIME_EFFECTS.map(([,key]) => [`uptime_${key}`, 'u32']), ['manaWasted', 'f32'],
+]);
 export const STATE = {
   racialReady:'u32', racialEnd:'u32', eurekaCharges:'u32', graveReady:'u32', doomEnd:'u32', castBonus:'f32', corrBonus:'f32', agonyBonus:'f32', immBonus:'f32', siphonBonus:'f32', initialized:'u32', done:'u32', now:'u32', size:'u32', events:'u32', highWater:'u32',
   casting:'u32', ready:'u32', trance:'u32', tranceEnd:'u32', isbEnd:'u32', isbCharges:'u32',
@@ -272,8 +281,10 @@ export const STATE = {
   ...Object.fromEntries(SPELLS.flatMap((_, i) => [[`damage${i}`, 'f32'], [`casts${i}`, 'u32'], [`hits${i}`, 'u32'], [`crits${i}`, 'u32'], [`misses${i}`, 'u32']])),
 };
 
+Object.assign(STATE, DETAIL_STATE);
+
 export const STATE_WORDS = Object.keys(STATE).length;
-export const FAST_STATE = Object.fromEntries(Object.entries(STATE).filter(([key]) => !/^(damage|casts|hits|crits|misses)\d+$/.test(key)));
+export const FAST_STATE = Object.fromEntries(Object.entries(STATE).filter(([key]) => !/^(damage|casts|hits|crits|misses)\d+$/.test(key) && !(key in DETAIL_STATE)));
 export const FAST_STATE_WORDS = Object.keys(FAST_STATE).length;
 export const HEAP_CAPACITY = 40;
 export const TRACE_CAPACITY = 256;
@@ -425,5 +436,6 @@ export function decodeStates(buffer, count) {
   return Array.from({length:count}, (_, lane) => Object.fromEntries(Object.entries(STATE).map(([key, type], j) => [key, (type === 'f32' ? f : u)[lane * STATE_WORDS + j]])));
 }
 
-export const COMPACT_WORDS = 32 + (SPELLS.length - 6) * 3;
+export const DETAIL_WORD_OFFSET = 32 + (SPELLS.length - 6) * 3;
+export const COMPACT_WORDS = DETAIL_WORD_OFFSET + 8;
 export const COMPACT_STRIPES = Math.ceil(COMPACT_WORDS / 16);

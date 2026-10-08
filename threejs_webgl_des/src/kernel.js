@@ -1,4 +1,4 @@
-import { SPELLS, COMPACT_STRIPES, CONFIG, STATE, FAST_STATE, HEAP_CAPACITY, APL_HEADER0_OFFSET, APL_PARAM0_OFFSET, APL_HEADER1_OFFSET, APL_PARAM1_OFFSET, MAX_APL_RULES } from './model.js';
+import { SPELLS, UPTIME_EFFECTS, DETAIL_WORD_OFFSET, COMPACT_STRIPES, CONFIG, STATE, FAST_STATE, HEAP_CAPACITY, APL_HEADER0_OFFSET, APL_PARAM0_OFFSET, APL_HEADER1_OFFSET, APL_PARAM1_OFFSET, MAX_APL_RULES } from './model.js';
 const type=t=>t==='u32'?'uint':'float';
 const structure=(name,schema)=>`struct ${name} { ${Object.entries(schema).map(([k,t])=>`${type(t)} ${k};`).join('\n')} };`;
 const word=(name,t)=>t==='f32'?`floatBitsToUint(s.${name})`:`s.${name}`;
@@ -19,6 +19,9 @@ const detailedCompactWord = detailed ? `uint compactWord(uint index){switch(inde
  case 26u:return floatBitsToUint(s.petMeleeDamage);case 27u:return s.petMeleeCasts|(s.petMeleeHits<<16u);case 28u:return s.petMeleeCrits|(s.petMeleeMisses<<16u);
  case 29u:return floatBitsToUint(s.petSpellDamage);case 30u:return s.petSpellCasts|(s.petSpellHits<<16u);case 31u:return s.petSpellCrits|(s.petSpellMisses<<16u);
  ${SPELLS.slice(6).map((_,j)=>{const i=j+6,k=32+j*3;return `case ${k}u:return floatBitsToUint(s.damage${i});case ${k+1}u:return s.casts${i}|(s.hits${i}<<16u);case ${k+2}u:return s.crits${i}|(s.misses${i}<<16u);`;}).join('')}
+ ${UPTIME_EFFECTS.filter((_,i)=>i%2===0).map(([,key],i)=>`case ${DETAIL_WORD_OFFSET+i}u:return uint(round(float(s.uptime_${key})/float(c.end)*65535.0))|(uint(round(float(s.uptime_${UPTIME_EFFECTS[i*2+1][1]})/float(c.end)*65535.0))<<16u);`).join('')}
+ case ${DETAIL_WORD_OFFSET+6}u:return floatBitsToUint(s.spent);
+ case ${DETAIL_WORD_OFFSET+7}u:return floatBitsToUint(s.manaWasted);
  default:return 0u;}}` : '';
 const stripeCount = detailed ? `${COMPACT_STRIPES}u` : '1u';
 const stateOverflow = detailed ? Array.from({length:SPELLS.length},(_,i)=>`if(max(max(s.casts${i},s.hits${i}),max(s.crits${i},s.misses${i}))>65535u)s.done=7u;`).join('\n') : '';
@@ -295,7 +298,7 @@ void tick(Event e){
  }else{return;}
 }
 void gcd(){s.ready=s.now+uint(max(1000000.0,1500000.0/hasteMultiplier()));enqueue(s.ready,5u,0u,0u);}
-void tap(){s.mana=min(c.maxMana,s.mana+c.tapGain);s.gained+=c.tapGain;s.taps++;if(c.petChoice!=0u&&c.demonicEnergies>0.0){float petMax=(c.petChoice==1u?1150.0:1450.0)*(1.0+c.felVitalityBonus);s.petMana=min(petMax,s.petMana+c.tapGain*0.5*c.demonicEnergies);}gcd();}
+void tap(){${detailed ? 's.manaWasted+=max(0.0,s.mana+c.tapGain-c.maxMana);' : ''}s.mana=min(c.maxMana,s.mana+c.tapGain);s.gained+=c.tapGain;s.taps++;if(c.petChoice!=0u&&c.demonicEnergies>0.0){float petMax=(c.petChoice==1u?1150.0:1450.0)*(1.0+c.felVitalityBonus);s.petMana=min(petMax,s.petMana+c.tapGain*0.5*c.demonicEnergies);}gcd();}
 void beginCast(uint spell){
  if(spell==2u||(spell==1u&&c.corrCast==0u)){spend(spell);applyDot(spell);gcd();return;}
  uint duration=2500000u;
@@ -516,7 +519,10 @@ void advance(){
  if(s.size==0u){s.done=3u;return;}
  Event e=dequeue();lastEvent=e;
  if(e.at<s.now){s.done=4u;return;}
- s.now=e.at;s.events++;eventDamage=0.0;eventFlags=0u;
+${detailed ? UPTIME_EFFECTS.map(([,key])=>{
+ const active={corr:'s.corrTicks>0u',agony:'s.agonyTicks>0u',imm:'s.immTicks>0u',siphon:'s.siphonTicks>0u',doom:'s.doomActive!=0u',trance:'s.trance!=0u'}[key] || 'true';
+ return ` if(${active}&&s.${key}End>s.now)s.uptime_${key}+=min(e.at,s.${key}End)-s.now;`;
+}).join('\n')+'\n' : ''} s.now=e.at;s.events++;eventDamage=0.0;eventFlags=0u;
  uint ekind=EV_KIND(e),espell=EV_SPELL(e);
  switch(ekind){
  case 13u:s.done=1u;break;
@@ -606,7 +612,7 @@ void advance(){
   }
   break;
  case 8u:if(s.now>=s.tranceEnd)s.trance=0u;break;
- case 10u:s.mana=min(c.maxMana,s.mana+c.mp5);s.gained+=c.mp5;if(c.petChoice!=0u){float petMax=(c.petChoice==1u?1150.0:1450.0)*(1.0+c.felVitalityBonus);s.petMana=min(petMax,s.petMana+45.0);}enqueue(s.now+5000000u,10u,0u,0u);break;
+ case 10u:${detailed ? 's.manaWasted+=max(0.0,s.mana+c.mp5-c.maxMana);' : ''}s.mana=min(c.maxMana,s.mana+c.mp5);s.gained+=c.mp5;if(c.petChoice!=0u){float petMax=(c.petChoice==1u?1150.0:1450.0)*(1.0+c.felVitalityBonus);s.petMana=min(petMax,s.petMana+45.0);}enqueue(s.now+5000000u,10u,0u,0u);break;
  case 11u:break;
  case 12u:s.trinketEnd=s.now+c.trinketDuration;enqueue(s.trinketEnd,11u,0u,0u);if(s.now+c.trinketCD<=c.end)enqueue(s.now+c.trinketCD,12u,0u,0u);break;
  default:s.done=5u;break;

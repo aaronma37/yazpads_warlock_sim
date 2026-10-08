@@ -2475,3 +2475,10 @@ footer {
 .priest-racial-encounter .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 12px; }
 .priest-racial-encounter .stat-field { display: flex; flex-direction: column; gap: 5px; }
 .priest-racial-encounter p { margin: 12px; color: #cbd5e1; font-size: 0.85rem; }
+
+/* Current configuration detailed observations. */
+
+#current-sim-details p { font-size:.8rem; color:var(--text-dim); line-height:1.6; }
+#current-sim-details h4 { margin:1rem 0 .5rem; }
+.detail-uptimes th:not(:first-child), .detail-uptimes td:not(:first-child) { text-align:right; white-space:nowrap; }
+.detail-uptimes td:not(:first-child) { font-family:var(--font-mono); }

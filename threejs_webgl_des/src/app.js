@@ -1,3 +1,4 @@
+import { renderDetailedResults } from './detailed_results.js';
 import { initPriestPreview } from './priest_preview.js';
 import { WARLOCK_IMPORT_BUFF_KEYS } from './classes/warlock_import.js';
 import { prepareUIBuildImport } from './contracts/ui_build.js';
@@ -971,6 +972,7 @@ function render(result) {
   $('regret-output').textContent = '';
   $('regret-output').hidden = true;
   const { summary: s, timing: t, config: c } = result;
+  renderDetailedResults($('current-sim-details'), s, c.duration);
   $('mean').textContent = format(s.mean, 1);
   $('confidence').textContent = s.count > 1 ? `± ${format(s.ci95, 2)} · 95% CI` : 'One fight';
   $('range').textContent = `${format(s.p05)}–${format(s.p95)}`;

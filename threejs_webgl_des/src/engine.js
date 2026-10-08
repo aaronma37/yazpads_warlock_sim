@@ -1,7 +1,8 @@
+import { summarizeDetails } from './detailed_results.js';
 import { REGRET_FRAGMENT, REGRET_ACTIONS, decodeRegretResults, scanDecisionRegrets } from './regret.js';
 import { WebGLRenderer, WebGLRenderTarget, RawShaderMaterial, BufferGeometry, BufferAttribute,
   Mesh, Scene, Camera, GLSL3, RGBAIntegerFormat, UnsignedIntType, NearestFilter, NoBlending, DataTexture } from 'three';
-import { COMPACT_STRIPES, validate, packConfig, decodeStates, STATE_WORDS, TRACE_CAPACITY, SPELLS, CONFIG, CONFIG_WORDS } from './model.js';
+import { COMPACT_STRIPES, UPTIME_EFFECTS, DETAIL_WORD_OFFSET, validate, packConfig, decodeStates, STATE_WORDS, TRACE_CAPACITY, SPELLS, CONFIG, CONFIG_WORDS } from './model.js';
 import { VERTEX, FRAGMENT, FAST_FRAGMENT } from './kernel.js';
 
 const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
@@ -187,6 +188,12 @@ function decodeBatch2D(outputs,width,count,config,first,states){
    petMeleeDamage,petMeleeCasts,petMeleeHits,petMeleeCrits,petMeleeMisses,
    petSpellDamage,petSpellCasts,petSpellHits,petSpellCrits,petSpellMisses
   };
+  for(let i=0;i<UPTIME_EFFECTS.length;i++){
+   const word=DETAIL_WORD_OFFSET+Math.floor(i/2),stripe=Math.floor(word/16),attachment=Math.floor(word%16/4);
+   const packed=outputs[attachment][((simY*COMPACT_STRIPES+stripe)*width+simX)*4+word%4];
+   s[`uptime_${UPTIME_EFFECTS[i][1]}`]=(i%2?packed>>>16:packed&65535)/65535;
+  }
+  s.spent=f3[p3+2];s.manaWasted=f3[p3+3];
   states.push(s);
  }
 }
@@ -245,6 +252,8 @@ function sumStates(states, detailed){
   totals.petSpellCrits+=s.petSpellCrits||0;
   totals.petSpellMisses+=s.petSpellMisses||0;
   if(detailed){
+   for(const [,key] of UPTIME_EFFECTS)totals[`uptime_${key}`]=(totals[`uptime_${key}`]||0)+(s[`uptime_${key}`]||0);
+   for(const key of ['spent','manaWasted','procs','isbProcs','isbConsumed'])totals[key]=(totals[key]||0)+(s[key]||0);
    totals.damage0+=s.damage0||0;totals.casts0+=s.casts0||0;totals.hits0+=s.hits0||0;totals.crits0+=s.crits0||0;totals.misses0+=s.misses0||0;
    totals.damage1+=s.damage1||0;totals.casts1+=s.casts1||0;totals.hits1+=s.hits1||0;totals.crits1+=s.crits1||0;totals.misses1+=s.misses1||0;
    totals.damage2+=s.damage2||0;totals.casts2+=s.casts2||0;totals.hits2+=s.hits2||0;totals.crits2+=s.crits2||0;totals.misses2+=s.misses2||0;
@@ -369,7 +378,8 @@ export function summarize(states, duration) {
     petSpellDamage,
     petBrandDamage,
     maxHeap: states.reduce((n,s)=>Math.max(n,s.highWater || 0),0),
-    spells
+    spells,
+    ...(detailed ? { details: summarizeDetails(totals, states.length, duration, dps) } : {})
   };
 }
 
@@ -514,6 +524,13 @@ export async function runSimulation(input,{signal,onProgress=()=>{},batchSize=52
   diagnostic=target(1,Math.ceil(STATE_WORDS/16));
   const full=await drawRead(e,diagnostic,1,1,1,0,signal);draws++;
   const first=decodeStates(unpack(full,1,0,STATE_WORDS,1).buffer,1)[0];
+  // Compact uptimes are normalized to 16 bits; retain the same representation
+  // for the diagnostic fight so averages do not mix fractions and microseconds.
+  for(const [,key]of UPTIME_EFFECTS){
+   const field=`uptime_${key}`,fraction=first[field]/(config.duration*1e6);
+   if(Math.abs(fraction-states[0][field])>1/65535)throw new Error(`Diagnostic replay differs at ${field}.`);
+   first[field]=states[0][field];
+  }
   for(const [key,value]of Object.entries(states[0]))if(first[key]!==value)throw new Error(`Diagnostic replay differs at ${key}.`);
   states[0]=first;
   const traceLength=trace?Math.min(first.events,TRACE_CAPACITY):0,log=[];
