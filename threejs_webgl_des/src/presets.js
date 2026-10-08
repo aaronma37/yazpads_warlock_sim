@@ -6,7 +6,7 @@ import { CLASS_SIMULATION } from './classes/active_simulation.js';
 //
 // NOTE: This is a simulation results table. Presets strictly define inputs
 // (talents x gear/stats x APL x race). No preset DPS or stat weight values are
-// prefilled or hardcoded into the table. All output columns (Mean DPS, damage split,
+// prefilled or hardcoded into the table. All output columns (Mean DPS,
 // stat weights) are strictly populated via live GPU simulation when clicking "Simulate Specs".
 import { getTalentFlagsFromRanks } from './talents.js';
 import { generateAPLForPreset, compileAPLToBytecode, parseAPLText } from './apl.js';
@@ -64,12 +64,10 @@ export async function initPresets(onSelectPreset, raceGetter) {
     ['compare-all-races', 'compare-stat-weights', 'chk-pct-leader', 'chk-show-sd'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', () => {
         renderPresetsLeaderboard(onSelectPreset);
-        if (selectedPreset) renderSelectedPresetDetails(selectedPreset);
       });
     });
 
     renderPresetsLeaderboard(onSelectPreset);
-    if (selectedPreset) renderSelectedPresetDetails(selectedPreset);
     return presetsData;
   } catch (err) {
     console.error('Failed to load presets:', err);
@@ -153,25 +151,6 @@ function getPresetTalentDistribution(p) {
   return { aff, demo, destro, str: `${aff}/${demo}/${destro}` };
 }
 
-function getSpecDamageSplit(p) {
-  if (p && p.is_simulated && p.simulated_result?.summary?.detailed !== false && p.simulated_result?.summary) {
-    const summary = p.simulated_result.summary;
-    const dur = p.simulated_result.config?.duration || 180;
-    const total = summary.damage || (summary.mean * dur) || 1;
-    const shadowDmg = summary.shadowDamage || 0;
-    const fireDmg = summary.fireDamage || 0;
-    const physDmg = summary.physicalDamage || summary.petMeleeDamage || 0;
-    const petDmg = summary.petDamage || 0;
-    const totalDmg = Math.max(1, shadowDmg + fireDmg + physDmg);
-    const shadowPct = Math.round((shadowDmg / totalDmg) * 100);
-    const firePct = Math.round((fireDmg / totalDmg) * 100);
-    const physPct = Math.round((physDmg / totalDmg) * 100);
-    const petPct = Math.round((petDmg / totalDmg) * 100);
-    return { shadow: shadowPct, fire: firePct, physical: physPct, pet: petPct, shadowDmg, fireDmg, physDmg, petDmg, totalDmg };
-  }
-  return { shadow: 0, fire: 0, physical: 0, pet: 0, shadowDmg: 0, fireDmg: 0, physDmg: 0, petDmg: 0, totalDmg: 0 };
-}
-
 export function renderPresetsLeaderboard(onSelectPreset) {
   const tbody = document.getElementById('presets-leaderboard-body');
   const thead = document.getElementById('presets-leaderboard-head');
@@ -197,7 +176,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
         <th style="width: 48px; text-align: center;">Race</th>
         <th style="width: 68px; text-align: center;">Pet / Sac</th>
         <th style="min-width: 140px;">Action Priority Chain</th>
-        <th style="width: 130px;">Damage Split</th>
         <th style="width: 90px; text-align: right;">${showPctLeader ? '% from Leader' : 'Mean DPS'}</th>
         ${showStdDev ? '<th style="width: 65px; text-align: right;">+/- SD</th>' : ''}
         ${showStatWeights ? `
@@ -223,7 +201,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
     const raceIcon = RACE_ICONS[p.race] || RACE_ICONS.Human;
     const { pet, sac } = getSpecPetIcons(p);
     const aplRules = getSpecAPLRules(p);
-    const split = getSpecDamageSplit(p);
     const weights = getSpecStatWeights(p);
     const talentDist = getPresetTalentDistribution(p);
 
@@ -268,16 +245,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
         ? `<strong style="color: #4ade80; font-family: var(--font-mono); font-size: 0.88rem;">${p.mean_dps.toFixed(1)}</strong>`
         : `<span style="color:#666; font-size:0.75rem; font-weight:normal;">--</span>`;
     }
-
-    const splitHtml = isSim && p.simulated_result?.summary?.detailed !== false
-      ? `<div class="damage-split-bar" title="Shadow: ${split.shadow}% | Fire: ${split.fire}% | Pet: ${split.pet}%">
-          ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;"></div>` : ''}
-          ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;"></div>` : ''}
-          ${split.pet > 0 ? `<div class="split-seg pet" style="width: ${split.pet}%;"></div>` : ''}
-        </div>`
-      : `<div class="damage-split-bar" style="background:#13111a; border-color:#2a2434; display:flex; align-items:center; justify-content:center;">
-          <span style="color:#666; font-size:9px;">--</span>
-        </div>`;
 
     let extraColsHtml = '';
     if (showStdDev) {
@@ -324,9 +291,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
       <td class="apl-chain-col">
         <div class="apl-chain-strip">${aplIconsHtml}</div>
       </td>
-      <td class="split-col">
-        ${splitHtml}
-      </td>
       <td class="dps-col" style="text-align: right;">
         ${dpsCellContent}
       </td>
@@ -337,7 +301,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
       document.querySelectorAll('.preset-row').forEach(r => r.classList.remove('active'));
       tr.classList.add('active');
       selectedPreset = p;
-      renderSelectedPresetDetails(p);
     });
 
     tr.querySelector('.spec-name-link')?.addEventListener('click', (e) => {
@@ -352,141 +315,6 @@ export function renderPresetsLeaderboard(onSelectPreset) {
   });
 }
 
-export function renderSelectedPresetDetails(p) {
-  const container = document.getElementById('selected-preset-details-panel');
-  if (!container || !p) return;
-
-  const isSim = !!p.is_simulated;
-  const split = getSpecDamageSplit(p);
-  const weights = getSpecStatWeights(p);
-  const showStatWeights = !!document.getElementById('compare-stat-weights')?.checked || isSim;
-  const min = (p.min_dps || 0).toFixed(1);
-  const max = (p.max_dps || 0).toFixed(1);
-  const median = (p.mean_dps || 0).toFixed(1);
-  const cleanSpecName = p.name.replace(/^\s*\d+\s*\/\s*\d+\s*\/\s*\d+\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
-  const talentDist = getPresetTalentDistribution(p);
-
-  const statsSummaryHtml = isSim
-    ? `[<strong style="color:#4ade80; font-size:0.95rem;">${p.mean_dps.toFixed(1)} Mean DPS</strong> | Median: ${median} | 90% Range: ${min} - ${max}]`
-    : `[<span style="color:#fbbf24; font-weight:600;">Not Simulated</span> · Click <strong>"Simulate Specs"</strong> above to run GPU evaluation]`;
-
-  const epRatio = (weights && weights.dps_per_sp > 0) ? weights.dps_per_sp : 1.0;
-  const statWeightsBoxHtml = (showStatWeights && weights && weights.valid) ? `
-    <div class="stat-weights-inspector-box">
-      <span class="sub-label" style="color: #fbbf24; font-size: 0.78rem; font-weight: 700;">Stat Sensitivity Weights (DPS per +1 Stat):</span>
-      <div class="stat-weights-inspector-list">
-        <div>• +1 Spell Power: <strong style="color:#60a5fa;">+${weights.dps_per_sp.toFixed(2)} DPS</strong></div>
-        <div>• +1% Spell Hit: <strong style="color:#fbbf24;">+${weights.dps_per_hit.toFixed(1)} DPS</strong> <span style="color:#9ca3af; font-size:0.7rem;">(EP: ${(weights.dps_per_hit / epRatio).toFixed(1)} SP)</span></div>
-        <div>• +1% Spell Crit: <strong style="color:#f472b6;">+${weights.dps_per_crit.toFixed(1)} DPS</strong> <span style="color:#9ca3af; font-size:0.7rem;">(EP: ${(weights.dps_per_crit / epRatio).toFixed(1)} SP)</span></div>
-        <div>• +1% Spell Haste: <strong style="color:#4ade80;">+${weights.dps_per_haste.toFixed(1)} DPS</strong> <span style="color:#9ca3af; font-size:0.7rem;">(EP: ${(weights.dps_per_haste / epRatio).toFixed(1)} SP)</span></div>
-        <div>• +1 Intellect: <strong style="color:#93c5fd;">+${weights.dps_per_int.toFixed(2)} DPS</strong></div>
-        <div>• +1 Spirit: <strong style="color:#2dd4bf;">+${weights.dps_per_spirit.toFixed(2)} DPS</strong> <span style="color:#9ca3af; font-size:0.7rem;">(EP: ${(weights.dps_per_spirit / epRatio).toFixed(2)} SP)</span></div>
-      </div>
-    </div>
-  ` : '';
-
-  // Spell Breakdown list
-  let perSpellRowsHtml = '';
-  if (isSim && p.simulated_result?.summary?.spells) {
-    const summary = p.simulated_result.summary;
-    const dur = p.simulated_result.config?.duration || 180;
-    const totDmg = summary.damage || (summary.mean * dur) || 1;
-    const activeSp = summary.spells.filter(sp => sp.damage > 0 || sp.casts > 0);
-    const maxSpDmg = Math.max(...activeSp.map(sp => sp.damage), 1);
-
-    perSpellRowsHtml = `
-      <div style="margin-top: 0.65rem;">
-        <span class="sub-label" style="color: var(--text-gold); font-size: 0.78rem; font-weight: 700; margin-bottom: 0.35rem; display:block;">Detailed Spell Damage Split:</span>
-        <div class="damage-table-wrapper">
-          <table class="damage-table">
-            <thead>
-              <tr>
-                <th style="width: 130px;">Spell</th>
-                <th style="text-align: right; width: 65px;">Damage</th>
-                <th style="text-align: right; width: 55px;">DPS</th>
-                <th style="text-align: right; width: 45px;">Casts</th>
-                <th style="text-align: right; width: 55px;">Crits</th>
-                <th>Split</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${activeSp.map(sp => {
-                const spDps = sp.damage / dur;
-                const spPct = (sp.damage / totDmg * 100).toFixed(1);
-                const critPct = sp.casts > 0 ? ((sp.crits / sp.casts) * 100).toFixed(1) : '0';
-                const iconKey = sp.name.toUpperCase().replace(/\s+/g, '_');
-                const icon = SPELL_ICONS[iconKey] || 'Spell_Shadow_ShadowBolt.png';
-                const isFire = ['Immolate', 'Incinerate', 'Searing Pain', 'Imp Firebolt', 'Demonic Brand'].includes(sp.name) || sp.school === 'fire';
-                const isPhys = ['Succubus Melee', 'Melee (Pet)', 'Pet Melee', 'Melee'].includes(sp.name) || sp.school === 'physical';
-                const barClass = isPhys ? 'physical' : (isFire ? 'fire' : 'shadow');
-                const barW = Math.min(100, Math.max(4, Math.round((sp.damage / maxSpDmg) * 100)));
-                return `
-                  <tr>
-                    <td>
-                      <div class="spell-breakdown-cell">
-                        <img src="./assets/icons/${icon}" class="spell-breakdown-icon" alt="${sp.name}" onerror="this.src='./assets/icons/Spell_Shadow_ShadowBolt.png'">
-                        <span class="spell-breakdown-name">${sp.name}</span>
-                      </div>
-                    </td>
-                    <td style="text-align: right; font-family: var(--font-mono); color: var(--text-gold); font-size: 0.75rem; white-space: nowrap;">${Math.round(sp.damage)} (${spPct}%)</td>
-                    <td style="text-align: right; font-family: var(--font-mono); color: #4ade80; font-size: 0.75rem; white-space: nowrap;">${spDps.toFixed(1)}</td>
-                    <td style="text-align: right; font-family: var(--font-mono); font-size: 0.75rem; white-space: nowrap;">${sp.casts > 0 ? sp.casts.toFixed(1) : '-'}</td>
-                    <td style="text-align: right; font-family: var(--font-mono); color: #fbbf24; font-size: 0.75rem; white-space: nowrap;">${sp.casts > 0 ? `${sp.crits.toFixed(1)} (${critPct}%)` : '-'}</td>
-                    <td>
-                      <div class="spell-mini-bar-track">
-                        <div class="spell-mini-bar-fill ${barClass}" style="width: ${barW}%;"></div>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  }
-
-  const breakdownSectionHtml = isSim && p.simulated_result?.summary?.detailed !== false
-    ? `<span class="section-label">School Damage Split:</span>
-       <div class="damage-split-bar large-split">
-         ${split.shadow > 0 ? `<div class="split-seg shadow" style="width: ${split.shadow}%;">${split.shadow}% Shadow</div>` : ''}
-         ${split.fire > 0 ? `<div class="split-seg fire" style="width: ${split.fire}%;">${split.fire}% Fire</div>` : ''}
-         ${split.physical > 0 ? `<div class="split-seg physical" style="width: ${split.physical}%;">${split.physical}% Physical</div>` : ''}
-       </div>
-       ${perSpellRowsHtml}
-       ${statWeightsBoxHtml}`
-    : isSim ? `<div style="color:var(--text-dim); padding:1rem 0;">Damage breakdown unavailable for this comparison.</div>${statWeightsBoxHtml}`
-    : `<span class="section-label">Damage Breakdown:</span>
-       <div class="damage-split-bar large-split" style="background:#13111a; border-color:#2a2434; display:flex; align-items:center; justify-content:center;">
-         <span style="color:#777; font-size:0.75rem;">Awaiting GPU Simulation</span>
-       </div>
-       <div style="color:var(--text-dim); font-size:0.78rem; text-align:center; padding:1rem 0.5rem; background:#0c0b10; border-radius:3px; border:1px dashed #2d2636;">
-         Click <strong>"Simulate Specs"</strong> above to compute live DPS and confidence bounds.
-       </div>
-       ${statWeightsBoxHtml}`;
-
-  container.innerHTML = `
-    <div class="selected-preset-header">
-      <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-        <span class="spec-talents-tag" style="font-size:0.8rem; padding: 2px 6px;">[${talentDist.aff} / ${talentDist.demo} / ${talentDist.destro}]</span>
-        <span class="selected-preset-title">#${p.id} ${cleanSpecName} (${p.race})</span>
-        <button type="button" class="wow-button wow-btn-small" id="btn-load-selected-preset" style="font-size:0.75rem; margin-left: 0.5rem;">Load Into Armory</button>
-      </div>
-      <span class="selected-preset-stats">${statsSummaryHtml}</span>
-    </div>
-
-    <div class="selected-preset-breakdown">
-      ${breakdownSectionHtml}
-    </div>
-  `;
-
-  container.querySelector('#btn-load-selected-preset')?.addEventListener('click', () => {
-    if (activePresetCallback) activePresetCallback(p);
-    const curTab = document.getElementById('btn-current-build');
-    if (curTab) curTab.click();
-  });
-}
 
 export async function runBatchPresetSimulation(signal, onProgress, onSelectPreset, activeConfig = {}) {
   const metaPresets = getFilteredPresets();
@@ -656,7 +484,6 @@ export async function runBatchPresetSimulation(signal, onProgress, onSelectPrese
   // Re-sort presetsData descending by freshly simulated mean_dps
   presetsData.sort((a, b) => b.mean_dps - a.mean_dps);
   renderPresetsLeaderboard(onSelectPreset || activePresetCallback);
-  if (selectedPreset) renderSelectedPresetDetails(selectedPreset);
 
   const throughput = Math.round((totalFightsCount / (Math.max(1, multiRes.timing.elapsedMs) / 1000)));
   if (topSimStatus) {

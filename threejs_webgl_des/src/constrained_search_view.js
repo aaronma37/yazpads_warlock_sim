@@ -497,7 +497,7 @@ export function renderGALeaderboard() {
   if (!tbody) return;
 
   if (!currentCandidates || currentCandidates.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to search. Set constraints and click "Run AI Genetic Optimization".</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 2rem;">Ready to search. Set constraints and click "Run AI Genetic Optimization".</td></tr>`;
     return;
   }
 
@@ -573,21 +573,7 @@ export function renderGALeaderboard() {
     `;
     tr.appendChild(tdPet);
 
-    // 5. Damage Split
-    const tdSplit = document.createElement('td');
-    const sPct = Math.round(cand.shadow_pct || 0);
-    const fPct = Math.round(cand.fire_pct || 0);
-    const pPct = Math.round(cand.pet_pct || 0);
-    tdSplit.innerHTML = `
-      <div class="damage-split-bar" style="height: 14px;" title="${cand.summary?.detailed === false ? 'Damage breakdown unavailable' : `Shadow: ${sPct}% | Fire: ${fPct}% | Pet: ${pPct}%`}">
-        ${sPct > 0 ? `<div class="split-seg shadow" style="width: ${sPct}%;"></div>` : ''}
-        ${fPct > 0 ? `<div class="split-seg fire" style="width: ${fPct}%;"></div>` : ''}
-        ${pPct > 0 ? `<div class="split-seg pet" style="width: ${pPct}%;"></div>` : ''}
-      </div>
-    `;
-    tr.appendChild(tdSplit);
-
-    // 6. Mean DPS
+    // 5. Mean DPS
     const tdDps = document.createElement('td');
     tdDps.style.textAlign = 'right';
     tdDps.style.fontWeight = 'bold';
@@ -606,7 +592,7 @@ export function renderGALeaderboard() {
     }
     tr.appendChild(tdDps);
 
-    // 7. Action Apply Button
+    // 6. Action Apply Button
     const tdAction = document.createElement('td');
     tdAction.style.textAlign = 'center';
     const applyBtn = document.createElement('button');

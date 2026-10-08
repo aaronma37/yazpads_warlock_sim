@@ -33,7 +33,7 @@ Pets, gear/buff procs, raid buffs, race selection, arbitrary talents, haste, dyn
 ## Standard Specs Comparison Dashboard
 
 - **Simulation-Only Results**: The comparison table is strictly a live simulation output view. Presets are pure input specifications defined by `talents × stats/gear × APL × race`.
-- **No Pre-Baked Data**: Preset files (`data/presets.json`) and JavaScript runtime never store or prefill static DPS values or stat weights into the table. All output columns (`Mean DPS`, `Damage Split`, `DPS/SP`, `DPS/Hit`, `DPS/Crit`, `DPS/Haste`, `DPS/Int`, `DPS/Spirit`) start blank (`--` / `-`) and are strictly computed on-demand when the user executes **"Simulate Specs"** on the WebGL2 GPU engine.
+- **No Pre-Baked Data**: Preset files (`data/presets.json`) and JavaScript runtime never store or prefill static DPS values or stat weights into the table. All output columns (`Mean DPS`, `DPS/SP`, `DPS/Hit`, `DPS/Crit`, `DPS/Haste`, `DPS/Int`, `DPS/Spirit`) start blank (`--` / `-`) and are strictly computed on-demand when the user executes **"Simulate Specs"** on the WebGL2 GPU engine.
 
 ## GPU execution
 
